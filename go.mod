@@ -9,7 +9,7 @@ require (
 	github.com/cloudflare/ahocorasick v0.0.0-20240916140611-054963ec9396
 	github.com/creack/pty v1.1.24
 	github.com/dean2021/goss v0.0.0-20230129073947-df90431348f1
-	github.com/ebitengine/purego v0.10.2
+	github.com/ebitengine/purego v0.11.0
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/hashicorp/go-uuid v1.0.3
 	github.com/jaypipes/ghw v0.25.0
@@ -20,7 +20,7 @@ require (
 	github.com/nezhahq/service v0.0.0-20250122132143-5f38afb105e9
 	github.com/prometheus-community/pro-bing v0.9.1
 	github.com/refraction-networking/utls v1.8.2
-	github.com/shirou/gopsutil/v4 v4.26.7
+	github.com/shirou/gopsutil/v4 v4.26.8
 	github.com/tidwall/gjson v1.19.0
 	github.com/urfave/cli/v2 v2.27.7
 	golang.org/x/net v0.58.0
