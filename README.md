@@ -1,3 +1,8 @@
+> [!IMPORTANT]
+> **非官方版本声明**
+>
+> 本仓库是基于哪吒监控进行二次开发的魔改版本，并非官方开源版本。功能、行为及更新节奏可能与官方版本不同；本仓库特有问题请勿向官方项目反馈。
+
 <div align="center">
   <br>
   <img width="360" style="max-width:80%" src=".github/brand.svg" title="哪吒监控 Nezha Monitoring">
