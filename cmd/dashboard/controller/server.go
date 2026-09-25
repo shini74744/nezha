@@ -9,7 +9,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/goccy/go-json"
-	"gorm.io/gorm"
 
 	"github.com/nezhahq/nezha/model"
 	"github.com/nezhahq/nezha/pkg/tsdb"
@@ -130,42 +129,12 @@ func batchDeleteServer(c *gin.Context) (any, error) {
 		return nil, singleton.Localizer.ErrorT("permission denied")
 	}
 
-	err := singleton.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Unscoped().Delete(&model.Server{}, "id in (?)", servers).Error; err != nil {
-			return err
-		}
-		if err := tx.Unscoped().Delete(&model.ServerGroupServer{}, "server_id in (?)", servers).Error; err != nil {
-			return err
-		}
-		return nil
-	})
-
-	if err != nil {
+	if singleton.ServerIDReassignmentInProgress.Load() {
+		return nil, errors.New("server ID reassignment in progress")
+	}
+	if err := singleton.PermanentlyDeleteServers(servers); err != nil {
 		return nil, newGormError("%v", err)
 	}
-
-	singleton.AlertsLock.Lock()
-	for _, sid := range servers {
-		for _, alert := range singleton.Alerts {
-			if singleton.AlertsCycleTransferStatsStore[alert.ID] != nil {
-				delete(singleton.AlertsCycleTransferStatsStore[alert.ID].ServerName, sid)
-				delete(singleton.AlertsCycleTransferStatsStore[alert.ID].Transfer, sid)
-				delete(singleton.AlertsCycleTransferStatsStore[alert.ID].NextUpdate, sid)
-			}
-		}
-	}
-	singleton.DB.Unscoped().Delete(&model.Transfer{}, "server_id in (?)", servers)
-	singleton.AlertsLock.Unlock()
-
-	// Cancel any in-flight transfers BEFORE the in-memory ServerShared
-	// entry is dropped: the order shortens the window in which a
-	// concurrent Retry/Register could install a fresh pending entry for
-	// the same serverID and have it wiped by the cleanup. The
-	// transferID-guarded delete inside OnServersDeleted is the
-	// authoritative protection against that race; the ordering here is
-	// belt and braces.
-	singleton.ServerTransferShared.OnServersDeleted(servers)
-	singleton.ServerShared.Delete(servers)
 	return nil, nil
 }
 

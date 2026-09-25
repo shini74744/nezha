@@ -75,3 +75,47 @@ func TestRemapServerIDsPreservesServerAndServiceHistory(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, serviceTwo, uint64(7))
 }
+
+func TestDeleteServerIDsRemovesOnlyTargetServerSeries(t *testing.T) {
+	config := &Config{
+		DataPath:           filepath.Join(t.TempDir(), "tsdb"),
+		RetentionDays:      1,
+		MinFreeDiskSpaceGB: 0.001,
+		DedupInterval:      time.Millisecond,
+	}
+	db, err := Open(config)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+
+	at := time.Now().Add(-time.Minute)
+	require.NoError(t, db.WriteServerMetrics(&ServerMetrics{
+		ServerID: 11, Timestamp: at, CPU: 11,
+	}))
+	require.NoError(t, db.WriteServiceMetrics(&ServiceMetrics{
+		ServiceID: 7, ServerID: 11, Timestamp: at, Delay: 11, Successful: true,
+	}))
+	require.NoError(t, db.WriteServerMetrics(&ServerMetrics{
+		ServerID: 12, Timestamp: at, CPU: 12,
+	}))
+	require.NoError(t, db.WriteServiceMetrics(&ServiceMetrics{
+		ServiceID: 7, ServerID: 12, Timestamp: at, Delay: 12, Successful: true,
+	}))
+	db.Flush()
+
+	require.NoError(t, db.DeleteServerIDs([]uint64{11}))
+	require.False(t, db.WritesPaused())
+
+	deletedMetrics, err := db.QueryServerMetrics(11, MetricServerCPU, Period1Day)
+	require.NoError(t, err)
+	require.Empty(t, deletedMetrics)
+	deletedServices, err := db.QueryServiceHistoryByServerID(11, Period1Day)
+	require.NoError(t, err)
+	require.Empty(t, deletedServices)
+
+	keptMetrics, err := db.QueryServerMetrics(12, MetricServerCPU, Period1Day)
+	require.NoError(t, err)
+	require.NotEmpty(t, keptMetrics)
+	keptServices, err := db.QueryServiceHistoryByServerID(12, Period1Day)
+	require.NoError(t, err)
+	require.Contains(t, keptServices, uint64(7))
+}

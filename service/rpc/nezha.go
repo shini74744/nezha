@@ -10,6 +10,8 @@ import (
 
 	"github.com/jinzhu/copier"
 	"github.com/nezhahq/nezha/pkg/tsdb"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/nezhahq/nezha/model"
 	pb "github.com/nezhahq/nezha/proto"
@@ -64,7 +66,7 @@ func NewNezhaHandler() *NezhaHandler {
 // panic.
 func attachRequestTaskStream(clientID uint64, stream pb.NezhaService_RequestTaskServer) (*model.Server, bool) {
 	server, ok := singleton.ServerShared.Get(clientID)
-	if !ok || server == nil {
+	if !ok || server == nil || singleton.IsDeletedServerUUID(server.UUID) {
 		return nil, false
 	}
 	server.SetTaskStream(stream)
@@ -124,6 +126,9 @@ func (s *NezhaHandler) RequestTask(stream pb.NezhaService_RequestTaskServer) err
 		}
 		if singleton.ServerIDReassignmentInProgress.Load() {
 			return errors.New("server ID reassignment in progress")
+		}
+		if singleton.IsDeletedServerUUID(server.UUID) {
+			return status.Error(codes.PermissionDenied, "server UUID was permanently deleted")
 		}
 		server, err = currentRequestTaskServer(clientID, stream)
 		if err != nil {
@@ -204,6 +209,9 @@ func (s *NezhaHandler) ReportSystemState(stream pb.NezhaService_ReportSystemStat
 	if !ok || server == nil {
 		return errors.New("server not found")
 	}
+	if singleton.IsDeletedServerUUID(server.UUID) {
+		return status.Error(codes.PermissionDenied, "server UUID was permanently deleted")
+	}
 	lease := server.AttachStateStream(stream)
 	defer lease.Clear()
 	var state *pb.State
@@ -216,6 +224,9 @@ func (s *NezhaHandler) ReportSystemState(stream pb.NezhaService_ReportSystemStat
 		}
 		if singleton.ServerIDReassignmentInProgress.Load() {
 			return errors.New("server ID reassignment in progress")
+		}
+		if singleton.IsDeletedServerUUID(server.UUID) {
+			return status.Error(codes.PermissionDenied, "server UUID was permanently deleted")
 		}
 		stateCount++
 		innerState := model.PB2State(state)
@@ -291,6 +302,9 @@ func (s *NezhaHandler) onReportSystemInfo(c context.Context, r *pb.Host) (model.
 	server, ok := singleton.ServerShared.Get(clientID)
 	if !ok || server == nil {
 		return model.HostReportResult{}, errors.New("server not found")
+	}
+	if singleton.IsDeletedServerUUID(server.UUID) {
+		return model.HostReportResult{}, status.Error(codes.PermissionDenied, "server UUID was permanently deleted")
 	}
 
 	/**

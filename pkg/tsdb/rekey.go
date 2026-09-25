@@ -42,6 +42,35 @@ func (db *TSDB) ResumeWritesAfterMaintenance() {
 	db.maintenancePaused.Store(false)
 }
 
+// DeleteServerIDs permanently removes every server and service metric series
+// tagged with one of the supplied system IDs. Writes are paused and flushed so
+// a deleted Agent cannot leave a late sample that a future ID reuse inherits.
+func (db *TSDB) DeleteServerIDs(serverIDs []uint64) error {
+	if len(serverIDs) == 0 {
+		return nil
+	}
+	if err := db.PauseWritesForMaintenance(); err != nil {
+		return err
+	}
+	defer db.ResumeWritesAfterMaintenance()
+
+	values := make([]string, 0, len(serverIDs))
+	for _, id := range serverIDs {
+		values = append(values, strconv.FormatUint(id, 10))
+	}
+
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	if db.closed {
+		return fmt.Errorf("TSDB is closed")
+	}
+	if err := db.deleteServerSeriesLocked(values); err != nil {
+		return err
+	}
+	db.storage.DebugFlush()
+	return nil
+}
+
 // CreateMaintenanceSnapshot creates a point-in-time TSDB snapshot before a
 // destructive maintenance operation. VictoriaMetrics exposes a panic-only
 // snapshot API, so convert that failure mode into an ordinary error.

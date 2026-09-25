@@ -102,6 +102,32 @@ func (c *CronClass) Update(cr *model.Cron) {
 	c.sortList()
 }
 
+// ReplaceAfterReferenceCleanup swaps a cron whose server references changed
+// during permanent deletion while preserving a valid scheduled job.
+func (c *CronClass) ReplaceAfterReferenceCleanup(cr *model.Cron) error {
+	if cr == nil {
+		return fmt.Errorf("cron is nil")
+	}
+	if cr.TaskType != model.CronTypeTriggerTask {
+		jobID, err := c.Cron.AddFunc(cr.Scheduler, CronTrigger(cr))
+		if err != nil {
+			return err
+		}
+		cr.CronJobID = jobID
+	}
+
+	c.listMu.Lock()
+	old := c.list[cr.ID]
+	c.list[cr.ID] = cr
+	c.listMu.Unlock()
+	if old != nil && old.CronJobID != 0 {
+		c.Cron.Remove(old.CronJobID)
+	}
+	c.deleteAlertTriggerCronResultAuthorizations([]uint64{cr.ID})
+	c.sortList()
+	return nil
+}
+
 func (c *CronClass) Delete(idList []uint64) {
 	c.listMu.Lock()
 	for _, id := range idList {

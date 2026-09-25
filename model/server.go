@@ -329,6 +329,25 @@ func (s *Server) ClearStateStreamIfCurrent(lease StateStreamLease) bool {
 	return lease.clear(s)
 }
 
+// RevokeStreams invalidates both long-lived Agent streams. Incrementing the
+// state generation makes every previously issued lease fail before it can
+// persist another sample after permanent deletion.
+func (s *Server) RevokeStreams() {
+	s.SetTaskStream(nil)
+	holder := s.runtime.Load()
+	if holder == nil {
+		return
+	}
+	holder.mu.Lock()
+	holder.generation++
+	holder.stream = nil
+	holder.lastActive = time.Time{}
+	if holder.canonical != nil {
+		holder.canonical.LastActive = time.Time{}
+	}
+	holder.mu.Unlock()
+}
+
 // RuntimeSnapshot is a deep copy of the mutable runtime state.
 type RuntimeSnapshot struct {
 	State                   *HostState

@@ -1276,6 +1276,8 @@ func (c *ServerTransferClass) OnServersDeleted(serverIDs []uint64) {
 	// server itself is gone, so drop unconditionally to prevent a recycled
 	// id from inheriting a stale per-transfer credential.
 	for _, sid := range serverIDs {
+		delete(c.pending, sid)
+		delete(c.revertDeliveries, sid)
 		delete(c.terminalSecretRecovery, sid)
 	}
 	c.mu.Unlock()
