@@ -62,6 +62,9 @@ func LoadSingleton(bus chan<- *model.Service) (err error) {
 	NATShared = NewNATClass()
 	DDNSShared = NewDDNSClass()
 	NotificationShared = NewNotificationClass()
+	if err = initDeletedServerUUIDs(); err != nil {
+		return
+	}
 	ServerShared = NewServerClass()
 	CronShared = NewCronClass()
 	ServerTransferShared = NewServerTransferClass()
@@ -96,7 +99,7 @@ func InitDBFromPath(path string) error {
 		model.Cron{}, model.Transfer{}, model.ServerGroupServer{},
 		model.NAT{}, model.DDNSProfile{}, model.NotificationGroupNotification{},
 		model.WAF{}, model.Oauth2Bind{}, model.ServerTransfer{}, model.JWTSession{},
-		model.APIToken{}, model.MCPAuditLog{})
+		model.APIToken{}, model.MCPAuditLog{}, model.ServerDeletionTombstone{})
 	if err != nil {
 		return err
 	}

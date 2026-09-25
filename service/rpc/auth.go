@@ -58,6 +58,9 @@ func (a *authHandler) check(ctx context.Context) (uint64, error) {
 		model.BlockIP(singleton.DB, ip, model.WAFBlockReasonTypeAgentAuthFail, model.BlockIDgRPC)
 		return 0, status.Error(codes.Unauthenticated, "客户端 UUID 不合法")
 	}
+	if singleton.IsDeletedServerUUID(clientUUID) {
+		return 0, status.Error(codes.Unauthenticated, "客户端认证失败")
+	}
 
 	// Per-transfer handshake secret path: ApplyConfig delivers a random
 	// per-transfer token instead of the destination user's global AgentSecret
@@ -160,21 +163,35 @@ func (a *authHandler) check(ctx context.Context) (uint64, error) {
 	if err != nil {
 		return 0, status.Error(codes.Unauthenticated, err.Error())
 	}
-	if !hasID {
-		s := model.Server{UUID: clientUUID, Name: petname.Generate(2, "-"), Common: model.Common{
-			UserID: userId,
-		}}
-		if err := singleton.DB.Create(&s).Error; err != nil {
-			return 0, status.Error(codes.Unauthenticated, err.Error())
+	if hasID {
+		if singleton.IsDeletedServerUUID(clientUUID) {
+			return 0, status.Error(codes.PermissionDenied, "server UUID was permanently deleted")
 		}
-
-		model.InitServer(&s)
-		singleton.ServerShared.Update(&s, clientUUID)
-
-		clientID = s.ID
+		return clientID, nil
 	}
 
-	return clientID, nil
+	singleton.ServerMutationMu.Lock()
+	defer singleton.ServerMutationMu.Unlock()
+
+	// A concurrent registration may have created this UUID while we waited.
+	clientID, hasID, err = authorizeAgentForUUID(userId, clientUUID)
+	if err != nil {
+		return 0, status.Error(codes.Unauthenticated, err.Error())
+	}
+	if hasID {
+		return clientID, nil
+	}
+	if singleton.IsDeletedServerUUID(clientUUID) {
+		return 0, status.Error(codes.PermissionDenied, "server UUID was permanently deleted")
+	}
+
+	s, err := singleton.CreateServerWithLowestAvailableID(userId, clientUUID, petname.Generate(2, "-"))
+	if err != nil {
+		return 0, status.Error(codes.Unauthenticated, err.Error())
+	}
+	model.InitServer(s)
+	singleton.ServerShared.Update(s, clientUUID)
+	return s.ID, nil
 }
 
 func firstMetadataValue(md metadata.MD, keys ...string) string {
