@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/nezhahq/nezha/model"
 	"github.com/nezhahq/nezha/service/rpc"
@@ -36,6 +37,7 @@ func listConfig(c *gin.Context) (*model.SettingResponse, error) {
 		Config: model.Setting{
 			ConfigForGuests:                config.ConfigForGuests,
 			ConfigDashboard:                config.ConfigDashboard,
+			FrontendPasswordRequired:       config.FrontendPasswordHash != "",
 			IgnoredIPNotificationServerIDs: config.IgnoredIPNotificationServerIDs,
 			Oauth2Providers:                config.Oauth2Providers,
 		},
@@ -53,9 +55,10 @@ func listConfig(c *gin.Context) (*model.SettingResponse, error) {
 		}
 		conf = model.SettingResponse{
 			Config: model.Setting{
-				ConfigForGuests: configForGuests,
-				ConfigDashboard: configDashboard,
-				Oauth2Providers: config.Oauth2Providers,
+				ConfigForGuests:          configForGuests,
+				ConfigDashboard:          configDashboard,
+				FrontendPasswordRequired: config.FrontendPasswordHash != "",
+				Oauth2Providers:          config.Oauth2Providers,
 			},
 			TSDBEnabled: singleton.TSDBEnabled(),
 		}
@@ -107,6 +110,16 @@ func updateConfig(c *gin.Context) (any, error) {
 	singleton.Conf.IgnoredIPNotification = sf.IgnoredIPNotification
 	singleton.Conf.IPChangeNotificationGroupID = sf.IPChangeNotificationGroupID
 	singleton.Conf.SiteName = sf.SiteName
+	previousFrontendPasswordHash := singleton.Conf.FrontendPasswordHash
+	if sf.ClearFrontendPassword {
+		singleton.Conf.FrontendPasswordHash = ""
+	} else if sf.FrontendPassword != nil && *sf.FrontendPassword != "" {
+		hash, err := bcrypt.GenerateFromPassword([]byte(*sf.FrontendPassword), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, err
+		}
+		singleton.Conf.FrontendPasswordHash = string(hash)
+	}
 	singleton.Conf.DNSServers = sf.DNSServers
 	singleton.Conf.CustomCode = sf.CustomCode
 	singleton.Conf.CustomCodeDashboard = sf.CustomCodeDashboard
@@ -123,6 +136,7 @@ func updateConfig(c *gin.Context) (any, error) {
 		singleton.Conf.Save,
 		fireMCPKillSwitch,
 	); err != nil {
+		singleton.Conf.FrontendPasswordHash = previousFrontendPasswordHash
 		return nil, newGormError("%v", err)
 	}
 

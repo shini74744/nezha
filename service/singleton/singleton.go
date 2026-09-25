@@ -7,6 +7,7 @@ import (
 	"maps"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -21,11 +22,12 @@ import (
 var Version = "debug"
 
 var (
-	Cache             *cache.Cache
-	DB                *gorm.DB
-	Loc               *time.Location
-	FrontendTemplates []model.FrontendTemplate
-	DashboardBootTime = uint64(time.Now().Unix())
+	Cache                          *cache.Cache
+	DB                             *gorm.DB
+	Loc                            *time.Location
+	FrontendTemplates              []model.FrontendTemplate
+	DashboardBootTime              = uint64(time.Now().Unix())
+	ServerIDReassignmentInProgress atomic.Bool
 
 	ServerShared          *ServerClass
 	ServiceSentinelShared *ServiceSentinel

@@ -122,6 +122,9 @@ func (s *NezhaHandler) RequestTask(stream pb.NezhaService_RequestTaskServer) err
 			log.Printf("NEZHA>> RequestTask error: %v, clientID: %d\n", err, clientID)
 			return err
 		}
+		if singleton.ServerIDReassignmentInProgress.Load() {
+			return errors.New("server ID reassignment in progress")
+		}
 		server, err = currentRequestTaskServer(clientID, stream)
 		if err != nil {
 			return err
@@ -211,6 +214,9 @@ func (s *NezhaHandler) ReportSystemState(stream pb.NezhaService_ReportSystemStat
 			log.Printf("NEZHA>> ReportSystemState error: %v, clientID: %d\n", err, clientID)
 			return err
 		}
+		if singleton.ServerIDReassignmentInProgress.Load() {
+			return errors.New("server ID reassignment in progress")
+		}
 		stateCount++
 		innerState := model.PB2State(state)
 
@@ -272,6 +278,9 @@ func (s *NezhaHandler) ReportSystemState(stream pb.NezhaService_ReportSystemStat
 }
 
 func (s *NezhaHandler) onReportSystemInfo(c context.Context, r *pb.Host) (model.HostReportResult, error) {
+	if singleton.ServerIDReassignmentInProgress.Load() {
+		return model.HostReportResult{}, errors.New("server ID reassignment in progress")
+	}
 	var clientID uint64
 	var err error
 	if clientID, err = s.Auth.Check(c); err != nil {
