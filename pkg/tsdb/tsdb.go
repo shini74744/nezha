@@ -23,10 +23,11 @@ type readOnlyChecker interface {
 
 // TSDB 封装 VictoriaMetrics 存储
 type TSDB struct {
-	storage *storage.Storage
-	config  *Config
-	mu      sync.RWMutex
-	closed  bool
+	storage  *storage.Storage
+	config   *Config
+	mu       sync.RWMutex
+	ingestMu sync.Mutex
+	closed   bool
 
 	writer *bufferedWriter
 
@@ -34,8 +35,9 @@ type TSDB struct {
 	addRowsFn    func([]storage.MetricRow, uint8)
 	debugFlushFn func()
 
-	readOnlyObserved atomic.Bool
-	diskFullPaused   atomic.Bool
+	readOnlyObserved  atomic.Bool
+	diskFullPaused    atomic.Bool
+	maintenancePaused atomic.Bool
 }
 
 // InitGlobalSettings 初始化 VictoriaMetrics 包级别的全局设置。
@@ -121,14 +123,14 @@ func diskFullPanicError(recovered any) error {
 // WritesPaused reports whether new samples are currently being discarded.
 // Queries remain available while VictoriaMetrics is in read-only mode.
 func (db *TSDB) WritesPaused() bool {
-	if db.diskFullPaused.Load() {
+	if db.diskFullPaused.Load() || db.maintenancePaused.Load() {
 		return true
 	}
 	return db.readOnly != nil && db.readOnly.IsReadOnly()
 }
 
 func (db *TSDB) acceptsWrites() bool {
-	if db.diskFullPaused.Load() {
+	if db.diskFullPaused.Load() || db.maintenancePaused.Load() {
 		return false
 	}
 
@@ -153,7 +155,12 @@ func (db *TSDB) pauseWritesAfterDiskFull(recovered any) {
 }
 
 func (db *TSDB) addRowsSafely(rows []storage.MetricRow) {
-	if len(rows) == 0 || !db.acceptsWrites() {
+	if len(rows) == 0 {
+		return
+	}
+	db.ingestMu.Lock()
+	defer db.ingestMu.Unlock()
+	if !db.acceptsWrites() {
 		return
 	}
 

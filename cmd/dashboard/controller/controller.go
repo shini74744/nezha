@@ -73,6 +73,7 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 
 	api := r.Group("api/v1")
 	api.POST("/login", authMiddleware.LoginHandler)
+	api.POST("/frontend-auth", frontendPasswordLogin)
 	api.GET("/oauth2/:provider", commonHandler(oauth2redirect))
 
 	fallbackAuthMw := fallbackAuthMiddleware(authMiddleware)
@@ -88,7 +89,7 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	// 才能按 scope 真实收口（否则匿名 PAT 请求会被当 guest，scope 失效）。
 	optionalAuthMw := utils.IfOr(singleton.Conf.ForceAuth, authMw, patOrFallbackAuthMiddleware(patMw, fallbackAuthMw))
 
-	optionalAuth := api.Group("", optionalAuthMw)
+	optionalAuth := api.Group("", optionalAuthMw, frontendPasswordGate())
 	optionalAuth.GET("/ws/server", restScopeMiddleware(model.ScopeInventoryRead), commonHandler(serverStream))
 	optionalAuth.GET("/server-group", restScopeMiddleware(model.ScopeInventoryRead), commonHandler(listServerGroup))
 
@@ -129,6 +130,8 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	auth.POST("/batch-delete/server", restScopeMiddleware(model.ScopeInventoryDelete), commonHandler(batchDeleteServer))
 	auth.POST("/batch-move/server", restScopeMiddleware(model.ScopeServerWrite), commonHandler(batchMoveServer))
 	auth.POST("/force-update/server", restScopeMiddleware(model.ScopeServerWrite), commonHandler(forceUpdateServer))
+	auth.POST("/server/order", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateServerOrder))
+	auth.POST("/server/reassign-ids", restScopeMiddleware(model.ScopeAdminAll), adminHandler(reassignServerIDs))
 	auth.POST("/server-group", restScopeMiddleware(model.ScopeServerWrite), commonHandler(createServerGroup))
 	auth.PATCH("/server-group/:id", restScopeMiddleware(model.ScopeServerWrite), commonHandler(updateServerGroup))
 	auth.POST("/batch-delete/server-group", restScopeMiddleware(model.ScopeInventoryDelete), commonHandler(batchDeleteServerGroup))
@@ -462,6 +465,10 @@ func fallbackToFrontend(frontendDist fs.FS) func(*gin.Context) {
 			if !checkLocalFileOrFs(c, frontendDist, singleton.Conf.AdminTemplate, "index.html", fallbackStatusCode) {
 				c.JSON(http.StatusNotFound, newErrorResponse(errors.New("404 Not Found")))
 			}
+			return
+		}
+		if frontendPasswordRequired() && !validFrontendPasswordCookie(c) {
+			serveFrontendPasswordPage(c, c.Request.URL.RequestURI(), "", http.StatusOK)
 			return
 		}
 		stripPath := strings.TrimPrefix(c.Request.URL.Path, "/")

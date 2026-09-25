@@ -55,10 +55,11 @@ type ConfigDashboard struct {
 	// 为空时，OAuth2 回调放行请求 Host（信任请求头），不做强制重写。
 	DashboardHost string `koanf:"dashboard_host" json:"dashboard_host,omitempty"`
 
-	WebRealIPHeader   string `koanf:"web_real_ip_header" json:"web_real_ip_header,omitempty"`     // 前端真实IP
-	AgentRealIPHeader string `koanf:"agent_real_ip_header" json:"agent_real_ip_header,omitempty"` // Agent真实IP
-	UserTemplate      string `koanf:"user_template" json:"user_template,omitempty"`
-	AdminTemplate     string `koanf:"admin_template" json:"admin_template,omitempty"`
+	WebRealIPHeader      string `koanf:"web_real_ip_header" json:"web_real_ip_header,omitempty"`     // 前端真实IP
+	AgentRealIPHeader    string `koanf:"agent_real_ip_header" json:"agent_real_ip_header,omitempty"` // Agent真实IP
+	UserTemplate         string `koanf:"user_template" json:"user_template,omitempty"`
+	AdminTemplate        string `koanf:"admin_template" json:"admin_template,omitempty"`
+	FrontendPasswordHash string `koanf:"frontend_password_hash" json:"-"`
 
 	EnablePlainIPInNotification bool `koanf:"enable_plain_ip_in_notification" json:"enable_plain_ip_in_notification,omitempty"` // 通知信息IP不打码
 	// AllowJWTIPChange disables the IP binding check for browser login sessions.
