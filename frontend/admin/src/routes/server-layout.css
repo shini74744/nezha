@@ -1,0 +1,15 @@
+/* Only the server list scrolls on narrow screens; never shrink its data columns. */
+.server-list-scroll { max-width:100%; min-width:0; overflow-x:auto; overscroll-behavior-x:contain; -webkit-overflow-scrolling:touch; }
+.server-list-scroll > div { overflow:visible; }
+.server-list-table { min-width:1400px; }
+.server-list-table [data-column="host_version"] { width:80px; }
+.server-list-table .server-text { max-width:none; overflow-wrap:anywhere; }
+@media (max-width:1023px) {
+ .server-list-table [data-column="name"] { width:144px; }
+ .server-list-table [data-column="owner"] { width:160px; }
+ .server-list-table [data-column="ip"] { width:232px; }
+}
+@media (min-width:1024px) {
+ .server-list-scroll { overflow:visible; }
+ .server-list-table { min-width:0; }
+}

@@ -1,0 +1,175 @@
+name: E2E
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - "tests/e2e/**"
+      - "playwright.config.ts"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/e2e.yml"
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    env:
+      AGENT_REPO: nezhahq/agent
+      AGENT_REF: main
+      NEZHA_REPO: nezhahq/nezha
+      NEZHA_REF: master
+      NZ_LISTENHOST: 127.0.0.1
+      NZ_LISTENPORT: "8008"
+      NZ_AGENTSECRETKEY: e2e-agent-secret-32-bytes-long-ok
+      NZ_JWTSECRETKEY: e2e-jwt-secret-key-min-32-chars-long-ok
+      NZ_SITENAME: nezha-e2e
+      NZ_DEBUG: "true"
+      E2E_ADMIN_USER: admin
+      E2E_ADMIN_PASS: admin
+      E2E_AGENT_UUID: 11111111-2222-4333-8444-555555555555
+      E2E_BASE_URL: http://127.0.0.1:5173
+
+    steps:
+      - name: Checkout admin-frontend
+        uses: actions/checkout@v7
+        with:
+          path: admin-frontend
+
+      - name: Checkout nezha backend
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ env.NEZHA_REPO }}
+          ref: ${{ env.NEZHA_REF }}
+          path: nezha
+
+      - name: Checkout Nezha Agent
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ env.AGENT_REPO }}
+          ref: ${{ env.AGENT_REF }}
+          path: agent
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.22.2
+          cache: npm
+          cache-dependency-path: admin-frontend/package-lock.json
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: "1.26.x"
+          cache-dependency-path: |
+            agent/go.sum
+            nezha/go.sum
+
+      - name: Install frontend dependencies
+        working-directory: admin-frontend
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: admin-frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Prepare backend stubs (dist + swagger docs)
+        working-directory: nezha
+        run: |
+          mkdir -p cmd/dashboard/admin-dist cmd/dashboard/user-dist
+          printf '<!doctype html><title>admin e2e</title>\n' > cmd/dashboard/admin-dist/index.html
+          printf '<!doctype html><title>user e2e</title>\n' > cmd/dashboard/user-dist/index.html
+          go install github.com/swaggo/swag/cmd/swag@latest
+          "$(go env GOPATH)/bin/swag" init --pd -d cmd/dashboard -g main.go -o cmd/dashboard/docs
+          go build -o /tmp/nezha-dashboard ./cmd/dashboard
+
+      - name: Build Agent
+        working-directory: agent
+        run: go build -o /tmp/nezha-agent ./cmd/agent
+
+      - name: Start backend
+        working-directory: nezha
+        env:
+          GIN_MODE: release
+        run: |
+          mkdir -p data
+          nohup /tmp/nezha-dashboard -c data/config.yaml -db data/sqlite.db \
+            > /tmp/dashboard.log 2>&1 &
+          echo $! > /tmp/dashboard.pid
+
+      - name: Wait for backend health
+        run: |
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:8008/api/v1/setting > /dev/null; then
+              echo "backend is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "backend failed to start within 60s"
+          echo "---- dashboard.log ----"
+          cat /tmp/dashboard.log || true
+          exit 1
+
+      - name: Start Agent
+        working-directory: agent
+        env:
+          NZ_SERVER: 127.0.0.1:8008
+          NZ_CLIENT_SECRET: ${{ env.NZ_AGENTSECRETKEY }}
+          NZ_UUID: ${{ env.E2E_AGENT_UUID }}
+          NZ_TLS: "false"
+          NZ_DISABLE_AUTO_UPDATE: "true"
+        run: |
+          nohup /tmp/nezha-agent -c /tmp/nezha-agent-config.yml \
+            > /tmp/agent.log 2>&1 &
+          echo $! > /tmp/agent.pid
+
+      - name: Run Playwright tests
+        working-directory: admin-frontend
+        env:
+          CI: "true"
+        run: npm run e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: admin-frontend/playwright-report
+          retention-days: 14
+
+      - name: Upload dashboard log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: dashboard-log
+          path: /tmp/dashboard.log
+          retention-days: 7
+
+      - name: Upload Agent log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: agent-log
+          path: /tmp/agent.log
+          retention-days: 7
+
+      - name: Stop Agent
+        if: always()
+        run: |
+          if [ -f /tmp/agent.pid ]; then
+            kill "$(cat /tmp/agent.pid)" || true
+          fi
+
+      - name: Stop backend
+        if: always()
+        run: |
+          if [ -f /tmp/dashboard.pid ]; then
+            kill "$(cat /tmp/dashboard.pid)" || true
+          fi

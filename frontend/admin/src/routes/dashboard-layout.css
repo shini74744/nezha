@@ -1,0 +1,13 @@
+.dashboard-shell {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    margin-inline: auto;
+}
+
+/* One shared gutter for every dashboard route and the desktop navigation. */
+@media (min-width: 890px) {
+    .dashboard-shell {
+        width: calc(100% - clamp(32px, 4vw, 64px));
+    }
+}

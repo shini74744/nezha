@@ -23,6 +23,8 @@ import (
 // @Success 200 {object} model.CommonResponse[model.SettingResponse]
 // @Router /setting [get]
 func listConfig(c *gin.Context) (*model.SettingResponse, error) {
+	settingsMutationMu.Lock()
+	defer settingsMutationMu.Unlock()
 	u, authorized := c.Get(model.CtxKeyAuthorizedUser)
 	var isAdmin bool
 	if authorized {
@@ -31,11 +33,16 @@ func listConfig(c *gin.Context) (*model.SettingResponse, error) {
 	}
 
 	config := *singleton.Conf
-	config.Language = strings.ReplaceAll(config.Language, "_", "-")
+	configForTheme := config.ConfigForGuests
+	configForTheme.Language = strings.ReplaceAll(configForTheme.Language, "_", "-")
+	// Built-in appearance belongs to the default user theme only.
+	if config.UserTemplate != "" && config.UserTemplate != "user-dist" {
+		configForTheme.AppearanceConfig = ""
+	}
 
 	conf := model.SettingResponse{
 		Config: model.Setting{
-			ConfigForGuests:                config.ConfigForGuests,
+			ConfigForGuests:                configForTheme,
 			ConfigDashboard:                config.ConfigDashboard,
 			FrontendPasswordRequired:       config.FrontendPasswordHash != "",
 			IgnoredIPNotificationServerIDs: config.IgnoredIPNotificationServerIDs,
@@ -47,7 +54,7 @@ func listConfig(c *gin.Context) (*model.SettingResponse, error) {
 	}
 
 	if !authorized || !isAdmin {
-		configForGuests := config.ConfigForGuests
+		configForGuests := configForTheme
 		var configDashboard model.ConfigDashboard
 		if authorized {
 			configDashboard.AgentTLS = singleton.Conf.AgentTLS
@@ -79,6 +86,8 @@ func listConfig(c *gin.Context) (*model.SettingResponse, error) {
 // @Success 200 {object} model.CommonResponse[any]
 // @Router /setting [patch]
 func updateConfig(c *gin.Context) (any, error) {
+	settingsMutationMu.Lock()
+	defer settingsMutationMu.Unlock()
 	var sf model.SettingForm
 	if err := c.ShouldBindJSON(&sf); err != nil {
 		return nil, err
