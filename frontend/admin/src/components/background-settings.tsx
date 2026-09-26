@@ -50,10 +50,10 @@ export function BackgroundSettings({value:f,sound,onChange,onSoundChange}:{value
   </fieldset>
   <fieldset className="rounded border p-4 space-y-4"><legend className="px-2 font-semibold">背景视频与关联设置</legend>
    <div className="grid gap-4 sm:grid-cols-2">
-    {field("blur","卡片模糊（像素）","number")}{field("opacity","卡片背景不透明度","number")}{toggle("peakCutDesktop","普通电脑背景下网络图默认启用削峰")}
+    {field("blur","卡片模糊（像素）","number")}{field("opacity","卡片背景不透明度","number")}
     {[["enabled","视频声音控制"],["showControl","显示独立声音按钮"],["toggleMuteOnControlClick","允许按钮切换静音"],["unmuteOnVideoClick","点击背景视频开启声音"]].map(([key,label])=><label key={key} className="flex items-center justify-between gap-3"><span>{label}</span><Switch aria-label={label} checked={sound[key]} onCheckedChange={v=>onSoundChange({...sound,[key]:v})}/></label>)}
    </div>
-   <p className="text-sm text-muted-foreground">视频默认静音自动播放，开启声音需要点击专用按钮。普通电脑分支可关联网络图削峰；手机、分时和特殊地区分支不强制开启。</p>
+   <p className="text-sm text-muted-foreground">视频默认静音自动播放，开启声音需要点击专用按钮。网络图削峰已移至独立设置，不再受背景规则影响。</p>
   </fieldset>
  </div>;
 }

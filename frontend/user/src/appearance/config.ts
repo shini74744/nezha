@@ -1,4 +1,8 @@
+import {validateMascot} from "./mascot-config";
+import {validateVisitorIP} from "./visitor-ip-config";
+import {upgradeSpeed} from "./speed-config";
 import manifestData from "./manifest.json";
+import {validateGreetingClock} from "./greeting-clock";
 import {upgradeBackground, validateBackground} from "./background-config";
 export type Feature = { enabled: boolean; [key: string]: any };
 export type AppearanceConfig = {
@@ -44,7 +48,9 @@ export function normalize(raw?: string | AppearanceConfig): AppearanceConfig {
 			)
 				base.features[d.key] = { ...base.features[d.key], ...value };
 		}
-		base.features.background=upgradeBackground(base.features.background,parsed.features.background);
+		if(!parsed.features.peakCut)base.features.peakCut={...base.features.peakCut,enabled:!!base.features.background.enabled&&!!base.features.background.peakCutDesktop};
+  base.features.speed=upgradeSpeed(base.features.speed,parsed.features.speed);
+  base.features.background=upgradeBackground(base.features.background,parsed.features.background);
 		return validate(base) ? defaults() : base;
 	} catch {
 		return defaults();
@@ -56,7 +62,7 @@ function check(key: string, value: any, sample: any): void {
 	if (Array.isArray(sample)) {
 		if (!Array.isArray(value) || value.length > 256)
 			throw Error(key + " 必须为不超过 256 项的列表");
-		for (const item of value) check(key, item, sample[0]);
+		if(key!=="customCharacters")for (const item of value) check(key, item, sample[0]);
 		return;
 	}
 	if (sample && typeof sample === "object") {
@@ -130,7 +136,10 @@ export function validate(config: AppearanceConfig): string {
 				.some((n: string) => Number(n) > 255)
 		)
 			throw Error("连线颜色须为 RGB 数值，例如 255,255,255");
-		validateBackground(config.features.background);
+		validateMascot(config.features.live2d);
+  validateVisitorIP(config.features.visitorIP);
+  validateBackground(config.features.background);
+		validateGreetingClock(config.features);
 		for (const tool of config.features.live2d.tools)
 			if (
 				![

@@ -1,0 +1,72 @@
+package tsdb
+
+import (
+	"github.com/stretchr/testify/require"
+	"path/filepath"
+	"testing"
+	"time"
+)
+
+func TestLastReportRawTimestampAndPersistence(t *testing.T) {
+	config := &Config{DataPath: filepath.Join(t.TempDir(), "tsdb"), RetentionDays: 30, MinFreeDiskSpaceGB: 1}
+	db, err := Open(config)
+	require.NoError(t, err)
+	last := time.Now().Add(-time.Hour).Truncate(time.Second).Add(123 * time.Millisecond)
+	require.NoError(t, db.WriteServerMetrics(&ServerMetrics{ServerID: 11, Timestamp: last.Add(-10 * time.Second), CPU: 12}))
+	require.NoError(t, db.WriteServerMetrics(&ServerMetrics{ServerID: 11, Timestamp: last, CPU: 87, MemUsed: 123456789, ProcessCount: 29}))
+	require.NoError(t, db.WriteServerMetrics(&ServerMetrics{ServerID: 12, Timestamp: last.Add(time.Minute), CPU: 99}))
+	require.NoError(t, db.WriteServiceMetrics(&ServiceMetrics{ServerID: 11, ServiceID: 7, Timestamp: last.Add(time.Minute), Delay: 45}))
+	db.Flush()
+	report, err := db.QueryLastServerReport(11, 1)
+	require.NoError(t, err)
+	require.Equal(t, last.UnixMilli(), report.LastReportAt)
+	require.Equal(t, 87.0, report.Metrics["cpu"])
+	require.Equal(t, 123456789.0, report.Metrics["memory"])
+	require.Equal(t, 0.0, report.Metrics["swap"])
+	require.Len(t, report.Metrics, 17)
+	require.NotEmpty(t, report.Recent["cpu"])
+	db.Close()
+	db, err = Open(config)
+	require.NoError(t, err)
+	defer db.Close()
+	persisted, err := db.QueryLastServerReport(11, 1)
+	require.NoError(t, err)
+	require.Equal(t, report, persisted)
+}
+func TestLastReportHistoryLimitsAndIDReuse(t *testing.T) {
+	db, err := Open(&Config{DataPath: filepath.Join(t.TempDir(), "tsdb"), RetentionDays: 30, MinFreeDiskSpaceGB: 1})
+	require.NoError(t, err)
+	defer db.Close()
+	require.NoError(t, db.WriteServerMetrics(&ServerMetrics{ServerID: 11, Timestamp: time.Now().Add(-48 * time.Hour), CPU: 64}))
+	db.Flush()
+	guest, err := db.QueryLastServerReport(11, 1)
+	require.NoError(t, err)
+	require.Zero(t, guest.LastReportAt)
+	require.Empty(t, guest.Metrics)
+	member, err := db.QueryLastServerReport(11, 30)
+	require.NoError(t, err)
+	require.Equal(t, 64.0, member.Metrics["cpu"])
+	require.NoError(t, db.PauseWritesForMaintenance())
+	require.NoError(t, db.RemapServerIDs(map[uint64]uint64{11: 19}))
+	db.ResumeWritesAfterMaintenance()
+	old, err := db.QueryLastServerReport(11, 30)
+	require.NoError(t, err)
+	require.Zero(t, old.LastReportAt)
+	moved, err := db.QueryLastServerReport(19, 30)
+	require.NoError(t, err)
+	require.Equal(t, member.LastReportAt, moved.LastReportAt)
+	require.NoError(t, db.DeleteServerIDs([]uint64{19}))
+	deleted, err := db.QueryLastServerReport(19, 30)
+	require.NoError(t, err)
+	require.Zero(t, deleted.LastReportAt)
+	require.NoError(t, db.WriteServerMetrics(&ServerMetrics{ServerID: 19, Timestamp: time.Now().Add(-time.Minute), CPU: 5}))
+	db.Flush()
+	reused, err := db.QueryLastServerReport(19, 30)
+	require.NoError(t, err)
+	require.Equal(t, 5.0, reused.Metrics["cpu"])
+	_, err = db.QueryLastServerReport(19, 90)
+	require.Error(t, err)
+	db.Close()
+	_, err = db.QueryLastServerReport(19, 1)
+	require.Error(t, err)
+}

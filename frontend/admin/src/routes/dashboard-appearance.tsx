@@ -5,6 +5,7 @@ import {toast} from "sonner";
 import {fetcher,FetcherMethod} from "@/api/api";
 import {useAuth} from "@/hooks/useAuth";
 import {SettingsTab} from "@/components/settings-tab";
+import {AppearanceSection} from "@/components/appearance-section";
 import {Input} from "@/components/ui/input";
 import {Textarea} from "@/components/ui/textarea";
 import {Switch} from "@/components/ui/switch";
@@ -42,14 +43,14 @@ export default function DashboardAppearancePage(){
    </div></details>{imported&&<p className="text-amber-600">待保存：已读取原参数，旧代码将备份并停止执行。</p>}
   </div>
   {error&&<p role="alert" className="text-red-500">{error}</p>}
-  {saved&&dashboardDefinitions.map(d=><section key={d.key} className="rounded-lg border bg-card p-4 space-y-4"><div className="flex items-center justify-between gap-3"><h2 className="font-semibold">{d.title}</h2><Switch aria-label={d.title} checked={config.features[d.key].enabled} onCheckedChange={v=>update(d.key,"enabled",v)}/></div>
+  {saved&&dashboardDefinitions.map(d=><AppearanceSection key={d.key} title={d.title} description="点击展开设置；右侧开关独立控制此功能。" enabled={config.features[d.key].enabled} onEnabledChange={v=>update(d.key,"enabled",v)}>
    <div className="grid gap-4 sm:grid-cols-2">{Object.entries(d.defaults).filter(([key])=>key!=="enabled").map(([key,sample])=>{
     const label=(d.labels as unknown as Record<string,string>)[key],value=config.features[d.key][key];
     if(typeof sample==="boolean")return <label key={key} className="flex items-center justify-between gap-3"><span>{label}</span><Switch aria-label={label} checked={value} onCheckedChange={v=>update(d.key,key,v)}/></label>;
     const choices=d.key==="background"?({size:["cover","contain","auto"],repeat:["no-repeat","repeat","repeat-x","repeat-y","space","round"],attachment:["fixed","scroll","local"]} as Record<string,string[]>)[key]:undefined;
     return <label key={key} className="block space-y-1"><span>{label}</span>{choices?<select aria-label={label} className="w-full rounded border bg-background p-2" value={value} onChange={e=>update(d.key,key,e.target.value)}>{choices.map(v=><option key={v}>{v}</option>)}</select>:<Input aria-label={label} type={typeof sample==="number"?"number":"text"} step={key==="shatterCount"?1:0.01} value={value} onChange={e=>update(d.key,key,typeof sample==="number"?Number(e.target.value):e.target.value)}/>}</label>;
    })}</div>
-  </section>)}
+  </AppearanceSection>)}
   <div className="sticky bottom-0 bg-background border-t py-3 flex flex-wrap items-center gap-3"><Button disabled={!saved||busy||!dirty||!!validation} onClick={()=>void save()}>{busy?"保存中…":"保存后台美化设置"}</Button><Button variant="outline" disabled={busy} onClick={()=>{if(!dirty||confirm("放弃未保存修改？"))void load()}}>重新读取</Button>{validation&&<p role="alert" className="text-red-500 text-sm">{validation}</p>}</div>
  </div>;
 }

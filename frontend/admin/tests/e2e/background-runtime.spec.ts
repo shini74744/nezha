@@ -27,7 +27,7 @@ test("region priority, query failure and resize fallback",async({page})=>{
  await page.route(origin+"/fail",r=>r.abort());await configure(page,{...f,regionApi:origin+"/fail"});
  await expect(page.locator(".nz-media img")).toHaveAttribute("src",origin+"/media/day.png");
 });
-test("extensionless video fallback, separate sound control and cleanup",async({page})=>{
+test("extensionless video fallback, logo sound control and cleanup",async({page})=>{
  await open(page);
  await page.addScriptTag({content:"HTMLMediaElement.prototype.play=function(){return Promise.resolve()}"});
  await page.route(origin+"/video-api",r=>r.fulfill({contentType:"video/mp4",body:Buffer.from([0])}));

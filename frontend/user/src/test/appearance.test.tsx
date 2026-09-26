@@ -31,9 +31,9 @@ function configOnly(keys: string[]) {
 	return c;
 }
 describe("native appearance configuration", () => {
-	it("retains all 29 independent features with the original defaults", () => {
+	it("retains all 30 independent features with the original defaults", () => {
 		const c = defaults();
-		expect(Object.keys(c.features)).toHaveLength(29);
+		expect(Object.keys(c.features)).toHaveLength(30);
         expect(c.features).not.toHaveProperty("wave");
         expect(c.features).not.toHaveProperty("meihua");
 		expect(validate(c)).toBe("");

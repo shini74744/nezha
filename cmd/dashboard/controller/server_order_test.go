@@ -137,3 +137,35 @@ func TestReassignServerIDsInDBRollsBackAsOneTransaction(t *testing.T) {
 	require.Equal(t, []uint64{47, 63}, ids)
 	assertServerIDColumn(t, db, &model.NAT{}, "server_id", 63)
 }
+
+func TestSnapshotFollowsSwappedIDsAndRollback(t *testing.T) {
+	db := newServerRekeyTestDB(t)
+	require.NoError(t, db.AutoMigrate(&model.ServerSnapshot{}))
+	for id, uuid := range map[uint64]string{1: "A", 2: "B"} {
+		require.NoError(t, db.Create(&model.Server{Common: model.Common{ID: id}, UUID: uuid}).Error)
+		require.NoError(t, singleton.PersistServerSnapshot(id, uuid, model.RecordedServerState{At: 100000, Host: &model.Host{Platform: uuid}, State: &model.HostState{CPU: float64(id)}}))
+	}
+	sentinel := errors.New("rollback snapshot swap")
+	err := db.Transaction(func(tx *gorm.DB) error {
+		if err := reassignServerIDsInDB(tx, []uint64{2, 1}, map[uint64]uint64{1: 2, 2: 1}); err != nil {
+			return err
+		}
+		return sentinel
+	})
+	require.ErrorIs(t, err, sentinel)
+	before, err := singleton.QueryServerSnapshot(1, "A", 1)
+	require.NoError(t, err)
+	require.Equal(t, "A", before.Snapshot.Host.Platform)
+	require.NoError(t, db.Transaction(func(tx *gorm.DB) error {
+		return reassignServerIDsInDB(tx, []uint64{2, 1}, map[uint64]uint64{1: 2, 2: 1})
+	}))
+	for id, uuid := range map[uint64]string{1: "B", 2: "A"} {
+		got, err := singleton.QueryServerSnapshot(id, uuid, 1)
+		require.NoError(t, err)
+		require.Equal(t, uuid, got.Snapshot.Host.Platform)
+	}
+	require.NoError(t, singleton.PersistServerSnapshot(1, "A", model.RecordedServerState{At: 101000, State: &model.HostState{CPU: 99}}))
+	got, err := singleton.QueryServerSnapshot(1, "B", 1)
+	require.NoError(t, err)
+	require.EqualValues(t, 100000, got.LastReportAt)
+}

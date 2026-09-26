@@ -5,6 +5,9 @@ import ServerDetailChart from "@/components/ServerDetailChart";
 import ServerDetailOverview from "@/components/ServerDetailOverview";
 import TabSwitch from "@/components/TabSwitch";
 import { Separator } from "@/components/ui/separator";
+import { useWebSocketContext } from "@/hooks/use-websocket-context";
+import { formatNezhaInfo } from "@/lib/utils";
+import { OfflineServerDetail } from "@/components/OfflineServerDetail";
 
 const NetworkChart = lazy(() =>
 	import("@/components/NetworkChart").then((module) => ({
@@ -21,6 +24,11 @@ export default function ServerDetail() {
 	const [currentTab, setCurrentTab] = useState(tabs[0]);
 
 	const { id: server_id } = useParams();
+	const { lastData } = useWebSocketContext();
+	const server = lastData?.servers.find(s => s.id === Number(server_id));
+	if (server && lastData && !formatNezhaInfo(lastData.now, server).online) {
+		return <OfflineServerDetail key={server.id} server={server} now={lastData.now} />;
+	}
 
 	if (!server_id) {
 		return <Navigate to="/404" replace />;

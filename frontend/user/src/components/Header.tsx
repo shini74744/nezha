@@ -1,4 +1,5 @@
 import {useFeature} from "@/appearance/context";
+import {BackgroundSoundLogo} from "@/appearance/background-sound";
 import {NativeDescription,NativeGreeting} from "@/appearance/widgets";
 import { useQuery } from "@tanstack/react-query";
 import { ImageMinus } from "lucide-react";
@@ -127,7 +128,7 @@ const brand=useFeature('branding'), hidden=useFeature('hideControls');
 					}}
 					className="cursor-pointer flex items-center sm:text-base text-sm font-medium"
 				>
-					<div className="mr-1 flex flex-row items-center justify-start header-logo">
+					<BackgroundSoundLogo className="mr-1 flex flex-row items-center justify-start header-logo">
 						<img
 							width={40}
 							height={40}
@@ -135,7 +136,7 @@ const brand=useFeature('branding'), hidden=useFeature('hideControls');
 							src={customLogo}
 							className="relative m-0! border-2 border-transparent h-6 w-6 object-cover object-top p-0!"
 						/>
-					</div>
+					</BackgroundSoundLogo>
 					{isLoading ? (
 						<Skeleton className="h-6 w-20 rounded-[5px] bg-muted-foreground/10 animate-none" />
 					) : (

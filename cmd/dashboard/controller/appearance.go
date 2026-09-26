@@ -69,7 +69,7 @@ func validateAppearance(raw []byte) (string, error) {
 		return "", errors.New("invalid appearance schema version or features")
 	}
 	allowed := map[string]bool{}
-	for _, key := range []string{"branding", "dark", "runtime", "greeting", "clock", "background", "video", "sponsor", "visitorIP", "footerIP", "quote", "counter", "font", "traffic", "speed", "nameColor", "links", "hideControls", "protection", "footer", "sideImage", "network", "snow", "fragments", "heart", "sakura", "stars", "live2d", "analytics"} {
+	for _, key := range []string{"branding", "dark", "runtime", "greeting", "clock", "background", "video", "sponsor", "visitorIP", "footerIP", "quote", "counter", "font", "traffic", "speed", "nameColor", "links", "hideControls", "protection", "footer", "sideImage", "network", "snow", "fragments", "heart", "sakura", "stars", "live2d", "analytics", "peakCut"} {
 		allowed[key] = true
 	}
 	for key, feature := range doc.Features {

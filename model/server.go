@@ -73,15 +73,16 @@ type taskStreamHolder struct {
 }
 
 type serverRuntimeHolder struct {
-	mu         sync.Mutex
-	canonical  *Server
-	stream     pb.NezhaService_ReportSystemStateServer
-	generation uint64
-	state      *HostState
-	host       *Host
-	lastActive time.Time
-	prevIn     uint64
-	prevOut    uint64
+	mu          sync.Mutex
+	canonical   *Server
+	stream      pb.NezhaService_ReportSystemStateServer
+	generation  uint64
+	state       *HostState
+	host        *Host
+	lastActive  time.Time
+	countryCode string
+	prevIn      uint64
+	prevOut     uint64
 }
 
 type StateStreamLease struct {
@@ -177,6 +178,23 @@ func (lease StateStreamLease) UpdateState(state *HostState, lastActive time.Time
 
 func (lease StateStreamLease) UpdateStateWithSideEffect(state *HostState, lastActive time.Time, sideEffect func() error) bool {
 	return lease.updateState(nil, state, lastActive, sideEffect)
+}
+
+// UpdateStateWithSnapshot captures host and state under the same stream lease lock.
+// The callback must not call back into RuntimeSnapshot or acquire ServerMutationMu.
+func (s *Server) SetSnapshotCountry(code string) {
+	holder := s.RuntimeHandle().holder
+	holder.mu.Lock()
+	holder.countryCode = code
+	holder.mu.Unlock()
+}
+
+func (lease StateStreamLease) UpdateStateWithSnapshot(state *HostState, at time.Time, sideEffect func(uint64, string, RecordedServerState) error) bool {
+	return lease.updateState(nil, state, at, func() error {
+		s := lease.holder.canonical
+		country := lease.holder.countryCode
+		return sideEffect(s.ID, s.UUID, RecordedServerState{At: at.UnixMilli(), Host: cloneHost(lease.holder.host), State: cloneHostState(state), CountryCode: country})
+	})
 }
 
 func (lease StateStreamLease) updateState(receiver *Server, state *HostState, lastActive time.Time, sideEffect func() error) bool {
@@ -443,6 +461,7 @@ func cloneHostState(state *HostState) *HostState {
 	}
 	clone := *state
 	clone.GPU = slices.Clone(state.GPU)
+	clone.GPUs = slices.Clone(state.GPUs)
 	clone.Temperatures = slices.Clone(state.Temperatures)
 	return &clone
 }

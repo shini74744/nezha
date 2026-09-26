@@ -19,6 +19,7 @@ import { sakura } from "./modules/sakura";
 import { stars } from "./modules/stars";
 import { heart } from "./modules/heart";
 import { live2d } from "./modules/live2d";
+import { sakana } from "./modules/sakana";
 import "./appearance.css";
 import type { Feature } from "./config";
 const modules: Record<
@@ -36,7 +37,7 @@ const modules: Record<
 	clock,
 	sakura,
 	stars,
-	live2d,
+	live2d: (scope, f) => f.provider === "sakana" ? sakana(scope, f) : live2d(scope, f),
 };
 
 function protection(scope: FeatureScope, f: Feature) {

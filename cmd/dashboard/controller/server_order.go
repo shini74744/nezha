@@ -243,6 +243,7 @@ func serverIDReferences(tx *gorm.DB) [][2]string {
 		{"server_transfers", "server_id"},
 		{"mcp_audit_logs", "server_id"},
 		{"service_histories", "server_id"},
+		{"server_snapshots", "server_id"},
 	} {
 		if tx.Migrator().HasTable(ref[0]) && tx.Migrator().HasColumn(ref[0], ref[1]) {
 			refs = append(refs, ref)
