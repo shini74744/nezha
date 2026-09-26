@@ -1,0 +1,784 @@
+[
+  {
+    "key": "branding",
+    "title": "站点品牌",
+    "description": "Logo、说明、插图和顶部链接",
+    "defaults": {
+      "enabled": true,
+      "logo": "https://cdn.skyimg.net/up/2025/1/13/zera6q.webp",
+      "description": "专业服务，技术先行",
+      "illustration": "https://cdn.nodeimage.com/i/TfZilY1yV3SMHqEsPmsSF4IqERBzdGUE.gif",
+      "showNetTransfer": true,
+      "links": [
+        {
+          "name": "联系我定制",
+          "link": "https://t.me/contact/1746959833:pDG7N84llgNWazU8"
+        },
+        {
+          "name": "GitHub",
+          "link": "https://github.com/hamster1963/nezha-dash"
+        }
+      ]
+    },
+    "labels": {
+      "logo": "Logo 图片地址",
+      "description": "站点说明",
+      "illustration": "概览插图地址",
+      "showNetTransfer": "显示上下行总流量",
+      "links": "顶部链接"
+    },
+    "constraints": {}
+  },
+  {
+    "key": "dark",
+    "title": "默认深色",
+    "description": "进入默认主题时切换到深色，不限制用户手动切换",
+    "defaults": {
+      "enabled": true
+    },
+    "labels": {},
+    "constraints": {}
+  },
+  {
+    "key": "runtime",
+    "title": "网站运行时间",
+    "description": "保留运行天数、时、分、秒",
+    "defaults": {
+      "enabled": true,
+      "startDate": "2024-11-28T00:00:00Z",
+      "prefix": "专业服务， 技术先行；网站已运行"
+    },
+    "labels": {
+      "startDate": "开始时间（包含时区）",
+      "prefix": "前缀"
+    },
+    "constraints": {}
+  },
+  {
+    "key": "greeting",
+    "title": "分时段问候",
+    "description": "按本地时间切换问候语，保留原来的七组文案",
+    "defaults": {
+      "enabled": true
+    },
+    "labels": {},
+    "constraints": {}
+  },
+  {
+    "key": "clock",
+    "title": "时钟渐变",
+    "description": "时、分、秒分别由白色渐变到红、绿、蓝；使用本地 24 小时制",
+    "defaults": {
+      "enabled": true
+    },
+    "labels": {},
+    "constraints": {}
+  },
+  {
+    "key": "background",
+    "title": "背景图片与视频",
+    "description": "电脑和手机分别填写图片/视频地址；支持跨午夜分时规则、地区和运营商匹配及明确优先级。",
+    "defaults": {
+      "enabled": true,
+      "regionApi": "https://ipinfo.io/json?token=769fdd3c5a44a4",
+      "nightStart": 1,
+      "nightEnd": 6,
+      "nightEnabled": true,
+      "blur": 4,
+      "opacity": 0.4,
+      "nightImages": [
+        "https://jkapi.com/api/yo_cup?type=&apiKey=85d2491045c79dc05e67e51574ad38da",
+        "https://image.anosu.top/pixiv/direct?r18=1&keyword=touhou",
+        "https://imgs.serv00.net/pic.php"
+      ],
+      "chinaMedia": [
+        {
+          "type": "video",
+          "src": "https://t.alcy.cc/acg"
+        },
+        {
+          "type": "image",
+          "src": "https://t.alcy.cc/fj"
+        },
+        {
+          "type": "video",
+          "src": "https://api.lolimi.cn/API/xjj/xjj.php"
+        },
+        {
+          "type": "image",
+          "src": "https://api.lolimi.cn/API/xjj/lt.php"
+        }
+      ],
+      "mobileMedia": [
+        {
+          "type": "image",
+          "src": "https://api.lolimi.cn/API/tup/xjj.php"
+        },
+        {
+          "type": "video",
+          "src": "https://tc.shni.cc/api/api.php"
+        },
+        {
+          "type": "image",
+          "src": "https://www.onexiaolaji.cn/RandomPicture/api/?key=qq249663924"
+        },
+        {
+          "type": "video",
+          "src": "http://api.mmp.cc/api/shortvideo?type=mp4"
+        },
+        {
+          "type": "video",
+          "src": "https://t.alcy.cc/acg"
+        }
+      ],
+      "desktopMedia": [
+        {
+          "type": "video",
+          "src": "https://tc.shni.cc/api/pcapi.php"
+        },
+        {
+          "type": "video",
+          "src": "http://api.mmp.cc/api/ksvideo?type=mp4&id=BianZhuang"
+        },
+        {
+          "type": "video",
+          "src": "https://tc.shni.cc/api/api.php"
+        },
+        {
+          "type": "image",
+          "src": "https://api.lolimi.cn/API/meinv/api.php?type=image"
+        },
+        {
+          "type": "video",
+          "src": "http://api.mmp.cc/api/shortvideo?type=mp4"
+        },
+        {
+          "type": "image",
+          "src": "https://imgapi.xl0408.top/index.php"
+        },
+        {
+          "type": "video",
+          "src": "https://t.alcy.cc/acg"
+        }
+      ],
+      "asns": [
+        "AS9808",
+        "AS4134",
+        "AS4837"
+      ],
+      "peakCutDesktop": true,
+      "regionEnabled": true,
+      "regionOrgPath": "org",
+      "regionCountryPath": "country",
+      "regionCountries": [
+        ""
+      ],
+      "regionMobileMedia": [
+        {
+          "type": "video",
+          "src": "https://t.alcy.cc/acg"
+        },
+        {
+          "type": "image",
+          "src": "https://t.alcy.cc/fj"
+        },
+        {
+          "type": "video",
+          "src": "https://api.lolimi.cn/API/xjj/xjj.php"
+        },
+        {
+          "type": "image",
+          "src": "https://api.lolimi.cn/API/xjj/lt.php"
+        }
+      ],
+      "timezone": "Asia/Shanghai",
+      "priority": "region-first",
+      "scheduleEnabled": true,
+      "showScheduleNotice": true,
+      "scheduleRules": [
+        {
+          "name": "凌晨背景",
+          "enabled": true,
+          "start": "01:00",
+          "end": "06:00",
+          "desktopMedia": [
+            {
+              "type": "image",
+              "src": "https://jkapi.com/api/yo_cup?type=&apiKey=85d2491045c79dc05e67e51574ad38da"
+            },
+            {
+              "type": "image",
+              "src": "https://image.anosu.top/pixiv/direct?r18=1&keyword=touhou"
+            },
+            {
+              "type": "image",
+              "src": "https://imgs.serv00.net/pic.php"
+            }
+          ],
+          "mobileMedia": [
+            {
+              "type": "image",
+              "src": "https://jkapi.com/api/yo_cup?type=&apiKey=85d2491045c79dc05e67e51574ad38da"
+            },
+            {
+              "type": "image",
+              "src": "https://image.anosu.top/pixiv/direct?r18=1&keyword=touhou"
+            },
+            {
+              "type": "image",
+              "src": "https://imgs.serv00.net/pic.php"
+            }
+          ]
+        }
+      ]
+    },
+    "labels": {
+      "regionApi": "运营商查询地址",
+      "nightStart": "凌晨开始小时（北京时间）",
+      "nightEnd": "凌晨结束小时（北京时间）",
+      "nightEnabled": "启用凌晨背景",
+      "blur": "卡片模糊（像素）",
+      "opacity": "卡片背景不透明度",
+      "nightImages": "凌晨图片",
+      "chinaMedia": "指定运营商背景",
+      "mobileMedia": "移动端背景",
+      "desktopMedia": "桌面端背景",
+      "asns": "指定运营商 ASN",
+      "peakCutDesktop": "桌面网络图默认启用削峰",
+      "regionEnabled": "启用特殊地区背景",
+      "regionOrgPath": "运营商字段路径",
+      "regionCountryPath": "地区字段路径",
+      "regionCountries": "国家或地区代码",
+      "regionMobileMedia": "特殊地区手机背景",
+      "timezone": "分时时区",
+      "priority": "规则优先级",
+      "scheduleEnabled": "启用分时背景",
+      "scheduleRules": "分时规则",
+      "showScheduleNotice": "显示分时切换提示"
+    },
+    "constraints": {
+      "nightStart": [
+        0,
+        23
+      ],
+      "nightEnd": [
+        0,
+        24
+      ],
+      "blur": [
+        0,
+        30
+      ],
+      "opacity": [
+        0,
+        1
+      ]
+    }
+  },
+  {
+    "key": "video",
+    "title": "视频声音控制",
+    "description": "仅控制背景视频；默认静音播放，点击专用按钮开启声音，不再绑定页面其他按钮。",
+    "defaults": {
+      "enabled": true,
+      "videoSelector": ".video-box video",
+      "toggleSelector": ".min-h-screen .cursor-pointer",
+      "unmuteOnVideoClick": true,
+      "toggleMuteOnControlClick": true,
+      "showControl": true
+    },
+    "labels": {
+      "videoSelector": "视频选择器",
+      "toggleSelector": "声音按钮选择器",
+      "unmuteOnVideoClick": "点击视频取消静音",
+      "toggleMuteOnControlClick": "点击控制按钮切换静音",
+      "showControl": "显示独立声音按钮"
+    },
+    "constraints": {}
+  },
+  {
+    "key": "sponsor",
+    "title": "赞助商胶囊",
+    "description": "支持桌面缩小、停留、淡出、悬停暂停及移动端底部显示",
+    "defaults": {
+      "enabled": true,
+      "desktop": true,
+      "mobile": true,
+      "desktopTop": "310px",
+      "shrinkDuration": 15000,
+      "stayDuration": 3000,
+      "fadeDuration": 500,
+      "pauseOnHover": true,
+      "mobileBottomThreshold": 10,
+      "startText": "感谢",
+      "endText": "的赞助支持！",
+      "sponsors": [
+        {
+          "name": "Sharon",
+          "url": "https://gomami.io/aff.php?aff=174",
+          "logo": "https://s2.loli.net/2025/09/15/6YUnFgXtlxbE1SW.png"
+        },
+        {
+          "name": "WEPC",
+          "url": "https://wepc.au/aff.php?aff=850",
+          "logo": "https://cdn.nodeimage.com/i/wo7zLQnxFQ78YpGcUwaZJF6cPzZOhJ98.webp"
+        },
+        {
+          "name": "狗妈咪",
+          "url": "https://gomami.io/aff.php?aff=58",
+          "logo": "https://s2.loli.net/2025/12/30/FdR7loWjbYOAurV.png"
+        }
+      ],
+      "homeOnly": true
+    },
+    "labels": {
+      "desktop": "桌面显示",
+      "mobile": "移动端显示",
+      "homeOnly": "桌面仅在首页显示",
+      "desktopTop": "桌面距顶部位置",
+      "shrinkDuration": "缩小时长（毫秒）",
+      "stayDuration": "缩小后停留（毫秒）",
+      "fadeDuration": "淡入淡出（毫秒）",
+      "pauseOnHover": "悬停暂停停留倒计时",
+      "mobileBottomThreshold": "距底部触发距离（像素）",
+      "startText": "前缀文字",
+      "endText": "后缀文字",
+      "sponsors": "赞助商"
+    },
+    "constraints": {
+      "shrinkDuration": [
+        0,
+        3600000
+      ],
+      "stayDuration": [
+        0,
+        3600000
+      ],
+      "fadeDuration": [
+        0,
+        60000
+      ],
+      "mobileBottomThreshold": [
+        0,
+        1000
+      ]
+    }
+  },
+  {
+    "key": "visitorIP",
+    "title": "访客 IP 与网络检测",
+    "description": "IP、地区、ASN、测速点切换和本地缓存",
+    "defaults": {
+      "enabled": true,
+      "cacheDuration": 21600000,
+      "bottomThreshold": 24
+    },
+    "labels": {
+      "cacheDuration": "缓存有效期（毫秒）",
+      "bottomThreshold": "底部隐藏距离（像素）"
+    },
+    "constraints": {
+      "cacheDuration": [
+        0,
+        604800000
+      ],
+      "bottomThreshold": [
+        0,
+        1000
+      ]
+    }
+  },
+  {
+    "key": "footerIP",
+    "title": "底部 IP 详情",
+    "description": "滚动到底部时在桌面显示详细 IP 卡片",
+    "defaults": {
+      "enabled": true,
+      "url": "https://ip.skk.moe/simple-dark",
+      "height": 125
+    },
+    "labels": {
+      "url": "IP 信息页面地址",
+      "height": "卡片高度（像素）"
+    },
+    "constraints": {
+      "height": [
+        20,
+        1000
+      ]
+    }
+  },
+  {
+    "key": "quote",
+    "title": "随机文案",
+    "description": "桌面顶部随机文案及晚安文字、颜色变化",
+    "defaults": {
+      "enabled": true,
+      "dayUrls": [
+        "https://jkapi.com/api/one_yan",
+        "https://jkapi.com/api/dujitang",
+        "https://jkapi.com/api/saohua"
+      ],
+      "nightUrl": "https://jkapi.com/api/wanan"
+    },
+    "labels": {
+      "dayUrls": "白天文案接口",
+      "nightUrl": "晚上文案接口"
+    },
+    "constraints": {}
+  },
+  {
+    "key": "counter",
+    "title": "访问统计图片",
+    "description": "桌面右上角、移动端顶部，向下滚动隐藏",
+    "defaults": {
+      "enabled": true,
+      "imageUrl": "https://count.getloli.com/@tongji?name=tongji&theme=random&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto",
+      "desktopRight": 0,
+      "desktopTop": 0,
+      "desktopWidth": 240,
+      "desktopHeight": 60,
+      "mobileTop": 8,
+      "mobileWidth": 170,
+      "mobileHeight": 44,
+      "mobileOffset": 15,
+      "scrollThreshold": 5
+    },
+    "labels": {
+      "imageUrl": "统计图片地址",
+      "desktopRight": "桌面距右侧",
+      "desktopTop": "桌面距顶部",
+      "desktopWidth": "桌面宽度",
+      "desktopHeight": "桌面高度",
+      "mobileTop": "移动端距顶部",
+      "mobileWidth": "移动端宽度",
+      "mobileHeight": "移动端高度",
+      "mobileOffset": "移动端水平偏移",
+      "scrollThreshold": "滚动隐藏阈值"
+    },
+    "constraints": {
+      "desktopRight": [
+        -2000,
+        2000
+      ],
+      "desktopTop": [
+        -2000,
+        2000
+      ],
+      "desktopWidth": [
+        1,
+        2000
+      ],
+      "desktopHeight": [
+        1,
+        2000
+      ],
+      "mobileTop": [
+        -1000,
+        1000
+      ],
+      "mobileWidth": [
+        1,
+        1000
+      ],
+      "mobileHeight": [
+        1,
+        1000
+      ],
+      "mobileOffset": [
+        -1000,
+        1000
+      ],
+      "scrollThreshold": [
+        0,
+        1000
+      ]
+    }
+  },
+  {
+    "key": "font",
+    "title": "字体",
+    "description": "保留八种随机方案，也可指定一种",
+    "defaults": {
+      "enabled": true,
+      "selection": -1
+    },
+    "labels": {
+      "selection": "字体方案（-1 随机；0 抖音，1 鸿蒙，2 OPPO，3 小米，4 字节，5 思源，6 霞鹜，7 系统）"
+    },
+    "constraints": {
+      "selection": [
+        -1,
+        7
+      ]
+    }
+  },
+  {
+    "key": "traffic",
+    "title": "流量进度条",
+    "description": "使用服务器系统 ID 关联流量记录，显示用量、周期和百分比",
+    "defaults": {
+      "enabled": true,
+      "toggleInterval": 5000
+    },
+    "labels": {
+      "toggleInterval": "周期/百分比切换间隔（毫秒）"
+    },
+    "constraints": {
+      "toggleInterval": [
+        1000,
+        60000
+      ]
+    }
+  },
+  {
+    "key": "speed",
+    "title": "网络速率与颜色",
+    "description": "卡片与概览显示 Mbps/Gbps；上下行独立着色并随速度增强",
+    "defaults": {
+      "enabled": true,
+      "bits": true,
+      "color": true,
+      "animation": true
+    },
+    "labels": {
+      "bits": "转换成 Mbps/Gbps",
+      "color": "启用上下行颜色",
+      "animation": "启用高速率动画"
+    },
+    "constraints": {}
+  },
+  {
+    "key": "nameColor",
+    "title": "服务器名称颜色",
+    "description": "在线渐变，离线红色；列表和详情均适用",
+    "defaults": {
+      "enabled": true,
+      "list": true,
+      "detail": true
+    },
+    "labels": {
+      "list": "列表名称",
+      "detail": "详情名称"
+    },
+    "constraints": {}
+  },
+  {
+    "key": "links",
+    "title": "顶部链接样式",
+    "description": "联系链接、GitHub 和后台登录按钮的悬停样式",
+    "defaults": {
+      "enabled": true
+    },
+    "labels": {},
+    "constraints": {}
+  },
+  {
+    "key": "hideControls",
+    "title": "隐藏顶部按钮",
+    "description": "改为按功能隐藏，不再依赖不稳定的 Radix 编号",
+    "defaults": {
+      "enabled": true,
+      "search": true,
+      "language": true,
+      "theme": true
+    },
+    "labels": {
+      "search": "隐藏搜索按钮",
+      "language": "隐藏语言按钮",
+      "theme": "隐藏主题按钮"
+    },
+    "constraints": {}
+  },
+  {
+    "key": "protection",
+    "title": "页面操作保护",
+    "description": "限制右键、复制和拖动；输入框可正常编辑，不会跳转到其他网站",
+    "defaults": {
+      "enabled": true,
+      "contextMenu": true,
+      "selection": true,
+      "drag": true,
+      "shortcuts": true
+    },
+    "labels": {
+      "contextMenu": "禁用右键",
+      "selection": "限制文本选中",
+      "drag": "限制图片拖动",
+      "shortcuts": "限制查看源码等快捷键"
+    },
+    "constraints": {}
+  },
+  {
+    "key": "footer",
+    "title": "页脚品牌",
+    "description": "彩色品牌文字及 Nezha 链接",
+    "defaults": {
+      "enabled": true,
+      "text": "MyStatus 监控系统 ©2025",
+      "url": "https://t.me/contact/1746959833:pDG7N84llgNWazU8",
+      "poweredText": "Powered by NeZha",
+      "poweredUrl": "https://github.com/nezhahq/nezha"
+    },
+    "labels": {
+      "text": "品牌文字",
+      "url": "品牌链接",
+      "poweredText": "技术支持文字",
+      "poweredUrl": "技术支持链接"
+    },
+    "constraints": {}
+  },
+  {
+    "key": "sideImage",
+    "title": "可拖动侧边图片",
+    "description": "桌面侧边图片与拖动；不再强制整页高度",
+    "defaults": {
+      "enabled": true,
+      "imageUrl": "https://t.alcy.cc/tx"
+    },
+    "labels": {
+      "imageUrl": "图片地址"
+    },
+    "constraints": {}
+  },
+  {
+    "key": "network",
+    "title": "鼠标连线",
+    "description": "桌面鼠标交互连线",
+    "defaults": {
+      "enabled": true,
+      "count": 200,
+      "opacity": 0.5,
+      "color": "0,0,0"
+    },
+    "labels": {
+      "count": "粒子数量",
+      "opacity": "不透明度",
+      "color": "RGB 颜色，例如 255,255,255"
+    },
+    "constraints": {
+      "count": [
+        10,
+        300
+      ],
+      "opacity": [
+        0,
+        1
+      ]
+    }
+  },
+  {
+    "key": "snow",
+    "title": "雪花",
+    "description": "飘落雪花动画",
+    "defaults": {
+      "enabled": true,
+      "count": 40,
+      "interval": 2000,
+      "mobileCount": 20
+    },
+    "labels": {
+      "count": "桌面雪花数量",
+      "interval": "生成间隔（毫秒）",
+      "mobileCount": "移动端雪花数量"
+    },
+    "constraints": {
+      "count": [
+        1,
+        100
+      ],
+      "interval": [
+        100,
+        20000
+      ],
+      "mobileCount": [
+        1,
+        100
+      ]
+    }
+  },
+  {
+    "key": "fragments",
+    "title": "点击碎片与返回顶部",
+    "description": "点击碎片散开，滚动后显示返回顶部按钮",
+    "defaults": {
+      "enabled": true,
+      "count": 20
+    },
+    "labels": {
+      "count": "每次点击碎片数"
+    },
+    "constraints": {
+      "count": [
+        1,
+        50
+      ]
+    }
+  },
+  {
+    "key": "heart",
+    "title": "点击爱心",
+    "description": "独立内置效果，可单独关闭",
+    "defaults": {
+      "enabled": true
+    },
+    "labels": {},
+    "constraints": {}
+  },
+  {
+    "key": "sakura",
+    "title": "页面樱花",
+    "description": "独立内置效果，可单独关闭",
+    "defaults": {
+      "enabled": true
+    },
+    "labels": {},
+    "constraints": {}
+  },
+  {
+    "key": "stars",
+    "title": "鼠标星星",
+    "description": "独立内置效果，可单独关闭",
+    "defaults": {
+      "enabled": true
+    },
+    "labels": {},
+    "constraints": {}
+  },
+  {
+    "key": "live2d",
+    "title": "Live2D 看板娘",
+    "description": "独立内置效果，可单独关闭",
+    "defaults": {
+      "enabled": true,
+      "cdnPath": "https://fastly.jsdelivr.net/gh/fghrsh/live2d_api/",
+      "tools": [
+        "hitokoto",
+        "asteroids",
+        "switch-model",
+        "switch-texture",
+        "photo",
+        "info",
+        "quit"
+      ]
+    },
+    "labels": {
+      "cdnPath": "模型资源目录",
+      "tools": "工具栏（每行一项）"
+    },
+    "constraints": {}
+  },
+  {
+    "key": "analytics",
+    "title": "Google Analytics",
+    "description": "第三方统计服务，仍需连接 Google；不会加载 jm/xjs",
+    "defaults": {
+      "enabled": true,
+      "measurementId": "G-S5CPS1PHE4"
+    },
+    "labels": {
+      "measurementId": "Measurement ID"
+    },
+    "constraints": {}
+  }
+]

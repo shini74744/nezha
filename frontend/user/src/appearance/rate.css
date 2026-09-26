@@ -1,0 +1,71 @@
+@keyframes nz-legacy-color-glow {0%,100%{text-shadow:0 0 5px rgba(255,0,0,0.7);}50%{text-shadow:0 0 15px rgba(255,50,50,1);}}
+      @keyframes nz-legacy-border-glow {0%,100%{box-shadow:0 0 6px 0 rgba(255,0,0,0.6);}50%{box-shadow:0 0 20px 4px rgba(255,0,0,1);}}
+      @keyframes nz-legacy-background-pulse {0%,100%{background-color:rgba(255,0,0,0.15);}50%{background-color:rgba(255,0,0,0.3);}}
+      @keyframes nz-legacy-text-shadow-pulse {0%,100%{text-shadow:0 0 6px rgba(255,0,0,0.6);}50%{text-shadow:0 0 18px rgba(255,0,0,1);}}
+      @keyframes nz-legacy-subtle-glow {0%,100%{opacity:1;}50%{opacity:0.75;}}
+
+      /* 各速率等级样式 */
+      .nz-overview-speed-1,.nz-overview-speed-1-dl{animation:none !important;text-shadow:none !important;}
+      .nz-overview-speed-2{animation:nz-legacy-subtle-glow 2s infinite ease-in-out !important;text-shadow:0 0 6px rgba(255,50,50,0.6) !important;font-weight:bold !important;color:rgb(255,100,100) !important;}
+      .nz-overview-speed-2-dl{animation:nz-legacy-subtle-glow 2s infinite ease-in-out !important;text-shadow:0 0 6px rgba(50,50,255,0.6) !important;font-weight:bold !important;color:rgb(100,100,255) !important;}
+      .nz-overview-speed-3,.nz-overview-speed-3-dl{animation:nz-legacy-border-glow 1.5s infinite ease-in-out !important;}
+      .nz-overview-speed-4{animation:nz-legacy-border-glow 1.5s infinite ease-in-out,nz-legacy-background-pulse 1.8s infinite ease-in-out,nz-legacy-subtle-glow 2s infinite ease-in-out !important;background-color:rgba(255,0,0,0.2) !important;border-radius:4px;}
+      .nz-overview-speed-4-dl{animation:nz-legacy-border-glow 1.5s infinite ease-in-out,nz-legacy-background-pulse 1.8s infinite ease-in-out,nz-legacy-subtle-glow 2s infinite ease-in-out !important;background-color:rgba(0,0,255,0.2) !important;border-radius:4px;}
+      .nz-overview-speed-5{animation:nz-legacy-color-glow 1.5s infinite ease-in-out,nz-legacy-background-pulse 1.5s infinite ease-in-out,nz-legacy-text-shadow-pulse 1.2s infinite ease-in-out,nz-legacy-border-glow 1.2s infinite ease-in-out !important;text-shadow:0 0 18px rgba(255,0,0,1) !important;background-color:rgba(255,0,0,0.25) !important;border:1px solid rgba(255,0,0,0.6) !important;border-radius:4px;transform:scale(1.15) !important;transform-origin:center center !important;z-index:10 !important;position:relative !important;}
+      .nz-overview-speed-5-dl{animation:nz-legacy-color-glow 1.5s infinite ease-in-out,nz-legacy-background-pulse 1.5s infinite ease-in-out,nz-legacy-text-shadow-pulse 1.2s infinite ease-in-out,nz-legacy-border-glow 1.2s infinite ease-in-out !important;text-shadow:0 0 18px rgba(0,0,255,1) !important;background-color:rgba(0,0,255,0.25) !important;border:1px solid rgba(0,0,255,0.6) !important;border-radius:4px;transform:scale(1.15) !important;transform-origin:center center !important;z-index:10 !important;position:relative !important;color:rgba(0,0,255,1) !important;}
+
+@keyframes nz-legacy-shli-flash-soft {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+      }
+
+      @keyframes nz-legacy-shli-flash-fast {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.25; }
+      }
+
+      .nz-upload-boost-1 {
+        font-weight: 700 !important;
+        animation: nz-legacy-shli-flash-soft 1s infinite;
+        text-shadow: 0 0 4px rgba(255, 0, 0, 0.55);
+      }
+
+      .nz-upload-boost-2 {
+        font-weight: 700 !important;
+        animation: nz-legacy-shli-flash-fast 0.7s infinite;
+        text-shadow: 0 0 7px rgba(255, 0, 0, 0.85);
+        transform: scale(1.05);
+      }
+
+      .nz-upload-boost-3 {
+        font-weight: 700 !important;
+        animation: nz-legacy-shli-flash-fast 0.5s infinite;
+        text-shadow: 0 0 10px rgba(255, 0, 0, 1);
+        transform: scale(1.15);
+        background: rgba(255, 0, 0, 0.10);
+        border-radius: 4px;
+        padding: 0 3px;
+      }
+
+      .nz-download-boost-1 {
+        font-weight: 700 !important;
+        animation: nz-legacy-shli-flash-soft 1s infinite;
+        text-shadow: 0 0 4px rgba(0, 120, 255, 0.55);
+      }
+
+      .nz-download-boost-2 {
+        font-weight: 700 !important;
+        animation: nz-legacy-shli-flash-fast 0.7s infinite;
+        text-shadow: 0 0 7px rgba(0, 120, 255, 0.85);
+        transform: scale(1.05);
+      }
+
+      .nz-download-boost-3 {
+        font-weight: 700 !important;
+        animation: nz-legacy-shli-flash-fast 0.5s infinite;
+        text-shadow: 0 0 10px rgba(0, 120, 255, 1);
+        transform: scale(1.15);
+        background: rgba(0, 120, 255, 0.10);
+        border-radius: 4px;
+        padding: 0 3px;
+      }

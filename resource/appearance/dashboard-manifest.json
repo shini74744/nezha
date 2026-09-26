@@ -1,0 +1,188 @@
+[
+  {
+    "key": "font",
+    "title": "字体",
+    "defaults": {
+      "enabled": true,
+      "cssUrl": "https://cdn.jsdelivr.net/npm/misans-webfont@4.3.1/misans-style.min.css",
+      "family": "MiSans",
+      "size": "16px",
+      "color": "",
+      "shadow": "0 1px 2px rgba(255,255,255,0.20)"
+    },
+    "labels": {
+      "cssUrl": "字体 CSS 地址",
+      "family": "字体名称",
+      "size": "字号",
+      "color": "文字颜色（留空跟随主题）",
+      "shadow": "文字阴影"
+    },
+    "constraints": {}
+  },
+  {
+    "key": "background",
+    "title": "后台背景",
+    "defaults": {
+      "enabled": true,
+      "image": "https://images.xxapi.cn/images/4k/wallpaper/32abb53b5da64fe8ba6a6937081e4b94.jpg",
+      "position": "center center",
+      "size": "cover",
+      "repeat": "no-repeat",
+      "attachment": "fixed"
+    },
+    "labels": {
+      "image": "背景图片地址",
+      "position": "背景位置",
+      "size": "缩放方式",
+      "repeat": "重复方式",
+      "attachment": "滚动方式"
+    },
+    "constraints": {}
+  },
+  {
+    "key": "appearance",
+    "title": "透明度与毛玻璃",
+    "defaults": {
+      "enabled": true,
+      "lightBackgroundOpacity": 0.48,
+      "darkBackgroundOpacity": 0.58,
+      "lightCardOpacity": 0.82,
+      "darkCardOpacity": 0.78,
+      "lightPopoverOpacity": 0.94,
+      "darkPopoverOpacity": 0.94,
+      "lightMutedOpacity": 0.62,
+      "darkMutedOpacity": 0.66,
+      "blur": "12px",
+      "headerShadow": true,
+      "hideFooter": true
+    },
+    "labels": {
+      "lightBackgroundOpacity": "浅色主背景不透明度",
+      "darkBackgroundOpacity": "深色主背景不透明度",
+      "lightCardOpacity": "浅色卡片不透明度",
+      "darkCardOpacity": "深色卡片不透明度",
+      "lightPopoverOpacity": "浅色弹窗不透明度",
+      "darkPopoverOpacity": "深色弹窗不透明度",
+      "lightMutedOpacity": "浅色导航不透明度",
+      "darkMutedOpacity": "深色导航不透明度",
+      "blur": "背景模糊",
+      "headerShadow": "顶部阴影",
+      "hideFooter": "隐藏页脚"
+    },
+    "constraints": {
+      "lightBackgroundOpacity": [
+        0,
+        1
+      ],
+      "darkBackgroundOpacity": [
+        0,
+        1
+      ],
+      "lightCardOpacity": [
+        0,
+        1
+      ],
+      "darkCardOpacity": [
+        0,
+        1
+      ],
+      "lightPopoverOpacity": [
+        0,
+        1
+      ],
+      "darkPopoverOpacity": [
+        0,
+        1
+      ],
+      "lightMutedOpacity": [
+        0,
+        1
+      ],
+      "darkMutedOpacity": [
+        0,
+        1
+      ]
+    }
+  },
+  {
+    "key": "animatedMan",
+    "title": "动画小人",
+    "defaults": {
+      "enabled": true,
+      "disabled": true
+    },
+    "labels": {
+      "disabled": "隐藏动画小人"
+    },
+    "constraints": {}
+  },
+  {
+    "key": "brand",
+    "title": "标题、Logo 与头像",
+    "defaults": {
+      "enabled": true,
+      "oldTitle": "哪吒监控",
+      "title": "哪吒云监控",
+      "logo": "https://img.003666.xyz/2025/05/24/0eb4169981a13265001.webp",
+      "logoHeight": "28px",
+      "avatar": "https://t.alcy.cc/tx"
+    },
+    "labels": {
+      "oldTitle": "旧标题（用于导入对照）",
+      "title": "后台标题",
+      "logo": "Logo 图片地址",
+      "logoHeight": "Logo 高度",
+      "avatar": "头像图片地址"
+    },
+    "constraints": {}
+  },
+  {
+    "key": "effects",
+    "title": "点击与返回顶部",
+    "defaults": {
+      "enabled": true,
+      "clickEffect": true,
+      "shatter": true,
+      "shatterCount": 20,
+      "clickWord": true,
+      "backToTop": true,
+      "backToTopIcon": "🚀",
+      "backToTopBottom": "30px",
+      "backToTopRight": "30px"
+    },
+    "labels": {
+      "clickEffect": "点击特效总开关",
+      "shatter": "碎玻璃效果",
+      "shatterCount": "碎片数量",
+      "clickWord": "点击文字",
+      "backToTop": "返回顶部",
+      "backToTopIcon": "返回顶部图标",
+      "backToTopBottom": "距底部位置",
+      "backToTopRight": "距右侧位置"
+    },
+    "constraints": {
+      "shatterCount": [
+        1,
+        100
+      ]
+    }
+  },
+  {
+    "key": "utilities",
+    "title": "网络检测与时间",
+    "defaults": {
+      "enabled": true,
+      "ping": true,
+      "ping0": true,
+      "timeConversion": true,
+      "timezone": "Asia/Shanghai"
+    },
+    "labels": {
+      "ping": "IP 的 Ping/TCPing 链接",
+      "ping0": "IP 的 Ping0 链接",
+      "timeConversion": "时间显示转换",
+      "timezone": "显示时区"
+    },
+    "constraints": {}
+  }
+]

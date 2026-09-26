@@ -1,0 +1,350 @@
+import "./server-layout.css"
+import { swrFetcher } from "@/api/api"
+import { deleteServer, forceUpdateServer } from "@/api/server"
+import { ActionButtonGroup } from "@/components/action-button-group"
+import { BatchMoveServerIcon } from "@/components/batch-move-server-icon"
+import { CopyButton } from "@/components/copy-button"
+import { HeaderButtonGroup } from "@/components/header-button-group"
+import { InstallCommandsMenu } from "@/components/install-commands"
+import { NoteMenu } from "@/components/note-menu"
+import { ServerCard } from "@/components/server"
+import { ServerConfigCard } from "@/components/server-config"
+import { ServerConfigCardBatch } from "@/components/server-config-batch"
+import { ServerSortDialog } from "@/components/server-sort-dialog"
+import { TerminalButton } from "@/components/terminal"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table"
+import { IconButton } from "@/components/xui/icon-button"
+import { useAuth } from "@/hooks/useAuth"
+import { useServer } from "@/hooks/useServer"
+import { selectableTableFeatures } from "@/lib/table"
+import { cn, joinIP } from "@/lib/utils"
+import { ModelServerTaskResponse, ModelServer as Server } from "@/types"
+import { ColumnDef, flexRender, useTable } from "@tanstack/react-table"
+import { useEffect, useMemo } from "react"
+import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
+import useSWR from "swr"
+
+export default function ServerPage() {
+    const { t } = useTranslation()
+    const { profile } = useAuth()
+    const { data, mutate, error, isLoading } = useSWR<Server[]>("/api/v1/server", swrFetcher, {
+        revalidateOnFocus: false,
+        revalidateOnReconnect: false,
+    })
+    const { serverGroups } = useServer()
+
+    useEffect(() => {
+        if (error)
+            toast(t("Error"), {
+                description: t("Results.ErrorFetchingResource", { error: error.message }),
+            })
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [error])
+
+    const columns: ColumnDef<typeof selectableTableFeatures, Server>[] = [
+        {
+            id: "select",
+            header: ({ table }) => (
+                <Checkbox
+                    checked={
+                        table.getIsAllPageRowsSelected() ||
+                        (table.getIsSomePageRowsSelected() && "indeterminate")
+                    }
+                    onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+                    aria-label="Select all"
+                />
+            ),
+            cell: ({ row }) => (
+                <Checkbox
+                    checked={row.getIsSelected()}
+                    onCheckedChange={(value) => row.toggleSelected(!!value)}
+                    aria-label="Select row"
+                />
+            ),
+            enableHiding: false,
+        },
+        {
+            header: "ID",
+            accessorKey: "id",
+            accessorFn: (row) => `${row.id}(${row.display_index})`,
+        },
+        {
+            header: t("Name"),
+            accessorKey: "name",
+            accessorFn: (row) => row.name,
+            cell: ({ row }) => {
+                const s = row.original
+                return <div className="server-text whitespace-normal break-words">{s.name}</div>
+            },
+        },
+        {
+            header: t("Group"),
+            accessorKey: "groups",
+            accessorFn: (row) => {
+                return (
+                    serverGroups
+                        ?.filter((sg) => sg.servers?.includes(row.id))
+                        .map((sg) => sg.group.id) || []
+                )
+            },
+        },
+        {
+            id: "owner",
+            header: t("Owner"),
+            // Backend Server.MarshalJSON always emits owner.id; username is
+            // omitted for uid=0 (legacy global agent secret) and for users
+            // that no longer exist. Render uid=0 as "Global Agent" and a
+            // missing username as "Unknown user (#id)" so deleted-user rows
+            // stay debuggable instead of silently appearing ownerless.
+            accessorFn: (row) => {
+                if (!row.owner) return ""
+                if (row.owner.id === 0) return t("GlobalAgent")
+                return row.owner.username || t("UnknownUser", { id: row.owner.id })
+            },
+            cell: ({ row }) => {
+                const owner = row.original.owner
+                if (!owner) {
+                    return <span className="text-muted-foreground">-</span>
+                }
+                if (owner.id === 0) {
+                    return <span>{t("GlobalAgent")}</span>
+                }
+                const label = owner.username || t("UnknownUser", { id: owner.id })
+                return (
+                    <div
+                        className="max-w-32 whitespace-normal break-words"
+                        title={`uid=${owner.id}`}
+                    >
+                        {label}
+                    </div>
+                )
+            },
+        },
+        {
+            id: "ip",
+            header: "IP",
+            cell: ({ row }) => {
+                const s = row.original
+                return (
+                    <div className="server-text whitespace-normal break-words">
+                        {joinIP(s.geoip?.ip)}
+                    </div>
+                )
+            },
+        },
+        {
+            header: t("Version"),
+            accessorKey: "host.version",
+            accessorFn: (row) => row.host.version || t("Unknown"),
+        },
+        {
+            header: t("EnableDDNS"),
+            accessorKey: "enableDDNS",
+            accessorFn: (row) => row.enable_ddns ?? false,
+        },
+        {
+            header: t("HideForGuest"),
+            accessorKey: "hideForGuest",
+            accessorFn: (row) => row.hide_for_guest ?? false,
+        },
+        {
+            id: "note",
+            header: t("Note"),
+            cell: ({ row }) => {
+                const s = row.original
+                return <NoteMenu note={{ private: s.note, public: s.public_note }} />
+            },
+        },
+        {
+            id: "uuid",
+            header: "UUID",
+            cell: ({ row }) => {
+                const s = row.original
+                return <CopyButton text={s.uuid} />
+            },
+        },
+        {
+            id: "actions",
+            header: t("Actions"),
+            cell: ({ row }) => {
+                const s = row.original
+                return (
+                    <ActionButtonGroup
+                        className="flex min-w-[272px] flex-nowrap gap-2"
+                        delete={{ fn: deleteServer, id: s.id, mutate: mutate }}
+                    >
+                        <ServerCard mutate={mutate} data={s} />
+                        <TerminalButton id={s.id} />
+                        <ServerConfigCard sid={s.id} variant="outline" />
+                        <InstallCommandsMenu uuid={s.uuid} iconOnly variant="outline" />
+                    </ActionButtonGroup>
+                )
+            },
+        },
+    ]
+
+    const dataCache = useMemo(() => {
+        return data ?? []
+    }, [data])
+
+    const table = useTable({
+        features: selectableTableFeatures,
+        data: dataCache,
+        columns,
+    })
+
+    const selectedRows = table.getSelectedRowModel().rows
+
+    return (
+        <div className="server-page w-full min-w-0 px-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-3 mt-6 mb-4">
+                <h1 className="text-3xl font-bold tracking-tight">{t("Server")}</h1>
+                <HeaderButtonGroup
+                    className="flex gap-2 flex-wrap shrink-0"
+                    delete={{
+                        fn: deleteServer,
+                        id: selectedRows.map((r) => r.original.id),
+                        mutate: mutate,
+                    }}
+                >
+                    {profile?.role === 0 && (
+                        <ServerSortDialog servers={dataCache} mutate={mutate} />
+                    )}
+                    <IconButton
+                        icon="update"
+                        onClick={async () => {
+                            const id = selectedRows.map((r) => r.original.id)
+                            if (id.length < 1) {
+                                toast(t("Error"), {
+                                    description: t("Results.SelectAtLeastOneServer"),
+                                })
+                                return
+                            }
+
+                            let resp: ModelServerTaskResponse = {}
+                            try {
+                                resp = await forceUpdateServer(id)
+                            } catch (e) {
+                                console.error(e)
+                                toast(t("Error"), {
+                                    description: t("Results.UnExpectedError"),
+                                })
+                                return
+                            }
+                            toast(t("Done"), {
+                                description:
+                                    t("Results.ForceUpdate") +
+                                    (resp.success?.length
+                                        ? t(`Success`) + ` [${resp.success.join(",")}]`
+                                        : "") +
+                                    (resp.failure?.length
+                                        ? t(`Failure`) + ` [${resp.failure.join(",")}]`
+                                        : "") +
+                                    (resp.offline?.length
+                                        ? t(`Offline`) + ` [${resp.offline.join(",")}]`
+                                        : ""),
+                            })
+                        }}
+                    />
+                    <BatchMoveServerIcon serverIds={selectedRows.map((r) => r.original.id)} />
+                    <ServerConfigCardBatch
+                        sid={selectedRows.map((r) => r.original.id)}
+                        className="shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] bg-yellow-600 text-white hover:bg-yellow-500 dark:hover:bg-yellow-700 rounded-lg"
+                    />
+                    <InstallCommandsMenu className="shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] bg-blue-700 text-white hover:bg-blue-600 dark:hover:bg-blue-800 rounded-lg" />
+                </HeaderButtonGroup>
+            </div>
+            <p className="mb-2 text-xs text-muted-foreground lg:hidden">表格可左右滑动，查看完整信息和操作按钮</p>
+            <div className="server-list-scroll rounded-md border" role="region" aria-label="服务器列表，可左右滑动" tabIndex={0}>
+                <Table className="server-list-table w-full table-fixed">
+                    <TableHeader className="sticky top-0 bg-background z-10">
+                        {table.getHeaderGroups().map((headerGroup) => (
+                            <TableRow key={headerGroup.id}>
+                                {headerGroup.headers.map((header) => {
+                                    return (
+                                        <TableHead
+                                            key={header.id}
+                                            data-column={header.column.id}
+                                            className={cn(
+                                                "px-2 text-sm leading-tight whitespace-normal break-words",
+                                                header.column.id === "select" && "w-12",
+                                                header.column.id === "id" && "w-24",
+                                                header.column.id === "groups" && "w-16",
+                                                header.column.id === "enableDDNS" && "w-20",
+                                                header.column.id === "hideForGuest" && "w-20",
+                                                header.column.id === "note" && "w-16",
+                                                header.column.id === "uuid" && "w-16",
+                                                header.column.id === "actions" && "w-[288px]",
+                                            )}
+                                        >
+                                            {header.isPlaceholder
+                                                ? null
+                                                : flexRender(
+                                                      header.column.columnDef.header,
+                                                      header.getContext(),
+                                                  )}
+                                        </TableHead>
+                                    )
+                                })}
+                            </TableRow>
+                        ))}
+                    </TableHeader>
+                    <TableBody>
+                        {isLoading ? (
+                            <TableRow>
+                                <TableCell colSpan={columns.length} className="h-24 text-center">
+                                    {t("Loading")}...
+                                </TableCell>
+                            </TableRow>
+                        ) : table.getRowModel().rows?.length ? (
+                            table.getRowModel().rows.map((row) => (
+                                <TableRow
+                                    key={row.id}
+                                    data-state={row.getIsSelected() && "selected"}
+                                >
+                                    {row.getVisibleCells().map((cell) => (
+                                        <TableCell
+                                            key={cell.id}
+                                            data-column={cell.column.id}
+                                            className={cn(
+                                                "px-2 text-xsm whitespace-normal break-words",
+                                                cell.column.id === "select" && "w-12",
+                                                cell.column.id === "id" && "w-24",
+                                                cell.column.id === "groups" && "w-16",
+                                                cell.column.id === "enableDDNS" && "w-20",
+                                                cell.column.id === "hideForGuest" && "w-20",
+                                                cell.column.id === "note" && "w-16",
+                                                cell.column.id === "uuid" && "w-16",
+                                                cell.column.id === "actions" && "w-[288px]",
+                                            )}
+                                        >
+                                            {flexRender(
+                                                cell.column.columnDef.cell,
+                                                cell.getContext(),
+                                            )}
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
+                            ))
+                        ) : (
+                            <TableRow>
+                                <TableCell colSpan={columns.length} className="h-24 text-center">
+                                    {t("NoResults")}
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+        </div>
+    )
+}

@@ -35,14 +35,18 @@ const (
 )
 
 type ConfigForGuests struct {
-	Language            string `koanf:"language" json:"language"` // 系统语言，默认 zh_CN
-	SiteName            string `koanf:"site_name" json:"site_name"`
-	CustomCode          string `koanf:"custom_code" json:"custom_code,omitempty"`
-	CustomCodeDashboard string `koanf:"custom_code_dashboard" json:"custom_code_dashboard,omitempty"`
+	DashboardAppearanceConfig string `koanf:"dashboard_appearance_config" json:"dashboard_appearance_config,omitempty"`
+	AppearanceConfig          string `koanf:"appearance_config" json:"appearance_config,omitempty"`
+	Language                  string `koanf:"language" json:"language"` // 系统语言，默认 zh_CN
+	SiteName                  string `koanf:"site_name" json:"site_name"`
+	CustomCode                string `koanf:"custom_code" json:"custom_code,omitempty"`
+	CustomCodeDashboard       string `koanf:"custom_code_dashboard" json:"custom_code_dashboard,omitempty"`
 }
 
 type ConfigDashboard struct {
-	InstallHost string `koanf:"install_host" json:"install_host,omitempty"`
+	DashboardAppearanceLegacyCode string `koanf:"dashboard_appearance_legacy_code" json:"-"`
+	AppearanceLegacyCode          string `koanf:"appearance_legacy_code" json:"-"`
+	InstallHost                   string `koanf:"install_host" json:"install_host,omitempty"`
 	// AgentTLS controls the transport emitted by Agent installation commands.
 	// false intentionally supports trusted private networks and does not provide
 	// Dashboard peer authentication; Internet-facing control planes must use
@@ -342,7 +346,19 @@ func (c *Config) patchYAMLField(key string, value any) error {
 func (c *Config) save() error {
 	c.EnableMCP = c.mcpEnabled.Load()
 	c.AllowJWTIPChange = c.jwtIPChangeAllowed.Load()
-	data, err := yaml.Marshal(c)
+	// Private fields stay out of API JSON but must survive configuration saves.
+	// Never copy an environment-injected JWT signing key into the config file.
+	persistedJWT := c.JWTSecretKey
+	if c.jwtSecretFromEnv {
+		persistedJWT = ""
+	}
+	data, err := yaml.Marshal(struct {
+		*Config
+		AppearanceLegacyCode          string `json:"appearance_legacy_code,omitempty"`
+		DashboardAppearanceLegacyCode string `json:"dashboard_appearance_legacy_code,omitempty"`
+		FrontendPasswordHash          string `json:"frontend_password_hash,omitempty"`
+		JWTSecretKey                  string `json:"jwt_secret_key,omitempty"`
+	}{Config: c, AppearanceLegacyCode: c.AppearanceLegacyCode, DashboardAppearanceLegacyCode: c.DashboardAppearanceLegacyCode, FrontendPasswordHash: c.FrontendPasswordHash, JWTSecretKey: persistedJWT})
 	if err != nil {
 		return err
 	}
@@ -356,7 +372,25 @@ func (c *Config) write(data []byte) error {
 		return err
 	}
 
-	return os.WriteFile(c.filePath, data, 0600)
+	// Same-directory rename leaves the previous configuration intact on write failure.
+	tmp, err := os.CreateTemp(dir, ".nezha-config-*")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+	if _, err = tmp.Write(data); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err = tmp.Sync(); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err = tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpPath, c.filePath)
 }
 
 func compareVersion(left, right string) int {

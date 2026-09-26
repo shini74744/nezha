@@ -1,0 +1,30 @@
+import {test,expect} from "@playwright/test";
+import fs from "node:fs";
+import {createServer} from "../../../user/src/test/fixtures";
+const origin="http://127.0.0.1:18476";
+const definitions=JSON.parse(fs.readFileSync(new URL("../../../user/src/appearance/manifest.json",import.meta.url),"utf8"));
+test("built frontend integrates native effects, server data and SPA navigation",async({page})=>{
+ const errors:string[]=[],forbidden:string[]=[];page.on("pageerror",error=>errors.push(error.message));
+ page.on("request",request=>{if(/shini74744\/(jm|xjs)/.test(request.url()))forbidden.push(request.url())});
+ const config={version:1,enabled:true,features:Object.fromEntries(definitions.map((d:any)=>[d.key,{...d.defaults}]))};
+ for(const key of ["live2d","sakura","analytics","protection"])config.features[key].enabled=false;
+ config.features.font.selection=7;config.features.background.nightEnabled=false;config.features.background.desktopMedia=[{type:"image",src:origin+"/fixture.png"}];
+ config.features.snow.count=3;config.features.network.count=10;
+ const now=Date.now(),servers=[createServer({id:11,name:"Native QA 11",last_active:new Date(now).toISOString()}),createServer({id:12,name:"Native QA 12",last_active:new Date(now).toISOString()})];
+ await page.routeWebSocket("**/api/v1/ws/server",ws=>ws.send(JSON.stringify({now,online:2,servers})));
+ await page.route("**/*",async route=>{
+  const u=new URL(route.request().url());
+  if(u.pathname==="/api/v1/setting")return route.fulfill({json:{success:true,data:{config:{language:"zh-CN",site_name:"原生美化联合测试",custom_code:"",appearance_config:JSON.stringify(config)},version:"smoke"}}});
+  if(u.pathname==="/api/v1/server-group")return route.fulfill({json:{success:true,data:[]}});
+  if(u.pathname==="/api/v1/profile")return route.fulfill({json:{success:false,error:"not logged in"}});
+  if(u.pathname.includes("/service"))return route.fulfill({json:{success:true,data:{services:{},cycle_transfer_stats:{"1":{name:"quota",max:1000,from:"2026-09-01",to:"2026-10-01",transfer:{"11":100,"12":900}}}}}});
+  if(route.request().resourceType()==="image"&&(u.origin!==origin||u.pathname==="/fixture.png"))return route.fulfill({contentType:"image/png",body:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aK5sAAAAASUVORK5CYII=","base64")});
+  if(u.origin!==origin)return route.fulfill({json:{org:"AS123 Example",ip:"203.0.113.5",country:"JP",city:"Tokyo",content:"native quote"}});
+  return route.continue();
+ });
+ await page.goto(origin);await expect(page.getByText("Native QA 11",{exact:true})).toBeVisible({timeout:15000});
+ await expect(page.locator(".nz-name-online")).toHaveCount(2);await expect(page.locator("[data-native-traffic='11']")).toBeVisible();
+ await page.screenshot({path:"test-results/native-production.png",fullPage:true});
+ await page.getByText("Native QA 11",{exact:true}).click();await expect(page).toHaveURL(/\/server\/11$/);await expect(page.locator(".nz-name-online")).toHaveCount(1);
+ expect(errors).toEqual([]);expect(forbidden).toEqual([]);
+});
