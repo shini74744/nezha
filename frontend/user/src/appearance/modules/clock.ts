@@ -1,24 +1,15 @@
 // @ts-nocheck
 // Migrated source for the built-in clock feature; resources are owned by FeatureScope.
+import { mixClockColor } from "../greeting-clock";
 export function clock(scope, config) {
 const window = scope.window; const document = scope.document;
 (function () {
-  const HOUR_END = [255, 40, 40];
-  const MIN_END = [40, 255, 100];
-  const SEC_END = [40, 120, 255];
-  const WHITE = [255, 255, 255];
+  // Colors are validated and merged with the legacy defaults by config.ts.
   let lastTime = {
     h: null,
     m: null,
     s: null
   };
-  function mixColor(start, end, ratio) {
-    ratio = Math.max(0, Math.min(1, ratio));
-    const r = Math.round(start[0] + (end[0] - start[0]) * ratio);
-    const g = Math.round(start[1] + (end[1] - start[1]) * ratio);
-    const b = Math.round(start[2] + (end[2] - start[2]) * ratio);
-    return `rgb(${r}, ${g}, ${b})`;
-  }
   function applyColorToGroup(group, color) {
     if (!group) return;
     scope.styleOf(group).color = color;
@@ -61,9 +52,9 @@ const window = scope.window; const document = scope.document;
     const h = now.getHours();
     const m = now.getMinutes();
     const s = now.getSeconds();
-    const hourColor = mixColor(WHITE, HOUR_END, h / 23);
-    const minColor = mixColor(WHITE, MIN_END, m / 59);
-    const secColor = mixColor(WHITE, SEC_END, s / 59);
+    const hourColor = mixClockColor(config.hourStartColor, config.hourEndColor, h / 23);
+    const minColor = mixClockColor(config.minuteStartColor, config.minuteEndColor, m / 59);
+    const secColor = mixClockColor(config.secondStartColor, config.secondEndColor, s / 59);
     if (force || h !== lastTime.h) applyColorToGroup(groups[0], hourColor);
     if (force || m !== lastTime.m) applyColorToGroup(groups[1], minColor);
     if (force || s !== lastTime.s) applyColorToGroup(groups[2], secColor);

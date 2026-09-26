@@ -1,8 +1,7 @@
 "use client";
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { useFeature } from "@/appearance/context";
-import { useBackgroundPeakCut } from "@/appearance/background-state";
+import { usePeakCutDefault } from "@/appearance/peak-cut";
 import * as React from "react";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -302,11 +301,7 @@ export const NetworkChartClient = React.memo(function NetworkChart({
 			? window.CustomBackgroundImage
 			: undefined;
 
-	const nativeBackground = useFeature("background");
-	const resolvedPeakCut = useBackgroundPeakCut();
-	const forcePeakCutEnabled = nativeBackground.enabled
-		? resolvedPeakCut
-		: ((window.ForcePeakCutEnabled as boolean) ?? false);
+	const forcePeakCutEnabled = usePeakCutDefault();
 
 	// Change from string to string array for multi-selection
 	const [activeCharts, setActiveCharts] = React.useState<string[]>([]);

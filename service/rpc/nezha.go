@@ -232,7 +232,10 @@ func (s *NezhaHandler) ReportSystemState(stream pb.NezhaService_ReportSystemStat
 		innerState := model.PB2State(state)
 
 		lastActive := time.Now()
-		accepted := lease.UpdateStateWithSideEffect(&innerState, lastActive, func() error {
+		accepted := lease.UpdateStateWithSnapshot(&innerState, lastActive, func(snapshotID uint64, snapshotUUID string, snapshot model.RecordedServerState) error {
+			if err := singleton.PersistServerSnapshot(snapshotID, snapshotUUID, snapshot); err != nil {
+				log.Printf("NEZHA>> Failed to persist server snapshot %d: %v", snapshotID, err)
+			}
 			{
 				maxTemp := 0.0
 				for _, t := range innerState.Temperatures {

@@ -280,8 +280,8 @@ const brand=useFeature("branding");
 			>
 				{parsedData?.billingDataMod && <BillingInfo parsedData={parsedData} />}
 			</div>
-			<NativeTraffic serverId={serverInfo.id}/>
-{parsedData?.planDataMod && <PlanInfo parsedData={parsedData} />}
+			{/* Legacy traffic enhancement applies to online cards only. */}
+			{parsedData?.planDataMod && <PlanInfo parsedData={parsedData} />}
 		</Card>
 	);
 }

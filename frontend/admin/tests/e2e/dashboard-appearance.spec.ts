@@ -78,3 +78,24 @@ test("stale save preserves input, unsafe or unknown script stays unexecuted",asy
  await page.getByRole("button",{name:"读取旧代码配置"}).click();
  expect(await page.evaluate(()=>(window as any).UNSAFE)).toBeUndefined();expect(s.updates).toHaveLength(1);
 });
+
+for(const width of [390,1366])test("dashboard sections collapse independently and preserve draft "+width,async({page})=>{
+ await page.setViewportSize({width,height:900});const {updates,errors}=await setup(page,true);
+ const buttons=page.locator("section h2 button");await expect(buttons).toHaveCount(7);
+ for(const button of await buttons.all())await expect(button).toHaveAttribute("aria-expanded","false");
+ for(const d of manifest){
+  const section=page.locator("section").filter({has:page.getByRole("button",{name:d.title,exact:true})}).last();
+  await section.getByText("点击展开设置；右侧开关独立控制此功能。",{exact:true}).click();
+  for(const [key,label]of Object.entries(d.labels))await expect(section.getByLabel(label as string,{exact:true})).toBeVisible();
+  await page.getByRole("button",{name:d.title,exact:true}).click();
+ }
+ const font=page.getByRole("button",{name:"字体",exact:true});await font.focus();await page.keyboard.press("Enter");
+ await page.getByLabel("字体名称",{exact:true}).fill("Test Font");await font.click();
+ await page.getByRole("switch",{name:"字体",exact:true}).click();await expect(font).toHaveAttribute("aria-expanded","false");
+ await font.click();await expect(page.getByLabel("字体名称",{exact:true})).toHaveValue("Test Font");
+ await page.getByRole("button",{name:"保存后台美化设置",exact:true}).click();await expect.poll(()=>updates.length).toBe(1);
+ expect(updates[0].config.features.font).toMatchObject({family:"Test Font",enabled:false});
+ await page.getByRole("button",{name:"重新读取",exact:true}).click();await expect(page.getByLabel("字体名称",{exact:true})).toHaveValue("Test Font");
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(errors).toEqual([]);
+ await page.screenshot({path:"test-results/dashboard-fold-"+width+".png",fullPage:true});
+});

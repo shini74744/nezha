@@ -32,6 +32,19 @@ func validateAppearanceFields(features map[string]map[string]any) error {
 		if err := validateAppearanceValue(definition.Key, feature, definition.Defaults); err != nil {
 			return err
 		}
+		if err := validateGreetingClockFields(definition.Key, feature); err != nil {
+			return err
+		}
+		if definition.Key == "live2d" {
+			if err := validateMascotFields(feature); err != nil {
+				return err
+			}
+		}
+		if definition.Key == "visitorIP" {
+			if err := validateVisitorIPFields(feature); err != nil {
+				return err
+			}
+		}
 		if definition.Key == "background" {
 			if err := validateBackgroundFields(feature); err != nil {
 				return err

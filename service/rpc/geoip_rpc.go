@@ -53,5 +53,6 @@ func (s *NezhaHandler) ReportGeoIP(ctx context.Context, report *pb.GeoIP) (*pb.G
 	}
 	geoIP.CountryCode = location
 	server.GeoIP = &geoIP
+	server.SetSnapshotCountry(location)
 	return &pb.GeoIP{Ip: nil, CountryCode: location, DashboardBootTime: singleton.DashboardBootTime}, nil
 }

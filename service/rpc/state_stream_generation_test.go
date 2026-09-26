@@ -204,3 +204,40 @@ func TestReportSystemState_CurrentCleanupClearsOnlineVisibility(t *testing.T) {
 	require.True(t, cleared)
 	require.True(t, server.LastActive.IsZero())
 }
+
+func TestReportSystemStatePersistsCompleteSnapshotBeforeReceipt(t *testing.T) {
+	reporter := requestTaskSecurityServer(9, 200, "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+	setupRequestTaskSecurityFixture(t, []*model.Server{reporter}, nil, map[uint64]model.UserInfo{200: {Role: model.RoleMember}}, map[string]uint64{"snapshot-secret": 200})
+	require.NoError(t, singleton.DB.AutoMigrate(&model.ServerSnapshot{}))
+	current, ok := singleton.ServerShared.Get(9)
+	require.True(t, ok)
+	current.SetHost(&model.Host{Platform: "ubuntu", Version: "2.3.5", CPU: []string{"EPYC"}, MemTotal: 8 << 30, DiskTotal: 100 << 30})
+	current.SetSnapshotCountry("JP")
+	stop := make(chan struct{})
+	stream := &stateGenerationHandlerStream{ctx: metadata.NewIncomingContext(context.Background(), metadata.Pairs("client_secret", "snapshot-secret", "client_uuid", reporter.UUID)), states: make(chan *pb.State, 1), receipts: make(chan *pb.Receipt, 1), stop: stop}
+	stream.states <- &pb.State{Cpu: 12.5, MemUsed: 2 << 30, DiskUsed: 25 << 30}
+	done := make(chan error, 1)
+	go func() { done <- NewNezhaHandler().ReportSystemState(stream) }()
+	select {
+	case <-stream.receipts:
+	case <-time.After(5 * time.Second):
+		t.Fatal("receipt timed out")
+	}
+	saved, err := singleton.QueryServerSnapshot(9, reporter.UUID, 1)
+	require.NoError(t, err)
+	require.NotNil(t, saved)
+	require.Equal(t, "ubuntu", saved.Snapshot.Host.Platform)
+	require.Equal(t, "JP", saved.Snapshot.CountryCode)
+	require.Equal(t, float64(25), saved.Metrics["disk_percent"])
+	close(stop)
+	require.ErrorIs(t, <-done, context.Canceled)
+	require.True(t, current.RuntimeSnapshot().LastActive.IsZero())
+	frozen, err := singleton.QueryServerSnapshot(9, reporter.UUID, 1)
+	require.NoError(t, err)
+	require.Equal(t, saved, frozen)
+	old := current.AttachStateStream(stateGenerationStream{})
+	current.AttachStateStream(stateGenerationStream{})
+	called := false
+	require.False(t, old.UpdateStateWithSnapshot(&model.HostState{}, time.Now(), func(uint64, string, model.RecordedServerState) error { called = true; return nil }))
+	require.False(t, called)
+}

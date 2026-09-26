@@ -238,8 +238,8 @@ function ServerCardInline({
 				</div>
 			</section>
 			<Separator orientation="vertical" className="h-8 ml-3 lg:ml-1 mr-3" />
-			<NativeTraffic serverId={serverInfo.id}/>
-{parsedData?.planDataMod && <PlanInfo parsedData={parsedData} />}
+			{/* Legacy traffic enhancement applies to online cards only. */}
+			{parsedData?.planDataMod && <PlanInfo parsedData={parsedData} />}
 		</Card>
 	);
 }

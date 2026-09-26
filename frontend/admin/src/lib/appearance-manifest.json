@@ -57,21 +57,157 @@
   {
     "key": "greeting",
     "title": "分时段问候",
-    "description": "按本地时间切换问候语，保留原来的七组文案",
+    "description": "按访客本地时间切换；可编辑时段并增删问候语，默认保留原来的七组文案",
     "defaults": {
-      "enabled": true
+      "enabled": true,
+      "rules": [
+        {
+          "name": "早晨",
+          "start": "07:00",
+          "end": "09:00",
+          "messages": [
+            "🌅 早上好，新的一天开始啦～",
+            "☀️ 早安，今天也要充满朝气哦！",
+            "🌤️ 美好的一天从阳光早餐开始～",
+            "🕖 清晨的阳光刚刚好，起床动起来！",
+            "⏰ 起床啦，别让梦想迟到～",
+            "🌸 清晨的空气最清新，吸一口元气满满！",
+            "🍞 早餐要吃好，今天才会更有力量～",
+            "🌄 新的一天，新的好运正在路上！",
+            "💪 早安，加油！今天也要全力以赴～",
+            "🌼 早起的你，就是生活的掌舵人～"
+          ]
+        },
+        {
+          "name": "上午",
+          "start": "09:00",
+          "end": "12:00",
+          "messages": [
+            "☀️ 上午好，今天也要元气满满哦～",
+            "🕘 上午好，愿你效率满满～",
+            "📈 保持状态，迎接高效的一上午！",
+            "🌞 上午时间，最适合专注冲刺！",
+            "💡 灵感就在这个清醒的时段～",
+            "🚀 上午的每一分钟都很宝贵，把握住！",
+            "📝 今天的目标完成到哪啦？继续加油！",
+            "🌻 阳光正好，干劲十足！",
+            "💼 上午的努力是下午轻松的保障～",
+            "🎯 集中注意力，完成最重要的任务！"
+          ]
+        },
+        {
+          "name": "中午",
+          "start": "12:00",
+          "end": "14:00",
+          "messages": [
+            "🍜 中午好，记得按时吃饭休息一下～",
+            "☀️ 午饭时间到啦，来点能量吧～",
+            "😌 放松一下，午休时间珍贵哦～",
+            "🥢 吃饱饱，下午更有精神！",
+            "🛏️ 小憩片刻，为下午充电～",
+            "🍱 好好享受午餐的美味吧～",
+            "☕ 午饭后别忘来杯咖啡提提神～",
+            "😴 午睡20分钟，精神一整天！",
+            "🌿 给自己一个安静的午后时光～",
+            "🍉 来点水果，清爽一下～"
+          ]
+        },
+        {
+          "name": "下午",
+          "start": "14:00",
+          "end": "18:00",
+          "messages": [
+            "🌞 下午好，继续加油，不要犯困哦～",
+            "💼 下午时光，专注而充实～",
+            "🫖 来杯茶，提提神再冲刺一波！",
+            "🚀 下午是提高效率的黄金时段～",
+            "😄 保持专注，还有几个小时就下班啦～",
+            "📚 下午适合处理需要耐心的工作～",
+            "🌤️ 阳光温暖，心情更美好～",
+            "🎯 今天的目标，下午继续推进！",
+            "🤝 下午适合沟通协作，效率翻倍～",
+            "🍪 来点小零食补充能量吧～"
+          ]
+        },
+        {
+          "name": "傍晚",
+          "start": "18:00",
+          "end": "20:00",
+          "messages": [
+            "🌇 傍晚好，辛苦啦，准备收工了吗～",
+            "🧘‍♂️ 傍晚时分，放松一下吧～",
+            "🌆 工作一天，别忘了犒劳自己～",
+            "🛍️ 下班小奖励，今天你值得～",
+            "🍽️ 傍晚时间，来点美食治愈一下～",
+            "🌅 傍晚的天空最温柔～",
+            "🚶‍♂️ 下班散步，呼吸一下新鲜空气～",
+            "🍲 热腾腾的晚餐正在等你～",
+            "🏞️ 夕阳西下，享受片刻宁静～",
+            "🌟 放下工作，生活也要精彩～"
+          ]
+        },
+        {
+          "name": "晚上",
+          "start": "20:00",
+          "end": "00:00",
+          "messages": [
+            "🌙 晚上好，放松一下，好好休息～",
+            "📺 晚上适合追剧or放空自己～",
+            "🛋️ 忙了一天，是时候享受静谧的夜晚～",
+            "🎧 播首歌，让夜晚更有氛围～",
+            "🕯️ 点个香薰，舒缓今天的疲惫～",
+            "🍵 来杯热茶，暖暖身心～",
+            "🌌 抬头看看星空，许个愿吧～",
+            "📖 晚上也适合读点喜欢的书～",
+            "🐾 陪陪家人或宠物，享受温馨时光～",
+            "✨ 夜晚是属于自己的慢时光～"
+          ]
+        },
+        {
+          "name": "深夜",
+          "start": "00:00",
+          "end": "07:00",
+          "messages": [
+            "🌌 夜深了，早点休息，晚安～",
+            "😴 别熬夜哦，身体最重要～",
+            "🌙 夜已深，梦里也要开心～",
+            "🛏️ 盖好被子，明天继续闪光～",
+            "🌠 星星都入睡了，你也该休息啦～",
+            "💤 让身体和大脑都放个假～",
+            "🍵 睡前来杯温牛奶助眠～",
+            "📵 放下手机，进入美好梦乡～",
+            "🌃 夜色温柔，梦境也会很甜～",
+            "🪷 关灯，安心入眠，明天见～"
+          ]
+        }
+      ]
     },
-    "labels": {},
+    "labels": {
+      "rules": "问候时段"
+    },
     "constraints": {}
   },
   {
     "key": "clock",
     "title": "时钟渐变",
-    "description": "时、分、秒分别由白色渐变到红、绿、蓝；使用本地 24 小时制",
+    "description": "自定义时、分、秒的起始色和结束色；使用访客本地 24 小时制",
     "defaults": {
-      "enabled": true
+      "enabled": true,
+      "hourStartColor": "#ffffff",
+      "hourEndColor": "#ff2828",
+      "minuteStartColor": "#ffffff",
+      "minuteEndColor": "#28ff64",
+      "secondStartColor": "#ffffff",
+      "secondEndColor": "#2878ff"
     },
-    "labels": {},
+    "labels": {
+      "hourStartColor": "小时起始色",
+      "hourEndColor": "小时结束色",
+      "minuteStartColor": "分钟起始色",
+      "minuteEndColor": "分钟结束色",
+      "secondStartColor": "秒钟起始色",
+      "secondEndColor": "秒钟结束色"
+    },
     "constraints": {}
   },
   {
@@ -278,7 +414,7 @@
   {
     "key": "video",
     "title": "视频声音控制",
-    "description": "仅控制背景视频；默认静音播放，点击专用按钮开启声音，不再绑定页面其他按钮。",
+    "description": "默认静音播放；点击左上角 Logo 切换背景声音，不显示独立悬浮按钮。",
     "defaults": {
       "enabled": true,
       "videoSelector": ".video-box video",
@@ -291,15 +427,15 @@
       "videoSelector": "视频选择器",
       "toggleSelector": "声音按钮选择器",
       "unmuteOnVideoClick": "点击视频取消静音",
-      "toggleMuteOnControlClick": "点击控制按钮切换静音",
-      "showControl": "显示独立声音按钮"
+      "toggleMuteOnControlClick": "点击左上角 Logo 切换静音",
+      "showControl": "启用左上角 Logo 声音控制"
     },
     "constraints": {}
   },
   {
     "key": "sponsor",
     "title": "赞助商胶囊",
-    "description": "支持桌面缩小、停留、淡出、悬停暂停及移动端底部显示",
+    "description": "桌面在视图与排序按钮之间上下左右居中，自适应空位；保留缩小、停留、淡出、悬停暂停和移动端底部显示",
     "defaults": {
       "enabled": true,
       "desktop": true,
@@ -371,13 +507,54 @@
     "defaults": {
       "enabled": true,
       "cacheDuration": 21600000,
-      "bottomThreshold": 24
+      "bottomThreshold": 24,
+      "ipApiUrls": [
+        "https://ipapi.co/json/",
+        "https://ipinfo.io/json",
+        "https://ip-api.com/json/?fields=status,message,query,country,regionName,city,as,isp"
+      ],
+      "fallbackUrl": "https://ip-api.com/json/?fields=status,message,query,country,regionName,city,as,isp",
+      "queryTimeout": 4000,
+      "fallbackTimeout": 2500,
+      "networkEnabled": true,
+      "checkTimeout": 1600,
+      "switchTimeout": 1800,
+      "checkNodes": [
+        {
+          "name": "Google",
+          "url": "https://www.gstatic.com/generate_204"
+        },
+        {
+          "name": "CF",
+          "url": "https://www.cloudflare.com/cdn-cgi/trace"
+        }
+      ],
+      "showRegion": true,
+      "showASN": true,
+      "showOrganization": true,
+      "showDownlink": true
     },
     "labels": {
+      "ipApiUrls": "IP 查询接口",
+      "fallbackUrl": "信息补全接口",
+      "queryTimeout": "IP 查询超时（毫秒）",
+      "fallbackTimeout": "信息补全超时（毫秒）",
+      "networkEnabled": "启用网络检测",
+      "checkNodes": "网络检测节点",
+      "checkTimeout": "首次检测超时（毫秒）",
+      "switchTimeout": "切换节点超时（毫秒）",
+      "showRegion": "显示地区",
+      "showASN": "显示 ASN",
+      "showOrganization": "显示运营商",
+      "showDownlink": "显示浏览器估算带宽",
       "cacheDuration": "缓存有效期（毫秒）",
       "bottomThreshold": "底部隐藏距离（像素）"
     },
     "constraints": {
+      "queryTimeout": [100, 10000],
+      "fallbackTimeout": [100, 10000],
+      "checkTimeout": [100, 10000],
+      "switchTimeout": [100, 10000],
       "cacheDuration": [
         0,
         604800000
@@ -430,7 +607,7 @@
   {
     "key": "counter",
     "title": "访问统计图片",
-    "description": "桌面右上角、移动端顶部，向下滚动隐藏",
+    "description": "电脑端右上角同比缩放，手机端沿用原位置；自动缩小避让顶部内容，空间不足时隐藏，滚动隐藏",
     "defaults": {
       "enabled": true,
       "imageUrl": "https://count.getloli.com/@tongji?name=tongji&theme=random&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto",
@@ -446,10 +623,10 @@
     },
     "labels": {
       "imageUrl": "统计图片地址",
-      "desktopRight": "桌面距右侧",
-      "desktopTop": "桌面距顶部",
-      "desktopWidth": "桌面宽度",
-      "desktopHeight": "桌面高度",
+      "desktopRight": "桌面距网页右边缘",
+      "desktopTop": "桌面距网页顶部",
+      "desktopWidth": "桌面参考宽度（1366px 窗口）",
+      "desktopHeight": "桌面参考高度（1366px 窗口）",
       "mobileTop": "移动端距顶部",
       "mobileWidth": "移动端宽度",
       "mobileHeight": "移动端高度",
@@ -534,17 +711,27 @@
   {
     "key": "speed",
     "title": "网络速率与颜色",
-    "description": "卡片与概览显示 Mbps/Gbps；上下行独立着色并随速度增强",
+    "description": "分别设置单台服务器卡片与网络概览卡片的单位、颜色和高速率动画",
     "defaults": {
       "enabled": true,
       "bits": true,
       "color": true,
-      "animation": true
+      "animation": true,
+      "cardEnabled": true,
+      "overviewEnabled": true,
+      "overviewBits": true,
+      "overviewColor": true,
+      "overviewAnimation": true
     },
     "labels": {
       "bits": "转换成 Mbps/Gbps",
       "color": "启用上下行颜色",
-      "animation": "启用高速率动画"
+      "animation": "启用高速率动画",
+      "cardEnabled": "单台服务器卡片速率",
+      "overviewEnabled": "网络概览卡片速率",
+      "overviewBits": "转换成 Mbps/Gbps",
+      "overviewColor": "启用上下行颜色",
+      "overviewAnimation": "启用高速率动画"
     },
     "constraints": {}
   },
@@ -746,11 +933,32 @@
     "constraints": {}
   },
   {
-    "key": "live2d",
-    "title": "Live2D 看板娘",
-    "description": "独立内置效果，可单独关闭",
+    "key": "peakCut",
+    "title": "网络图削峰",
+    "description": "独立控制网络图默认削峰，不受背景、地区或分时规则影响；电脑和手机可分别启用。图表内仍可临时切换。",
     "defaults": {
       "enabled": true,
+      "desktop": true,
+      "mobile": false
+    },
+    "labels": {
+      "desktop": "电脑端启用",
+      "mobile": "手机端启用"
+    },
+    "constraints": {}
+  },
+  {
+    "key": "live2d",
+    "title": "看板娘",
+    "description": "选择原 Live2D 或 Sakana Widget，同一时间只启用一种；关闭总开关隐藏看板娘。",
+    "defaults": {
+      "enabled": true,
+      "provider": "live2d",
+      "character": "chisato",
+      "customCharacters": [],
+      "size": 200,
+      "controls": true,
+      "autoMotion": false,
       "cdnPath": "https://fastly.jsdelivr.net/gh/fghrsh/live2d_api/",
       "tools": [
         "hitokoto",
@@ -764,9 +972,14 @@
     },
     "labels": {
       "cdnPath": "模型资源目录",
-      "tools": "工具栏（每行一项）"
+      "tools": "工具栏（每行一项）",
+      "provider": "看板娘类型",
+      "character": "Sakana 默认角色",
+      "size": "Sakana 尺寸（像素）",
+      "controls": "Sakana 工具栏",
+      "autoMotion": "Sakana 自动摇摆"
     },
-    "constraints": {}
+    "constraints": {"size":[120,400]}
   },
   {
     "key": "analytics",

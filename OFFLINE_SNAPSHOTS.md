@@ -1,0 +1,17 @@
+# Offline detail snapshots
+- SQLite server_snapshots is independent of long-term TSDB retention/settings.
+- Every accepted state report captures Host, HostState, timestamp and country under the current stream lease.
+- Keep the final report of each second, at most 61 points spanning 60 seconds per server.
+- Pruning is relative to that server's latest report, not wall-clock time: offline records remain frozen.
+- Metadata includes platform/version, CPU/GPU, architecture, RAM/swap/disk totals, agent version and boot time.
+- Samples retain each sample's own host totals; percentage series never apply a later capacity to an earlier sample.
+- No private IP, credentials or administrator note is included in snapshot payloads.
+- Read-only last-report API respects live visibility/PAT restrictions and host version redaction.
+- Frozen last-minute snapshots remain readable after long outages; legacy TSDB fallback retains guest/member limits.
+- Existing offline machines with no complete snapshot need to report again; missing old metadata is not fabricated.
+- No snapshot data is injected into live WebSocket state or alert evaluation; offline nodes remain offline.
+- Deletion purges snapshots in the same SQL transaction. UUID-guarded inserts reject stale/reused IDs.
+- ID reassignment remaps snapshot server_id transactionally through temporary IDs, preserving UUID identity.
+- Writes are serialized with bounded waiting; persistence failures are logged, not treated as agent disconnection.
+- Startup auto-migrates only the new table. Old binaries can ignore it on binary rollback.
+- Tests cover retention, reopen, out-of-order reports, coalescing, deletion/reuse, swaps/rollback, redaction, stream generations and concurrent118-server writes.

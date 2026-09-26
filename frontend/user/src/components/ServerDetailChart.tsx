@@ -93,27 +93,29 @@ const sleep = (ms: number) =>
 		setTimeout(resolve, ms);
 	});
 
-function PeriodSelector({
+export function PeriodSelector({
 	selectedPeriod,
 	onPeriodChange,
 	isLogin,
 	isTsdbEnabled,
+	offline = false,
 }: {
 	selectedPeriod: ChartPeriod;
 	onPeriodChange: (period: ChartPeriod) => void;
 	isLogin: boolean;
 	isTsdbEnabled: boolean;
+	offline?: boolean;
 }) {
 	const { t } = useTranslation();
 
 	const periods = useMemo<{ value: ChartPeriod; label: string }[]>(
 		() => [
-			{ value: "realtime", label: t("serverDetailChart.realtime") },
+			{ value: "realtime", label: offline ? "最后状态" : t("serverDetailChart.realtime") },
 			{ value: "1d", label: t("serverDetailChart.period1d") },
 			{ value: "7d", label: t("serverDetailChart.period7d") },
 			{ value: "30d", label: t("serverDetailChart.period30d") },
 		],
-		[t],
+		[t, offline],
 	);
 	const periodValues = useMemo(
 		() => periods.map((period) => period.value),
@@ -155,6 +157,11 @@ function PeriodSelector({
 					const periodItem = (
 						<div
 							ref={setItemRef(index)}
+							role="button"
+							aria-disabled={isLocked}
+							aria-pressed={selectedPeriod === period.value}
+							tabIndex={isLocked ? -1 : 0}
+							onKeyDown={e => { if (!isLocked && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); enableIndicatorAnimation(); onPeriodChange(period.value); } }}
 							onClick={() => {
 								if (!isLocked) {
 									if (selectedPeriod !== period.value) {
@@ -173,7 +180,7 @@ function PeriodSelector({
 						>
 							<div className="relative z-20 flex items-center gap-1.5">
 								{period.value === "realtime" && (
-									<span className="inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500 dark:bg-emerald-400"></span>
+									<span className={cn("inline-flex rounded-full h-1.5 w-1.5", offline ? "bg-red-500" : "bg-emerald-500 dark:bg-emerald-400")}></span>
 								)}
 								{period.label}
 							</div>

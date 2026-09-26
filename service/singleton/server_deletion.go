@@ -294,6 +294,11 @@ func PermanentlyDeleteServers(ids []uint64) error {
 				return err
 			}
 		}
+		if tx.Migrator().HasTable(&model.ServerSnapshot{}) {
+			if err := tx.Unscoped().Delete(&model.ServerSnapshot{}, "server_id IN ?", actualIDs).Error; err != nil {
+				return err
+			}
+		}
 		if tx.Migrator().HasTable(&model.ServiceHistory{}) {
 			if err := tx.Unscoped().Delete(&model.ServiceHistory{}, "server_id IN ?", actualIDs).Error; err != nil {
 				return err

@@ -8,7 +8,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useFeature } from "./context";
 import { formatBytes } from "@/lib/format";
-import greetings from "./greetings.json";
+import {greetingMessages, chooseGreeting} from "./greeting-clock";
 import "./rate.css";
 export function useTick(period = 1000) {
 	const [now, setNow] = useState(() => Date.now());
@@ -39,38 +39,22 @@ export function NativeDescription({ fallback }: { fallback: ReactNode }) {
 	return <>{brand.enabled ? brand.description : fallback}</>;
 }
 export function NativeGreeting({ fallback }: { fallback: ReactNode }) {
-	const f = useFeature("greeting"),
-		now = useTick(60000),
-		hour = new Date(now).getHours();
-	const group =
-		hour >= 7 && hour < 9
-			? 0
-			: hour >= 9 && hour < 12
-				? 1
-				: hour >= 12 && hour < 14
-					? 2
-					: hour >= 14 && hour < 18
-						? 3
-						: hour >= 18 && hour < 20
-							? 4
-							: hour >= 20
-								? 5
-								: 6;
-	const [text, setText] = useState("");
+	const f = useFeature("greeting");
+	const now = useTick(f.enabled ? 1000 : 0);
+	// Depend on the active texts, not each tick; do not reroll every second.
+	const messagesKey = JSON.stringify(greetingMessages(f.rules, new Date(now)));
+	const [selection, setSelection] = useState({ key: "", text: "" });
 	useEffect(() => {
 		if (!f.enabled) return;
 		let last = "";
-		try {
-			last = localStorage.getItem("lastGreeting") || "";
-		} catch {}
-		const candidates = greetings[group].filter((item) => item !== last);
-		const next = candidates[Math.floor(Math.random() * candidates.length)];
-		setText(next);
-		try {
-			localStorage.setItem("lastGreeting", next);
-		} catch {}
-	}, [group, f.enabled]);
-	return <>{f.enabled ? text : fallback}</>;
+		try { last = localStorage.getItem("lastGreeting") || ""; } catch {}
+		const next = chooseGreeting(JSON.parse(messagesKey), last);
+		setSelection({ key: messagesKey, text: next });
+		if (next) {
+			try { localStorage.setItem("lastGreeting", next); } catch {}
+		}
+	}, [messagesKey, f.enabled]);
+	return <>{f.enabled && selection.key === messagesKey && selection.text ? selection.text : fallback}</>;
 }
 const namePhase = [Math.random(), Math.random()];
 export function NativeName({
@@ -127,7 +111,9 @@ export function NativeSpeed({
 	fallback?: ReactNode;
 	overview?: boolean;
 }) {
-	const f = useFeature("speed");
+	const shared = useFeature("speed");
+ const f = overview ? {enabled:shared.enabled && shared.overviewEnabled,bits:shared.overviewBits,color:shared.overviewColor,animation:shared.overviewAnimation}
+  : {...shared,enabled:shared.enabled && shared.cardEnabled};
 	if (!f.enabled) return <>{fallback ?? formatSpeed(bytes, false)}</>;
 	const strength = overview
 			? Math.min(Math.pow(Math.max(0, bytes) / 104857600, 0.4), 1)

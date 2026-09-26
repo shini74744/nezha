@@ -1,6 +1,9 @@
 // @ts-nocheck
+import manifest from "../manifest.json";
 // Migrated source for the built-in visitorIP feature; resources are owned by FeatureScope.
 export function visitorIP(scope, config) {
+config = {...manifest.find(d=>d.key==="visitorIP").defaults,...config};
+const cacheSource = JSON.stringify([config.ipApiUrls,config.fallbackUrl]);
 const window = scope.window; const document = scope.document;
 (() => {
   'use strict';
@@ -115,10 +118,11 @@ const window = scope.window; const document = scope.document;
       scope.clearTimeout(_0x1740a5);
     }
   };
-  const _0x206431 = async (_0x457780, _0x821214, _0x476a19 = 1500) => {
-    const _0x33a3de = [new AbortController(), new AbortController()];
+  const _0x206431 = async (nodes, _0x476a19) => {
+    if (!nodes.length) return null;
+    const _0x33a3de = nodes.map(() => new AbortController());
     const _0x55a32c = _0x33a3de.map(_0x46b6dc => scope.setTimeout(() => _0x46b6dc.abort(), _0x476a19));
-    const _0x646747 = [_0x457780, _0x821214].map((_0x26bd53, _0x7424dc) => {
+    const _0x646747 = nodes.map((_0x26bd53, _0x7424dc) => {
       const _0x379981 = performance.now();
       return scope.fetch(_0x26bd53.url, {
         signal: _0x33a3de[_0x7424dc].signal,
@@ -176,6 +180,7 @@ const window = scope.window; const document = scope.document;
     return "lat-bad";
   };
   const _0x295ee7 = () => {
+    if (!config.showDownlink) return "";
     const _0x1ab347 = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     if (!_0x1ab347 || typeof _0x1ab347.downlink !== "number" || !isFinite(_0x1ab347.downlink)) {
       return "";
@@ -195,17 +200,18 @@ const window = scope.window; const document = scope.document;
     const _0x5f1975 = _0x1d10ff.includes(".") && !_0x1d10ff.includes(":");
     const _0x216835 = _0x5f1975 ? _0x1d10ff : "IPv6 network";
     if (!_0x26bcbe) {
-      if (_0x3ddcac) {
+      if (config.showRegion && _0x3ddcac) {
         return _0x216835 + " ｜ " + _0x3ddcac;
       } else {
         return _0x216835;
       }
     }
     const _0x6173cb = [];
-    if (_0x3ddcac) {
+    if (config.showRegion && _0x3ddcac) {
       _0x6173cb.push(_0x3ddcac);
     }
-    const _0xd682b = [_0x156bcb, _0x4ba621].filter(Boolean).join(" ");
+    const org = String(_0x4ba621 || "").replace(/^AS\d+\s*/i, "");
+    const _0xd682b = [config.showASN ? _0x156bcb : "", config.showOrganization ? org : ""].filter(Boolean).join(" ");
     if (_0xd682b) {
       _0x6173cb.push(_0xd682b);
     }
@@ -222,7 +228,7 @@ const window = scope.window; const document = scope.document;
         return null;
       }
       const _0x364811 = JSON.parse(_0x17c585);
-      if (!_0x364811 || !_0x364811.ts || !_0x364811.base) {
+      if (!_0x364811 || !_0x364811.ts || !_0x364811.base || _0x40e490 <= 0 || _0x364811.source !== cacheSource) {
         return null;
       }
       if (Date.now() - _0x364811.ts > _0x40e490) {
@@ -234,9 +240,11 @@ const window = scope.window; const document = scope.document;
     }
   };
   const _0x3216e7 = _0x24b6cb => {
+    if (_0x40e490 <= 0) return;
     try {
       localStorage.setItem(_0x21d03f, JSON.stringify({
         ts: Date.now(),
+        source: cacheSource,
         base: _0x24b6cb
       }));
     } catch {}
@@ -330,35 +338,30 @@ const window = scope.window; const document = scope.document;
   const _0xf9315 = async () => {
     _0x26ea6d();
     _0x50a926();
-    const _0x53827c = {
-      name: "Google",
-      url: "https://www.gstatic.com/generate_204"
-    };
-    const _0x3796a6 = {
-      name: "CF",
-      url: "https://www.cloudflare.com/cdn-cgi/trace"
-    };
+    const nodes = config.checkNodes;
+    const networkActive = _0x26bcbe && config.networkEnabled && nodes.length > 0;
     const _0x111b04 = document.getElementById("ip-net");
     if (_0x111b04) {
       scope.listen(_0x111b04, "click", async () => {
-        if (!_0x26bcbe) {
+        if (!networkActive) {
           return;
         }
         if (_0x6fa005) {
           return;
         }
-        const _0x585971 = _0x3ab389 === "CF" ? _0x53827c : _0x3796a6;
+        const index = nodes.findIndex(n=>n.name === _0x3ab389);
+        const _0x585971 = nodes[(index + 1) % nodes.length];
         await _0x53dc85();
         const _0x39e82f = document.getElementById("ip-base")?.textContent || "";
         _0x20e2c5(_0x39e82f, "测速中…", "lat-good", _0x3ab389);
-        const _0xae39f1 = await _0x299555(_0x585971, 1800);
+        const _0xae39f1 = await _0x299555(_0x585971, config.switchTimeout);
         if (_0xae39f1 && Number.isFinite(_0xae39f1.ms)) {
           const _0x172d86 = _0x295ee7();
           const _0x5c241b = _0x172d86 ? " · " + _0x172d86 : "";
           const _0x37024d = _0xae39f1.name + " 延迟 " + _0xae39f1.ms + "ms" + _0x5c241b;
           _0x20e2c5(_0x39e82f, _0x37024d, _0x2e39b6(_0xae39f1.ms), _0xae39f1.name);
         } else {
-          _0x20e2c5(_0x39e82f, _0x585971.name + " 测速失败", "lat-mid", _0x3ab389);
+          _0x20e2c5(_0x39e82f, _0x585971.name + " 检测失败", "lat-mid", _0x585971.name);
         }
         await _0x165d60(30);
         await _0x1cd167();
@@ -369,15 +372,13 @@ const window = scope.window; const document = scope.document;
     const _0x4ed724 = _0x2a74ae();
     if (_0x4ed724) {
       const _0x5d2d21 = _0x348bac(_0x4ed724);
-      _0x20e2c5(_0x5d2d21, _0x26bcbe ? "测速中…" : "", "", "");
+      _0x20e2c5(_0x5d2d21, networkActive ? "检测中…" : "", "", "");
     }
     await _0x165d60(50);
-    const _0x372326 = "https://ipapi.co/json/";
-    const _0x367e7c = "https://ipinfo.io/json";
-    const _0x29b349 = "https://ip-api.com/json/?fields=status,message,query,country,regionName,city,as,isp";
+    const _0x29b349 = config.fallbackUrl;
     let _0x1caf45 = null;
     try {
-      _0x1caf45 = await _0x1f5356([_0x372326, _0x367e7c, _0x29b349], 4000);
+      _0x1caf45 = await _0x1f5356(config.ipApiUrls, config.queryTimeout);
     } catch {}
     if (!_0x1caf45) {
       if (!_0x4ed724) {
@@ -386,9 +387,9 @@ const window = scope.window; const document = scope.document;
       return;
     }
     let _0x2d2955 = _0x5b6e5e(_0x1caf45);
-    if (_0x26bcbe && (!_0x2d2955.asn || !_0x2d2955.org)) {
+    if (_0x26bcbe && _0x29b349 && ((config.showASN && !_0x2d2955.asn) || (config.showOrganization && !_0x2d2955.org) || (config.showRegion && !_0x2d2955.loc))) {
       try {
-        const _0x5b80b4 = await _0x3f7906(_0x29b349, 2500);
+        const _0x5b80b4 = await _0x3f7906(_0x29b349, config.fallbackTimeout);
         const _0x4de948 = await _0x5b80b4.json();
         const _0x35e523 = _0x5b6e5e(_0x4de948);
         if (!_0x2d2955.asn) {
@@ -406,7 +407,7 @@ const window = scope.window; const document = scope.document;
       } catch {}
     }
     const _0x4509b5 = _0x348bac(_0x2d2955);
-    _0x20e2c5(_0x4509b5, _0x26bcbe ? "测速中…" : "", "", "");
+    _0x20e2c5(_0x4509b5, networkActive ? "检测中…" : "", "", "");
     _0x3216e7({
       ip: _0x2d2955.ip,
       loc: _0x2d2955.loc,
@@ -414,8 +415,8 @@ const window = scope.window; const document = scope.document;
       org: _0x2d2955.org
     });
     _0x174fd4();
-    if (_0x26bcbe) {
-      const _0x243d13 = await _0x206431(_0x53827c, _0x3796a6, 1600);
+    if (networkActive) {
+      const _0x243d13 = await _0x206431(nodes, config.checkTimeout);
       if (_0x243d13 && Number.isFinite(_0x243d13.ms)) {
         const _0x9482d2 = _0x295ee7();
         const _0x26d03c = _0x9482d2 ? " · " + _0x9482d2 : "";

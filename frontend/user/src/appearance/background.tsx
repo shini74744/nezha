@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState} from "react";
 import {useFeature} from "./context";
 import {FeatureScope} from "./scope";
+import {publishBackgroundSound} from "./background-sound";
 import {setBackgroundPeakCut} from "./background-state";
 import {matchesRegion,selectBackground,type Media} from "./background-config";
 type Selection={items:Media[];key:string;label:string;index:number};
@@ -43,10 +44,15 @@ export function NativeBackground(){
  const next=()=>setSelection(s=>s?{...s,index:s.index+1}:s);
  const failImage=()=>media?.type==="auto"?setAsVideo(true):next();
  const toggleSound=async()=>{
-  if(!video.current)return;
-  const nextMuted=!video.current.muted;video.current.muted=nextMuted;setMuted(nextMuted);
-  try{await video.current.play()}catch{video.current.muted=true;setMuted(true)}
+  const target=video.current;if(!target)return;
+  const nextMuted=!target.muted;target.muted=nextMuted;setMuted(nextMuted);
+  try{await target.play()}catch{target.muted=true;if(video.current===target)setMuted(true)}
  };
+ useEffect(()=>{
+  if(!sound.enabled){if(video.current)video.current.muted=true;setMuted(true)}
+  if(!f.enabled||!asVideo||!media||!sound.enabled||!sound.showControl||!sound.toggleMuteOnControlClick)return;
+  return publishBackgroundSound({muted,toggle:toggleSound});
+ },[f.enabled,asVideo,media?.src,muted,sound.enabled,sound.showControl,sound.toggleMuteOnControlClick]);
  if(!f.enabled||!media)return null;
  return <>
   <style>{".dark .bg-card{background-color:rgba(13,11,9,"+f.opacity+");backdrop-filter:blur("+f.blur+"px);border-color:rgba(13,11,9,.1)}"}</style>
@@ -56,7 +62,6 @@ export function NativeBackground(){
   </div>:<div className="image-box nz-media" data-background-source={selection?.key.split("[")[0]} style={{backgroundImage:"url("+JSON.stringify(media.src)+")"}}>
    <img key={media.src} src={media.src} alt="" aria-hidden style={{display:"none"}} onError={failImage}/>
   </div>}
-  {asVideo&&sound.enabled&&sound.showControl&&sound.toggleMuteOnControlClick&&<button type="button" className="nz-background-sound" onClick={()=>void toggleSound()} aria-label={muted?"开启背景声音":"关闭背景声音"} aria-pressed={!muted}>{muted?"🔇":"🔊"}<span>{muted?"开启背景声音":"关闭背景声音"}</span></button>}
   {notice&&<div className="nz-night-tip" translate="no">{notice}已开启</div>}
  </>;
 }

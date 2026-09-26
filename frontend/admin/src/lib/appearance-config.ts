@@ -1,4 +1,8 @@
+import {validateMascot} from "./mascot-config";
+import {validateVisitorIP} from "./visitor-ip-config";
+import {upgradeSpeed} from "./speed-config";
 import manifestData from "./appearance-manifest.json";
+import {validateGreetingClock} from "./greeting-clock";
 import {upgradeBackground,validateBackground} from "./background-config";
 export type Feature={enabled:boolean;[key:string]:any};
 export type AppearanceConfig={version:1;enabled:boolean;features:Record<string,Feature>};
@@ -10,13 +14,15 @@ export function normalize(raw?:string|AppearanceConfig):AppearanceConfig{
  try{const parsed=typeof raw==="string"?JSON.parse(raw):raw;if(parsed.version!==1||typeof parsed.enabled!=="boolean"||!parsed.features)return base;
   base.enabled=parsed.enabled;
   for(const d of definitions){const value=parsed.features[d.key];if(value&&typeof value==="object"&&!Array.isArray(value)&&typeof value.enabled==="boolean")base.features[d.key]={...base.features[d.key],...value}}
+  if(!parsed.features.peakCut)base.features.peakCut={...base.features.peakCut,enabled:!!base.features.background.enabled&&!!base.features.background.peakCutDesktop};
+  base.features.speed=upgradeSpeed(base.features.speed,parsed.features.speed);
   base.features.background=upgradeBackground(base.features.background,parsed.features.background);
   return validate(base)?defaults():base;
  }catch{return defaults()}
 }
 const urlKey=/(url|logo|illustration|^link$|^src$|images$|^regionApi$|^cdnPath$)/i;
 function check(key:string,value:any,sample:any):void{
- if(Array.isArray(sample)){if(!Array.isArray(value)||value.length>256)throw Error(key+" 必须为不超过 256 项的列表");for(const item of value)check(key,item,sample[0]);return}
+ if(Array.isArray(sample)){if(!Array.isArray(value)||value.length>256)throw Error(key+" 必须为不超过 256 项的列表");if(key!=="customCharacters")for(const item of value)check(key,item,sample[0]);return}
  if(sample&&typeof sample==="object"){if(!value||typeof value!=="object"||Array.isArray(value))throw Error(key+" 必须为对象");for(const k of Object.keys(value))if(!(k in sample))throw Error(key+"."+k+" 为未知参数");for(const k of Object.keys(sample))check(k,value[k],sample[k]);return}
  if(typeof value!==typeof sample)throw Error(key+" 类型错误");
  if(typeof value==="number"&&(!Number.isFinite(value)||Math.abs(value)>31536000000))throw Error(key+" 数字无效");
@@ -29,7 +35,10 @@ export function validate(config:AppearanceConfig):string{
   if(!/^G-[A-Z0-9]+$/.test(config.features.analytics.measurementId))throw Error("Google Analytics ID 无效");
   if(!/^-?\d+(\.\d+)?(px|vh|rem|%)$/.test(config.features.sponsor.desktopTop))throw Error("赞助条位置须带 px/vh/rem/% 单位");
   if(!/^\d{1,3},\d{1,3},\d{1,3}$/.test(config.features.network.color)||config.features.network.color.split(",").some((n:string)=>Number(n)>255))throw Error("连线颜色须为 RGB 数值，例如 255,255,255");
+  validateMascot(config.features.live2d);
+  validateVisitorIP(config.features.visitorIP);
   validateBackground(config.features.background);
+  validateGreetingClock(config.features);
   for(const tool of config.features.live2d.tools)if(!["hitokoto","asteroids","switch-model","switch-texture","photo","info","quit"].includes(tool))throw Error("未知 Live2D 工具："+tool);
   for(const key of ["videoSelector","toggleSelector"]){const selector=config.features.video[key];if(!selector.trim())throw Error("视频选择器不能为空");document.querySelector(selector)}
   return "";

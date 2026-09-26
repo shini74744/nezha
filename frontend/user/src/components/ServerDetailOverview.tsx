@@ -1,3 +1,5 @@
+import dayjs from "dayjs";
+import type { NezhaServer } from "@/types/nezha-api";
 import {NativeName} from "@/appearance/widgets";
 import countries from "i18n-iso-countries";
 import enLocale from "i18n-iso-countries/langs/en.json";
@@ -28,8 +30,10 @@ import {
 
 export default function ServerDetailOverview({
 	server_id,
+	recorded,
 }: {
 	server_id: string;
+	recorded?: { at?: number; metrics: Record<string, number>; elapsed: string; server?: NezhaServer };
 }) {
 	const { t } = useTranslation();
 	const navigate = useNavigate();
@@ -69,12 +73,23 @@ export default function ServerDetailOverview({
 		return <ServerDetailLoading />;
 	}
 
-	const server = nezhaWsData.servers.find((s) => s.id === Number(server_id));
+	const server = recorded?.server ?? nezhaWsData.servers.find((s) => s.id === Number(server_id));
 
 	if (!server) {
 		return <ServerDetailLoading />;
 	}
 
+	const info = formatNezhaInfo(nezhaWsData.now, server);
+	const snapshot = recorded ? {
+		...info, online: false, uptime: recorded.metrics.uptime ?? 0,
+		load_1: recorded.metrics.load1?.toFixed(2) ?? "未知",
+		load_5: recorded.metrics.load5?.toFixed(2) ?? "未知",
+		load_15: recorded.metrics.load15?.toFixed(2) ?? "未知",
+		net_out_transfer: recorded.metrics.net_out_transfer ?? 0,
+		net_in_transfer: recorded.metrics.net_in_transfer ?? 0,
+		last_active_time_string: recorded.at ? dayjs(recorded.at).format("YYYY-MM-DD HH:mm:ss") : "",
+		boot_time_string: recorded.server ? info.boot_time_string : recorded.at && recorded.metrics.uptime !== undefined ? dayjs(recorded.at - recorded.metrics.uptime * 1000).format("YYYY-MM-DD HH:mm:ss") : "",
+	} : info;
 	const {
 		name,
 		online,
@@ -95,7 +110,7 @@ export default function ServerDetailOverview({
 		net_in_transfer,
 		last_active_time_string,
 		boot_time_string,
-	} = formatNezhaInfo(nezhaWsData.now, server);
+	} = snapshot;
 
 	const customBackgroundImage =
 		(window.CustomBackgroundImage as string) !== ""
@@ -106,6 +121,7 @@ export default function ServerDetailOverview({
 
 	return (
 		<div
+			data-offline-summary={recorded ? true : undefined}
 			className={cn({
 				"bg-card/70 p-4 rounded-[10px]": customBackgroundImage,
 			})}
@@ -138,7 +154,7 @@ export default function ServerDetailOverview({
 						</section>
 					</CardContent>
 				</Card>
-				{online && (
+				{(online || recorded?.metrics.uptime !== undefined) && (
 					<Card className="rounded-[10px] bg-transparent border-none shadow-none ring-0">
 						<CardContent className="px-1.5 py-1">
 							<section className="flex flex-col items-start gap-0.5">
@@ -339,7 +355,7 @@ export default function ServerDetailOverview({
 				) : null}
 			</section>
 			<section className="flex flex-wrap gap-2 mt-1">
-				{server?.state.temperatures &&
+				{(!recorded || recorded.server) && server?.state.temperatures &&
 					server?.state.temperatures.length > 0 && (
 						<section className="flex flex-wrap gap-2 ml-1.5">
 							<Accordion type="single" collapsible className="w-fit">
@@ -382,15 +398,11 @@ export default function ServerDetailOverview({
 							<p className="text-xs text-muted-foreground">
 								{t("serverDetail.lastActive")}
 							</p>
-							<NumericText
-								value={
-									last_active_time_string ? last_active_time_string : "N/A"
-								}
-								className="text-xs"
-							/>
+							{recorded?.at ? <time className="text-xs" dateTime={new Date(recorded.at).toISOString()}>{last_active_time_string}</time> : <NumericText value={last_active_time_string || "N/A"} className="text-xs" />}
 						</section>
 					</CardContent>
 				</Card>
+				{recorded && <Card className="rounded-[10px] bg-transparent border-none shadow-none ring-0"><CardContent className="px-1.5 py-1"><section className="flex flex-col items-start gap-0.5"><p className="text-xs text-muted-foreground">距最后上报（离线时长）</p><p className="text-xs">{recorded.elapsed}</p></section></CardContent></Card>}
 			</section>
 		</div>
 	);
