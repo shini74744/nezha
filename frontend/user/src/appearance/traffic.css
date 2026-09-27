@@ -1,0 +1,9 @@
+
+/* Match 1jindut.js without touching unrelated cards or their native fallbacks. */
+.nz-traffic { width:100%; min-width:0; margin-top:-6px; font-size:10px; color:#fff; }
+.nz-traffic-labels { display:flex; justify-content:space-between; align-items:center; }
+.nz-traffic-values { display:flex; align-items:baseline; gap:4px; }
+.nz-traffic-used { font-weight:500; }
+.nz-traffic-info { font-size:10px; color:#fff; transition:opacity 250ms; }
+.nz-traffic-track { position:relative; height:6px; margin-top:1px; border-radius:9999px; background-color:rgba(100,116,139,.15); }
+.nz-traffic-fill { position:absolute; top:0; left:0; bottom:0; max-width:100%; border-radius:9999px; transition:width .5s ease-in-out,background-color .3s ease; box-shadow:inset 0 0 4px rgba(0,0,0,.1); }

@@ -208,7 +208,7 @@ func TestReportSystemState_CurrentCleanupClearsOnlineVisibility(t *testing.T) {
 func TestReportSystemStatePersistsCompleteSnapshotBeforeReceipt(t *testing.T) {
 	reporter := requestTaskSecurityServer(9, 200, "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
 	setupRequestTaskSecurityFixture(t, []*model.Server{reporter}, nil, map[uint64]model.UserInfo{200: {Role: model.RoleMember}}, map[string]uint64{"snapshot-secret": 200})
-	require.NoError(t, singleton.DB.AutoMigrate(&model.ServerSnapshot{}))
+	require.NoError(t, singleton.DB.AutoMigrate(&model.ServerSnapshot{}, &model.PlanTrafficCheckpoint{}, &model.PlanTrafficDay{}))
 	current, ok := singleton.ServerShared.Get(9)
 	require.True(t, ok)
 	current.SetHost(&model.Host{Platform: "ubuntu", Version: "2.3.5", CPU: []string{"EPYC"}, MemTotal: 8 << 30, DiskTotal: 100 << 30})

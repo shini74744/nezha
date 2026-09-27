@@ -43,8 +43,12 @@ func PersistServerSnapshot(id uint64, uuid string, sample model.RecordedServerSt
 		if result.RowsAffected == 0 {
 			return nil
 		}
-		return tx.Exec(`DELETE FROM server_snapshots WHERE server_id=? AND recorded_at <
-   (SELECT MAX(recorded_at)-60000 FROM server_snapshots WHERE server_id=?)`, id, id).Error
+		if err := tx.Exec(`DELETE FROM server_snapshots WHERE server_id=? AND recorded_at <
+   (SELECT MAX(recorded_at)-60000 FROM server_snapshots WHERE server_id=?)`, id, id).Error; err != nil {
+			return err
+		}
+		// Atomically commit the report and both traffic directions in one disk transaction.
+		return recordPlanTrafficTx(tx, id, uuid, sample)
 	})
 }
 

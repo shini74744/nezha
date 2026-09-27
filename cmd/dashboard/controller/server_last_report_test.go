@@ -10,7 +10,7 @@ import (
 
 func TestLastReportVisibilityAndHistoryLimit(t *testing.T) {
 	setupServerGroupVisibilityFixture(t)
-	require.NoError(t, singleton.DB.AutoMigrate(&model.ServerSnapshot{}))
+	require.NoError(t, singleton.DB.AutoMigrate(&model.ServerSnapshot{}, &model.PlanTrafficCheckpoint{}, &model.PlanTrafficDay{}))
 	old := singleton.TSDBShared
 	singleton.TSDBShared = nil
 	t.Cleanup(func() { singleton.TSDBShared = old })
@@ -44,7 +44,7 @@ func TestLastReportVisibilityAndHistoryLimit(t *testing.T) {
 
 func TestLastReportSnapshotSurvivesOutageAndRedactsHost(t *testing.T) {
 	setupServerGroupVisibilityFixture(t)
-	require.NoError(t, singleton.DB.AutoMigrate(&model.ServerSnapshot{}))
+	require.NoError(t, singleton.DB.AutoMigrate(&model.ServerSnapshot{}, &model.PlanTrafficCheckpoint{}, &model.PlanTrafficDay{}))
 	sample := model.RecordedServerState{At: 100000, Host: &model.Host{Platform: "ubuntu", PlatformVersion: "24.04", Version: "2.3.5", MemTotal: 8 << 30, DiskTotal: 100 << 30}, State: &model.HostState{MemUsed: 2 << 30, DiskUsed: 25 << 30}}
 	require.NoError(t, singleton.PersistServerSnapshot(1, "public", sample))
 	for _, viewer := range []*model.User{nil, {Common: model.Common{ID: 200}, Role: model.RoleMember}, {Common: model.Common{ID: 1}, Role: model.RoleAdmin}} {

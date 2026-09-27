@@ -169,16 +169,8 @@ describe("native data widgets", () => {
 				json: async () => ({
 					success: true,
 					data: {
-						cycle_transfer_stats: {
-							"1": {
-								name: "quota",
-								max: 1000,
-								from: "2026-09-01",
-								to: "2026-10-01",
-								transfer: { "11": 100, "12": 900 },
-								next_update: {},
-							},
-						},
+                        "11": {name:"quota",max:1000,from:"2026-09-01",to:"2026-10-01",direction:"3",used:100},
+                        "12": {name:"quota",max:1000,from:"2026-09-01",to:"2026-10-01",direction:"1",used:900},
 					},
 				}),
 			})),
@@ -195,6 +187,7 @@ describe("native data widgets", () => {
 		await waitFor(() =>
 			expect(screen.getAllByRole("progressbar")).toHaveLength(2),
 		);
+        expect(fetch).toHaveBeenCalledWith("/api/v1/server-traffic");
 		expect(screen.getAllByRole("progressbar")[0]).toHaveAttribute(
 			"aria-valuenow",
 			"10",

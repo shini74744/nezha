@@ -13,15 +13,15 @@ function pair(overrides:Record<string,boolean>={},master=true){
 describe("independent speed widgets",()=>{
  it("uses separate units, colors and animations for each location",()=>{
   pair({bits:false,color:false,animation:false});
-  expect(screen.getByTestId("card")).toHaveTextContent("32.00 MiB/s");
-  const card=screen.getByTestId("card").querySelector("span")!,overview=screen.getByTestId("overview").querySelector("span")!;
-  expect(card.style.color).toBe("");expect(card.className).toBe("");
+  expect(screen.getByTestId("card")).toHaveTextContent("original card");
+  const overview=screen.getByTestId("overview").querySelector("span")!;
+  expect(screen.getByTestId("card").querySelector("[data-native-speed]")).toBeNull();
   expect(overview.textContent).toBe("960Mbps");expect(overview.style.color).not.toBe("");
   expect(overview.className).toContain("nz-overview-speed-5-dl");
  });
  it("can turn off all overview options without changing card settings",()=>{
   pair({overviewBits:false,overviewColor:false,overviewAnimation:false});
-  const card=screen.getByTestId("card").querySelector("span")!,overview=screen.getByTestId("overview").querySelector("span")!;
+  const card=screen.getByTestId("card").querySelector("span")!,overview=screen.getByTestId("overview");
   expect(card.textContent).toBe("256Mbps");expect(card.style.color).not.toBe("");expect(card.className).toContain("nz-upload-boost-3");
   expect(overview.textContent).toBe("120.00 MiB/s");expect(overview.style.color).toBe("");expect(overview.className).toBe("");
  });

@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { normalizeNote, chineseNote } from "./public-note-compat"
 
 import i18n from "./i18n"
 
@@ -18,24 +19,42 @@ export const PublicNoteSchema = z.object({
             autoRenewal: z.string().optional(),
             cycle: z.string().optional(),
             amount: z.string().optional(),
-        })
+        }).passthrough()
         .optional(),
     planDataMod: z
         .object({
             bandwidth: z.string().optional(),
             trafficVol: z.string().optional(),
             trafficType: z.string().optional(),
+            resetDay: z.string().optional(),
+            networkRoutes: z.object({telecom:z.string().optional(),mobile:z.string().optional(),unicom:z.string().optional(),other:z.string().optional()}).passthrough().optional(),
             IPv4: z.string().optional(),
             IPv6: z.string().optional(),
             networkRoute: z.string().optional(),
             extra: z.string().optional(),
-        })
+        }).passthrough()
         .optional(),
-})
+}).passthrough()
 
 export type PublicNote = z.infer<typeof PublicNoteSchema>
 
 export const defaultPublicNote: PublicNote = {}
+export function parseEditableNote(raw:string):PublicNote {
+ if(!raw.trim())return {};
+ const obj=normalizeNote(JSON.parse(raw));
+ if(!("billingDataMod" in obj)&&!("planDataMod" in obj)&&Object.keys(obj).length)throw Error("这段原始文本无法识别为套餐字段，请继续使用原始文本编辑");
+ return PublicNoteSchema.parse(obj);
+}
+export function publicNoteRawText(raw?:string):string {
+ if(!raw?.trim())return "";
+ try{return chineseNote(parseEditableNote(raw))}catch{return raw}
+}
+export function serializePublicNote(note:PublicNote):string {
+ const normalized=normalizeNote(note);
+ if(normalized.planDataMod?.networkRoutes)
+  normalized.planDataMod.networkRoute=["telecom","mobile","unicom","other"].map(k=>normalized.planDataMod.networkRoutes[k]?.trim()).filter(Boolean).join(",");
+ return JSON.stringify(normalized);
+}
 
 export const isValidISOLike = (v: string) => {
     if (!v) return true
@@ -57,7 +76,7 @@ export const normalizeISO = (v?: string) => {
 export const parsePublicNote = (s?: string): PublicNote => {
     if (!s) return defaultPublicNote
     try {
-        const obj = JSON.parse(s)
+        const obj = normalizeNote(JSON.parse(s))
         const parsed = PublicNoteSchema.safeParse(obj)
         if (parsed.success) {
             return parsed.data
@@ -78,7 +97,7 @@ export const validatePublicNote = (pn: PublicNote) => {
     if (pn.billingDataMod?.cycle && !/^(Day|Week|Month|Year)$/i.test(pn.billingDataMod.cycle)) {
         errors["billing.cycle"] = i18n.t("Validation.MustBeDayWeekMonthYear")
     }
-    if (pn.planDataMod?.trafficType && !/^(1|2)$/.test(pn.planDataMod.trafficType)) {
+    if (pn.planDataMod?.trafficType && !/^(0|1|2|3)$/.test(pn.planDataMod.trafficType)) {
         errors["plan.trafficType"] = i18n.t("Validation.MustBe1Or2")
     }
     if (pn.planDataMod?.IPv4 !== undefined && !/^(0|1)$/.test(pn.planDataMod.IPv4)) {
@@ -87,6 +106,8 @@ export const validatePublicNote = (pn: PublicNote) => {
     if (pn.planDataMod?.IPv6 !== undefined && !/^(0|1)$/.test(pn.planDataMod.IPv6)) {
         errors["plan.IPv6"] = i18n.t("Validation.MustBe0Or1")
     }
+
+    if (pn.planDataMod?.resetDay && !/^(?:[1-9]|[12][0-9]|3[01])$/.test(pn.planDataMod.resetDay)) errors["plan.resetDay"]="重置日必须为 1–31"
 
     // Date validity checks
     if (pn.billingDataMod?.startDate && !isValidISOLike(pn.billingDataMod.startDate)) {
@@ -103,11 +124,10 @@ export const validatePublicNote = (pn: PublicNote) => {
  * Detect default mode from string: JSON matching schema -> "structured"; otherwise "raw".
  */
 export const detectPublicNoteMode = (s?: string): "structured" | "raw" => {
-    if (!s) return "raw"
+    if (!s?.trim()) return "structured"
     try {
-        const obj = JSON.parse(s)
-        const parsed = PublicNoteSchema.strict().safeParse(obj)
-        return parsed.success ? "structured" : "raw"
+        parseEditableNote(s)
+        return "structured"
     } catch {
         return "raw"
     }

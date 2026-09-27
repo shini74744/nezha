@@ -509,11 +509,9 @@
       "cacheDuration": 21600000,
       "bottomThreshold": 24,
       "ipApiUrls": [
-        "https://ipapi.co/json/",
-        "https://ipinfo.io/json",
-        "https://ip-api.com/json/?fields=status,message,query,country,regionName,city,as,isp"
+        "https://ipinfo.io/json"
       ],
-      "fallbackUrl": "https://ip-api.com/json/?fields=status,message,query,country,regionName,city,as,isp",
+      "fallbackUrl": "",
       "queryTimeout": 4000,
       "fallbackTimeout": 2500,
       "networkEnabled": true,
