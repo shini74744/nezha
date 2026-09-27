@@ -79,7 +79,11 @@ func updateServer(c *gin.Context) (any, error) {
 	s.Name = sf.Name
 	s.DisplayIndex = sf.DisplayIndex
 	s.Note = sf.Note
-	s.PublicNote = sf.PublicNote
+	publicNote, err := importServerLogos(c, sf.PublicNote)
+	if err != nil {
+		return nil, err
+	}
+	s.PublicNote = publicNote
 	s.HideForGuest = sf.HideForGuest
 	s.EnableDDNS = sf.EnableDDNS
 	s.DDNSProfiles = sf.DDNSProfiles

@@ -72,6 +72,8 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	registerAgentcompatRoutes(r)
 
 	api := r.Group("api/v1")
+	api.GET("/logo/assets/:name", serveLogoAsset)
+	api.HEAD("/logo/assets/:name", serveLogoAsset)
 	api.POST("/login", authMiddleware.LoginHandler)
 	api.POST("/frontend-auth", frontendPasswordLogin)
 	api.GET("/oauth2/:provider", commonHandler(oauth2redirect))
@@ -132,6 +134,7 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	auth.POST("/batch-delete/server", restScopeMiddleware(model.ScopeInventoryDelete), commonHandler(batchDeleteServer))
 	auth.POST("/batch-move/server", restScopeMiddleware(model.ScopeServerWrite), commonHandler(batchMoveServer))
 	auth.POST("/force-update/server", restScopeMiddleware(model.ScopeServerWrite), commonHandler(forceUpdateServer))
+	auth.POST("/logo/store", restScopeMiddleware(model.ScopeAdminAll), adminHandler(storeWebsiteLogo))
 	auth.POST("/logo/fetch", restScopeMiddleware(model.ScopeAdminAll), adminHandler(fetchWebsiteLogo))
 	auth.POST("/server/order", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateServerOrder))
 	auth.POST("/server/reassign-ids", restScopeMiddleware(model.ScopeAdminAll), adminHandler(reassignServerIDs))

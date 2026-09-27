@@ -4,14 +4,15 @@ package logofetch
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"errors"
+	"fmt"
 	"golang.org/x/net/html"
 	"io"
 	"net"
 	"net/http"
 	"net/netip"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 )
@@ -23,6 +24,8 @@ var ErrFetch = errors.New("无法获取可用图标，请检查网址，或手�
 type Result struct {
 	Image  string `json:"image"`
 	Source string `json:"source"`
+	Width  int    `json:"width"`
+	Height int    `json:"height"`
 }
 
 var blocked = []string{"0.0.0.0/8", "10.0.0.0/8", "100.64.0.0/10", "127.0.0.0/8", "169.254.0.0/16", "172.16.0.0/12", "192.0.0.0/24", "192.0.2.0/24", "192.168.0.0/16", "198.18.0.0/15", "198.51.100.0/24", "203.0.113.0/24", "224.0.0.0/4", "240.0.0.0/4", "2001::/23", "2001:db8::/32", "2002::/16", "3fff::/20"}
@@ -124,28 +127,24 @@ func read(ctx context.Context, c *http.Client, u *url.URL) ([]byte, *url.URL, er
 	}
 	return b, resp.Request.URL, nil
 }
-func imageData(b []byte) string {
-	mime := http.DetectContentType(b)
-	switch mime {
-	case "image/png", "image/jpeg", "image/gif", "image/webp", "image/x-icon":
-	default:
-		return ""
-	}
-	return "data:" + mime + ";base64," + base64.StdEncoding.EncodeToString(b)
-}
+func imageData(b []byte) string { return InspectImage(b, "").Image }
 func candidates(b []byte, base *url.URL) []*url.URL {
-	var out []*url.URL
+	type candidate struct {
+		u    *url.URL
+		size int
+	}
+	var list []candidate
 	seen := map[string]bool{}
-	add := func(href string) {
+	add := func(href string, size int) {
 		u, e := url.Parse(strings.TrimSpace(href))
-		if e != nil {
+		if e != nil || href == "" {
 			return
 		}
 		u = base.ResolveReference(u)
 		u, e = Normalize(u.String())
-		if e == nil && !seen[u.String()] && len(out) < 10 {
+		if e == nil && !seen[u.String()] && len(list) < 20 {
 			seen[u.String()] = true
-			out = append(out, u)
+			list = append(list, candidate{u, size})
 		}
 	}
 	z := html.NewTokenizer(bytes.NewReader(b))
@@ -157,35 +156,57 @@ func candidates(b []byte, base *url.URL) []*url.URL {
 		if tt != html.StartTagToken && tt != html.SelfClosingTagToken {
 			continue
 		}
-		token := z.Token()
-		if token.Data != "link" {
+		t := z.Token()
+		if t.Data != "link" {
 			continue
 		}
-		rel, href := "", ""
-		for _, a := range token.Attr {
+		rel, href, sizes := "", "", ""
+		for _, a := range t.Attr {
 			switch a.Key {
 			case "rel":
 				rel = strings.ToLower(a.Val)
 			case "href":
 				href = a.Val
+			case "sizes":
+				sizes = a.Val
+			}
+		}
+		size := 0
+		for _, s := range strings.Fields(sizes) {
+			var w, h int
+			if _, e := fmt.Sscanf(s, "%dx%d", &w, &h); e == nil {
+				size = max(size, min(w, h))
 			}
 		}
 		for _, r := range strings.Fields(rel) {
 			if r == "icon" || r == "apple-touch-icon" || r == "apple-touch-icon-precomposed" {
-				add(href)
+				if size == 0 && r != "icon" {
+					size = 180
+				}
+				add(href, size)
 				break
 			}
 		}
 	}
-	add("/favicon.ico")
-	add("/apple-touch-icon.png")
+	sort.SliceStable(list, func(i, j int) bool { return list[i].size > list[j].size })
+	if len(list) > 8 {
+		list = list[:8]
+	}
+	add("/apple-touch-icon.png", 0)
+	add("/favicon.ico", 0)
+	out := make([]*url.URL, 0, len(list))
+	for _, c := range list {
+		out = append(out, c.u)
+	}
 	return out
 }
 func fetch(ctx context.Context, c *http.Client, u *url.URL, direct bool) (Result, error) {
 	b, final, e := read(ctx, c, u)
+	best := Result{}
 	if e == nil {
-		if data := imageData(b); data != "" {
-			return Result{data, final.String()}, nil
+		best = InspectImage(b, final.String())
+		if best.Image != "" {
+			return best, nil
 		}
 	}
 	if direct {
@@ -198,12 +219,17 @@ func fetch(ctx context.Context, c *http.Client, u *url.URL, direct bool) (Result
 		if ctx.Err() != nil {
 			break
 		}
-		b, source, e := read(ctx, c, candidate)
-		if e == nil {
-			if data := imageData(b); data != "" {
-				return Result{data, source.String()}, nil
-			}
+		data, source, e := read(ctx, c, candidate)
+		if e != nil {
+			continue
 		}
+		best = better(best, InspectImage(data, source.String()))
+		if score(best) >= 64 {
+			return best, nil
+		}
+	}
+	if best.Image != "" {
+		return best, nil
 	}
 	return Result{}, ErrFetch
 }
@@ -232,9 +258,10 @@ func Fetch(ctx context.Context, raw string, direct bool) (Result, error) {
 	first, stop := context.WithTimeout(ctx, 12*time.Second)
 	r, e := fetch(first, c, u, direct)
 	stop()
-	if e == nil {
+	if e == nil && (direct || score(r) >= 64) {
 		return r, nil
 	}
+	best := r
 	if direct {
 		return Result{}, ErrFetch
 	}
@@ -244,8 +271,14 @@ func Fetch(ctx context.Context, raw string, direct bool) (Result, error) {
 		}
 		r, e = fetch(ctx, c, cacheURL, true)
 		if e == nil {
-			return r, nil
+			best = better(best, r)
+			if score(best) >= 64 {
+				return best, nil
+			}
 		}
+	}
+	if best.Image != "" {
+		return best, nil
 	}
 	return Result{}, ErrFetch
 }

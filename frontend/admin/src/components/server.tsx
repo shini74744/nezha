@@ -51,7 +51,7 @@ import { chineseNote, patchRoutes, readRoutes, routeFields } from "@/lib/public-
 import OtherRoutesEditor from "./OtherRoutesEditor"
 import CarrierColorPicker from "./CarrierColorPicker"
 import ProviderLogoEditor from "./ProviderLogoEditor"
-import LogoEditor from "./LogoEditor"
+import SettingHelp from "./SettingHelp"
 import LinkTagsEditor from "./LinkTagsEditor"
 import { conv } from "@/lib/utils"
 import { asOptionalField } from "@/lib/utils"
@@ -955,8 +955,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                     <LinkTagsEditor note={publicNoteObj} onChange={setPublicNoteObj}/>
                                                     {publicNoteErrors["plan.linkTags"]&&<p className="text-xs text-destructive">{publicNoteErrors["plan.linkTags"]}</p>}
                                                     <fieldset className="space-y-2 sm:col-span-2">
-                                                        <legend className="text-xs font-medium">网络路由</legend>
-                                                        <p className="text-xs text-muted-foreground">按电信、移动、联通排序；同一运营商的多条线路用逗号分隔。无法确定的旧线路保留在“其他运营商”，可选择地区和 Logo。</p>
+                                                        <legend className="text-xs font-medium">网络路由<SettingHelp label="网络路由">按电信、移动、联通排序；同一运营商的多条线路用逗号分隔。无法确定的旧线路保留在“其他运营商”，可选择地区和 Logo。</SettingHelp></legend>
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                             {routeFields.filter(route=>route.key!=="other").map(route => (
                                                                 <div key={route.key} className="space-y-1">
@@ -967,9 +966,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                                     <Input id={"route-"+route.key} placeholder={route.placeholder}
                                                                         value={readRoutes(publicNoteObj.planDataMod)[route.key]}
                                                                         onChange={e=>setPublicNoteObj(prev=>patchRoutes(prev,route.key,e.target.value))}/>
-                                                                    <details className="text-xs"><summary className="cursor-pointer text-muted-foreground">更换 Logo</summary>
-                                                                     <LogoEditor label={route.label} builtIn value={publicNoteObj.planDataMod?.networkRouteLogos?.[route.key]||{}} onChange={value=>setPublicNoteObj(prev=>({...prev,planDataMod:{...prev.planDataMod,networkRouteLogos:{...prev.planDataMod?.networkRouteLogos,[route.key]:value}}}))}/>
-                                                                    </details>
+
                                                                 </div>
                                                             ))}
                                                             <OtherRoutesEditor note={publicNoteObj} onChange={setPublicNoteObj}/>

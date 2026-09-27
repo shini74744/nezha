@@ -32,7 +32,8 @@ describe("global carrier notes",()=>{
  it("rejects malformed extra entries and unsafe logo protocols",()=>{
   expect(()=>parseEditableNote('{"planDataMod":{"networkRouteEntries":[{"carrier":"ntt","text":12}]}}')).toThrow();
   for(const url of ["javascript:alert(1)","http://a.test/a","data:image/svg+xml;base64,PHN2Zz4=","https://user:pass@a.test/a"])expect(safeLogoSource(url)).toBe("");
-  expect(safeLogoSource("https://example.com/a.png")).toBe("https://example.com/a.png");
+  expect(safeLogoSource("https://example.com/a.png")).toBe("");
+  expect(safeLogoSource("/api/v1/logo/assets/"+"a".repeat(64)+".svg")).toBe("/api/v1/logo/assets/"+"a".repeat(64)+".svg");
  });
  it("ships unique verified logos and a complete region selector",()=>{
   expect(carriers.length).toBeGreaterThanOrEqual(35);expect(new Set(carriers.map(c=>c.id)).size).toBe(carriers.length);

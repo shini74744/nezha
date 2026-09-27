@@ -1,3 +1,4 @@
+import SettingHelp from "./SettingHelp";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {type PublicNote} from "@/lib/public-note";
@@ -6,8 +7,7 @@ export default function LinkTagsEditor({note,onChange}:{note:PublicNote;onChange
  const tags=note.planDataMod?.linkTags||[];
  const update=(linkTags:LinkTag[])=>onChange({...note,planDataMod:{...note.planDataMod,linkTags}});
  return <fieldset className="space-y-2 sm:col-span-2" data-link-tags-editor>
-  <legend className="text-xs font-medium">链接标签</legend>
-  <p className="text-xs text-muted-foreground">显示在服务器名称、价格和剩余天数下方；点击在新标签页打开网址，不进入详情。最多 20 个。</p>
+  <legend className="text-xs font-medium">链接标签<SettingHelp label="链接标签">显示在服务器名称、价格和剩余天数下方；点击在新标签页打开网址，不进入详情。最多 20 个。</SettingHelp></legend>
   {tags.map((tag,index)=><div key={index} className="space-y-1">
    <div className="grid grid-cols-1 sm:grid-cols-[1fr_2fr_auto] gap-2">
     <Input aria-label={"标签名称 "+(index+1)} maxLength={60} placeholder="标签名称，例如 购买 / 官网" value={tag.name}

@@ -73,7 +73,7 @@ func TestFetchPageAndImage(t *testing.T) {
 	})}
 	u, _ := Normalize("example.com")
 	result, e := fetch(context.Background(), c, u, false)
-	if e != nil || !strings.HasPrefix(result.Image, "data:image/png;base64,") || calls != 2 {
+	if e != nil || !strings.HasPrefix(result.Image, "data:image/png;base64,") || calls != 4 {
 		t.Fatal(result.Source, e, calls)
 	}
 }
