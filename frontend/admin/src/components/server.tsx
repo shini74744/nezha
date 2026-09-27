@@ -50,6 +50,8 @@ import {
 import { chineseNote, patchRoutes, readRoutes, routeFields } from "@/lib/public-note-compat"
 import OtherRoutesEditor from "./OtherRoutesEditor"
 import CarrierColorPicker from "./CarrierColorPicker"
+import ProviderLogoEditor from "./ProviderLogoEditor"
+import LogoEditor from "./LogoEditor"
 import LinkTagsEditor from "./LinkTagsEditor"
 import { conv } from "@/lib/utils"
 import { asOptionalField } from "@/lib/utils"
@@ -949,6 +951,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                         )}
                                                     </div>
                                                     </div>
+                                                    <ProviderLogoEditor note={publicNoteObj} onChange={setPublicNoteObj}/>
                                                     <LinkTagsEditor note={publicNoteObj} onChange={setPublicNoteObj}/>
                                                     {publicNoteErrors["plan.linkTags"]&&<p className="text-xs text-destructive">{publicNoteErrors["plan.linkTags"]}</p>}
                                                     <fieldset className="space-y-2 sm:col-span-2">
@@ -964,6 +967,9 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                                     <Input id={"route-"+route.key} placeholder={route.placeholder}
                                                                         value={readRoutes(publicNoteObj.planDataMod)[route.key]}
                                                                         onChange={e=>setPublicNoteObj(prev=>patchRoutes(prev,route.key,e.target.value))}/>
+                                                                    <details className="text-xs"><summary className="cursor-pointer text-muted-foreground">更换 Logo</summary>
+                                                                     <LogoEditor label={route.label} builtIn value={publicNoteObj.planDataMod?.networkRouteLogos?.[route.key]||{}} onChange={value=>setPublicNoteObj(prev=>({...prev,planDataMod:{...prev.planDataMod,networkRouteLogos:{...prev.planDataMod?.networkRouteLogos,[route.key]:value}}}))}/>
+                                                                    </details>
                                                                 </div>
                                                             ))}
                                                             <OtherRoutesEditor note={publicNoteObj} onChange={setPublicNoteObj}/>

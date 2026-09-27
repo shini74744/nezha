@@ -1,4 +1,4 @@
-export type OtherRouteEntry = {carrier:string;text:string;country?:string;name?:string;logo?:string;color?:string;[key:string]:unknown};
+export type OtherRouteEntry = {carrier:string;text:string;country?:string;name?:string;logo?:string;logoOriginal?:string;logoWebsite?:string;color?:string;[key:string]:unknown};
 export function safeLogoSource(value:unknown):string {
  if(typeof value!=="string")return "";
  if(/^data:image\/(?:png|jpeg|webp|gif);base64,[a-z0-9+/=]+$/i.test(value))return value;

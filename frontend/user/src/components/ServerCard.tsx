@@ -15,6 +15,7 @@ import { saveMainPageScrollPosition } from "@/lib/navigation";
 import { cn, formatNezhaInfo, parsePublicNote } from "@/lib/utils";
 import type { NezhaServer } from "@/types/nezha-api";
 import BillingInfo from "./billingInfo";
+import ProviderLogo from "./ProviderLogo";
 import ServerLinkTags from "./ServerLinkTags";
 import PlanInfo from "./PlanInfo";
 import { Badge } from "./ui/badge";
@@ -95,6 +96,7 @@ const brand=useFeature("branding");
 					{showFlag ? <ServerFlag country_code={country_code} /> : null}
 				</div>
 				<div className="relative flex flex-col">
+                    <ProviderLogo value={parsedData?.planDataMod?.providerLogo}/>
 					<p
 						className={cn(
 							"break-normal font-bold tracking-tight",
@@ -257,6 +259,7 @@ const brand=useFeature("branding");
 					{showFlag ? <ServerFlag country_code={country_code} /> : null}
 				</div>
 				<div className="relative flex flex-col">
+                    <ProviderLogo value={parsedData?.planDataMod?.providerLogo}/>
 					<p
 						className={cn(
 							"break-normal font-bold tracking-tight max-w-[108px]",

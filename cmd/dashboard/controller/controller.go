@@ -132,6 +132,7 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	auth.POST("/batch-delete/server", restScopeMiddleware(model.ScopeInventoryDelete), commonHandler(batchDeleteServer))
 	auth.POST("/batch-move/server", restScopeMiddleware(model.ScopeServerWrite), commonHandler(batchMoveServer))
 	auth.POST("/force-update/server", restScopeMiddleware(model.ScopeServerWrite), commonHandler(forceUpdateServer))
+	auth.POST("/logo/fetch", restScopeMiddleware(model.ScopeAdminAll), adminHandler(fetchWebsiteLogo))
 	auth.POST("/server/order", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateServerOrder))
 	auth.POST("/server/reassign-ids", restScopeMiddleware(model.ScopeAdminAll), adminHandler(reassignServerIDs))
 	auth.POST("/server-group", restScopeMiddleware(model.ScopeServerWrite), commonHandler(createServerGroup))

@@ -1,4 +1,5 @@
 import {useState} from "react";
+import LogoEditor from "./LogoEditor";
 import CarrierColorPicker from "./CarrierColorPicker";
 import {carrierColorStyle,defaultCarrierColors,safeCarrierColor} from "../../../shared/carrier-colors";
 import {Button} from "@/components/ui/button";
@@ -33,26 +34,16 @@ function Picker({value,label,choices,onChange,disabled=false}:{value:string;labe
  </Popover>;
 }
 export default function OtherRoutesEditor({note,onChange}:{note:PublicNote;onChange:(note:PublicNote)=>void}){
- const entries=readOtherRoutes(note.planDataMod),[uploadError,setUploadError]=useState("");
+ const entries=readOtherRoutes(note.planDataMod),[logoBusy,setLogoBusy]=useState(false);
  const update=(next:OtherRoute[])=>onChange(patchOtherRoutes(note,next));
  const patch=(index:number,fields:Partial<OtherRoute>)=>update(entries.map((r,i)=>i===index?{...r,...fields}:r));
- const upload=async(file:File|undefined,index:number)=>{
-  setUploadError("");if(!file)return;
-  if(!["image/png","image/jpeg","image/webp","image/gif"].includes(file.type)){
-   setUploadError("Logo 请使用 PNG、JPEG、WebP 或 GIF 图片。");return;
-  }
-  const reader=new FileReader();reader.onerror=()=>setUploadError("Logo 读取失败");
-  reader.onload=()=>{const logo=safeLogoSource(reader.result);if(logo)patch(index,{logo});else setUploadError("Logo 格式无效")};
-  reader.readAsDataURL(file);
- };
  return <div className="contents" data-other-routes-editor>
   <div className="space-y-1 min-w-0" data-other-routes-entry><CarrierColorPicker label="其他运营商" fallback={defaultCarrierColors.other} value={note.planDataMod?.networkRouteColors?.other}
     onChange={color=>onChange({...note,planDataMod:{...note.planDataMod,networkRouteColors:{...note.planDataMod?.networkRouteColors,other:color}}})}/>
-   <Button type="button" variant="outline" className="w-full h-10 justify-start" disabled={entries.length>=50}
+   <Button type="button" variant="outline" className="w-full h-10 justify-start" disabled={logoBusy||entries.length>=50}
     aria-label="添加线路" onClick={()=>update([...entries,{carrier:"",country:"",text:""}])}>添加线路{entries.length?`（${entries.length}）`:""}</Button></div>
   <div className="space-y-3 sm:col-span-2 min-w-0">
 
-  {uploadError&&<p role="alert" className="text-xs text-destructive">{uploadError}</p>}
   {entries.map((entry,index)=>{
    const selected=findCarrier(entry.carrier),country=entry.country||selected?.regions[0]||"";
    const choices:Choice[]=[{value:"",label:"不使用 Logo"},{value:"custom",label:"手动添加运营商"},
@@ -62,24 +53,20 @@ export default function OtherRoutesEditor({note,onChange}:{note:PublicNote;onCha
    return <div key={index} className="space-y-2 rounded-md border p-3" data-other-route-row>
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
      <div className="space-y-1"><span className="text-xs">国家/地区</span>
-      <Picker value={country} label={"国家地区 "+(index+1)} choices={carrierRegions.map(r=>({value:r.code,label:r.label,keywords:r.code}))}
-       onChange={country=>patch(index,{country,carrier:"",name:"",logo:""})}/></div>
+      <Picker disabled={logoBusy} value={country} label={"国家地区 "+(index+1)} choices={carrierRegions.map(r=>({value:r.code,label:r.label,keywords:r.code}))}
+       onChange={country=>patch(index,{country,carrier:"",name:"",logo:"",logoOriginal:"",logoWebsite:""})}/></div>
      <div className="space-y-1"><span className="text-xs">运营商 / Logo</span>
-      <Picker value={entry.carrier} disabled={!country} label={"运营商 Logo "+(index+1)} choices={choices} onChange={carrier=>patch(index,{carrier,logo:"",name:""})}/></div>
+      <Picker value={entry.carrier} disabled={logoBusy||!country} label={"运营商 Logo "+(index+1)} choices={choices} onChange={carrier=>patch(index,{carrier,logo:"",logoOriginal:"",logoWebsite:"",name:""})}/></div>
     </div>
-    {(entry.carrier==="custom"||selected?.reference)&&<div className="space-y-2">
+    {entry.carrier&&<div className="space-y-2">
      {selected?.reference&&<p className="text-xs text-muted-foreground">此条为参考名录，尚未核实 Logo。可以不上传，前台保留线路文字。</p>}
      {entry.carrier==="custom"&&<Input aria-label={"运营商名称 "+(index+1)} placeholder="运营商名称" value={entry.name||""} onChange={e=>patch(index,{name:e.target.value})}/> }
-     <Input aria-label={"Logo 地址 "+(index+1)} placeholder="HTTPS Logo 地址（公开可见，不要填写密钥）" value={entry.logo?.startsWith("data:")?"":entry.logo||""} onChange={e=>patch(index,{logo:e.target.value})}/>
-     <label className="block text-xs">或上传 Logo（PNG/JPEG/WebP/GIF，前台固定尺寸）
-      <input aria-label={"上传 Logo "+(index+1)} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="block mt-1 max-w-full" onChange={e=>{void upload(e.target.files?.[0],index);e.target.value=""}}/></label>
-     {!!entry.logo&&!safeLogoSource(entry.logo)&&<p role="alert" className="text-xs text-destructive">Logo 地址须为 HTTPS；不安全地址不会显示。</p>}
-     <Button type="button" size="sm" variant="outline" onClick={()=>patch(index,{logo:""})}>清除 Logo</Button>
+     <LogoEditor locked={logoBusy} onBusyChange={setLogoBusy} key={entry.carrier+country} label={String(index+1)} value={entry} builtIn={!!selected?.icon} onChange={value=>patch(index,value)}/>
     </div>}
     <CarrierColorPicker label={"线路 "+(index+1)} value={entry.color} fallback={safeCarrierColor(note.planDataMod?.networkRouteColors?.other)||defaultCarrierColors.other} onChange={color=>patch(index,{color})}/>
     <div className="flex gap-2"><Input aria-label={"线路名称 "+(index+1)} placeholder="线路名称，例如 AS2914 / 精品国际线路" value={entry.text}
      onChange={e=>patch(index,{text:e.target.value})}/>
-     <Button type="button" variant="outline" size="sm" aria-label={"删除线路 "+(index+1)} onClick={()=>update(entries.filter((_,i)=>i!==index))}>删除</Button></div>
+     <Button disabled={logoBusy} type="button" variant="outline" size="sm" aria-label={"删除线路 "+(index+1)} onClick={()=>update(entries.filter((_,i)=>i!==index))}>删除</Button></div>
     <div className="flex items-center gap-1 text-xs rounded px-1 py-0.5 w-fit" style={carrierColorStyle(entry.color||note.planDataMod?.networkRouteColors?.other||defaultCarrierColors.other)}>
      {preview&&<img src={preview} style={{backgroundColor:entry.logo?undefined:selected?.logoBackground}} alt="" referrerPolicy="no-referrer" className="h-4 w-6 object-contain rounded-sm bg-stone-700"/>}
      <span>{entry.text||"线路预览"}{country?" · "+regionName(country):""}</span>
