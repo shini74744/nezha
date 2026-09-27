@@ -9,6 +9,7 @@ for(const width of [1366,1920,390])test("legacy speed and traffic parity "+width
  const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
  const config={version:1,enabled:true,features:Object.fromEntries(defs.map((d:any)=>[d.key,{...d.defaults,enabled:["speed","traffic","branding"].includes(d.key)}]))};
  config.features.branding.showNetTransfer=true;
+ let quotaType="limited",max=1024**4;
  const now=Date.now(),servers=[createServer({id:11,name:"主站服务器",last_active:new Date(now).toISOString(),state:{net_out_speed:810/8*1048576,net_in_speed:809/8*1048576}})];
  await page.setViewportSize({width,height:900});
  await page.addInitScript(()=>{localStorage.setItem("inline","0");localStorage.setItem("showMap","0");localStorage.setItem("showServices","0");localStorage.setItem("vite-ui-theme","dark");});
@@ -18,13 +19,14 @@ for(const width of [1366,1920,390])test("legacy speed and traffic parity "+width
   if(u.pathname==="/api/v1/setting")return route.fulfill({json:{success:true,data:{config:{language:"zh-CN",site_name:"原版效果校验",custom_code:"",appearance_config:JSON.stringify(config)}}}});
   if(u.pathname==="/api/v1/server-group")return route.fulfill({json:{success:true,data:[]}});
   if(u.pathname==="/api/v1/profile")return route.fulfill({json:{success:false}});
-  if(u.pathname==="/api/v1/server-traffic")return route.fulfill({json:{success:true,data:{"11":{name:"quota",max:1024**4,from:"2026-09-01",to:"2026-10-01",direction:"3",used:1007.11*1024**3}}}});
+  if(u.pathname==="/api/v1/server-traffic")return route.fulfill({json:{success:true,data:{"11":{name:"quota",quota_type:quotaType,max,from:"2026-09-15T00:00:00+08:00",to:"2026-10-15T00:00:00+08:00",direction:"3",used:1007.11*1024**3}}}});
   if(u.pathname.includes("/service"))return route.fulfill({json:{success:true,data:{services:{},cycle_transfer_stats:{"7":{name:"quota",max:1024**4,from:"2026-09-01",to:"2026-10-01",transfer:{"11":1007.11*1024**3},next_update:{}}}}}});
   if(u.origin!==origin)return route.abort();return route.continue();
  });
  await page.goto("/");
  const traffic=page.locator("[data-native-traffic='11']");
  await expect(traffic).toBeVisible();
+ await expect(traffic.locator(".nz-traffic-info")).toHaveText("2026/09/15 - 2026/10/15");
  const up=page.locator(".nz-overview-rate[data-native-speed='up']");
  await expect(up).toHaveText("810Mbps");await expect(up.locator("svg")).toHaveCount(1);
  await expect(up).toHaveClass(/nz-overview-speed-5/);
@@ -38,9 +40,20 @@ for(const width of [1366,1920,390])test("legacy speed and traffic parity "+width
  const labels=await traffic.evaluate(el=>({previous:el.previousElementSibling?.textContent,next:el.nextElementSibling?.textContent}));
  expect(labels.previous).toContain("CPU");expect(labels.next).toContain("上传");
  const rect=await traffic.boundingBox();expect(rect!.x).toBeGreaterThanOrEqual(0);expect(rect!.x+rect!.width).toBeLessThanOrEqual(width);
- await expect(traffic.locator(".nz-traffic-info")).toHaveText("本月流量统计",{timeout:7000});
+ await expect(traffic.locator(".nz-traffic-info")).toHaveText("本月上传流量统计",{timeout:7000});
  await page.screenshot({path:"test-results/legacy-parity-"+width+".png",fullPage:true});
  await expect(traffic.locator(".nz-traffic-info")).toHaveText("98.35%",{timeout:6000});
+ for(const [kind,label] of [["unlimited","无限流量"],["unset","未设置配额"]]){
+  quotaType=kind;max=0;
+  await page.reload();await expect(traffic).toBeVisible();
+  await expect(traffic.locator(".nz-traffic-values")).toHaveText("1007.11GB/"+label);
+  await expect(traffic.locator(".nz-traffic-unbounded")).toBeVisible();
+  await expect(traffic.locator("[aria-valuenow],.nz-traffic-fill")).toHaveCount(0);
+  await expect(traffic.locator(".nz-traffic-info")).toHaveText("2026/09/15 - 2026/10/15");
+  const fits=await traffic.locator(".nz-traffic-labels").evaluate(el=>el.scrollWidth<=el.clientWidth+1);
+  expect(fits).toBe(true);
+  await page.screenshot({path:"test-results/quota-"+kind+"-"+width+".png",fullPage:true});
+ }
  config.features.speed.enabled=false;config.features.traffic.enabled=false;
  await page.reload();await expect(page.getByText("主站服务器",{exact:true})).toBeVisible();
  await expect(page.locator("[data-native-speed],[data-native-traffic]")).toHaveCount(0);

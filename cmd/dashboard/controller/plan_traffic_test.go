@@ -20,6 +20,12 @@ func TestPlanTrafficVisibilityAndPAT(t *testing.T) {
 	} {
 		s.Name = fmt.Sprint(s.ID)
 		s.PublicNote = `{"planDataMod":{"trafficVol":"5TB/月","trafficType":"3","resetDay":"15"}}`
+		if s.ID == 2 {
+			s.PublicNote = `{"planDataMod":{"trafficVol":"无限","trafficType":"3"}}`
+		}
+		if s.ID == 3 {
+			s.PublicNote = `{"planDataMod":{"trafficType":"3"}}`
+		}
 		require.NoError(t, singleton.DB.Create(s).Error)
 	}
 	singleton.ServerShared = singleton.NewServerClass()

@@ -123,3 +123,35 @@ func TestPlanTrafficSplitConservesBytes(t *testing.T) {
 	require.EqualValues(t, 7, rows[0].Out+rows[1].Out)
 	require.Equal(t, "2026-09-15", rows[1].Day)
 }
+func TestUnboundedTrafficUsesTheSameLedgerAndCycle(t *testing.T) {
+	s := trafficFixture(t)
+	at := trafficTime("2026-09-20T10:00:00+08:00")
+	require.NoError(t, PersistPlanTraffic(s.ID, s.UUID, trafficSample(at, 1000, 2000, 100)))
+	require.NoError(t, PersistPlanTraffic(s.ID, s.UUID, trafficSample(at.Add(time.Second), 1100, 2200, 101)))
+	for _, quota := range []struct{ text, kind string }{{"无限TB/月", "unlimited"}, {"", "unset"}} {
+		for _, tc := range []struct {
+			direction string
+			used      uint64
+		}{{"1", 100}, {"3", 200}, {"0", 300}, {"2", 300}} {
+			s.PublicNote = `{"billingDataMod":{"startDate":"2026-05-02T10:30:00+08:00"},"planDataMod":{"trafficVol":"` + quota.text + `","trafficType":"` + tc.direction + `"}}`
+			stat, err := QueryPlanTraffic(s, at.Add(time.Second))
+			require.NoError(t, err)
+			require.NotNil(t, stat)
+			require.Equal(t, quota.kind, stat.QuotaType)
+			require.Zero(t, stat.Max)
+			require.Equal(t, tc.used, stat.Used)
+			require.EqualValues(t, 100, stat.In)
+			require.EqualValues(t, 200, stat.Out)
+			require.Equal(t, "2026-09-02T00:00:00+08:00", stat.From.Format(time.RFC3339))
+			next, err := QueryPlanTraffic(s, trafficTime("2026-10-02T00:00:00+08:00"))
+			require.NoError(t, err)
+			require.Zero(t, next.Used)
+		}
+	}
+	s.PublicNote = ""
+	stat, err := QueryPlanTraffic(s, at.Add(time.Second))
+	require.NoError(t, err)
+	require.Equal(t, "unset", stat.QuotaType)
+	require.EqualValues(t, 300, stat.Used)
+	require.Equal(t, 1, stat.ResetDay)
+}

@@ -166,7 +166,7 @@ func QueryPlanTraffic(server *model.Server, now time.Time) (*model.PlanTrafficSt
 		return nil, nil
 	}
 	from, to := model.PlanTrafficCycle(now, plan.ResetDay)
-	stat := &model.PlanTrafficStat{Name: "套餐月流量", From: from, To: to, Max: plan.Max, Direction: plan.Direction, ResetDay: plan.ResetDay}
+	stat := &model.PlanTrafficStat{QuotaType: plan.QuotaType, Name: "套餐月流量", From: from, To: to, Max: plan.Max, Direction: plan.Direction, ResetDay: plan.ResetDay}
 	err = DB.Transaction(func(tx *gorm.DB) error {
 		var last model.PlanTrafficCheckpoint
 		if err := tx.First(&last, "uuid = ?", server.UUID).Error; err != nil {
