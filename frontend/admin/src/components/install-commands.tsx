@@ -127,7 +127,7 @@ export const InstallCommandsMenu = forwardRef<HTMLButtonElement, InstallCommands
     },
 )
 
-const generateCommand = (
+export const generateCommand = (
     type: number,
     { install_host, tls }: ModelSetting,
     { agent_secret }: ModelProfile,
@@ -137,32 +137,29 @@ const generateCommand = (
 
     if (!agent_secret) throw new Error(i18next.t("Results.AgentSecretRequired"))
 
-    const envParts = [
-        `NZ_SERVER=${install_host}`,
-        `NZ_TLS=${tls || false}`,
-        `NZ_CLIENT_SECRET=${agent_secret}`,
-    ]
-    if (uuid) envParts.push(`NZ_UUID=${uuid}`)
-    const env = envParts.join(" ")
-
-    const envWinParts = [
-        `$env:NZ_SERVER="${install_host}";`,
-        `$env:NZ_TLS="${tls || false}";`,
-        `$env:NZ_CLIENT_SECRET="${agent_secret}";`,
-    ]
-    if (uuid) envWinParts.push(`$env:NZ_UUID="${uuid}";`)
-    const env_win = envWinParts.join("")
+    const scriptBase = "https://raw.githubusercontent.com/shini74744/agent/main/scripts"
+    const values: Record<string, string> = {
+        NZ_SERVER: install_host,
+        NZ_TLS: String(tls || false),
+        NZ_CLIENT_SECRET: agent_secret,
+    }
+    if (uuid) values.NZ_UUID = uuid
+    const shellQuote = (value: string) => "'" + value.replace(/'/g, "'\\''") + "'"
+    const psQuote = (value: string) => "'" + value.replace(/'/g, "''") + "'"
+    const env = Object.entries(values)
+        .map(([key, value]) => `${key}=${shellQuote(value)}`)
+        .join(" ")
+    const envWin = Object.entries(values)
+        .map(([key, value]) => `$env:${key}=${psQuote(value)};`)
+        .join("")
 
     switch (type) {
         case OSTypes.Linux:
-        case OSTypes.macOS: {
-            return `curl -L https://raw.githubusercontent.com/nezhahq/scripts/main/agent/install.sh -o agent.sh && chmod +x agent.sh && env ${env} ./agent.sh`
-        }
-        case OSTypes.Windows: {
-            return `${env_win} [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Ssl3 -bor [Net.SecurityProtocolType]::Tls -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls12;set-ExecutionPolicy RemoteSigned;Invoke-WebRequest https://raw.githubusercontent.com/nezhahq/scripts/main/agent/install.ps1 -OutFile C:\\install.ps1;powershell.exe C:\\install.ps1`
-        }
-        default: {
+        case OSTypes.macOS:
+            return `(nz_installer=$(mktemp) && trap \'rm -f "$nz_installer"\' EXIT && curl --fail --location --retry 3 ${scriptBase}/install.sh -o "$nz_installer" && env ${env} sh "$nz_installer")`
+        case OSTypes.Windows:
+            return `${envWin}$ErrorActionPreference=\'Stop\';[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;$nzInstaller=Join-Path $env:TEMP (\'nezha-install-\'+[guid]::NewGuid().ToString(\'N\')+\'.ps1\');try {Invoke-WebRequest -UseBasicParsing ${scriptBase}/install.ps1 -OutFile $nzInstaller;powershell.exe -NoProfile -ExecutionPolicy Bypass -File $nzInstaller;if ($LASTEXITCODE -ne 0) {throw \'Agent installation failed\'}} finally {if (Test-Path -LiteralPath $nzInstaller) {Remove-Item -LiteralPath $nzInstaller -Force}}`
+        default:
             throw new Error(`Unknown OS: ${type}`)
-        }
     }
 }
