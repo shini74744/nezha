@@ -5,7 +5,7 @@ import {parsePublicNote} from "@/lib/utils";
 describe("global carrier badges",()=>{
  it.each([false,true])("renders saved other carriers in order (billing=%s)",billing=>{
   const parsed=parsePublicNote(JSON.stringify({...(billing?{billingDataMod:{}}:{}),planDataMod:{networkRoutes:{telecom:"CN2"},
-   networkRouteEntries:[{carrier:"ntt",text:"AS2914"},{carrier:"custom",name:"My ISP",country:"NZ",text:"私有线路",logo:"https://example.com/logo.png"},{carrier:"unknown",text:"未知线路"},{carrier:"ntt",text:""}]}}))!;
+   networkRouteEntries:[{carrier:"ntt",text:"AS2914"},{carrier:"custom",name:"My ISP",country:"NZ",text:"私有线路",logo:"/api/v1/logo/assets/"+"a".repeat(64)+".png"},{carrier:"unknown",text:"未知线路"},{carrier:"ntt",text:""}]}}))!;
   const {container}=render(<PlanInfo parsedData={parsed}/>);
   const badges=container.querySelectorAll("[data-other-carrier]");
   expect(badges).toHaveLength(3);expect(badges[0]).toHaveTextContent("AS2914");
