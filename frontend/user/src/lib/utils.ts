@@ -254,6 +254,7 @@ interface BillingData {
 }
 
 interface PlanData {
+	networkRoutes?: import("./network-routes").NetworkRoutes;
 	bandwidth: string;
 	trafficVol: string;
 	trafficType: string;
@@ -297,6 +298,7 @@ export function parsePublicNote(publicNote: string): PublicNoteData | null {
 					IPv4: data.planDataMod.IPv4 || "",
 					IPv6: data.planDataMod.IPv6 || "",
 					networkRoute: data.planDataMod.networkRoute || "",
+					...(data.planDataMod.networkRoutes ? { networkRoutes: data.planDataMod.networkRoutes } : {}),
 					extra: data.planDataMod.extra || "",
 				},
 			};
@@ -317,6 +319,7 @@ export function parsePublicNote(publicNote: string): PublicNoteData | null {
 				IPv4: data.planDataMod.IPv4 || "",
 				IPv6: data.planDataMod.IPv6 || "",
 				networkRoute: data.planDataMod.networkRoute || "",
+				...(data.planDataMod.networkRoutes ? { networkRoutes: data.planDataMod.networkRoutes } : {}),
 				extra: data.planDataMod.extra || "",
 			},
 		};
