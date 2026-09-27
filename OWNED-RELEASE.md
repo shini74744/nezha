@@ -15,5 +15,5 @@ If GitHub is unavailable, the operation fails without an upstream fallback. A SH
 - Running these scripts is an explicit installation/reinstallation action. The repository alone does not change already-installed official Agents.
 - Existing official Agents still use their old updater until deliberately reinstalled with this distribution. Do not use the old dashboard upgrade button as a source migration.
 
-Publishing: create a v-prefixed semantic-version tag. The release workflow builds all 18 supported OS/architecture packages and checksum assets, runs tests, and creates a **draft** release. Review the assets and publish the draft to make it the update target.
+Publishing: run `go test -mod=readonly ./...`, then `bash release/build.sh VERSION /absolute/output/path`. This builds all 18 supported OS/architecture packages and checksum assets. Create a v-prefixed semantic-version tag and a draft GitHub release, upload the zip/checksum assets, verify them, then publish. GitHub Actions is not configured because the current publishing credential does not have workflow permission.
 Internal Go module paths remain unchanged for source compatibility; they are not runtime download URLs.
