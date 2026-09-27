@@ -43,7 +43,7 @@ for(const width of [1366,1920,390])test("legacy speed and traffic parity "+width
  await expect(traffic.locator(".nz-traffic-info")).toHaveText("本月上传流量统计",{timeout:7000});
  await page.screenshot({path:"test-results/legacy-parity-"+width+".png",fullPage:true});
  await expect(traffic.locator(".nz-traffic-info")).toHaveText("98.35%",{timeout:6000});
- for(const [kind,label] of [["unlimited","无限流量"],["unset","未设置配额"]]){
+ for(const [kind,label] of [["unlimited","无限流量"],["unset","无限流量"]]){
   quotaType=kind;max=0;
   await page.reload();await expect(traffic).toBeVisible();
   await expect(traffic.locator(".nz-traffic-values")).toHaveText("1007.11GB/"+label);
