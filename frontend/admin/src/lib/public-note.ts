@@ -24,14 +24,14 @@ export const PublicNoteSchema = z.object({
         .optional(),
     planDataMod: z
         .object({
-            providerLogo: z.object({logo:z.string().optional(),logoOriginal:z.string().optional(),logoWebsite:z.string().optional()}).passthrough().optional(),
-            networkRouteLogos: z.record(z.string(),z.object({logo:z.string().optional(),logoOriginal:z.string().optional(),logoWebsite:z.string().optional()}).passthrough()).optional(),
+            providerLogo: z.object({logo:z.string().optional(),logoOriginal:z.string().optional(),logoWebsite:z.string().optional(),logoLibraryId:z.string().optional(),logoLibraryName:z.string().optional(),logoBackground:z.string().optional()}).passthrough().optional(),
+            networkRouteLogos: z.record(z.string(),z.object({logo:z.string().optional(),logoOriginal:z.string().optional(),logoWebsite:z.string().optional(),logoLibraryId:z.string().optional(),logoLibraryName:z.string().optional(),logoBackground:z.string().optional()}).passthrough()).optional(),
             bandwidth: z.string().optional(),
             trafficVol: z.string().optional(),
             trafficType: z.string().optional(),
             resetDay: z.string().optional(),
             linkTags: z.array(z.object({name:z.string().max(60),url:z.string().max(2048)}).passthrough()).max(20).optional(),
-            networkRouteEntries: z.array(z.object({carrier:z.string(),text:z.string(),country:z.string().optional(),name:z.string().optional(),logo:z.string().optional(),logoOriginal:z.string().optional(),logoWebsite:z.string().optional()}).passthrough()).max(50).optional(),
+            networkRouteEntries: z.array(z.object({carrier:z.string(),text:z.string(),country:z.string().optional(),name:z.string().optional(),logo:z.string().optional(),logoOriginal:z.string().optional(),logoWebsite:z.string().optional(),logoLibraryId:z.string().optional(),logoLibraryName:z.string().optional(),logoBackground:z.string().optional()}).passthrough()).max(50).optional(),
             networkRouteColors: z.object({telecom:z.string().optional(),mobile:z.string().optional(),unicom:z.string().optional(),other:z.string().optional()}).passthrough().optional(),
             networkRoutes: z.object({telecom:z.string().optional(),mobile:z.string().optional(),unicom:z.string().optional(),other:z.string().optional()}).passthrough().optional(),
             IPv4: z.string().optional(),

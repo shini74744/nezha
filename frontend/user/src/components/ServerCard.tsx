@@ -1,9 +1,8 @@
-import {NativeName,NativeSpeed,NativeTraffic} from "@/appearance/widgets";
+import {NativeSpeed,NativeTraffic} from "@/appearance/widgets";
 import {useFeature} from "@/appearance/context";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import ServerFlag from "@/components/ServerFlag";
 import ServerUsageBar from "@/components/ServerUsageBar";
 import { formatBytes } from "@/lib/format";
 import {
@@ -15,7 +14,7 @@ import { saveMainPageScrollPosition } from "@/lib/navigation";
 import { cn, formatNezhaInfo, parsePublicNote } from "@/lib/utils";
 import type { NezhaServer } from "@/types/nezha-api";
 import BillingInfo from "./billingInfo";
-import ProviderLogo from "./ProviderLogo";
+import ServerIdentity from "./ServerIdentity";
 import ServerLinkTags from "./ServerLinkTags";
 import PlanInfo from "./PlanInfo";
 import { Badge } from "./ui/badge";
@@ -51,7 +50,6 @@ const brand=useFeature("branding");
 		navigate(`/server/${serverInfo.id}`);
 	};
 
-	const showFlag = true;
 
 	const customBackgroundImage =
 		(window.CustomBackgroundImage as string) !== ""
@@ -67,7 +65,7 @@ const brand=useFeature("branding");
 	const parsedData = parsePublicNote(public_note);
 
 	return online ? (
-		<Card
+		<Card data-server-card
 			className={cn(
 				"flex cursor-pointer flex-col items-center justify-start gap-3 p-3 transition-all hover:shadow-sm hover:ring-stone-300 md:px-5 dark:hover:ring-stone-700",
 				{
@@ -80,44 +78,8 @@ const brand=useFeature("branding");
 			)}
 			onClick={cardClick}
 		>
-			<section
-				className={cn("grid items-center gap-2", {
-					"lg:w-40": !fixedTopServerName,
-				})}
-				style={{ gridTemplateColumns: "auto auto 1fr" }}
-			>
-				<span className="h-2 w-2 shrink-0 rounded-full bg-green-500 self-center"></span>
-				<div
-					className={cn(
-						"flex items-center justify-center",
-						showFlag ? "min-w-[17px]" : "min-w-0",
-					)}
-				>
-					{showFlag ? <ServerFlag country_code={country_code} /> : null}
-				</div>
-				<div className="relative flex flex-col">
-                    <ProviderLogo value={parsedData?.planDataMod?.providerLogo}/>
-					<p
-						className={cn(
-							"break-normal font-bold tracking-tight",
-							showFlag ? "text-xs " : "text-sm",
-						)}
-					>
-						<NativeName online={online}>{name}</NativeName>
-					</p>
-					<div
-						className={cn("hidden lg:block", {
-							"lg:hidden": fixedTopServerName,
-						})}
-					>
-						{parsedData?.billingDataMod && (
-							<BillingInfo parsedData={parsedData} />
-						)}
-<ServerLinkTags tags={parsedData?.planDataMod?.linkTags}/>
-					</div>
-				</div>
-			</section>
-			<div
+			<ServerIdentity online={online} name={name} country={country_code} parsedData={parsedData} fixed={fixedTopServerName} />
+			<div data-mobile-billing
 				className={cn("flex flex-col items-center gap-1 -mt-2 lg:hidden", {
 					"lg:flex": fixedTopServerName,
 				})}
@@ -157,14 +119,14 @@ const brand=useFeature("branding");
 						</div>
 					)}
 					<div className={"flex w-14 flex-col"}>
-						<p className="text-xs text-muted-foreground">{"CPU"}</p>
+						<p data-metric-label="cpu" className="text-xs text-muted-foreground">{"CPU"}</p>
 						<div className="flex items-center text-xs font-semibold">
 							{cpu.toFixed(2)}%
 						</div>
 						<ServerUsageBar value={cpu} />
 					</div>
 					<div className={"flex w-14 flex-col"}>
-						<p className="text-xs text-muted-foreground">
+						<p data-metric-label="memory" className="text-xs text-muted-foreground">
 							{t("serverCard.mem")}
 						</p>
 						<div className="flex items-center text-xs font-semibold">
@@ -227,7 +189,7 @@ const brand=useFeature("branding");
 			</div>
 		</Card>
 	) : (
-		<Card
+		<Card data-server-card
 			className={cn(
 				"flex flex-col items-center justify-start gap-3 sm:gap-0 p-3 md:px-5 cursor-pointer hover:bg-accent/50 transition-colors",
 				showNetTransfer
@@ -243,44 +205,8 @@ const brand=useFeature("branding");
 			)}
 			onClick={cardClick}
 		>
-			<section
-				className={cn("grid items-center gap-2", {
-					"lg:w-40": !fixedTopServerName,
-				})}
-				style={{ gridTemplateColumns: "auto auto 1fr" }}
-			>
-				<span className="h-2 w-2 shrink-0 rounded-full bg-red-500 self-center"></span>
-				<div
-					className={cn(
-						"flex items-center justify-center",
-						showFlag ? "min-w-[17px]" : "min-w-0",
-					)}
-				>
-					{showFlag ? <ServerFlag country_code={country_code} /> : null}
-				</div>
-				<div className="relative flex flex-col">
-                    <ProviderLogo value={parsedData?.planDataMod?.providerLogo}/>
-					<p
-						className={cn(
-							"break-normal font-bold tracking-tight max-w-[108px]",
-							showFlag ? "text-xs" : "text-sm",
-						)}
-					>
-						<NativeName online={online}>{name}</NativeName>
-					</p>
-					<div
-						className={cn("hidden lg:block", {
-							"lg:hidden": fixedTopServerName,
-						})}
-					>
-						{parsedData?.billingDataMod && (
-							<BillingInfo parsedData={parsedData} />
-						)}
-<ServerLinkTags tags={parsedData?.planDataMod?.linkTags}/>
-					</div>
-				</div>
-			</section>
-			<div
+			<ServerIdentity online={online} name={name} country={country_code} parsedData={parsedData} fixed={fixedTopServerName} />
+			<div data-mobile-billing
 				className={cn("flex flex-col items-center gap-1 lg:hidden", {
 					"lg:flex": fixedTopServerName,
 				})}

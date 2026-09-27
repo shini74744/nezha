@@ -24,6 +24,7 @@ import (
 	"github.com/nezhahq/nezha/cmd/dashboard/rpc"
 	"github.com/nezhahq/nezha/model"
 	"github.com/nezhahq/nezha/pkg/idcodec"
+	"github.com/nezhahq/nezha/pkg/logolibrary"
 	"github.com/nezhahq/nezha/pkg/utils"
 	"github.com/nezhahq/nezha/proto"
 	"github.com/nezhahq/nezha/service/singleton"
@@ -140,6 +141,7 @@ func main() {
 			return nil
 		},
 		func() error { return singleton.InitDBFromPath(dashboardCliParam.DatabaseLocation) },
+		func() error { return logolibrary.Seed(singleton.DB, "data/logos") },
 		singleton.InitTSDB,
 		func() error { return initSystem(serviceSentinelDispatchBus) }); err != nil {
 		log.Fatal(err)

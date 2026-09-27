@@ -27,6 +27,7 @@ import NotificationPage from "./routes/notification"
 import OnlineUserPage from "./routes/online-user"
 import ProfilePage from "./routes/profile"
 import SettingsPage from "./routes/settings"
+import IconSettings from "./routes/icon-settings"
 import AppearancePage from "./routes/appearance"
 import DashboardAppearancePage from "./routes/dashboard-appearance"
 import TransferPage from "./routes/transfer"
@@ -137,6 +138,10 @@ const router = createBrowserRouter([
                         <SettingsPage />
                     </NotificationProvider>
                 ),
+            },
+            {
+                path: "/dashboard/settings/icons",
+                element: <IconSettings />,
             },
             {
                 path: "/dashboard/settings/dashboard-appearance",

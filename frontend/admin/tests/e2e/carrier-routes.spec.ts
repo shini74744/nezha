@@ -53,7 +53,7 @@ test("carrier colors "+width+" inline="+inline+" "+theme+" custom="+custom,async
    const r=await badge.boundingBox();expect(r!.x).toBeGreaterThanOrEqual(0);expect(r!.x+r!.width).toBeLessThanOrEqual(width);
   }
  }
- if(custom){await expect(page.locator("[data-provider-logo]")).toHaveCount(2);for(const img of await page.locator("[data-provider-logo]").all()){await expect(img).toBeVisible();await expect(img).toHaveCSS("object-fit","scale-down");const rect=await img.boundingBox();expect(rect!.width).toBeLessThanOrEqual(80);const box=await img.locator("..").boundingBox();const name=await img.locator("../..").locator("p").first().boundingBox();expect(Math.abs(rect!.x+rect!.width/2-box!.x-box!.width/2)).toBeLessThan(1);expect(rect!.height).toBeLessThanOrEqual(28);expect(rect!.y+rect!.height).toBeLessThanOrEqual(name!.y);await expect.poll(()=>img.evaluate((el:HTMLImageElement)=>el.complete&&el.naturalWidth>0)).toBe(true)}}
+ if(custom){await expect(page.locator("[data-provider-logo]")).toHaveCount(2);for(const img of await page.locator("[data-provider-logo]").all()){await expect(img).toBeVisible();await expect(img).toHaveCSS("object-fit","scale-down");const rect=await img.boundingBox();expect(rect!.width).toBeLessThanOrEqual(width<1024?120:80);const box=await img.locator("..").boundingBox();const heading=await img.locator("..").locator("..").boundingBox();expect(Math.abs(rect!.x+rect!.width/2-box!.x-box!.width/2)).toBeLessThan(1);expect(rect!.height).toBeLessThanOrEqual(width<1024?48:28);if(width>=1024)expect(Math.abs(rect!.x+rect!.width/2-heading!.x-heading!.width/2)).toBeLessThan(1);await expect.poll(()=>img.evaluate((el:HTMLImageElement)=>el.complete&&el.naturalWidth>0)).toBe(true)}}
  else await expect(page.locator("[data-provider-logo]")).toHaveCount(0);
  expect(await page.locator("[data-carrier]").evaluateAll(els=>els.map(e=>e.getAttribute("data-carrier")))).toEqual([...keys,...keys]);
  await expect(page.getByText("old blue label")).toHaveCount(0);
@@ -74,4 +74,3 @@ test("carrier colors "+width+" inline="+inline+" "+theme+" custom="+custom,async
  await popup.close();
  expect(errors).toEqual([]);
 });
-

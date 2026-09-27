@@ -11,7 +11,7 @@ export const routeFields = [
 ] as const;
 export type RouteKey = typeof routeFields[number]["key"];
 export type Routes = Record<RouteKey,string>;
-const logoNames={logo:"Logo地址",logoOriginal:"原始Logo",logoWebsite:"网站地址"};
+const logoNames={logo:"Logo地址",logoOriginal:"原始Logo",logoWebsite:"网站地址",logoLibraryId:"图标库ID",logoLibraryName:"图标名称",logoBackground:"图标底色"};
 const routeNames = Object.fromEntries(routeFields.map(r=>[r.key,r.label]));
 function aliases(input: unknown, names: Record<string,string>): Obj {
  if (!object(input)) throw Error("公开备注中的分组必须是 JSON 对象");
