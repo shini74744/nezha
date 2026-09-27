@@ -72,7 +72,7 @@ describe("legacy traffic parity",()=>{
   expect(v.container.querySelector(".nz-traffic-used")).toHaveTextContent("2.00");
   v.unmount();v.client.clear();const missing=setup(true,9);expect(missing.container).toBeEmptyDOMElement();missing.unmount();missing.client.clear();
  });
- it.each([["unlimited","无限流量"],["unset","未设置配额"]])("keeps a quota-free strip for %s without a fabricated percentage",(kind,label)=>{
+ it.each([["unlimited","无限流量"],["unset","无限流量"]])("keeps a quota-free strip for %s without a fabricated percentage",(kind,label)=>{
   vi.useFakeTimers();const v=setup(true,7,"3");
   act(()=>{
    v.client.setQueryData(["plan-traffic"],(old:any)=>({...old,7:{...old[7],max:0,quota_type:kind}}));

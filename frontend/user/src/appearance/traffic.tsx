@@ -32,7 +32,7 @@ function TrafficRow({serverId,stat,interval}:{serverId:number;stat:Traffic;inter
   },interval);
   return ()=>{clearInterval(timer);clearTimeout(fade);};
  },[interval]);
- const limited=stat.max>0,quotaLabel=stat.quota_type==="unlimited"?"无限流量":"未设置配额";
+ const limited=stat.max>0,quotaLabel="无限流量";
  const used=stat.used,percent=limited?used/stat.max*100:0;
  const color=limited?trafficColor(percent):"#60a5fa",current=formatTraffic(used),total=formatTraffic(stat.max);
  const next=new Date(stat.to);
