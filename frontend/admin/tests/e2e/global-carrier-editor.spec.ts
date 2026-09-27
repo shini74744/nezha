@@ -18,6 +18,13 @@ for(const width of [1366,390])test("global carriers and link tags editor "+width
  await row.getByRole("button",{name:"编辑服务器",exact:true}).click();
  const dialog=page.getByRole("dialog"),editor=dialog.locator("[data-other-routes-editor]");
  await expect(editor.locator("[data-other-routes-entry]")).toContainText("其他运营商");
+ await expect(editor).not.toContainText("目录覆盖");
+ for(const label of ["500G","1T","无限"])await dialog.getByRole("button",{name:label,exact:true}).click();
+ await expect(dialog.getByPlaceholder("1TB/Month")).toHaveValue("无限流量");
+ await dialog.getByRole("button",{name:"500G",exact:true}).click();
+ await dialog.getByLabel("中国电信标签颜色",{exact:true}).fill("#ffee00");
+ await editor.getByLabel("其他运营商标签颜色",{exact:true}).fill("#112233");
+ await editor.getByLabel("线路 1标签颜色",{exact:true}).fill("#55ccaa");
  await expect(editor.getByLabel("线路名称 1",{exact:true})).toHaveValue("旧线路");
  async function choose(label:string,search:string,option:string|RegExp){
   await editor.getByRole("combobox",{name:label,exact:true}).click();
@@ -56,7 +63,7 @@ for(const width of [1366,390])test("global carriers and link tags editor "+width
  await choose("国家地区 3","新西兰","新西兰");await choose("运营商 Logo 3","手动","手动添加运营商");
  await editor.getByLabel("运营商名称 3",{exact:true}).fill("My NZ ISP");
  await editor.getByLabel("线路名称 3",{exact:true}).fill("Custom transit");
- await editor.getByLabel("上传 Logo 3",{exact:true}).setInputFiles({name:"logo.png",mimeType:"image/png",buffer:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII=","base64")});
+ await editor.getByLabel("上传 Logo 3",{exact:true}).setInputFiles({name:"logo.png",mimeType:"image/png",buffer:Buffer.from(await page.evaluate(()=>{const c=document.createElement("canvas");c.width=512;c.height=128;const ctx=c.getContext("2d")!,d=ctx.createImageData(c.width,c.height);let seed=42;for(let i=0;i<d.data.length;i++){seed=(Math.imul(seed,1664525)+1013904223)>>>0;d.data[i]=i%4===3?255:seed>>>24;}ctx.putImageData(d,0,0);return c.toDataURL("image/png").split(",")[1]}),"base64")});
  await expect(editor.locator("[data-other-route-row]").nth(2).locator("img")).toHaveCount(1);
  await editor.getByRole("button",{name:"添加线路",exact:true}).click();
  await choose("国家地区 4","香港",/香港/);
@@ -79,6 +86,9 @@ for(const width of [1366,390])test("global carriers and link tags editor "+width
  await dialog.locator('button[type="submit"]').click();await expect.poll(()=>updates.length).toBe(1);
  const saved=JSON.parse(updates[0].public_note);
  expect(saved.planDataMod.networkRoute).toBe("CN2,AS2914,AS174,Custom transit,AS9304");
+ expect(saved.planDataMod.trafficVol).toBe("500G/月");
+ expect(saved.planDataMod.networkRouteColors).toEqual({telecom:"#ffee00",other:"#112233"});
+ expect(saved.planDataMod.networkRouteEntries[0].color).toBe("#55ccaa");
  expect(saved.unknown).toEqual({keep:true});expect(saved.planDataMod.custom).toBe("keep");
  await row.getByRole("button",{name:"编辑服务器",exact:true}).click();
  await expect(editor.getByRole("combobox",{name:"国家地区 1",exact:true})).toHaveText("日本");

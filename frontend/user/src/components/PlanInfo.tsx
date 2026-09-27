@@ -1,6 +1,7 @@
 import { cn, type PublicNoteData } from "@/lib/utils";
 import { carrierRoutes, readNetworkRoutes } from "@/lib/network-routes";
 import CarrierLogo from "./CarrierLogo";
+import {carrierColorStyle} from "../../../shared/carrier-colors";
 import OtherCarrierBadges from "./OtherCarrierBadges";
 
 export default function PlanInfo({
@@ -59,13 +60,13 @@ export default function PlanInfo({
 				</p>
 			)}
 			{carrierRoutes.map(({ key, label, className }) => networkRoutes[key] && (
-				<p key={key} title={label} data-carrier={key}
+				<p key={key} title={label} data-carrier={key} style={carrierColorStyle(parsedData.planDataMod?.networkRouteColors?.[key])}
 					className={cn("inline-flex items-center gap-[3px] text-[9px] w-fit max-w-full rounded-[5px] px-[3px] py-[1.5px]", className)}>
-					<CarrierLogo carrier={key} />
+					<CarrierLogo carrier={key} color={carrierColorStyle(parsedData.planDataMod?.networkRouteColors?.[key])?.color} />
 					<span className="min-w-0 break-words">{networkRoutes[key]}</span>
 				</p>
 			))}
-			<OtherCarrierBadges entries={parsedData.planDataMod.networkRouteEntries}/>
+			<OtherCarrierBadges entries={parsedData.planDataMod.networkRouteEntries} color={parsedData.planDataMod.networkRouteColors?.other}/>
 			{extraList.map((extra, index) => {
 				return (
 					<p

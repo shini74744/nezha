@@ -156,7 +156,7 @@ export const generateCommand = (
     switch (type) {
         case OSTypes.Linux:
         case OSTypes.macOS:
-            return `(nz_installer=$(mktemp) && trap \'rm -f "$nz_installer"\' EXIT && curl --fail --location --retry 3 ${scriptBase}/install.sh -o "$nz_installer" && env ${env} sh "$nz_installer")`
+            return `curl --fail --location --retry 3 ${scriptBase}/install.sh -o agent.sh && chmod +x agent.sh && env ${env} ./agent.sh`
         case OSTypes.Windows:
             return `${envWin}$ErrorActionPreference=\'Stop\';[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;$nzInstaller=Join-Path $env:TEMP (\'nezha-install-\'+[guid]::NewGuid().ToString(\'N\')+\'.ps1\');try {Invoke-WebRequest -UseBasicParsing ${scriptBase}/install.ps1 -OutFile $nzInstaller;powershell.exe -NoProfile -ExecutionPolicy Bypass -File $nzInstaller;if ($LASTEXITCODE -ne 0) {throw \'Agent installation failed\'}} finally {if (Test-Path -LiteralPath $nzInstaller) {Remove-Item -LiteralPath $nzInstaller -Force}}`
         default:

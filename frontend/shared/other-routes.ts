@@ -1,6 +1,6 @@
-export type OtherRouteEntry = {carrier:string;text:string;country?:string;name?:string;logo?:string;[key:string]:unknown};
+export type OtherRouteEntry = {carrier:string;text:string;country?:string;name?:string;logo?:string;color?:string;[key:string]:unknown};
 export function safeLogoSource(value:unknown):string {
- if(typeof value!=="string"||value.length>24000)return "";
+ if(typeof value!=="string")return "";
  if(/^data:image\/(?:png|jpeg|webp|gif);base64,[a-z0-9+/=]+$/i.test(value))return value;
  try {const u=new URL(value);return u.protocol==="https:"&&!u.username&&!u.password?u.href:""}catch{return ""}
 }

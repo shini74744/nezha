@@ -1,9 +1,11 @@
 import {useState} from "react";
+import CarrierColorPicker from "./CarrierColorPicker";
+import {carrierColorStyle,defaultCarrierColors,safeCarrierColor} from "../../../shared/carrier-colors";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Popover,PopoverContent,PopoverTrigger} from "@/components/ui/popover";
 import {Command,CommandInput,CommandList,CommandEmpty,CommandItem} from "@/components/ui/command";
-import {carriers,curatedCarriers,carrierCoverage,findCarrier} from "../../../shared/carriers";
+import {carriers,findCarrier} from "../../../shared/carriers";
 import {carrierRegions,regionName} from "../../../shared/carrier-regions";
 import {safeLogoSource} from "../../../shared/other-routes";
 import {type PublicNote} from "@/lib/public-note";
@@ -36,20 +38,20 @@ export default function OtherRoutesEditor({note,onChange}:{note:PublicNote;onCha
  const patch=(index:number,fields:Partial<OtherRoute>)=>update(entries.map((r,i)=>i===index?{...r,...fields}:r));
  const upload=async(file:File|undefined,index:number)=>{
   setUploadError("");if(!file)return;
-  if(!["image/png","image/jpeg","image/webp","image/gif"].includes(file.type)||file.size>16384){
-   setUploadError("Logo 请使用不超过 16 KB 的 PNG、JPEG、WebP 或 GIF 小图。");return;
+  if(!["image/png","image/jpeg","image/webp","image/gif"].includes(file.type)){
+   setUploadError("Logo 请使用 PNG、JPEG、WebP 或 GIF 图片。");return;
   }
   const reader=new FileReader();reader.onerror=()=>setUploadError("Logo 读取失败");
   reader.onload=()=>{const logo=safeLogoSource(reader.result);if(logo)patch(index,{logo});else setUploadError("Logo 格式无效")};
   reader.readAsDataURL(file);
  };
  return <div className="contents" data-other-routes-editor>
-  <div className="space-y-1 min-w-0" data-other-routes-entry><span className="text-xs font-medium"><span aria-hidden className="text-stone-500">● </span>其他运营商</span>
+  <div className="space-y-1 min-w-0" data-other-routes-entry><CarrierColorPicker label="其他运营商" fallback={defaultCarrierColors.other} value={note.planDataMod?.networkRouteColors?.other}
+    onChange={color=>onChange({...note,planDataMod:{...note.planDataMod,networkRouteColors:{...note.planDataMod?.networkRouteColors,other:color}}})}/>
    <Button type="button" variant="outline" className="w-full h-10 justify-start" disabled={entries.length>=50}
     aria-label="添加线路" onClick={()=>update([...entries,{carrier:"",country:"",text:""}])}>添加线路{entries.length?`（${entries.length}）`:""}</Button></div>
   <div className="space-y-3 sm:col-span-2 min-w-0">
-  <p className="text-xs text-muted-foreground">先选国家/地区，再选运营商。提供 {carrierRegions.length-1} 个国家/地区选项；目录覆盖 {carrierCoverage} 个地区，{curatedCarriers.length} 个带 Logo 品牌及 {carriers.length-curatedCarriers.length} 条参考名录。参考名录可能含旧名称、虚拟运营商或专网，不代表全部在营运营商；无 Logo 的可自行上传。</p>
-  <p className="text-xs text-muted-foreground">全球移动参考名录：<a href="https://mcc-mnc.org/downloads" target="_blank" rel="noopener noreferrer" className="underline">MCC-MNC</a>（2026-09-21）；固网与骨干网另行收录。未收录项可手动添加。</p>
+
   {uploadError&&<p role="alert" className="text-xs text-destructive">{uploadError}</p>}
   {entries.map((entry,index)=>{
    const selected=findCarrier(entry.carrier),country=entry.country||selected?.regions[0]||"";
@@ -69,15 +71,16 @@ export default function OtherRoutesEditor({note,onChange}:{note:PublicNote;onCha
      {selected?.reference&&<p className="text-xs text-muted-foreground">此条为参考名录，尚未核实 Logo。可以不上传，前台保留线路文字。</p>}
      {entry.carrier==="custom"&&<Input aria-label={"运营商名称 "+(index+1)} placeholder="运营商名称" value={entry.name||""} onChange={e=>patch(index,{name:e.target.value})}/> }
      <Input aria-label={"Logo 地址 "+(index+1)} placeholder="HTTPS Logo 地址（公开可见，不要填写密钥）" value={entry.logo?.startsWith("data:")?"":entry.logo||""} onChange={e=>patch(index,{logo:e.target.value})}/>
-     <label className="block text-xs">或上传 Logo（PNG/JPEG/WebP/GIF，最大 16 KB）
+     <label className="block text-xs">或上传 Logo（PNG/JPEG/WebP/GIF，前台固定尺寸）
       <input aria-label={"上传 Logo "+(index+1)} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="block mt-1 max-w-full" onChange={e=>{void upload(e.target.files?.[0],index);e.target.value=""}}/></label>
      {!!entry.logo&&!safeLogoSource(entry.logo)&&<p role="alert" className="text-xs text-destructive">Logo 地址须为 HTTPS；不安全地址不会显示。</p>}
      <Button type="button" size="sm" variant="outline" onClick={()=>patch(index,{logo:""})}>清除 Logo</Button>
     </div>}
+    <CarrierColorPicker label={"线路 "+(index+1)} value={entry.color} fallback={safeCarrierColor(note.planDataMod?.networkRouteColors?.other)||defaultCarrierColors.other} onChange={color=>patch(index,{color})}/>
     <div className="flex gap-2"><Input aria-label={"线路名称 "+(index+1)} placeholder="线路名称，例如 AS2914 / 精品国际线路" value={entry.text}
      onChange={e=>patch(index,{text:e.target.value})}/>
      <Button type="button" variant="outline" size="sm" aria-label={"删除线路 "+(index+1)} onClick={()=>update(entries.filter((_,i)=>i!==index))}>删除</Button></div>
-    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+    <div className="flex items-center gap-1 text-xs rounded px-1 py-0.5 w-fit" style={carrierColorStyle(entry.color||note.planDataMod?.networkRouteColors?.other||defaultCarrierColors.other)}>
      {preview&&<img src={preview} style={{backgroundColor:entry.logo?undefined:selected?.logoBackground}} alt="" referrerPolicy="no-referrer" className="h-4 w-6 object-contain rounded-sm bg-stone-700"/>}
      <span>{entry.text||"线路预览"}{country?" · "+regionName(country):""}</span>
     </div>

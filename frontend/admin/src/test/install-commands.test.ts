@@ -2,7 +2,7 @@
 import { generateCommand } from "@/components/install-commands"
 import { ModelProfile, ModelSetting } from "@/types"
 import { execFileSync } from "node:child_process"
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { mkdtempSync, rmSync, writeFileSync, statSync, readFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
@@ -38,12 +38,13 @@ describe("owned Agent install commands", () => {
                 )
                 writeFileSync(
                     join(dir, "fixture"),
-                    'printf "%s\\n" "$NZ_SERVER" "$NZ_CLIENT_SECRET" "$NZ_TLS" "${NZ_UUID:-}"\n',
+                    '#!/bin/sh\nprintf "%s\\n" "$NZ_SERVER" "$NZ_CLIENT_SECRET" "$NZ_TLS" "${NZ_UUID:-}"\n',
                 )
                 const result = execFileSync(
                     "sh",
                     ["-c", generateCommand(1, settings, profile, "uuid-test")],
                     {
+                        cwd: dir,
                         env: {
                             ...process.env,
                             PATH: dir + ":" + process.env.PATH,
@@ -52,6 +53,8 @@ describe("owned Agent install commands", () => {
                         encoding: "utf8",
                     },
                 )
+                expect(statSync(join(dir,"agent.sh")).mode & 0o111).not.toBe(0);
+                expect(readFileSync(join(dir,"agent.sh"),"utf8")).toContain("#!/bin/sh");
                 expect(result).toBe(
                     [settings.install_host, profile.agent_secret, "true", "uuid-test", ""].join(
                         "\n",

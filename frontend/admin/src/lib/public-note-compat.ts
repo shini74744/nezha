@@ -2,7 +2,7 @@
 type Obj = Record<string, any>;
 const object = (v: unknown): v is Obj => !!v && typeof v === "object" && !Array.isArray(v);
 const billing = {startDate:"开始时间",endDate:"到期时间",autoRenewal:"自动续费",cycle:"付费周期",amount:"价格"};
-const plan = {bandwidth:"带宽",trafficVol:"流量",trafficType:"流量统计方向",resetDay:"流量重置日",IPv4:"IPv4",IPv6:"IPv6",networkRoute:"网络线路",networkRoutes:"运营商线路",networkRouteEntries:"其他运营商线路",linkTags:"链接标签",extra:"补充说明"};
+const plan = {bandwidth:"带宽",trafficVol:"流量",trafficType:"流量统计方向",resetDay:"流量重置日",IPv4:"IPv4",IPv6:"IPv6",networkRoute:"网络线路",networkRoutes:"运营商线路",networkRouteColors:"运营商颜色",networkRouteEntries:"其他运营商线路",linkTags:"链接标签",extra:"补充说明"};
 export const routeFields = [
  {key:"telecom",label:"中国电信",placeholder:"163PP/CN2",color:"#2563eb"},
  {key:"mobile",label:"中国移动",placeholder:"CMI/CMIN2",color:"#16a34a"},
@@ -42,10 +42,11 @@ export function normalizeNote(input:unknown):Obj {
    p.networkRoutes=aliases(aliases(p.networkRoutes,{other:"其他线路"}),routeNames);
    for(const r of routeFields)if(p.networkRoutes[r.key]!==undefined&&typeof p.networkRoutes[r.key]!=="string")throw Error(r.label+"线路必须为文本");
   }
+  if(p.networkRouteColors!==undefined)p.networkRouteColors=aliases(p.networkRouteColors,routeNames);
   if(p.networkRouteEntries!==undefined){
    if(!Array.isArray(p.networkRouteEntries))throw Error("其他运营商线路必须为数组");
    p.networkRouteEntries=p.networkRouteEntries.map((entry:unknown)=>{
-    const e=aliases(entry,{carrier:"运营商",text:"线路名称",country:"国家地区",name:"运营商名称",logo:"Logo地址"});
+    const e=aliases(entry,{carrier:"运营商",text:"线路名称",country:"国家地区",name:"运营商名称",logo:"Logo地址",color:"标签颜色"});
     for(const key of ["country","name","logo"])if(e[key]!==undefined&&typeof e[key]!=="string")throw Error("运营商字段必须为文本");
     if(typeof e.carrier!=="string"||typeof e.text!=="string")throw Error("运营商和线路名称必须为文本");
     return e;
@@ -113,7 +114,8 @@ export function chineseNote(input:Obj):string {
   for(const k of ["IPv4","IPv6"])p[k]=p[k]==="1"?true:p[k]==="0"?false:p[k];
   p.trafficType=({"0":"未指定","1":"下载","2":"双向","3":"上传"} as Obj)[p.trafficType]||p.trafficType;
   if(p.networkRoutes){p.networkRoutes=translated(p.networkRoutes,routeNames);delete p.networkRoute;}
-  if(p.networkRouteEntries)p.networkRouteEntries=p.networkRouteEntries.map((e:Obj)=>translated(e,{carrier:"运营商",text:"线路名称",country:"国家地区",name:"运营商名称",logo:"Logo地址"}));
+  if(p.networkRouteColors)p.networkRouteColors=translated(p.networkRouteColors,routeNames);
+  if(p.networkRouteEntries)p.networkRouteEntries=p.networkRouteEntries.map((e:Obj)=>translated(e,{carrier:"运营商",text:"线路名称",country:"国家地区",name:"运营商名称",logo:"Logo地址",color:"标签颜色"}));
   if(p.linkTags)p.linkTags=p.linkTags.map((e:Obj)=>translated(e,{name:"名称",url:"网址"}));
   out.planDataMod=translated(p,plan);
  }
