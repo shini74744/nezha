@@ -14,6 +14,7 @@ import { saveMainPageScrollPosition } from "@/lib/navigation";
 import { cn, formatNezhaInfo, parsePublicNote } from "@/lib/utils";
 import type { NezhaServer } from "@/types/nezha-api";
 import BillingInfo from "./billingInfo";
+import ProviderLogo from "./ProviderLogo";
 import ServerLinkTags from "./ServerLinkTags";
 import PlanInfo from "./PlanInfo";
 import { Card } from "./ui/card";
@@ -83,6 +84,7 @@ function ServerCardInline({
 						{showFlag ? <ServerFlag country_code={country_code} /> : null}
 					</div>
 					<div className="relative w-28 flex flex-col">
+                    <ProviderLogo value={parsedData?.planDataMod?.providerLogo}/>
 						<p
 							className={cn(
 								"break-normal font-bold tracking-tight",
@@ -226,6 +228,7 @@ function ServerCardInline({
 					{showFlag ? <ServerFlag country_code={country_code} /> : null}
 				</div>
 				<div className="relative flex flex-col">
+                    <ProviderLogo value={parsedData?.planDataMod?.providerLogo}/>
 					<p
 						className={cn(
 							"break-normal font-bold w-28 tracking-tight",

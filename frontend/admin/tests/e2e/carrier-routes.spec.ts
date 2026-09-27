@@ -7,7 +7,8 @@ test("carrier colors "+width+" inline="+inline+" "+theme+" custom="+custom,async
  expect(baseURL).toBe(origin);
  const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
  const now=Date.now();
- const public_note=JSON.stringify({billingDataMod:{amount:"33刀",cycle:"Month",startDate:"2026-09-01T00:00:00+08:00",endDate:"2027-09-01T00:00:00+08:00"},planDataMod:{...(custom?{networkRouteColors:{telecom:"#ffffff",mobile:"#000000",unicom:"#ff0000",other:"#00ffff"}}:{}),bandwidth:"5000Mbps",trafficVol:"5TB/月",IPv4:"1",networkRoute:"old blue label",networkRoutes:{unicom:"1111",telecom:"CN2",mobile:"CMI/CMIN2",other:"IX"},networkRouteEntries:[{carrier:"ntt",country:"JP",text:"AS2914"},{carrier:"cogent",country:"US",text:"AS174"}],linkTags:[{name:"购买",url:"https://example.com/buy"}]}});
+ const logo=await page.evaluate(({inline})=>{const c=document.createElement("canvas");c.width=inline==="1"?240:80;c.height=80;const x=c.getContext("2d")!;x.fillStyle="#16a34a";if(inline==="1")x.fillRect(4,24,232,32);else{x.beginPath();x.arc(40,40,35,0,Math.PI*2);x.fill()}return c.toDataURL("image/png")},{inline});
+ const public_note=JSON.stringify({billingDataMod:{amount:"33刀",cycle:"Month",startDate:"2026-09-01T00:00:00+08:00",endDate:"2027-09-01T00:00:00+08:00"},planDataMod:{...(custom?{providerLogo:{logo},networkRouteLogos:{mobile:{logo}},networkRouteColors:{telecom:"#ffffff",mobile:"#000000",unicom:"#ff0000",other:"#00ffff"}}:{}),bandwidth:"5000Mbps",trafficVol:"5TB/月",IPv4:"1",networkRoute:"old blue label",networkRoutes:{unicom:"1111",telecom:"CN2",mobile:"CMI/CMIN2",other:"IX"},networkRouteEntries:[{carrier:"ntt",country:"JP",text:"AS2914"},{carrier:"cogent",country:"US",text:"AS174"}],linkTags:[{name:"购买",url:"https://example.com/buy"}]}});
  const servers=[createServer({id:11,name:"在线机器",last_active:new Date(now).toISOString(),public_note}),createServer({id:12,name:"离线机器",public_note})];
  await page.setViewportSize({width,height:900});
  await page.addInitScript(({inline,theme})=>{
@@ -39,7 +40,8 @@ test("carrier colors "+width+" inline="+inline+" "+theme+" custom="+custom,async
   for(const badge of await badges.all()){
    await expect(badge).toBeVisible();await expect(badge).toHaveCSS("background-color",colors[i]);
    const logo=badge.locator("svg");
-   if(keys[i]==="other")await expect(logo).toHaveCount(0);
+   if(custom&&keys[i]==="mobile"){await expect(logo).toHaveCount(0);await expect(badge.locator("img")).toHaveCSS("width","16px");await expect(badge.locator("img")).toHaveCSS("object-fit","contain")}
+   else if(keys[i]==="other")await expect(logo).toHaveCount(0);
    else {
     await expect(logo).toHaveAttribute("data-carrier-logo",keys[i]);
     await expect(logo).toBeVisible();await expect(logo).toHaveCSS("width","12px");
@@ -51,6 +53,8 @@ test("carrier colors "+width+" inline="+inline+" "+theme+" custom="+custom,async
    const r=await badge.boundingBox();expect(r!.x).toBeGreaterThanOrEqual(0);expect(r!.x+r!.width).toBeLessThanOrEqual(width);
   }
  }
+ if(custom){await expect(page.locator("[data-provider-logo]")).toHaveCount(2);for(const img of await page.locator("[data-provider-logo]").all()){await expect(img).toBeVisible();await expect(img).toHaveCSS("height","28px");await expect(img).toHaveCSS("object-fit","contain");const rect=await img.boundingBox();expect(rect!.width).toBeLessThanOrEqual(80);const name=await img.locator("xpath=following-sibling::p[1]").boundingBox();expect(rect!.y+rect!.height).toBeLessThanOrEqual(name!.y);await expect.poll(()=>img.evaluate((el:HTMLImageElement)=>el.complete&&el.naturalWidth>0)).toBe(true)}}
+ else await expect(page.locator("[data-provider-logo]")).toHaveCount(0);
  expect(await page.locator("[data-carrier]").evaluateAll(els=>els.map(e=>e.getAttribute("data-carrier")))).toEqual([...keys,...keys]);
  await expect(page.getByText("old blue label")).toHaveCount(0);
  await page.screenshot({path:"test-results/carrier-"+width+"-"+inline+"-"+theme+".png",fullPage:true});

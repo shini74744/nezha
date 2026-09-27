@@ -258,6 +258,8 @@ interface PlanData {
 	networkRouteEntries?: import("../../../shared/other-routes").OtherRouteEntry[];
 	networkRoutes?: import("./network-routes").NetworkRoutes;
 	networkRouteColors?: Record<string,string>;
+	providerLogo?: import("../../../shared/logo").LogoValue;
+	networkRouteLogos?: Record<string,import("../../../shared/logo").LogoValue>;
 	bandwidth: string;
 	trafficVol: string;
 	trafficType: string;
@@ -305,6 +307,8 @@ export function parsePublicNote(publicNote: string): PublicNoteData | null {
 					...(Array.isArray(data.planDataMod.networkRouteEntries) ? { networkRouteEntries: data.planDataMod.networkRouteEntries } : {}),
 					...(data.planDataMod.networkRoutes ? { networkRoutes: data.planDataMod.networkRoutes } : {}),
                     ...(data.planDataMod.networkRouteColors ? { networkRouteColors: data.planDataMod.networkRouteColors } : {}),
+                    ...(data.planDataMod.providerLogo ? {providerLogo:data.planDataMod.providerLogo}:{}),
+                    ...(data.planDataMod.networkRouteLogos ? {networkRouteLogos:data.planDataMod.networkRouteLogos}:{}),
 					extra: data.planDataMod.extra || "",
 				},
 			};
@@ -329,6 +333,8 @@ export function parsePublicNote(publicNote: string): PublicNoteData | null {
 				...(Array.isArray(data.planDataMod.networkRouteEntries) ? { networkRouteEntries: data.planDataMod.networkRouteEntries } : {}),
 				...(data.planDataMod.networkRoutes ? { networkRoutes: data.planDataMod.networkRoutes } : {}),
                     ...(data.planDataMod.networkRouteColors ? { networkRouteColors: data.planDataMod.networkRouteColors } : {}),
+                    ...(data.planDataMod.providerLogo ? {providerLogo:data.planDataMod.providerLogo}:{}),
+                    ...(data.planDataMod.networkRouteLogos ? {networkRouteLogos:data.planDataMod.networkRouteLogos}:{}),
 				extra: data.planDataMod.extra || "",
 			},
 		};
