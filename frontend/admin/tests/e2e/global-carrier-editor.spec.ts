@@ -1,5 +1,5 @@
 import {test,expect} from "@playwright/test";
-import {carriers} from "../../../shared/carriers";
+import {curatedCarriers as carriers} from "../../../shared/carriers";
 for(const width of [1366,390])test("global carriers and link tags editor "+width,async({page})=>{
  test.setTimeout(60000);await page.setViewportSize({width,height:950});
  const original={planDataMod:{networkRoute:"CN2,旧线路",custom:"keep"},unknown:{keep:true}};
@@ -17,12 +17,31 @@ for(const width of [1366,390])test("global carriers and link tags editor "+width
  const row=page.getByRole("row").filter({has:page.getByText("全球运营商测试",{exact:true})});
  await row.getByRole("button",{name:"编辑服务器",exact:true}).click();
  const dialog=page.getByRole("dialog"),editor=dialog.locator("[data-other-routes-editor]");
- await expect(editor.getByText("其他运营商",{exact:true})).toBeVisible();
+ await expect(editor.locator("[data-other-routes-entry]")).toContainText("其他运营商");
  await expect(editor.getByLabel("线路名称 1",{exact:true})).toHaveValue("旧线路");
- async function choose(label:string,search:string,option:string){
+ async function choose(label:string,search:string,option:string|RegExp){
   await editor.getByRole("combobox",{name:label,exact:true}).click();
   await page.getByRole("combobox",{name:"搜索"+label,exact:true}).fill(search);
   await page.getByRole("option",{name:option,exact:true}).click();
+ }
+ await editor.getByRole("combobox",{name:"国家地区 1",exact:true}).click();
+ const list=page.locator("[data-carrier-picker-list]");
+ await list.hover();await page.mouse.wheel(0,600);
+ await expect.poll(()=>list.evaluate(e=>e.scrollTop)).toBeGreaterThan(100);
+ if(width===390){
+  const previous=await list.evaluate(e=>e.scrollTop),box=(await list.boundingBox())!;
+  const session=await page.context().newCDPSession(page);
+  await session.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x:box.x+box.width/2,y:box.y+box.height-25}]});
+  for(let n=1;n<=5;n++)await session.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{x:box.x+box.width/2,y:box.y+box.height-25-n*30}]});
+  await session.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
+  await expect.poll(()=>list.evaluate(e=>e.scrollTop)).toBeGreaterThan(previous);
+  await session.detach();
+ }
+ await page.keyboard.press("Escape");
+ await editor.locator("[data-other-routes-entry]").scrollIntoViewIfNeeded();
+ if(width>640){
+  const unicom=(await dialog.locator("#route-unicom").boundingBox())!,entry=(await editor.getByRole("button",{name:"添加线路",exact:true}).boundingBox())!;
+  expect(entry.x).toBeGreaterThan(unicom.x+unicom.width);expect(Math.abs(entry.y-unicom.y)).toBeLessThan(10);
  }
  await choose("国家地区 1","日本","日本");
  await editor.getByRole("combobox",{name:"运营商 Logo 1",exact:true}).click();
@@ -40,21 +59,26 @@ for(const width of [1366,390])test("global carriers and link tags editor "+width
  await editor.getByLabel("上传 Logo 3",{exact:true}).setInputFiles({name:"logo.png",mimeType:"image/png",buffer:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII=","base64")});
  await expect(editor.locator("[data-other-route-row]").nth(2).locator("img")).toHaveCount(1);
  await editor.getByRole("button",{name:"添加线路",exact:true}).click();
- await editor.getByRole("button",{name:"删除线路 4",exact:true}).click();
+ await choose("国家地区 4","香港",/香港/);
+ await choose("运营商 Logo 4","HGC","HGC 环球全域电讯");
+ await editor.getByLabel("线路名称 4",{exact:true}).fill("AS9304");
+ await editor.getByRole("button",{name:"添加线路",exact:true}).click();
+ await editor.getByRole("button",{name:"删除线路 5",exact:true}).click();
  const links=dialog.locator("[data-link-tags-editor]");
  await links.getByRole("button",{name:"添加链接标签",exact:true}).click();
  await links.getByLabel("标签名称 1",{exact:true}).fill("购买");
  await links.getByLabel("标签网址 1",{exact:true}).fill("https://example.com/buy");
- await editor.scrollIntoViewIfNeeded();await page.screenshot({path:"test-results/global-editor-"+width+".png",fullPage:true});
+ await editor.locator("[data-other-route-row]").first().scrollIntoViewIfNeeded();await page.screenshot({path:"test-results/global-editor-"+width+".png",fullPage:true});
  await dialog.getByRole("button",{name:"原始文本",exact:true}).click();
  const raw=dialog.getByRole("textbox",{name:"公开备注原始文本"}),doc=JSON.parse(await raw.inputValue());
  expect(doc.套餐信息.其他运营商线路[0]).toMatchObject({运营商:"ntt",国家地区:"JP",线路名称:"AS2914"});
  expect(doc.套餐信息.其他运营商线路[2].Logo地址).toContain("data:image/png;base64,");
+ expect(doc.套餐信息.其他运营商线路[3]).toMatchObject({运营商:"hgc",国家地区:"HK",线路名称:"AS9304"});
  expect(doc.套餐信息.链接标签).toEqual([{名称:"购买",网址:"https://example.com/buy"}]);
  await dialog.getByRole("button",{name:"自定义字段",exact:true}).click();
  await dialog.locator('button[type="submit"]').click();await expect.poll(()=>updates.length).toBe(1);
  const saved=JSON.parse(updates[0].public_note);
- expect(saved.planDataMod.networkRoute).toBe("CN2,AS2914,AS174,Custom transit");
+ expect(saved.planDataMod.networkRoute).toBe("CN2,AS2914,AS174,Custom transit,AS9304");
  expect(saved.unknown).toEqual({keep:true});expect(saved.planDataMod.custom).toBe("keep");
  await row.getByRole("button",{name:"编辑服务器",exact:true}).click();
  await expect(editor.getByRole("combobox",{name:"国家地区 1",exact:true})).toHaveText("日本");
@@ -69,7 +93,7 @@ test("collected carrier logos decode",async({page})=>{
  await page.evaluate(list=>{
   const main=document.querySelector("main")!;
   for(const c of list){const d=document.createElement("div"),im=document.createElement("img"),label=document.createElement("div");
-   im.src=c.icon;im.style.cssText="width:100px;height:48px;object-fit:contain";label.textContent=c.label;d.append(im,label);main.append(d);}
+   im.src=c.icon;im.style.cssText="width:100px;height:48px;object-fit:contain";im.style.backgroundColor=c.logoBackground||"";label.textContent=c.label;d.append(im,label);main.append(d);}
  },carriers);
  await expect.poll(()=>page.locator("img").evaluateAll(imgs=>imgs.every(im=>(im as HTMLImageElement).complete&&(im as HTMLImageElement).naturalWidth>0))).toBe(true);
  await page.screenshot({path:"test-results/global-logo-catalog.png",fullPage:true});
