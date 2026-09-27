@@ -3,7 +3,7 @@
 本仓库是基于 Nezha Agent 的自有发行版，安装包、自动更新及面板触发升级仅从 **shini74744/agent** 下载，不回退官方 GitHub、Gitee 或 AtomGit。
 
 - [下载最新发行版](https://github.com/shini74744/agent/releases/latest)
-- Linux/macOS 安装脚本：`scripts/install.sh`
+- Linux/macOS 安装脚本：`scripts/install.sh`。面板命令下载为 `agent.sh`、自动赋予执行权限，运行后保留脚本；非 root 用户会通过 `sudo` 请求管理员权限（可能提示输入密码），root 用户直接执行。只向提权后的脚本传递 Agent 必需参数，不保留整个用户环境。
 - Windows 安装脚本：`scripts/install.ps1`
 - [安装、迁移与发布说明](OWNED-RELEASE.md)
 

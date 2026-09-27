@@ -1,8 +1,16 @@
 #!/bin/sh
-# shini74744/agent only. Run as root; never falls back to upstream.
+# shini74744/agent only. Elevate through sudo when needed; never falls back to upstream.
 set -eu
 umask 077
-[ "$(id -u)" -eq 0 ] || { echo "Please run as root (sudo -E sh install.sh)." >&2; exit 1; }
+if [ "$(id -u)" -ne 0 ]; then
+ command -v sudo >/dev/null 2>&1 || { echo "sudo is required. Install sudo or run this script as root." >&2; exit 1; }
+ # Pass only Agent settings through sudo; do not preserve the whole caller environment.
+ if [ "${NZ_UUID+x}" = x ]; then
+  exec sudo env "NZ_SERVER=${NZ_SERVER:-}" "NZ_TLS=${NZ_TLS:-false}" "NZ_CLIENT_SECRET=${NZ_CLIENT_SECRET:-}" "NZ_UUID=$NZ_UUID" sh "$0" "$@"
+ else
+  exec sudo env "NZ_SERVER=${NZ_SERVER:-}" "NZ_TLS=${NZ_TLS:-false}" "NZ_CLIENT_SECRET=${NZ_CLIENT_SECRET:-}" sh "$0" "$@"
+ fi
+fi
 case "$(uname -s)" in
  Linux) os=linux ;;
  Darwin) os=darwin ;;
