@@ -84,6 +84,9 @@ func createLogoLibrary(c *gin.Context) (any, error) {
 	v.Version = 1
 	logoLibraryMu.Lock()
 	defer logoLibraryMu.Unlock()
+	if e := validLogoGroup(singleton.DB, &v); e != nil {
+		return nil, e
+	}
 	return &v, singleton.DB.Create(&v).Error
 }
 func updateLogoLibrary(c *gin.Context) (any, error) {
@@ -128,6 +131,10 @@ func changeLogoLibrary(c *gin.Context, form *model.LogoLibraryEntry, remove bool
 			if form.Kind != old.Kind {
 				return errors.New("不能改变图标分类")
 			}
+			if e := validLogoGroup(tx, form); e != nil {
+				return e
+			}
+			saved.GroupID = form.GroupID
 			saved.Name = form.Name
 			saved.Regions = form.Regions
 			saved.Aliases = form.Aliases

@@ -11,6 +11,7 @@ export default function RemainPercentBar({
 }) {
 	return (
 		<Progress
+			data-expiry-progress
 			aria-label={"Server Usage Bar"}
 			aria-labelledby={"Server Usage Bar"}
 			value={value}

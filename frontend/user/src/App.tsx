@@ -17,6 +17,7 @@ import { fetchSetting } from "./lib/nezha-api";
 import { cn } from "./lib/utils";
 import ErrorPage from "./pages/ErrorPage";
 import Server from "./pages/Server";
+import CardPreview from "./pages/CardPreview";
 
 const NotFound = lazy(() => import("./pages/NotFound"));
 const loadServerDetail = () => import("./pages/ServerDetail");
@@ -80,7 +81,8 @@ const MainApp: React.FC = () => {
 		i18n.changeLanguage(settingData?.data?.config?.language);
 	}
 
-	const customMobileBackgroundImage =
+	if(window.parent!==window&&new URLSearchParams(window.location.search).get("card-preview")==="1")return <ErrorBoundary><AppearanceProvider raw={settingData?.data?.config?.appearance_config}><NativeEffects/><CardPreview/></AppearanceProvider></ErrorBoundary>;
+ const customMobileBackgroundImage =
 		window.CustomMobileBackgroundImage !== ""
 			? window.CustomMobileBackgroundImage
 			: undefined;
