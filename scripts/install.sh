@@ -1,0 +1,73 @@
+#!/bin/sh
+# shini74744/agent only. Run as root; never falls back to upstream.
+set -eu
+umask 077
+[ "$(id -u)" -eq 0 ] || { echo "Please run as root (sudo -E sh install.sh)." >&2; exit 1; }
+case "$(uname -s)" in
+ Linux) os=linux ;;
+ Darwin) os=darwin ;;
+ FreeBSD) os=freebsd ;;
+ *) echo "Unsupported operating system" >&2; exit 1 ;;
+esac
+case "$(uname -m)" in
+ x86_64|amd64) arch=amd64 ;;
+ aarch64|arm64) arch=arm64 ;;
+ i386|i686) arch=386 ;;
+ armv*|arm) arch=arm ;;
+ mips) arch=mips ;;
+ mipsel|mipsle) arch=mipsle ;;
+ riscv64|s390x|loong64) arch=$(uname -m) ;;
+ loongarch64) arch=loong64 ;;
+ *) echo "Unsupported CPU architecture" >&2; exit 1 ;;
+esac
+for tool in curl unzip; do
+ command -v "$tool" >/dev/null || { echo "Required dependency missing: $tool" >&2; exit 1; }
+done
+if command -v sha256sum >/dev/null; then hash_tool=sha256sum
+elif command -v shasum >/dev/null; then hash_tool=shasum
+elif command -v sha256 >/dev/null; then hash_tool=sha256
+else echo "SHA256 utility required" >&2; exit 1; fi
+dir=/opt/nezha/agent
+binary="$dir/nezha-agent"
+config="$dir/config.yml"
+[ -n "${NZ_SERVER:-}" ] || [ -f "$config" ] || { echo "NZ_SERVER is required" >&2; exit 1; }
+[ -n "${NZ_CLIENT_SECRET:-}" ] || [ -f "$config" ] || { echo "NZ_CLIENT_SECRET is required" >&2; exit 1; }
+tmp=$(mktemp -d)
+trap 'rm -f "$tmp/agent.zip" "$tmp/checksum" "$tmp/nezha-agent"; rmdir "$tmp" 2>/dev/null || true' EXIT
+asset="nezha-agent_${os}_${arch}.zip"
+base=https://github.com/shini74744/agent/releases/latest/download
+curl --fail --location --retry 3 --connect-timeout 20 --max-time 300 "$base/$asset.sha256" -o "$tmp/checksum"
+curl --fail --location --retry 3 --connect-timeout 20 --max-time 600 "$base/$asset" -o "$tmp/agent.zip"
+expected=$(tr -d '\r\n' < "$tmp/checksum")
+[ "${#expected}" -eq 64 ] || { echo "Invalid checksum" >&2; exit 1; }
+case "$expected" in *[!0-9a-fA-F]*) echo "Invalid checksum" >&2; exit 1 ;; esac
+case "$hash_tool" in
+ sha256sum) actual=$(sha256sum "$tmp/agent.zip" | awk '{print $1}') ;;
+ shasum) actual=$(shasum -a 256 "$tmp/agent.zip" | awk '{print $1}') ;;
+ sha256) actual=$(sha256 -q "$tmp/agent.zip") ;;
+esac
+[ "$actual" = "$expected" ] || { echo "SHA256 mismatch; existing agent unchanged" >&2; exit 1; }
+unzip -p "$tmp/agent.zip" nezha-agent > "$tmp/nezha-agent"
+chmod 755 "$tmp/nezha-agent"
+"$tmp/nezha-agent" -v
+mkdir -p "$dir"
+backup=$(mktemp -d "$dir/backup.XXXXXXXX")
+[ ! -f "$binary" ] || cp -p "$binary" "$backup/nezha-agent"
+[ ! -f "$config" ] || cp -p "$config" "$backup/config.yml"
+rollback() {
+ echo "Installation failed. Backup: $backup" >&2
+ if [ -f "$backup/nezha-agent" ]; then
+  cp -p "$backup/nezha-agent" "$binary"
+  [ ! -f "$backup/config.yml" ] || cp -p "$backup/config.yml" "$config"
+  "$binary" service install || true
+  "$binary" service start || true
+ fi
+ exit 1
+}
+if [ -f "$binary" ]; then "$binary" service stop || true; fi
+install -m 755 "$tmp/nezha-agent" "$binary" || rollback
+# Re-register the same service; do not delete config or change the UUID.
+"$binary" service uninstall >/dev/null 2>&1 || true
+"$binary" service install || rollback
+"$binary" service start || rollback
+echo "Installed from shini74744/agent. Configuration/previous binary backup: $backup"

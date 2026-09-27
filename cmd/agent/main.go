@@ -391,6 +391,10 @@ func runService(action string, path string) {
 		if err := agentConfig.Read(path); err != nil {
 			log.Fatalf("init config failed: %v", err)
 		}
+		// Persist installer environment overrides while retaining all other settings and UUID.
+		if err := agentConfig.Save(); err != nil {
+			log.Fatalf("save config failed: %v", err)
+		}
 		printf("Init system is: %s", initName)
 	}
 
@@ -605,57 +609,16 @@ func doSelfUpdate(config updateConfigTuple, useLocalVersion bool) (exit bool) {
 		}
 	}()
 
-	printf("检查更新: %v", v)
-	var latest *selfupdate.Release
-	switch {
-	case config.useGiteeToUpgrade:
-		updater, erru := selfupdate.NewGiteeUpdater(selfupdate.Config{
-			BinaryName: binaryName,
-		})
-		if erru != nil {
-			printf("更新失败: %v", erru)
-			return
-		}
-		latest, err = updater.UpdateSelf(v, "naibahq/agent")
-	case config.useAtomGitToUpgrade:
-		updater, erru := selfupdate.NewAtomGitUpdater(selfupdate.Config{
-			BinaryName: binaryName,
-		})
-		if erru != nil {
-			printf("更新失败: %v", erru)
-			return
-		}
-		latest, err = updater.UpdateSelf(v, "naiba/nezha-agent")
-	case monitor.CachedCountryCode() == "cn":
-		if rand.Intn(2) == 0 {
-			updater, erru := selfupdate.NewGiteeUpdater(selfupdate.Config{
-				BinaryName: binaryName,
-			})
-			if erru != nil {
-				printf("更新失败: %v", erru)
-				return
-			}
-			latest, err = updater.UpdateSelf(v, "naibahq/agent")
-		} else {
-			updater, erru := selfupdate.NewAtomGitUpdater(selfupdate.Config{
-				BinaryName: binaryName,
-			})
-			if erru != nil {
-				printf("更新失败: %v", erru)
-				return
-			}
-			latest, err = updater.UpdateSelf(v, "naiba/nezha-agent")
-		}
-	default:
-		updater, erru := selfupdate.NewUpdater(selfupdate.Config{
-			BinaryName: binaryName,
-		})
-		if erru != nil {
-			printf("更新失败: %v", erru)
-			return
-		}
-		latest, err = updater.UpdateSelf(v, "nezhahq/agent")
+	printf("检查更新: %v (shini74744/agent)", v)
+	if config.useGiteeToUpgrade || config.useAtomGitToUpgrade {
+		printf("旧镜像升级选项已忽略，仅使用自有 GitHub 仓库")
 	}
+	updater, err := selfupdate.NewUpdater(ownedUpdateConfig())
+	if err != nil {
+		printf("更新失败: %v", err)
+		return
+	}
+	latest, err := updateFromOwnedRepository(updater, v)
 
 	if err != nil {
 		printf("更新失败: %v", err)

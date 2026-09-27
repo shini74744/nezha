@@ -38,6 +38,8 @@ func TestRuntimeConfigConsumerProductionAgentConfigAccessAllowlist(t *testing.T)
 		"main.go:preRun:selector:Read",
 		"main.go:preRun:argument:publishRuntimeConfig",
 		"main.go:runService:selector:Read",
+		// Installer-only persistence before any background workers start.
+		"main.go:runService:selector:Save",
 		"runtime_config.go:applyCommittedRuntimeConfig:assignment",
 	}
 	sort.Strings(want)
