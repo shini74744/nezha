@@ -1,0 +1,48 @@
+import {test,expect} from "@playwright/test";
+import fs from "node:fs";
+import {createServer} from "../../../user/src/test/fixtures";
+const origin="https://127.0.0.1:18476";
+test.use({ignoreHTTPSErrors:true});
+const defs=JSON.parse(fs.readFileSync(new URL("../../../user/src/appearance/manifest.json",import.meta.url),"utf8"));
+for(const width of [1366,1920,390])test("legacy speed and traffic parity "+width,async({page,baseURL})=>{
+ expect(baseURL).toBe(origin);test.setTimeout(45000);
+ const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
+ const config={version:1,enabled:true,features:Object.fromEntries(defs.map((d:any)=>[d.key,{...d.defaults,enabled:["speed","traffic","branding"].includes(d.key)}]))};
+ config.features.branding.showNetTransfer=true;
+ const now=Date.now(),servers=[createServer({id:11,name:"主站服务器",last_active:new Date(now).toISOString(),state:{net_out_speed:810/8*1048576,net_in_speed:809/8*1048576}})];
+ await page.setViewportSize({width,height:900});
+ await page.addInitScript(()=>{localStorage.setItem("inline","0");localStorage.setItem("showMap","0");localStorage.setItem("showServices","0");localStorage.setItem("vite-ui-theme","dark");});
+ await page.routeWebSocket("**/api/v1/ws/server",ws=>ws.send(JSON.stringify({now,online:1,servers})));
+ await page.route("**/*",async route=>{
+  const u=new URL(route.request().url());
+  if(u.pathname==="/api/v1/setting")return route.fulfill({json:{success:true,data:{config:{language:"zh-CN",site_name:"原版效果校验",custom_code:"",appearance_config:JSON.stringify(config)}}}});
+  if(u.pathname==="/api/v1/server-group")return route.fulfill({json:{success:true,data:[]}});
+  if(u.pathname==="/api/v1/profile")return route.fulfill({json:{success:false}});
+  if(u.pathname==="/api/v1/server-traffic")return route.fulfill({json:{success:true,data:{"11":{name:"quota",max:1024**4,from:"2026-09-01",to:"2026-10-01",direction:"3",used:1007.11*1024**3}}}});
+  if(u.pathname.includes("/service"))return route.fulfill({json:{success:true,data:{services:{},cycle_transfer_stats:{"7":{name:"quota",max:1024**4,from:"2026-09-01",to:"2026-10-01",transfer:{"11":1007.11*1024**3},next_update:{}}}}}});
+  if(u.origin!==origin)return route.abort();return route.continue();
+ });
+ await page.goto("/");
+ const traffic=page.locator("[data-native-traffic='11']");
+ await expect(traffic).toBeVisible();
+ const up=page.locator(".nz-overview-rate[data-native-speed='up']");
+ await expect(up).toHaveText("810Mbps");await expect(up.locator("svg")).toHaveCount(1);
+ await expect(up).toHaveClass(/nz-overview-speed-5/);
+ // A flex item blockifies inline-flex to flex in computed style.
+ await expect(up).toHaveCSS("display","flex");await expect(up).toHaveCSS("transition-duration","0.5s");
+ await expect(up.locator("svg")).toHaveCSS("color","rgb(255, 0, 0)");
+ await expect(page.locator(".nz-overview-rate[data-native-speed='down'] svg")).toHaveCSS("color","rgb(0, 0, 255)");
+ await expect(traffic.locator(".nz-traffic-values")).toHaveText("1007.11GB/1.00TB");
+ await expect(traffic.locator(".nz-traffic-values > span").nth(3)).toHaveCSS("color","rgb(255, 255, 255)");
+ await expect(traffic.locator(".nz-traffic-track")).toHaveCSS("height","6px");
+ const labels=await traffic.evaluate(el=>({previous:el.previousElementSibling?.textContent,next:el.nextElementSibling?.textContent}));
+ expect(labels.previous).toContain("CPU");expect(labels.next).toContain("上传");
+ const rect=await traffic.boundingBox();expect(rect!.x).toBeGreaterThanOrEqual(0);expect(rect!.x+rect!.width).toBeLessThanOrEqual(width);
+ await expect(traffic.locator(".nz-traffic-info")).toHaveText("本月流量统计",{timeout:7000});
+ await page.screenshot({path:"test-results/legacy-parity-"+width+".png",fullPage:true});
+ await expect(traffic.locator(".nz-traffic-info")).toHaveText("98.35%",{timeout:6000});
+ config.features.speed.enabled=false;config.features.traffic.enabled=false;
+ await page.reload();await expect(page.getByText("主站服务器",{exact:true})).toBeVisible();
+ await expect(page.locator("[data-native-speed],[data-native-traffic]")).toHaveCount(0);
+ expect(errors).toEqual([]);
+});

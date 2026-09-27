@@ -42,18 +42,9 @@
 		box-shadow: 0 0 8px currentColor;
 	}
 }
-@keyframes nz-offline {
-	0%,
-	100% {
-		color: rgba(255, 0, 0, 0.4);
-	}
-	50% {
-		color: rgba(255, 0, 0, 0.8);
-	}
-}
 .nz-name-offline {
 	color: rgba(255, 0, 0, 0.6);
-	animation: nz-offline 4s linear infinite;
+	/* The original script changes alpha in 100 ms steps, owned by NativeName. */
 }
 .nz-speed {
 	font-weight: 700;
@@ -133,7 +124,12 @@
 	width: 90%;
 	max-width: 650px;
 	z-index: 9988;
-	transition: opacity 0.5s;
+	transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.nz-footer-ip iframe {
+	background: white;
+	border-radius: 8px;
+	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 .nz-links a {
 	text-decoration: none !important;

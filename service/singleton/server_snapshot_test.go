@@ -13,7 +13,7 @@ import (
 
 func snapshotFixture(t *testing.T) (string, *model.Server) {
 	setupPermanentDeleteTest(t)
-	require.NoError(t, DB.AutoMigrate(&model.ServerSnapshot{}))
+	require.NoError(t, DB.AutoMigrate(&model.ServerSnapshot{}, &model.PlanTrafficCheckpoint{}, &model.PlanTrafficDay{}))
 	server := &model.Server{Common: model.Common{ID: 11, UserID: 1}, UUID: "snapshot-11", Name: "snapshot"}
 	require.NoError(t, DB.Create(server).Error)
 	model.InitServer(server)
@@ -104,7 +104,7 @@ func TestSnapshotConcurrentFleetWrites(t *testing.T) {
 	DB = db
 	sqlDB, _ := db.DB()
 	t.Cleanup(func() { sqlDB.Close(); DB = previous })
-	require.NoError(t, DB.AutoMigrate(&model.Server{}, &model.ServerSnapshot{}))
+	require.NoError(t, DB.AutoMigrate(&model.Server{}, &model.ServerSnapshot{}, &model.PlanTrafficCheckpoint{}, &model.PlanTrafficDay{}))
 	for i := 1; i <= 118; i++ {
 		require.NoError(t, DB.Create(&model.Server{Common: model.Common{ID: uint64(i)}, UUID: fmt.Sprint(i)}).Error)
 	}

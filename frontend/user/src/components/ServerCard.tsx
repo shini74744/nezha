@@ -201,6 +201,7 @@ const brand=useFeature("branding");
 						</div>
 					</div>
 				</section>
+				<NativeTraffic serverId={serverInfo.id}/>
 				{showNetTransfer && (
 					<section className={"flex items-center w-full justify-between gap-1"}>
 						<Badge
@@ -217,7 +218,6 @@ const brand=useFeature("branding");
 						</Badge>
 					</section>
 				)}
-				<NativeTraffic serverId={serverInfo.id}/>
 {parsedData?.planDataMod && <PlanInfo parsedData={parsedData} />}
 			</div>
 		</Card>

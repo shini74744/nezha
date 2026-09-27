@@ -140,7 +140,7 @@ func TestReassignServerIDsInDBRollsBackAsOneTransaction(t *testing.T) {
 
 func TestSnapshotFollowsSwappedIDsAndRollback(t *testing.T) {
 	db := newServerRekeyTestDB(t)
-	require.NoError(t, db.AutoMigrate(&model.ServerSnapshot{}))
+	require.NoError(t, db.AutoMigrate(&model.ServerSnapshot{}, &model.PlanTrafficCheckpoint{}, &model.PlanTrafficDay{}))
 	for id, uuid := range map[uint64]string{1: "A", 2: "B"} {
 		require.NoError(t, db.Create(&model.Server{Common: model.Common{ID: id}, UUID: uuid}).Error)
 		require.NoError(t, singleton.PersistServerSnapshot(id, uuid, model.RecordedServerState{At: 100000, Host: &model.Host{Platform: uuid}, State: &model.HostState{CPU: float64(id)}}))

@@ -509,11 +509,9 @@
       "cacheDuration": 21600000,
       "bottomThreshold": 24,
       "ipApiUrls": [
-        "https://network.example.invalid/sample-3",
-        "https://network.example.invalid/sample-4",
-        "https://network.example.invalid/sample-1"
+        "https://network.example.invalid/sample-4"
       ],
-      "fallbackUrl": "https://network.example.invalid/sample-1",
+      "fallbackUrl": "",
       "queryTimeout": 4000,
       "fallbackTimeout": 2500,
       "networkEnabled": true,

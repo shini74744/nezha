@@ -40,10 +40,14 @@ import {
     applyPublicNotePatch,
     detectPublicNoteMode,
     normalizeISO,
+    parseEditableNote,
+    publicNoteRawText,
+    serializePublicNote,
     parsePublicNote,
     toggleEndNoExpiry,
     validatePublicNote,
 } from "@/lib/public-note"
+import { chineseNote, patchRoutes, readRoutes, routeFields } from "@/lib/public-note-compat"
 import { conv } from "@/lib/utils"
 import { asOptionalField } from "@/lib/utils"
 import { ModelServer } from "@/types"
@@ -123,6 +127,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                 | "plan.bandwidth"
                 | "plan.trafficVol"
                 | "plan.trafficType"
+                | "plan.resetDay"
                 | "plan.IPv4"
                 | "plan.IPv6"
                 | "plan.extra",
@@ -134,7 +139,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
     const [publicNoteMode, setPublicNoteMode] = useState<"structured" | "raw">(
         detectPublicNoteMode(data?.public_note),
     )
-    const [publicNoteRaw, setPublicNoteRaw] = useState<string>(data?.public_note ?? "")
+    const [publicNoteRaw, setPublicNoteRaw] = useState<string>(publicNoteRawText(data?.public_note))
 
     const patchPublicNote = (path: string, value: string | undefined) => {
         setPublicNoteObj((prev) => applyPublicNotePatch(prev, path, value))
@@ -163,7 +168,17 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                 if (raw.length === 0) {
                     values.public_note = undefined
                 } else {
-                    values.public_note = raw
+                    // Keep arbitrary legacy notes raw, but save recognized bilingual JSON
+                    // in the established English storage format for all existing themes.
+                    if (detectPublicNoteMode(raw) === "structured") {
+                        const parsed = parseEditableNote(raw)
+                        const check = validatePublicNote(parsed)
+                        if (!check.valid) {
+                            toast("公开备注设置无效", { description: Object.values(check.errors).join("；") })
+                            return
+                        }
+                        values.public_note = serializePublicNote(parsed)
+                    } else values.public_note = raw
                 }
             } else {
                 const { errors, valid } = validatePublicNote(publicNoteObj)
@@ -177,6 +192,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                 const bd = publicNoteObj.billingDataMod
                 const pd = publicNoteObj.planDataMod
                 const pnNormalized: PublicNote = {
+                    ...publicNoteObj,
                     billingDataMod: bd && {
                         ...bd,
                         startDate: normalizeISO(bd.startDate),
@@ -184,7 +200,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                     },
                     planDataMod: pd,
                 }
-                const jsonStr = JSON.stringify(pnNormalized)
+                const jsonStr = serializePublicNote(pnNormalized)
                 values.public_note = jsonStr.length > 2 ? jsonStr : undefined
             }
 
@@ -213,7 +229,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                     : undefined,
             })
             setPublicNoteObj(parsePublicNote(data?.public_note))
-            setPublicNoteRaw(data?.public_note ?? "")
+            setPublicNoteRaw(publicNoteRawText(data?.public_note))
             setPublicNoteMode(detectPublicNoteMode(data?.public_note))
             setPublicNoteErrors({})
         }
@@ -223,7 +239,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
-                <IconButton variant="outline" icon="edit" />
+                <IconButton variant="outline" icon="edit" aria-label={t("EditServer")} />
             </DialogTrigger>
             <DialogContent
                 className="sm:max-w-xl"
@@ -386,8 +402,13 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                 }
                                                 className="text-xs h-7"
                                                 onClick={() => {
-                                                    setPublicNoteMode("structured")
-                                                    setPublicNoteObj(parsePublicNote(publicNoteRaw))
+                                                    if (publicNoteMode === "structured") return
+                                                    try {
+                                                        setPublicNoteObj(parseEditableNote(publicNoteRaw))
+                                                        setPublicNoteMode("structured")
+                                                    } catch {
+                                                        toast("无法转换为自定义字段", { description: "请检查 JSON 格式和中英文字段冲突；原始内容已保留，不会清空。" })
+                                                    }
                                                 }}
                                             >
                                                 {t("PublicNote.CustomFields")}
@@ -398,7 +419,11 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                     publicNoteMode === "raw" ? "default" : "outline"
                                                 }
                                                 className="text-xs h-7"
-                                                onClick={() => setPublicNoteMode("raw")}
+                                                onClick={() => {
+                                                    if (publicNoteMode === "raw") return
+                                                    setPublicNoteRaw(chineseNote(publicNoteObj))
+                                                    setPublicNoteMode("raw")
+                                                }}
                                             >
                                                 {t("PublicNote.RawText")}
                                             </Button>
@@ -410,10 +435,12 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                         <div>
                                             <Textarea
                                                 className="resize-y"
+                                                aria-label="公开备注原始文本"
                                                 value={publicNoteRaw}
                                                 onChange={(e) => setPublicNoteRaw(e.target.value)}
                                                 rows={10}
                                             />
+                                            <p className="text-xs text-muted-foreground mt-2">支持中文或旧英文字段；识别到的套餐信息会自动回填。保存使用兼容格式，未知字段保留。</p>
                                         </div>
                                     )}
 
@@ -832,8 +859,10 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                                 <SelectValue placeholder="Select type" />
                                                             </SelectTrigger>
                                                             <SelectContent>
+                                                                <SelectItem value="0">未指定（默认双向）</SelectItem>
+                                                                <SelectItem value="3">上传（出站）</SelectItem>
                                                                 <SelectItem value="1">
-                                                                    {t("PublicNote.Inbound")}
+                                                                    下载（入站）
                                                                 </SelectItem>
                                                                 <SelectItem value="2">
                                                                     {t("PublicNote.Both")}
@@ -850,6 +879,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                             </p>
                                                         )}
                                                     </div>
+                                                    <div className="grid grid-cols-2 gap-3" data-ip-options>
                                                     <div className="space-y-1">
                                                         <Label className="text-xs">
                                                             {t("PublicNote.IPv4")}
@@ -910,25 +940,30 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                             </p>
                                                         )}
                                                     </div>
-                                                    <div className="space-y-1">
-                                                        <Label className="text-xs">
-                                                            {t("PublicNote.NetworkRoute")}
-                                                        </Label>
-                                                        <Input
-                                                            placeholder={t(
-                                                                "PublicNote.CommaSeparated",
-                                                            )}
-                                                            value={
-                                                                publicNoteObj.planDataMod
-                                                                    ?.networkRoute ?? ""
-                                                            }
-                                                            onChange={(e) =>
-                                                                patchPublicNote(
-                                                                    "planDataMod.networkRoute",
-                                                                    e.target.value,
-                                                                )
-                                                            }
-                                                        />
+                                                    </div>
+                                                    <fieldset className="space-y-2 sm:col-span-2">
+                                                        <legend className="text-xs font-medium">网络路由</legend>
+                                                        <p className="text-xs text-muted-foreground">按电信、移动、联通排序；同一运营商的多条线路用逗号分隔。无法确定的旧线路保留在“其他线路”。</p>
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                            {routeFields.map(route => (
+                                                                <div key={route.key} className="space-y-1">
+                                                                    <Label htmlFor={"route-"+route.key} className="text-xs">
+                                                                        <span aria-hidden style={{color:route.color}}>● </span>{route.label}
+                                                                    </Label>
+                                                                    <Input id={"route-"+route.key} placeholder={route.placeholder}
+                                                                        value={readRoutes(publicNoteObj.planDataMod)[route.key]}
+                                                                        onChange={e=>setPublicNoteObj(prev=>patchRoutes(prev,route.key,e.target.value))}/>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </fieldset>
+                                                    <div className="space-y-1 sm:col-span-2">
+                                                        <Label htmlFor="traffic-reset-day" className="text-xs">流量重置日</Label>
+                                                        <Input id="traffic-reset-day" type="number" min={1} max={31} placeholder="1–31，可留空"
+                                                            value={publicNoteObj.planDataMod?.resetDay ?? ""}
+                                                            onChange={e=>patchPublicNote("planDataMod.resetDay",e.target.value)}/>
+                                                        <p className="text-xs text-muted-foreground">每月该日北京时间 00:00 开始新周期，历史记录保留；没有该日则取月末。留空使用账单开始日期的日号，无开始日期则为 1 日。未指定流量类型按双向统计。</p>
+                                                        {publicNoteErrors["plan.resetDay"] && <p className="text-xs text-destructive">{publicNoteErrors["plan.resetDay"]}</p>}
                                                     </div>
                                                     <div className="space-y-1 sm:col-span-2">
                                                         <Label className="text-xs">

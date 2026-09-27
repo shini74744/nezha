@@ -159,12 +159,10 @@ const brand=useFeature("branding");
 						</section>
 						<section className="flex flex-col sm:flex-row -mr-1 sm:items-center items-start gap-1">
 							<p className="text-[11px] flex items-center text-nowrap font-semibold">
-								<ArrowUpCircleIcon className="size-3 mr-0.5 sm:mb-px" />
-								<NativeSpeed overview bytes={upSpeed} direction="up"/>
+								<NativeSpeed overview bytes={upSpeed} direction="up" icon={<ArrowUpCircleIcon className="size-3 mr-0.5 sm:mb-px" />}/>
 							</p>
 							<p className="text-[11px] flex items-center  text-nowrap font-semibold">
-								<ArrowDownCircleIcon className="size-3 mr-0.5" />
-								<NativeSpeed overview bytes={downSpeed} direction="down"/>
+								<NativeSpeed overview bytes={downSpeed} direction="down" icon={<ArrowDownCircleIcon className="size-3 mr-0.5" />}/>
 							</p>
 						</section>
 					</section>
