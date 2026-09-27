@@ -1,5 +1,6 @@
 import { cn, type PublicNoteData } from "@/lib/utils";
 import { carrierRoutes, readNetworkRoutes } from "@/lib/network-routes";
+import CarrierLogo from "./CarrierLogo";
 
 export default function PlanInfo({
 	parsedData,
@@ -58,8 +59,9 @@ export default function PlanInfo({
 			)}
 			{carrierRoutes.map(({ key, label, className }) => networkRoutes[key] && (
 				<p key={key} title={label} data-carrier={key}
-					className={cn("text-[9px] w-fit rounded-[5px] px-[3px] py-[1.5px]", className)}>
-					{networkRoutes[key]}
+					className={cn("inline-flex items-center gap-[3px] text-[9px] w-fit max-w-full rounded-[5px] px-[3px] py-[1.5px]", className)}>
+					<CarrierLogo carrier={key} />
+					<span className="min-w-0 break-words">{networkRoutes[key]}</span>
 				</p>
 			))}
 			{extraList.map((extra, index) => {

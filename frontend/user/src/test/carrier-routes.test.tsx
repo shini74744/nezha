@@ -11,11 +11,19 @@ describe("carrier routes", () => {
    planDataMod:{networkRoute:"stale legacy route",networkRoutes:{unicom:"1111",other:"IX",mobile:"CMI/CMIN2",telecom:"CN2"}}
   }))!;
   const {container}=render(<PlanInfo parsedData={parsed}/>);
-  expect(screen.getByText("CN2")).toHaveClass("bg-blue-600");
-  expect(screen.getByText("CMI/CMIN2")).toHaveClass("bg-green-600");
-  expect(screen.getByText("1111")).toHaveClass("bg-red-600");
-  expect(screen.getByText("IX")).toHaveClass("bg-stone-600");
+  expect(screen.getByText("CN2").closest("[data-carrier]")).toHaveClass("bg-blue-600");
+  expect(screen.getByText("CMI/CMIN2").closest("[data-carrier]")).toHaveClass("bg-green-600");
+  expect(screen.getByText("1111").closest("[data-carrier]")).toHaveClass("bg-red-600");
+  expect(screen.getByText("IX").closest("[data-carrier]")).toHaveClass("bg-stone-600");
   expect([...container.querySelectorAll("[data-carrier]")].map(e=>e.getAttribute("data-carrier"))).toEqual(["telecom","mobile","unicom","other"]);
+  expect(container.querySelectorAll("[data-carrier-logo]")).toHaveLength(3);
+  for(const key of ["telecom","mobile","unicom"]){
+   const logo=container.querySelector('[data-carrier="'+key+'"] svg');
+   expect(logo).toHaveAttribute("data-carrier-logo",key);
+   expect(logo).toHaveAttribute("aria-hidden","true");
+   expect(logo).toHaveAttribute("width","12");
+  }
+  expect(container.querySelector('[data-carrier="other"] svg')).toBeNull();
   expect(screen.queryByText("stale legacy route")).not.toBeInTheDocument();
  });
  it("classifies legacy routes without splitting compound route names",()=>{

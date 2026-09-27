@@ -59,8 +59,8 @@ describe("PlanInfo and BillingInfo", () => {
 		expect(screen.getByText("2TB")).toBeInTheDocument();
 		expect(screen.getByText("IPv4")).toBeInTheDocument();
 		expect(screen.getByText("IPv6")).toBeInTheDocument();
-		expect(screen.getByText("CN2")).toHaveClass("bg-blue-600");
-		expect(screen.getByText("CMI")).toHaveClass("bg-green-600");
+		expect(screen.getByText("CN2").closest("[data-carrier]")).toHaveClass("bg-blue-600");
+		expect(screen.getByText("CMI").closest("[data-carrier]")).toHaveClass("bg-green-600");
 		expect(screen.getByText("Premium")).toBeInTheDocument();
 		expect(screen.getByText("Backup")).toBeInTheDocument();
 	});
