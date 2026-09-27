@@ -254,6 +254,8 @@ interface BillingData {
 }
 
 interface PlanData {
+	linkTags?: import("../../../shared/link-tags").LinkTag[];
+	networkRouteEntries?: import("../../../shared/other-routes").OtherRouteEntry[];
 	networkRoutes?: import("./network-routes").NetworkRoutes;
 	bandwidth: string;
 	trafficVol: string;
@@ -298,6 +300,8 @@ export function parsePublicNote(publicNote: string): PublicNoteData | null {
 					IPv4: data.planDataMod.IPv4 || "",
 					IPv6: data.planDataMod.IPv6 || "",
 					networkRoute: data.planDataMod.networkRoute || "",
+					...(Array.isArray(data.planDataMod.linkTags) ? { linkTags: data.planDataMod.linkTags } : {}),
+					...(Array.isArray(data.planDataMod.networkRouteEntries) ? { networkRouteEntries: data.planDataMod.networkRouteEntries } : {}),
 					...(data.planDataMod.networkRoutes ? { networkRoutes: data.planDataMod.networkRoutes } : {}),
 					extra: data.planDataMod.extra || "",
 				},
@@ -319,6 +323,8 @@ export function parsePublicNote(publicNote: string): PublicNoteData | null {
 				IPv4: data.planDataMod.IPv4 || "",
 				IPv6: data.planDataMod.IPv6 || "",
 				networkRoute: data.planDataMod.networkRoute || "",
+				...(Array.isArray(data.planDataMod.linkTags) ? { linkTags: data.planDataMod.linkTags } : {}),
+				...(Array.isArray(data.planDataMod.networkRouteEntries) ? { networkRouteEntries: data.planDataMod.networkRouteEntries } : {}),
 				...(data.planDataMod.networkRoutes ? { networkRoutes: data.planDataMod.networkRoutes } : {}),
 				extra: data.planDataMod.extra || "",
 			},

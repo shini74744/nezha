@@ -2,7 +2,7 @@ export const carrierRoutes = [
  {key:"telecom",label:"中国电信",className:"bg-blue-600 text-blue-200 dark:bg-blue-800 dark:text-blue-300"},
  {key:"mobile",label:"中国移动",className:"bg-green-600 text-green-200 dark:bg-green-800 dark:text-green-300"},
  {key:"unicom",label:"中国联通",className:"bg-red-600 text-red-200 dark:bg-red-800 dark:text-red-300"},
- {key:"other",label:"其他线路",className:"bg-stone-600 text-stone-200 dark:bg-stone-800 dark:text-stone-300"},
+ {key:"other",label:"其他运营商",className:"bg-stone-600 text-stone-200 dark:bg-stone-800 dark:text-stone-300"},
 ] as const;
 export type CarrierKey = typeof carrierRoutes[number]["key"];
 export type NetworkRoutes = Partial<Record<CarrierKey,string>>;

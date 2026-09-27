@@ -1,6 +1,7 @@
 import { cn, type PublicNoteData } from "@/lib/utils";
 import { carrierRoutes, readNetworkRoutes } from "@/lib/network-routes";
 import CarrierLogo from "./CarrierLogo";
+import OtherCarrierBadges from "./OtherCarrierBadges";
 
 export default function PlanInfo({
 	parsedData,
@@ -64,6 +65,7 @@ export default function PlanInfo({
 					<span className="min-w-0 break-words">{networkRoutes[key]}</span>
 				</p>
 			))}
+			<OtherCarrierBadges entries={parsedData.planDataMod.networkRouteEntries}/>
 			{extraList.map((extra, index) => {
 				return (
 					<p

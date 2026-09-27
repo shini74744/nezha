@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { normalizeNote, chineseNote } from "./public-note-compat"
+import {safeLink} from "../../../shared/link-tags"
 
 import i18n from "./i18n"
 
@@ -27,6 +28,8 @@ export const PublicNoteSchema = z.object({
             trafficVol: z.string().optional(),
             trafficType: z.string().optional(),
             resetDay: z.string().optional(),
+            linkTags: z.array(z.object({name:z.string().max(60),url:z.string().max(2048)}).passthrough()).max(20).optional(),
+            networkRouteEntries: z.array(z.object({carrier:z.string(),text:z.string(),country:z.string().optional(),name:z.string().optional(),logo:z.string().max(24000).optional()}).passthrough()).max(50).optional(),
             networkRoutes: z.object({telecom:z.string().optional(),mobile:z.string().optional(),unicom:z.string().optional(),other:z.string().optional()}).passthrough().optional(),
             IPv4: z.string().optional(),
             IPv6: z.string().optional(),
@@ -52,7 +55,7 @@ export function publicNoteRawText(raw?:string):string {
 export function serializePublicNote(note:PublicNote):string {
  const normalized=normalizeNote(note);
  if(normalized.planDataMod?.networkRoutes)
-  normalized.planDataMod.networkRoute=["telecom","mobile","unicom","other"].map(k=>normalized.planDataMod.networkRoutes[k]?.trim()).filter(Boolean).join(",");
+  normalized.planDataMod.networkRoute=[...["telecom","mobile","unicom","other"].map(k=>normalized.planDataMod.networkRoutes[k]?.trim()),...(normalized.planDataMod.networkRouteEntries||[]).map((e:{text:string})=>e.text.trim())].filter(Boolean).join(",");
  return JSON.stringify(normalized);
 }
 
@@ -108,6 +111,8 @@ export const validatePublicNote = (pn: PublicNote) => {
     }
 
     if (pn.planDataMod?.resetDay && !/^(?:[1-9]|[12][0-9]|3[01])$/.test(pn.planDataMod.resetDay)) errors["plan.resetDay"]="重置日必须为 1–31"
+
+    if(pn.planDataMod?.linkTags?.some(t=>(t.name||t.url)&&(!t.name.trim()||!safeLink(t.url))))errors["plan.linkTags"]="链接标签需要名称和有效的 HTTP/HTTPS 网址";
 
     // Date validity checks
     if (pn.billingDataMod?.startDate && !isValidISOLike(pn.billingDataMod.startDate)) {
