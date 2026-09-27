@@ -29,11 +29,13 @@ type PlanTrafficDay struct {
 	Estimated bool
 }
 type TrafficPlan struct {
+	QuotaType string
 	Max       uint64
 	ResetDay  int
 	Direction string
 }
 type PlanTrafficStat struct {
+	QuotaType    string    `json:"quota_type"`
 	Name         string    `json:"name"`
 	From         time.Time `json:"from"`
 	To           time.Time `json:"to"`
@@ -70,7 +72,7 @@ func noteString(m map[string]json.RawMessage, english, chinese string) string {
 func ParseTrafficPlan(raw string) (*TrafficPlan, error) {
 	var root map[string]json.RawMessage
 	if json.Unmarshal([]byte(raw), &root) != nil {
-		return nil, nil
+		root = nil // Empty/legacy plain-text notes still receive monthly accounting.
 	}
 	group := root["planDataMod"]
 	if len(group) == 0 {
@@ -78,26 +80,29 @@ func ParseTrafficPlan(raw string) (*TrafficPlan, error) {
 	}
 	var p map[string]json.RawMessage
 	if json.Unmarshal(group, &p) != nil {
-		return nil, nil
+		p = nil
 	}
 	volume := noteString(p, "trafficVol", "流量")
-	if volume == "" || strings.Contains(volume, "无限") || strings.EqualFold(volume, "unlimited") {
-		return nil, nil
-	}
-	volume = strings.TrimPrefix(strings.TrimPrefix(volume, "单向"), "双向")
-	match := quotaPattern.FindStringSubmatch(volume)
-	if match == nil {
-		return nil, fmt.Errorf("流量配额格式无效，请填写如 5TB/月")
-	}
-	n, _ := strconv.ParseFloat(match[1], 64)
-	unit := strings.ToUpper(match[2])
-	power := 0
-	if unit != "B" {
-		power = strings.Index("KMGTPE", unit[:1]) + 1
-	}
-	amount := n * math.Pow(1024, float64(power))
-	if math.IsInf(amount, 0) || amount < 1 || amount > float64(1<<53) {
-		return nil, fmt.Errorf("流量配额超出支持范围")
+	quotaType, amount := "unset", float64(0)
+	if strings.Contains(volume, "无限") || strings.Contains(volume, "不限") || strings.EqualFold(volume, "unlimited") || strings.EqualFold(volume, "unmetered") || volume == "∞" {
+		quotaType = "unlimited"
+	} else if volume != "" {
+		quotaType = "limited"
+		volume = strings.TrimPrefix(strings.TrimPrefix(volume, "单向"), "双向")
+		match := quotaPattern.FindStringSubmatch(volume)
+		if match == nil {
+			return nil, fmt.Errorf("流量配额格式无效，请填写如 5TB/月")
+		}
+		n, _ := strconv.ParseFloat(match[1], 64)
+		unit := strings.ToUpper(match[2])
+		power := 0
+		if unit != "B" {
+			power = strings.Index("KMGTPE", unit[:1]) + 1
+		}
+		amount = n * math.Pow(1024, float64(power))
+		if math.IsInf(amount, 0) || amount < 1 || amount > float64(1<<53) {
+			return nil, fmt.Errorf("流量配额超出支持范围")
+		}
 	}
 	direction := noteString(p, "trafficType", "流量统计方向")
 	switch direction {
@@ -128,12 +133,17 @@ func ParseTrafficPlan(raw string) (*TrafficPlan, error) {
 		}
 		var b map[string]json.RawMessage
 		if json.Unmarshal(braw, &b) == nil {
-			if start, err := time.Parse(time.RFC3339, noteString(b, "startDate", "开始时间")); err == nil {
+			startValue := noteString(b, "startDate", "开始时间")
+			start, err := time.Parse(time.RFC3339, startValue)
+			if err != nil {
+				start, err = time.ParseInLocation("2006-01-02", startValue, PlanTrafficZone)
+			}
+			if err == nil {
 				day = start.In(PlanTrafficZone).Day()
 			}
 		}
 	}
-	return &TrafficPlan{Max: uint64(amount), ResetDay: day, Direction: direction}, nil
+	return &TrafficPlan{QuotaType: quotaType, Max: uint64(amount), ResetDay: day, Direction: direction}, nil
 }
 
 // Calendar anchoring never uses AddDate on the 29th/30th/31st (which can skip months).
