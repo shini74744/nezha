@@ -25,6 +25,7 @@ test("carrier colors "+width+" inline="+inline+" "+theme,async({page,baseURL})=>
   if(u.origin!==origin)return route.abort();return route.continue();
  });
  await page.goto("/");
+ await expect.poll(()=>page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue("--color-blue-600").trim())).not.toBe("");
  const keys=["telecom","mobile","unicom","other"];
  // Resolve the theme's actual color tokens; modern Tailwind emits Lab, not RGB.
  const colors=await page.evaluate(theme=>["blue","green","red","stone"].map(color=>{
@@ -37,6 +38,16 @@ test("carrier colors "+width+" inline="+inline+" "+theme,async({page,baseURL})=>
   const badges=page.locator('[data-carrier="'+keys[i]+'"]');
   for(const badge of await badges.all()){
    await expect(badge).toBeVisible();await expect(badge).toHaveCSS("background-color",colors[i]);
+   const logo=badge.locator("svg");
+   if(keys[i]==="other")await expect(logo).toHaveCount(0);
+   else {
+    await expect(logo).toHaveAttribute("data-carrier-logo",keys[i]);
+    await expect(logo).toBeVisible();await expect(logo).toHaveCSS("width","12px");
+    await expect(logo).toHaveCSS("height","12px");await expect(logo).toHaveCSS("fill","rgb(255, 255, 255)");
+    const lr=await logo.boundingBox(),tr=await badge.locator("span").boundingBox();
+    expect(lr!.x+lr!.width).toBeLessThanOrEqual(tr!.x);
+    expect(Math.abs(lr!.y+lr!.height/2-tr!.y-tr!.height/2)).toBeLessThanOrEqual(1);
+   }
    const r=await badge.boundingBox();expect(r!.x).toBeGreaterThanOrEqual(0);expect(r!.x+r!.width).toBeLessThanOrEqual(width);
   }
  }
