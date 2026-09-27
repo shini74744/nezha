@@ -2,12 +2,12 @@ import {test,expect} from "@playwright/test";
 import {createServer} from "../../../user/src/test/fixtures";
 const origin=process.env.E2E_BASE_URL||"https://127.0.0.1:18476";
 test.use({ignoreHTTPSErrors:true});
-for(const width of [1366,390])for(const inline of ["0","1"])for(const theme of ["light","dark"])
-test("carrier colors "+width+" inline="+inline+" "+theme,async({page,baseURL})=>{
+for(const width of [1366,390])for(const inline of ["0","1"])for(const theme of ["light","dark"])for(const custom of [false,true])
+test("carrier colors "+width+" inline="+inline+" "+theme+" custom="+custom,async({page,baseURL})=>{
  expect(baseURL).toBe(origin);
  const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
  const now=Date.now();
- const public_note=JSON.stringify({billingDataMod:{amount:"33刀",cycle:"Month",startDate:"2026-09-01T00:00:00+08:00",endDate:"2027-09-01T00:00:00+08:00"},planDataMod:{bandwidth:"5000Mbps",trafficVol:"5TB/月",IPv4:"1",networkRoute:"old blue label",networkRoutes:{unicom:"1111",telecom:"CN2",mobile:"CMI/CMIN2",other:"IX"},networkRouteEntries:[{carrier:"ntt",country:"JP",text:"AS2914"},{carrier:"cogent",country:"US",text:"AS174"}],linkTags:[{name:"购买",url:"https://example.com/buy"}]}});
+ const public_note=JSON.stringify({billingDataMod:{amount:"33刀",cycle:"Month",startDate:"2026-09-01T00:00:00+08:00",endDate:"2027-09-01T00:00:00+08:00"},planDataMod:{...(custom?{networkRouteColors:{telecom:"#ffffff",mobile:"#000000",unicom:"#ff0000",other:"#00ffff"}}:{}),bandwidth:"5000Mbps",trafficVol:"5TB/月",IPv4:"1",networkRoute:"old blue label",networkRoutes:{unicom:"1111",telecom:"CN2",mobile:"CMI/CMIN2",other:"IX"},networkRouteEntries:[{carrier:"ntt",country:"JP",text:"AS2914"},{carrier:"cogent",country:"US",text:"AS174"}],linkTags:[{name:"购买",url:"https://example.com/buy"}]}});
  const servers=[createServer({id:11,name:"在线机器",last_active:new Date(now).toISOString(),public_note}),createServer({id:12,name:"离线机器",public_note})];
  await page.setViewportSize({width,height:900});
  await page.addInitScript(({inline,theme})=>{
@@ -28,10 +28,10 @@ test("carrier colors "+width+" inline="+inline+" "+theme,async({page,baseURL})=>
  await expect.poll(()=>page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue("--color-blue-600").trim()),{timeout:15000}).not.toBe("");
  const keys=["telecom","mobile","unicom","other"];
  // Resolve the theme's actual color tokens; modern Tailwind emits Lab, not RGB.
- const colors=await page.evaluate(theme=>["blue","green","red","stone"].map(color=>{
-  const probe=document.createElement("span");probe.style.backgroundColor="var(--color-"+color+"-"+(theme==="dark"?"800":"600")+")";
+ const colors=await page.evaluate(({theme,custom})=>["blue","green","red","stone"].map((color,i)=>{
+  const probe=document.createElement("span");probe.style.backgroundColor=custom?["#ffffff","#000000","#ff0000","#00ffff"][i]:"var(--color-"+color+"-"+(theme==="dark"?"800":"600")+")";
   document.body.append(probe);const value=getComputedStyle(probe).backgroundColor;probe.remove();return value;
- }),theme);
+ }),{theme,custom});
  expect(new Set(colors).size).toBe(4);expect(colors).not.toContain("rgba(0, 0, 0, 0)");
  await expect(page.locator("[data-carrier]")).toHaveCount(8);
  for(let i=0;i<keys.length;i++){
@@ -43,7 +43,7 @@ test("carrier colors "+width+" inline="+inline+" "+theme,async({page,baseURL})=>
    else {
     await expect(logo).toHaveAttribute("data-carrier-logo",keys[i]);
     await expect(logo).toBeVisible();await expect(logo).toHaveCSS("width","12px");
-    await expect(logo).toHaveCSS("height","12px");await expect(logo).toHaveCSS("fill","rgb(255, 255, 255)");
+    await expect(logo).toHaveCSS("height","12px");await expect(logo).toHaveCSS("fill",custom&&keys[i]!=="mobile"?"rgb(0, 0, 0)":"rgb(255, 255, 255)");
     const lr=await logo.boundingBox(),tr=await badge.locator("span").boundingBox();
     expect(lr!.x+lr!.width).toBeLessThanOrEqual(tr!.x);
     expect(Math.abs(lr!.y+lr!.height/2-tr!.y-tr!.height/2)).toBeLessThanOrEqual(1);
@@ -57,6 +57,9 @@ test("carrier colors "+width+" inline="+inline+" "+theme,async({page,baseURL})=>
  await expect(page.locator("[data-other-carrier]")).toHaveCount(4);
  for(const badge of await page.locator("[data-other-carrier]").all()){
   await expect(badge).toBeVisible();
+  await expect(badge.locator("img")).toHaveCSS("width","16px");
+  await expect(badge.locator("img")).toHaveCSS("height","12px");
+  if(custom)await expect(badge).toHaveCSS("background-color","rgb(0, 255, 255)");
   await expect.poll(()=>badge.locator("img").evaluate((im:HTMLImageElement)=>im.complete&&im.naturalWidth>0)).toBe(true);
  }
  const links=page.getByRole("link",{name:"购买",exact:true});

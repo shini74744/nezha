@@ -49,6 +49,7 @@ import {
 } from "@/lib/public-note"
 import { chineseNote, patchRoutes, readRoutes, routeFields } from "@/lib/public-note-compat"
 import OtherRoutesEditor from "./OtherRoutesEditor"
+import CarrierColorPicker from "./CarrierColorPicker"
 import LinkTagsEditor from "./LinkTagsEditor"
 import { conv } from "@/lib/utils"
 import { asOptionalField } from "@/lib/utils"
@@ -810,9 +811,13 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                         />
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <Label className="text-xs">
-                                                            {t("PublicNote.TrafficVolume")}
-                                                        </Label>
+                                                        <div className="flex items-center flex-wrap gap-2">
+                                                            <Label className="text-xs">{t("PublicNote.TrafficVolume")}</Label>
+                                                            {[["500G","500G/月"],["1T","1T/月"],["无限","无限流量"]].map(([label,value])=>(
+                                                                <Button key={label} type="button" variant="outline" className="text-xs px-2 py-0 h-auto"
+                                                                    onClick={()=>patchPublicNote("planDataMod.trafficVol",value)}>{label}</Button>
+                                                            ))}
+                                                        </div>
                                                         <Input
                                                             placeholder="1TB/Month"
                                                             value={
@@ -952,9 +957,10 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                             {routeFields.filter(route=>route.key!=="other").map(route => (
                                                                 <div key={route.key} className="space-y-1">
-                                                                    <Label htmlFor={"route-"+route.key} className="text-xs">
-                                                                        <span aria-hidden style={{color:route.color}}>● </span>{route.label}
-                                                                    </Label>
+                                                                    <CarrierColorPicker label={route.label} fallback={route.color}
+                                                                        value={publicNoteObj.planDataMod?.networkRouteColors?.[route.key]}
+                                                                        onChange={color=>setPublicNoteObj(prev=>({...prev,planDataMod:{...prev.planDataMod,
+                                                                            networkRouteColors:{...prev.planDataMod?.networkRouteColors,[route.key]:color}}}))}/>
                                                                     <Input id={"route-"+route.key} placeholder={route.placeholder}
                                                                         value={readRoutes(publicNoteObj.planDataMod)[route.key]}
                                                                         onChange={e=>setPublicNoteObj(prev=>patchRoutes(prev,route.key,e.target.value))}/>
