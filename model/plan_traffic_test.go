@@ -28,6 +28,9 @@ func TestTrafficPlanCompatibility(t *testing.T) {
 		day       int
 	}{
 		{`{"billingDataMod":{"startDate":"2026-05-02"},"planDataMod":{"trafficVol":""}}`, "unset", 2},
+		{`{"billingDataMod":{"startDate":"2026-08-03 00:00:00+08:00"}}`, "unset", 3},
+		{`{"billingDataMod":{"startDate":"2026-05-02 12:30:00"}}`, "unset", 2},
+		{`{"billingDataMod":{"startDate":"2026-05-01T16:00:00Z"}}`, "unset", 2},
 		{`{"账单信息":{"开始时间":"2026-05-02"},"套餐信息":{"流量":"无限","流量重置日":15}}`, "unlimited", 15},
 		{`{"planDataMod":{"trafficVol":"unlimited","resetDay":31}}`, "unlimited", 31},
 		{`{"planDataMod":{"trafficVol":"不限量"}}`, "unlimited", 1},

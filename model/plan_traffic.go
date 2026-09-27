@@ -134,12 +134,13 @@ func ParseTrafficPlan(raw string) (*TrafficPlan, error) {
 		var b map[string]json.RawMessage
 		if json.Unmarshal(braw, &b) == nil {
 			startValue := noteString(b, "startDate", "开始时间")
-			start, err := time.Parse(time.RFC3339, startValue)
-			if err != nil {
-				start, err = time.ParseInLocation("2006-01-02", startValue, PlanTrafficZone)
-			}
-			if err == nil {
-				day = start.In(PlanTrafficZone).Day()
+			// Legacy notes may use a space separator or omit the timezone.
+			startValue = strings.Replace(startValue, " ", "T", 1)
+			for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05", "2006-01-02"} {
+				if start, err := time.ParseInLocation(layout, startValue, PlanTrafficZone); err == nil {
+					day = start.In(PlanTrafficZone).Day()
+					break
+				}
 			}
 		}
 	}
