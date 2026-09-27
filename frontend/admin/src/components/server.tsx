@@ -951,7 +951,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                         )}
                                                     </div>
                                                     </div>
-                                                    <ProviderLogoEditor note={publicNoteObj} onChange={setPublicNoteObj}/>
+                                                    <ProviderLogoEditor note={publicNoteObj} onChange={setPublicNoteObj} serverId={data.id} name={form.watch('name')}/>
                                                     <LinkTagsEditor note={publicNoteObj} onChange={setPublicNoteObj}/>
                                                     {publicNoteErrors["plan.linkTags"]&&<p className="text-xs text-destructive">{publicNoteErrors["plan.linkTags"]}</p>}
                                                     <fieldset className="space-y-2 sm:col-span-2">

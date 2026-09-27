@@ -2,6 +2,7 @@ package model
 
 type LogoLibraryEntry struct {
 	ID           string   `json:"id" gorm:"primaryKey;size:100"`
+	GroupID      string   `json:"groupId" gorm:"index"`
 	Kind         string   `json:"kind" gorm:"index;size:16"`
 	Name         string   `json:"name"`
 	Regions      []string `json:"regions" gorm:"serializer:json"`

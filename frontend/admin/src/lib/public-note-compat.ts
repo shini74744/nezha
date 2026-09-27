@@ -11,7 +11,7 @@ export const routeFields = [
 ] as const;
 export type RouteKey = typeof routeFields[number]["key"];
 export type Routes = Record<RouteKey,string>;
-const logoNames={logo:"Logo地址",logoOriginal:"原始Logo",logoWebsite:"网站地址",logoLibraryId:"图标库ID",logoLibraryName:"图标名称",logoBackground:"图标底色"};
+const logoNames={logo:"Logo地址",logoOriginal:"原始Logo",logoWebsite:"网站地址",logoLibraryId:"图标库ID",logoLibraryName:"图标名称",logoBackground:"图标底色",logoLayout:"图标布局"};
 const routeNames = Object.fromEntries(routeFields.map(r=>[r.key,r.label]));
 function aliases(input: unknown, names: Record<string,string>): Obj {
  if (!object(input)) throw Error("公开备注中的分组必须是 JSON 对象");
@@ -43,7 +43,7 @@ export function normalizeNote(input:unknown):Obj {
    p.networkRoutes=aliases(aliases(p.networkRoutes,{other:"其他线路"}),routeNames);
    for(const r of routeFields)if(p.networkRoutes[r.key]!==undefined&&typeof p.networkRoutes[r.key]!=="string")throw Error(r.label+"线路必须为文本");
   }
-  if(p.providerLogo!==undefined)p.providerLogo=aliases(p.providerLogo,logoNames);
+  if(p.providerLogo!==undefined){p.providerLogo=aliases(p.providerLogo,logoNames);if(p.providerLogo.logoLayout!==undefined){const l=aliases(p.providerLogo.logoLayout,{desktop:"电脑端",mobile:"手机端"});for(const d of ["desktop","mobile"])if(l[d]!==undefined)l[d]=aliases(l[d],{x:"左右偏移",y:"上下偏移",scale:"缩放"});p.providerLogo.logoLayout=l;}}
   if(p.networkRouteLogos!==undefined)p.networkRouteLogos=Object.fromEntries(Object.entries(aliases(p.networkRouteLogos,routeNames)).map(([k,v])=>[k,aliases(v,logoNames)]));
   if(p.networkRouteColors!==undefined)p.networkRouteColors=aliases(p.networkRouteColors,routeNames);
   if(p.networkRouteEntries!==undefined){
@@ -117,7 +117,7 @@ export function chineseNote(input:Obj):string {
   for(const k of ["IPv4","IPv6"])p[k]=p[k]==="1"?true:p[k]==="0"?false:p[k];
   p.trafficType=({"0":"未指定","1":"下载","2":"双向","3":"上传"} as Obj)[p.trafficType]||p.trafficType;
   if(p.networkRoutes){p.networkRoutes=translated(p.networkRoutes,routeNames);delete p.networkRoute;}
-  if(p.providerLogo)p.providerLogo=translated(p.providerLogo,logoNames);
+  if(p.providerLogo){const v={...p.providerLogo};if(v.logoLayout){const l={...v.logoLayout};for(const d of ["desktop","mobile"])if(l[d])l[d]=translated(l[d],{x:"左右偏移",y:"上下偏移",scale:"缩放"});v.logoLayout=translated(l,{desktop:"电脑端",mobile:"手机端"});}p.providerLogo=translated(v,logoNames);}
   if(p.networkRouteLogos)p.networkRouteLogos=translated(Object.fromEntries(Object.entries(p.networkRouteLogos).map(([k,v])=>[k,translated(v as Obj,logoNames)])),routeNames);
   if(p.networkRouteColors)p.networkRouteColors=translated(p.networkRouteColors,routeNames);
   if(p.networkRouteEntries)p.networkRouteEntries=p.networkRouteEntries.map((e:Obj)=>translated(e,{carrier:"运营商",text:"线路名称",country:"国家地区",name:"运营商名称",...logoNames,color:"标签颜色"}));

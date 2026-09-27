@@ -12,6 +12,8 @@ import i18n from "./i18n"
  * - cycle is one of Day/Week/Month/Year
  * - Date fields can be empty, ISO-like, or the special value "0000-00-00T23:59:59+08:00"
  */
+const placementSchema=z.object({x:z.number().min(-150).max(150).optional(),y:z.number().min(-150).max(150).optional(),scale:z.number().min(25).max(250).optional()}).passthrough();
+const logoLayoutSchema=z.object({desktop:placementSchema.optional(),mobile:placementSchema.optional()}).passthrough();
 export const PublicNoteSchema = z.object({
     billingDataMod: z
         .object({
@@ -24,7 +26,7 @@ export const PublicNoteSchema = z.object({
         .optional(),
     planDataMod: z
         .object({
-            providerLogo: z.object({logo:z.string().optional(),logoOriginal:z.string().optional(),logoWebsite:z.string().optional(),logoLibraryId:z.string().optional(),logoLibraryName:z.string().optional(),logoBackground:z.string().optional()}).passthrough().optional(),
+            providerLogo: z.object({logoLayout:logoLayoutSchema.optional(),logo:z.string().optional(),logoOriginal:z.string().optional(),logoWebsite:z.string().optional(),logoLibraryId:z.string().optional(),logoLibraryName:z.string().optional(),logoBackground:z.string().optional()}).passthrough().optional(),
             networkRouteLogos: z.record(z.string(),z.object({logo:z.string().optional(),logoOriginal:z.string().optional(),logoWebsite:z.string().optional(),logoLibraryId:z.string().optional(),logoLibraryName:z.string().optional(),logoBackground:z.string().optional()}).passthrough()).optional(),
             bandwidth: z.string().optional(),
             trafficVol: z.string().optional(),
@@ -95,6 +97,7 @@ export const parsePublicNote = (s?: string): PublicNote => {
 
 export const validatePublicNote = (pn: PublicNote) => {
     const errors: Partial<Record<string, string>> = {}
+    if(pn.planDataMod?.providerLogo?.logoLayout!==undefined&&!logoLayoutSchema.safeParse(pn.planDataMod.providerLogo.logoLayout).success)errors["plan.providerLogo"]="图标位置范围为 -150～150px，缩放范围为 25～250%";
 
     // Structural and enum validations
     if (pn.billingDataMod?.autoRenewal && !/^(0|1)$/.test(pn.billingDataMod.autoRenewal)) {
