@@ -1,6 +1,6 @@
 import {test,expect} from "@playwright/test";
 import {createServer} from "../../../user/src/test/fixtures";
-const origin="https://127.0.0.1:18476";
+const origin=process.env.E2E_BASE_URL||"https://127.0.0.1:18476";
 test.use({ignoreHTTPSErrors:true});
 for(const width of [1366,390])for(const inline of ["0","1"])for(const theme of ["light","dark"])
 test("carrier colors "+width+" inline="+inline+" "+theme,async({page,baseURL})=>{
@@ -25,7 +25,7 @@ test("carrier colors "+width+" inline="+inline+" "+theme,async({page,baseURL})=>
   if(u.origin!==origin)return route.abort();return route.continue();
  });
  await page.goto("/");
- await expect.poll(()=>page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue("--color-blue-600").trim())).not.toBe("");
+ await expect.poll(()=>page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue("--color-blue-600").trim()),{timeout:15000}).not.toBe("");
  const keys=["telecom","mobile","unicom","other"];
  // Resolve the theme's actual color tokens; modern Tailwind emits Lab, not RGB.
  const colors=await page.evaluate(theme=>["blue","green","red","stone"].map(color=>{

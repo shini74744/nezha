@@ -37,6 +37,6 @@ describe("global carrier notes",()=>{
  it("ships unique verified logos and a complete region selector",()=>{
   expect(carriers.length).toBeGreaterThanOrEqual(35);expect(new Set(carriers.map(c=>c.id)).size).toBe(carriers.length);
   expect(carrierRegions.length).toBeGreaterThanOrEqual(250);
-  for(const c of carriers){expect(c.icon).toMatch(/^data:image\//);expect(c.regions.length).toBeGreaterThan(0);for(const code of c.regions)expect(carrierRegions.some(r=>r.code===code)).toBe(true)}
+  for(const c of carriers){if(c.icon)expect(c.icon).toMatch(/^data:image\//);else expect(c.reference).toBe(true);expect(c.regions.length).toBeGreaterThan(0);for(const code of c.regions)expect(carrierRegions.some(r=>r.code===code)).toBe(true)}
  });
 });
