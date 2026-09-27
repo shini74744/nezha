@@ -38,6 +38,7 @@ export const SettingsTab = ({ className }: { className?: string }) => {
                 {isAdmin && <TabsTrigger value="/dashboard/settings/dashboard-appearance" asChild>
                     <Link to="/dashboard/settings/dashboard-appearance">后台美化设置</Link>
                 </TabsTrigger>}
+                {isAdmin && <TabsTrigger value="/dashboard/settings/icons" asChild><Link to="/dashboard/settings/icons">图标设置</Link></TabsTrigger>}
             </TabsList>
         </Tabs>
     )

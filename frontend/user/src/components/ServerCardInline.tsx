@@ -1,8 +1,7 @@
-import {NativeName,NativeSpeed,NativeTraffic} from "@/appearance/widgets";
+import {NativeSpeed,NativeTraffic} from "@/appearance/widgets";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import ServerFlag from "@/components/ServerFlag";
 import ServerUsageBar from "@/components/ServerUsageBar";
 import { formatBytes } from "@/lib/format";
 import {
@@ -13,9 +12,7 @@ import {
 import { saveMainPageScrollPosition } from "@/lib/navigation";
 import { cn, formatNezhaInfo, parsePublicNote } from "@/lib/utils";
 import type { NezhaServer } from "@/types/nezha-api";
-import BillingInfo from "./billingInfo";
-import ProviderLogo from "./ProviderLogo";
-import ServerLinkTags from "./ServerLinkTags";
+import ServerIdentity from "./ServerIdentity";
 import PlanInfo from "./PlanInfo";
 import { Card } from "./ui/card";
 import { Separator } from "./ui/separator";
@@ -50,7 +47,6 @@ function ServerCardInline({
 		navigate(`/server/${serverInfo.id}`);
 	};
 
-	const showFlag = true;
 
 	const customBackgroundImage =
 		(window.CustomBackgroundImage as string) !== ""
@@ -61,7 +57,7 @@ function ServerCardInline({
 
 	return online ? (
 		<section>
-			<Card
+			<Card data-server-card
 				className={cn(
 					"flex w-full min-w-[900px] cursor-pointer items-center justify-start gap-3 p-3 transition-all hover:shadow-sm hover:ring-stone-300 md:px-5 lg:flex-row dark:hover:ring-stone-700",
 					{
@@ -70,35 +66,7 @@ function ServerCardInline({
 				)}
 				onClick={cardClick}
 			>
-				<section
-					className={cn("grid items-center gap-2 lg:w-36")}
-					style={{ gridTemplateColumns: "auto auto 1fr" }}
-				>
-					<span className="h-2 w-2 shrink-0 rounded-full bg-green-500 self-center"></span>
-					<div
-						className={cn(
-							"flex items-center justify-center",
-							showFlag ? "min-w-[17px]" : "min-w-0",
-						)}
-					>
-						{showFlag ? <ServerFlag country_code={country_code} /> : null}
-					</div>
-					<div className="relative w-28 flex flex-col">
-                    <ProviderLogo value={parsedData?.planDataMod?.providerLogo}/>
-						<p
-							className={cn(
-								"break-normal font-bold tracking-tight",
-								showFlag ? "text-xs " : "text-sm",
-							)}
-						>
-							<NativeName online={online}>{name}</NativeName>
-						</p>
-						{parsedData?.billingDataMod && (
-							<BillingInfo parsedData={parsedData} />
-						)}
-<ServerLinkTags tags={parsedData?.planDataMod?.linkTags}/>
-					</div>
-				</section>
+				<ServerIdentity online={online} name={name} country={country_code} parsedData={parsedData} inline />
 				<Separator orientation="vertical" className="h-8 mx-0 ml-2" />
 				<div className="flex flex-col gap-1">
 					<section className={cn("grid grid-cols-9 items-center gap-3 flex-1")}>
@@ -134,14 +102,14 @@ function ServerCardInline({
 							</div>
 						</div>
 						<div className={"flex w-14 flex-col"}>
-							<p className="text-xs text-muted-foreground">{"CPU"}</p>
+							<p data-metric-label="cpu" className="text-xs text-muted-foreground">{"CPU"}</p>
 							<div className="flex items-center text-xs font-semibold">
 								{cpu.toFixed(2)}%
 							</div>
 							<ServerUsageBar value={cpu} />
 						</div>
 						<div className={"flex w-14 flex-col"}>
-							<p className="text-xs text-muted-foreground">
+							<p data-metric-label="memory" className="text-xs text-muted-foreground">
 								{t("serverCard.mem")}
 							</p>
 							<div className="flex items-center text-xs font-semibold">
@@ -205,7 +173,7 @@ function ServerCardInline({
 			</Card>
 		</section>
 	) : (
-		<Card
+		<Card data-server-card
 			className={cn(
 				"flex  min-h-[61px] min-w-[900px] items-center justify-start p-3 md:px-5 flex-row cursor-pointer hover:bg-accent/50 transition-colors",
 				{
@@ -214,35 +182,7 @@ function ServerCardInline({
 			)}
 			onClick={cardClick}
 		>
-			<section
-				className={cn("grid items-center gap-2 w-40")}
-				style={{ gridTemplateColumns: "auto auto 1fr" }}
-			>
-				<span className="h-2 w-2 shrink-0 rounded-full bg-red-500 self-center"></span>
-				<div
-					className={cn(
-						"flex items-center justify-center",
-						showFlag ? "min-w-[17px]" : "min-w-0",
-					)}
-				>
-					{showFlag ? <ServerFlag country_code={country_code} /> : null}
-				</div>
-				<div className="relative flex flex-col">
-                    <ProviderLogo value={parsedData?.planDataMod?.providerLogo}/>
-					<p
-						className={cn(
-							"break-normal font-bold w-28 tracking-tight",
-							showFlag ? "text-xs" : "text-sm",
-						)}
-					>
-						<NativeName online={online}>{name}</NativeName>
-					</p>
-					{parsedData?.billingDataMod && (
-						<BillingInfo parsedData={parsedData} />
-					)}
-<ServerLinkTags tags={parsedData?.planDataMod?.linkTags}/>
-				</div>
-			</section>
+			<ServerIdentity online={online} name={name} country={country_code} parsedData={parsedData} inline />
 			<Separator orientation="vertical" className="h-8 ml-3 lg:ml-1 mr-3" />
 			{/* Legacy traffic enhancement applies to online cards only. */}
 			{parsedData?.planDataMod && <PlanInfo parsedData={parsedData} />}

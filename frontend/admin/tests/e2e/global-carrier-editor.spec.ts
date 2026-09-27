@@ -7,10 +7,12 @@ for(const width of [1366,390])test("global carriers and link tags editor "+width
  const original={planDataMod:{networkRoute:"CN2,旧线路",custom:"keep"},unknown:{keep:true}};
  let server:any={id:11,host:{version:"2.3.5"},name:"全球运营商测试",display_index:0,user_id:1,uuid:"fixture",public_note:JSON.stringify(original),note:"",enable_ddns:false,hide_for_guest:false};
  const assets=new Map<string,string>();
+ const catalog=carriers.map(c=>{const extension=c.icon.startsWith("data:image/svg")?"svg":"png";const path="/api/v1/logo/assets/"+createHash("sha256").update(Buffer.from(c.icon.split(",")[1],"base64")).digest("hex")+"."+extension;assets.set(path,c.icon);return {id:"carrier-"+c.id,kind:"carrier",name:c.label,regions:c.regions,aliases:c.aliases,logo:path,logoWebsite:c.assetSource,background:c.logoBackground||"",version:1}});
  const updates:any[]=[],errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
  await page.route("**/api/v1/**",async route=>{
   const path=new URL(route.request().url()).pathname,method=route.request().method();let data:any=[];
-  if(path.startsWith("/api/v1/logo/assets/")){const value=assets.get(path);return route.fulfill({status:value?200:404,contentType:"image/png",body:value?Buffer.from(value.split(",")[1],"base64"):Buffer.alloc(0)})}
+  if(path.startsWith("/api/v1/logo/assets/")){const value=assets.get(path);return route.fulfill({status:value?200:404,contentType:value?.split(";")[0].slice(5)||"image/png",body:value?Buffer.from(value.split(",")[1],"base64"):Buffer.alloc(0)})}
+  if(path==="/api/v1/logo/library")data=catalog;
   if(path==="/api/v1/logo/store"){const body=route.request().postDataJSON();data={};for(const key of ["logo","logoOriginal"]){const value=body[key];const dst="/api/v1/logo/assets/"+createHash("sha256").update(Buffer.from(value.split(",")[1],"base64")).digest("hex")+".png";assets.set(dst,value);data[key]=dst}}
   if(path==="/api/v1/logo/fetch"){const body=route.request().postDataJSON();if(body.url==="failure.example")return route.fulfill({json:{success:false,error:"模拟网站无图标"}});data={image:fixtureLogo,source:"https://www.google.com/s2/favicons?domain=www.starhub.com"}}
   if(path==="/api/v1/profile")data={id:1,username:"admin",role:0};

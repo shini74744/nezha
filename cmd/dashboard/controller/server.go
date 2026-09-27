@@ -67,6 +67,8 @@ func updateServer(c *gin.Context) (any, error) {
 		return nil, singleton.Localizer.ErrorT("permission denied")
 	}
 
+	logoLibraryMu.Lock()
+	defer logoLibraryMu.Unlock()
 	var s model.Server
 	if err := singleton.DB.First(&s, id).Error; err != nil {
 		return nil, singleton.Localizer.ErrorT("server id %d does not exist", id)
@@ -79,7 +81,11 @@ func updateServer(c *gin.Context) (any, error) {
 	s.Name = sf.Name
 	s.DisplayIndex = sf.DisplayIndex
 	s.Note = sf.Note
-	publicNote, err := importServerLogos(c, sf.PublicNote)
+	resolvedNote, err := resolveLogoLibrary(sf.PublicNote)
+	if err != nil {
+		return nil, err
+	}
+	publicNote, err := importServerLogos(c, resolvedNote)
 	if err != nil {
 		return nil, err
 	}
