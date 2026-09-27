@@ -1,0 +1,48 @@
+import {test,expect} from "@playwright/test";
+import {createServer} from "../../../user/src/test/fixtures";
+const origin="https://127.0.0.1:18476";
+test.use({ignoreHTTPSErrors:true});
+for(const width of [1366,390])for(const inline of ["0","1"])for(const theme of ["light","dark"])
+test("carrier colors "+width+" inline="+inline+" "+theme,async({page,baseURL})=>{
+ expect(baseURL).toBe(origin);
+ const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
+ const now=Date.now();
+ const public_note=JSON.stringify({planDataMod:{bandwidth:"5000Mbps",trafficVol:"5TB/月",IPv4:"1",networkRoute:"old blue label",networkRoutes:{unicom:"1111",telecom:"CN2",mobile:"CMI/CMIN2",other:"IX"}}});
+ const servers=[createServer({id:11,name:"在线机器",last_active:new Date(now).toISOString(),public_note}),createServer({id:12,name:"离线机器",public_note})];
+ await page.setViewportSize({width,height:900});
+ await page.addInitScript(({inline,theme})=>{
+  localStorage.setItem("inline",inline);localStorage.setItem("showMap","0");
+  localStorage.setItem("showServices","0");localStorage.setItem("vite-ui-theme",theme);
+ },{inline,theme});
+ await page.routeWebSocket("**/api/v1/ws/server",ws=>ws.send(JSON.stringify({now,online:1,servers})));
+ await page.route("**/*",async route=>{
+  const u=new URL(route.request().url());
+  if(u.pathname==="/api/v1/setting")return route.fulfill({json:{success:true,data:{config:{language:"zh-CN",site_name:"运营商颜色校验",custom_code:""}}}});
+  if(u.pathname==="/api/v1/server-group")return route.fulfill({json:{success:true,data:[]}});
+  if(u.pathname==="/api/v1/profile")return route.fulfill({json:{success:false}});
+  if(u.pathname==="/api/v1/server-traffic")return route.fulfill({json:{success:true,data:{}}});
+  if(u.pathname.includes("/service"))return route.fulfill({json:{success:true,data:{services:{},cycle_transfer_stats:{}}}});
+  if(u.origin!==origin)return route.abort();return route.continue();
+ });
+ await page.goto("/");
+ const keys=["telecom","mobile","unicom","other"];
+ // Resolve the theme's actual color tokens; modern Tailwind emits Lab, not RGB.
+ const colors=await page.evaluate(theme=>["blue","green","red","stone"].map(color=>{
+  const probe=document.createElement("span");probe.style.backgroundColor="var(--color-"+color+"-"+(theme==="dark"?"800":"600")+")";
+  document.body.append(probe);const value=getComputedStyle(probe).backgroundColor;probe.remove();return value;
+ }),theme);
+ expect(new Set(colors).size).toBe(4);expect(colors).not.toContain("rgba(0, 0, 0, 0)");
+ await expect(page.locator("[data-carrier]")).toHaveCount(8);
+ for(let i=0;i<keys.length;i++){
+  const badges=page.locator('[data-carrier="'+keys[i]+'"]');
+  for(const badge of await badges.all()){
+   await expect(badge).toBeVisible();await expect(badge).toHaveCSS("background-color",colors[i]);
+   const r=await badge.boundingBox();expect(r!.x).toBeGreaterThanOrEqual(0);expect(r!.x+r!.width).toBeLessThanOrEqual(width);
+  }
+ }
+ expect(await page.locator("[data-carrier]").evaluateAll(els=>els.map(e=>e.getAttribute("data-carrier")))).toEqual([...keys,...keys]);
+ await expect(page.getByText("old blue label")).toHaveCount(0);
+ await page.screenshot({path:"test-results/carrier-"+width+"-"+inline+"-"+theme+".png",fullPage:true});
+ expect(errors).toEqual([]);
+});
+
