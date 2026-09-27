@@ -7,7 +7,7 @@ test("carrier colors "+width+" inline="+inline+" "+theme,async({page,baseURL})=>
  expect(baseURL).toBe(origin);
  const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
  const now=Date.now();
- const public_note=JSON.stringify({planDataMod:{bandwidth:"5000Mbps",trafficVol:"5TB/月",IPv4:"1",networkRoute:"old blue label",networkRoutes:{unicom:"1111",telecom:"CN2",mobile:"CMI/CMIN2",other:"IX"}}});
+ const public_note=JSON.stringify({billingDataMod:{amount:"33刀",cycle:"Month",startDate:"2026-09-01T00:00:00+08:00",endDate:"2027-09-01T00:00:00+08:00"},planDataMod:{bandwidth:"5000Mbps",trafficVol:"5TB/月",IPv4:"1",networkRoute:"old blue label",networkRoutes:{unicom:"1111",telecom:"CN2",mobile:"CMI/CMIN2",other:"IX"},networkRouteEntries:[{carrier:"ntt",country:"JP",text:"AS2914"},{carrier:"cogent",country:"US",text:"AS174"}],linkTags:[{name:"购买",url:"https://example.com/buy"}]}});
  const servers=[createServer({id:11,name:"在线机器",last_active:new Date(now).toISOString(),public_note}),createServer({id:12,name:"离线机器",public_note})];
  await page.setViewportSize({width,height:900});
  await page.addInitScript(({inline,theme})=>{
@@ -54,6 +54,17 @@ test("carrier colors "+width+" inline="+inline+" "+theme,async({page,baseURL})=>
  expect(await page.locator("[data-carrier]").evaluateAll(els=>els.map(e=>e.getAttribute("data-carrier")))).toEqual([...keys,...keys]);
  await expect(page.getByText("old blue label")).toHaveCount(0);
  await page.screenshot({path:"test-results/carrier-"+width+"-"+inline+"-"+theme+".png",fullPage:true});
+ await expect(page.locator("[data-other-carrier]")).toHaveCount(4);
+ for(const badge of await page.locator("[data-other-carrier]").all()){
+  await expect(badge).toBeVisible();
+  await expect.poll(()=>badge.locator("img").evaluate((im:HTMLImageElement)=>im.complete&&im.naturalWidth>0)).toBe(true);
+ }
+ const links=page.getByRole("link",{name:"购买",exact:true});
+ await expect(links).toHaveCount(2);
+ await page.context().route("https://example.com/**",r=>r.fulfill({body:"fixture target"}));
+ const [popup]=await Promise.all([page.waitForEvent("popup"),links.first().click()]);
+ await expect(popup).toHaveURL("https://example.com/buy");expect(new URL(page.url()).pathname).toBe("/");
+ await popup.close();
  expect(errors).toEqual([]);
 });
 

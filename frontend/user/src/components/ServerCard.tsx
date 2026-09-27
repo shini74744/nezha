@@ -15,6 +15,7 @@ import { saveMainPageScrollPosition } from "@/lib/navigation";
 import { cn, formatNezhaInfo, parsePublicNote } from "@/lib/utils";
 import type { NezhaServer } from "@/types/nezha-api";
 import BillingInfo from "./billingInfo";
+import ServerLinkTags from "./ServerLinkTags";
 import PlanInfo from "./PlanInfo";
 import { Badge } from "./ui/badge";
 import { Card } from "./ui/card";
@@ -110,15 +111,17 @@ const brand=useFeature("branding");
 						{parsedData?.billingDataMod && (
 							<BillingInfo parsedData={parsedData} />
 						)}
+<ServerLinkTags tags={parsedData?.planDataMod?.linkTags}/>
 					</div>
 				</div>
 			</section>
 			<div
-				className={cn("flex items-center gap-2 -mt-2 lg:hidden", {
+				className={cn("flex flex-col items-center gap-1 -mt-2 lg:hidden", {
 					"lg:flex": fixedTopServerName,
 				})}
 			>
-				{parsedData?.billingDataMod && <BillingInfo parsedData={parsedData} />}
+				<div className="flex items-center gap-2">{parsedData?.billingDataMod && <BillingInfo parsedData={parsedData} />}</div>
+<ServerLinkTags tags={parsedData?.planDataMod?.linkTags}/>
 			</div>
 			<div className="flex flex-col lg:items-start items-center gap-2">
 				<section
@@ -270,15 +273,17 @@ const brand=useFeature("branding");
 						{parsedData?.billingDataMod && (
 							<BillingInfo parsedData={parsedData} />
 						)}
+<ServerLinkTags tags={parsedData?.planDataMod?.linkTags}/>
 					</div>
 				</div>
 			</section>
 			<div
-				className={cn("flex items-center gap-2 lg:hidden", {
+				className={cn("flex flex-col items-center gap-1 lg:hidden", {
 					"lg:flex": fixedTopServerName,
 				})}
 			>
-				{parsedData?.billingDataMod && <BillingInfo parsedData={parsedData} />}
+				<div className="flex items-center gap-2">{parsedData?.billingDataMod && <BillingInfo parsedData={parsedData} />}</div>
+<ServerLinkTags tags={parsedData?.planDataMod?.linkTags}/>
 			</div>
 			{/* Legacy traffic enhancement applies to online cards only. */}
 			{parsedData?.planDataMod && <PlanInfo parsedData={parsedData} />}

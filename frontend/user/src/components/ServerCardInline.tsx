@@ -14,6 +14,7 @@ import { saveMainPageScrollPosition } from "@/lib/navigation";
 import { cn, formatNezhaInfo, parsePublicNote } from "@/lib/utils";
 import type { NezhaServer } from "@/types/nezha-api";
 import BillingInfo from "./billingInfo";
+import ServerLinkTags from "./ServerLinkTags";
 import PlanInfo from "./PlanInfo";
 import { Card } from "./ui/card";
 import { Separator } from "./ui/separator";
@@ -93,6 +94,7 @@ function ServerCardInline({
 						{parsedData?.billingDataMod && (
 							<BillingInfo parsedData={parsedData} />
 						)}
+<ServerLinkTags tags={parsedData?.planDataMod?.linkTags}/>
 					</div>
 				</section>
 				<Separator orientation="vertical" className="h-8 mx-0 ml-2" />
@@ -235,6 +237,7 @@ function ServerCardInline({
 					{parsedData?.billingDataMod && (
 						<BillingInfo parsedData={parsedData} />
 					)}
+<ServerLinkTags tags={parsedData?.planDataMod?.linkTags}/>
 				</div>
 			</section>
 			<Separator orientation="vertical" className="h-8 ml-3 lg:ml-1 mr-3" />

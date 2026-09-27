@@ -48,6 +48,8 @@ import {
     validatePublicNote,
 } from "@/lib/public-note"
 import { chineseNote, patchRoutes, readRoutes, routeFields } from "@/lib/public-note-compat"
+import OtherRoutesEditor from "./OtherRoutesEditor"
+import LinkTagsEditor from "./LinkTagsEditor"
 import { conv } from "@/lib/utils"
 import { asOptionalField } from "@/lib/utils"
 import { ModelServer } from "@/types"
@@ -128,6 +130,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                 | "plan.trafficVol"
                 | "plan.trafficType"
                 | "plan.resetDay"
+                | "plan.linkTags"
                 | "plan.IPv4"
                 | "plan.IPv6"
                 | "plan.extra",
@@ -941,11 +944,13 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                         )}
                                                     </div>
                                                     </div>
+                                                    <LinkTagsEditor note={publicNoteObj} onChange={setPublicNoteObj}/>
+                                                    {publicNoteErrors["plan.linkTags"]&&<p className="text-xs text-destructive">{publicNoteErrors["plan.linkTags"]}</p>}
                                                     <fieldset className="space-y-2 sm:col-span-2">
                                                         <legend className="text-xs font-medium">网络路由</legend>
-                                                        <p className="text-xs text-muted-foreground">按电信、移动、联通排序；同一运营商的多条线路用逗号分隔。无法确定的旧线路保留在“其他线路”。</p>
+                                                        <p className="text-xs text-muted-foreground">按电信、移动、联通排序；同一运营商的多条线路用逗号分隔。无法确定的旧线路保留在“其他运营商”，可选择地区和 Logo。</p>
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                            {routeFields.map(route => (
+                                                            {routeFields.filter(route=>route.key!=="other").map(route => (
                                                                 <div key={route.key} className="space-y-1">
                                                                     <Label htmlFor={"route-"+route.key} className="text-xs">
                                                                         <span aria-hidden style={{color:route.color}}>● </span>{route.label}
@@ -955,6 +960,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                                         onChange={e=>setPublicNoteObj(prev=>patchRoutes(prev,route.key,e.target.value))}/>
                                                                 </div>
                                                             ))}
+                                                            <OtherRoutesEditor note={publicNoteObj} onChange={setPublicNoteObj}/>
                                                         </div>
                                                     </fieldset>
                                                     <div className="space-y-1 sm:col-span-2">

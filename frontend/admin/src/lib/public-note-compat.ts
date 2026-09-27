@@ -2,12 +2,12 @@
 type Obj = Record<string, any>;
 const object = (v: unknown): v is Obj => !!v && typeof v === "object" && !Array.isArray(v);
 const billing = {startDate:"开始时间",endDate:"到期时间",autoRenewal:"自动续费",cycle:"付费周期",amount:"价格"};
-const plan = {bandwidth:"带宽",trafficVol:"流量",trafficType:"流量统计方向",resetDay:"流量重置日",IPv4:"IPv4",IPv6:"IPv6",networkRoute:"网络线路",networkRoutes:"运营商线路",extra:"补充说明"};
+const plan = {bandwidth:"带宽",trafficVol:"流量",trafficType:"流量统计方向",resetDay:"流量重置日",IPv4:"IPv4",IPv6:"IPv6",networkRoute:"网络线路",networkRoutes:"运营商线路",networkRouteEntries:"其他运营商线路",linkTags:"链接标签",extra:"补充说明"};
 export const routeFields = [
  {key:"telecom",label:"中国电信",placeholder:"163PP/CN2",color:"#2563eb"},
  {key:"mobile",label:"中国移动",placeholder:"CMI/CMIN2",color:"#16a34a"},
  {key:"unicom",label:"中国联通",placeholder:"10099/9929",color:"#dc2626"},
- {key:"other",label:"其他线路",placeholder:"无法识别的线路会保留在这里",color:"#78716c"},
+ {key:"other",label:"其他运营商",placeholder:"无法识别的线路会保留在这里",color:"#78716c"},
 ] as const;
 export type RouteKey = typeof routeFields[number]["key"];
 export type Routes = Record<RouteKey,string>;
@@ -39,8 +39,21 @@ export function normalizeNote(input:unknown):Obj {
   if(typeof p.trafficType==="string")p.trafficType=directions[p.trafficType]||p.trafficType;
   for(const key of ["trafficType","resetDay"])if(typeof p[key]==="number")p[key]=String(p[key]);
   if(p.networkRoutes!==undefined){
-   p.networkRoutes=aliases(p.networkRoutes,routeNames);
+   p.networkRoutes=aliases(aliases(p.networkRoutes,{other:"其他线路"}),routeNames);
    for(const r of routeFields)if(p.networkRoutes[r.key]!==undefined&&typeof p.networkRoutes[r.key]!=="string")throw Error(r.label+"线路必须为文本");
+  }
+  if(p.networkRouteEntries!==undefined){
+   if(!Array.isArray(p.networkRouteEntries))throw Error("其他运营商线路必须为数组");
+   p.networkRouteEntries=p.networkRouteEntries.map((entry:unknown)=>{
+    const e=aliases(entry,{carrier:"运营商",text:"线路名称",country:"国家地区",name:"运营商名称",logo:"Logo地址"});
+    for(const key of ["country","name","logo"])if(e[key]!==undefined&&typeof e[key]!=="string")throw Error("运营商字段必须为文本");
+    if(typeof e.carrier!=="string"||typeof e.text!=="string")throw Error("运营商和线路名称必须为文本");
+    return e;
+   });
+  }
+  if(p.linkTags!==undefined){
+   if(!Array.isArray(p.linkTags))throw Error("链接标签必须为数组");
+   p.linkTags=p.linkTags.map((entry:unknown)=>aliases(entry,{name:"名称",url:"网址"}));
   }
   out.planDataMod=p;
  }
@@ -65,6 +78,20 @@ export function patchRoutes<T extends Obj>(note:T,key:RouteKey,value:string):T {
  const p=note.planDataMod||{}, routes={...p.networkRoutes,...readRoutes(p),[key]:value};
  return {...note,planDataMod:{...p,networkRoutes:routes,networkRoute:routeFields.map(r=>routes[r.key].trim()).filter(Boolean).join(",")}};
 }
+export type OtherRoute = import("../../../shared/other-routes").OtherRouteEntry;
+export function readOtherRoutes(p?:Obj):OtherRoute[] {
+ if(Array.isArray(p?.networkRouteEntries)){
+  const old=typeof p.networkRoutes?.other==="string"?p.networkRoutes.other:"";
+  return old?[{carrier:"",text:old},...p.networkRouteEntries]:p.networkRouteEntries;
+ }
+ const text=readRoutes(p).other;
+ return text?[{carrier:"",text}]:[];
+}
+export function patchOtherRoutes<T extends Obj>(note:T,entries:OtherRoute[]):T {
+ const p=note.planDataMod||{},routes={...p.networkRoutes,...readRoutes(p),other:""};
+ return {...note,planDataMod:{...p,networkRoutes:routes,networkRouteEntries:entries,
+  networkRoute:[routes.telecom,routes.mobile,routes.unicom,...entries.map(e=>e.text)].map(s=>s.trim()).filter(Boolean).join(",")}};
+}
 function translated(input:Obj,names:Record<string,string>):Obj {
  const out={...input};
  for(const [key,label] of Object.entries(names)){
@@ -86,6 +113,8 @@ export function chineseNote(input:Obj):string {
   for(const k of ["IPv4","IPv6"])p[k]=p[k]==="1"?true:p[k]==="0"?false:p[k];
   p.trafficType=({"0":"未指定","1":"下载","2":"双向","3":"上传"} as Obj)[p.trafficType]||p.trafficType;
   if(p.networkRoutes){p.networkRoutes=translated(p.networkRoutes,routeNames);delete p.networkRoute;}
+  if(p.networkRouteEntries)p.networkRouteEntries=p.networkRouteEntries.map((e:Obj)=>translated(e,{carrier:"运营商",text:"线路名称",country:"国家地区",name:"运营商名称",logo:"Logo地址"}));
+  if(p.linkTags)p.linkTags=p.linkTags.map((e:Obj)=>translated(e,{name:"名称",url:"网址"}));
   out.planDataMod=translated(p,plan);
  }
  return JSON.stringify(translated(out,{billingDataMod:"账单信息",planDataMod:"套餐信息"}),null,2);
