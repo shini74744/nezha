@@ -1,6 +1,15 @@
-# Nezha Agent
-  
-Agent of Nezha Monitoring
+# Shini Nezha Agent
+
+本仓库是基于 Nezha Agent 的自有发行版，安装包、自动更新及面板触发升级仅从 **shini74744/agent** 下载，不回退官方 GitHub、Gitee 或 AtomGit。
+
+- [下载最新发行版](https://github.com/shini74744/agent/releases/latest)
+- Linux/macOS 安装脚本：`scripts/install.sh`
+- Windows 安装脚本：`scripts/install.ps1`
+- [安装、迁移与发布说明](OWNED-RELEASE.md)
+
+**已有官方 Agent 不会自动迁移**：需使用面板中的新安装命令重装一次，保留 UUID 和配置后，才会使用本仓库更新。安装脚本会先校验 SHA256 并备份旧文件。
+
+Original project: Nezha Monitoring Agent (Apache-2.0). Upstream credits are retained below.
 
 ## Contributors
 
