@@ -17,6 +17,14 @@ export const deleteServer = async (id: number[]): Promise<void> => {
     return fetcher<void>(FetcherMethod.POST, "/api/v1/batch-delete/server", id)
 }
 
+export const batchUpdateServerVisibility = async (data: {
+    ids: number[]
+    hide_for_guest?: boolean
+    hide_for_display?: boolean
+}): Promise<{ updated: number }> => {
+    return fetcher(FetcherMethod.POST, "/api/v1/batch-visibility/server", data)
+}
+
 // batchMoveServer kicks off one ServerTransfer per id and returns a per-id
 // result. The dashboard previously returned void from this endpoint; the new
 // response shape carries the transfer ID for callers that want to subscribe

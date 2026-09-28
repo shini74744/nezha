@@ -1,5 +1,7 @@
 import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { fetchLoginUser } from "@/lib/nezha-api";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { NezhaWebsocketResponse } from "@/types/nezha-api";
 import {
 	WebSocketContext,
@@ -9,6 +11,7 @@ import {
 interface WebSocketProviderProps {
 	url: string;
 	children: React.ReactNode;
+	authenticated?: boolean;
 }
 
 type RawNezhaWebsocketResponse = Omit<
@@ -35,14 +38,29 @@ function normalizeWebSocketResponse(data: unknown): NezhaWebsocketResponse {
 	};
 }
 
+// Share the existing login query; ordinary hiding applies only to anonymous visitors.
+export function AuthenticatedWebSocketProvider(props: Omit<WebSocketProviderProps, "authenticated">) {
+ const {data, isError} = useQuery({
+  queryKey: ["login-user"], queryFn: fetchLoginUser, retry: 0,
+  refetchOnWindowFocus: true, refetchInterval: 30000,
+ });
+ return <WebSocketProvider {...props} authenticated={!isError && !!data?.data?.id} />;
+}
+
 export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
-	url,
-	children,
+ url,
+ children,
+ authenticated = false,
 }) => {
 	const [lastData, setLastData] = useState<NezhaWebsocketResponse | null>(null);
 	const [messageHistory, setMessageHistory] = useState<
 		NezhaWebsocketResponse[]
 	>([]);
+	// A page-session display preference only; never persisted as authorization.
+	const [showDisplayHidden, setShowDisplayHidden] = useState(false);
+	useEffect(() => { setShowDisplayHidden(false); }, [authenticated]);
+	const inventoryData = useMemo(() => lastData ? {...lastData, servers: lastData.servers.filter(server => authenticated || showDisplayHidden || !server.hide_for_display)} : null, [lastData, showDisplayHidden, authenticated]);
+	const displayHiddenCount = lastData?.servers.filter(server => server.hide_for_display).length ?? 0;
 	const [connected, setConnected] = useState(false);
 	const [needReconnect, setNeedReconnect] = useState(false);
 	const ws = useRef<WebSocket | null>(null);
@@ -87,6 +105,8 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
 			const wsUrl = new URL(url, window.location.origin);
 			wsUrl.protocol = wsUrl.protocol.replace("http", "ws");
 
+			// Notes arrive only in the first frame. Keep them even for initially folded cards.
+			const publicNotes = new Map<number, string>();
 			ws.current = new WebSocket(wsUrl.toString());
 
 			ws.current.onopen = () => {
@@ -117,6 +137,10 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
 					}
 
 					const newData = normalizeWebSocketResponse(JSON.parse(event.data));
+					newData.servers = newData.servers.map(server => {
+						if (server.public_note !== undefined) publicNotes.set(server.id, server.public_note);
+						return {...server, public_note: publicNotes.get(server.id) ?? ""};
+					});
 					setLastData(newData);
 					// 更新历史消息，保持最新的30条记录
 					setMessageHistory((prev) => {
@@ -164,6 +188,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
 	}, [cleanup, connect]);
 
 	const contextValue: WebSocketContextType = {
+		inventoryData, showDisplayHidden, setShowDisplayHidden, displayHiddenCount,
 		lastData,
 		connected,
 		messageHistory,

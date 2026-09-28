@@ -91,6 +91,9 @@ func updateServer(c *gin.Context) (any, error) {
 	}
 	s.PublicNote = publicNote
 	s.HideForGuest = sf.HideForGuest
+	if sf.HideForDisplay != nil {
+		s.HideForDisplay = *sf.HideForDisplay
+	}
 	s.EnableDDNS = sf.EnableDDNS
 	s.DDNSProfiles = sf.DDNSProfiles
 	s.OverrideDDNSDomains = sf.OverrideDDNSDomains

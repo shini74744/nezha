@@ -116,8 +116,9 @@ export default function Servers({
 	const hasServices =
 		!!serviceData?.data?.services &&
 		Object.keys(serviceData.data.services).length > 0;
-	const { lastData, connected } = useWebSocketContext();
-	const { status } = useStatus();
+	const { lastData: rawData, inventoryData, connected, showDisplayHidden, setShowDisplayHidden } = useWebSocketContext();
+	const lastData = inventoryData ?? rawData;
+	const { status, setStatus } = useStatus();
 	const [showServices, setShowServices] = useState<string>("0");
 	const [showMap, setShowMap] = useState<string>("0");
 	const [inline, setInline] = useState<string>("0");
@@ -435,6 +436,13 @@ export default function Servers({
 	return (
 		<div className="mx-auto w-full max-w-5xl px-0">
 			<ServerOverview
+                displayHiddenExpanded={!!showDisplayHidden}
+                onToggleDisplayHidden={() => {
+                    setShowDisplayHidden?.(!showDisplayHidden);
+                    setCurrentGroup("All");
+                    sessionStorage.removeItem("selectedGroup");
+                    setStatus("all");
+                }}
 				total={totalServers}
 				online={onlineServers}
 				offline={offlineServers}
