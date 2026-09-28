@@ -1,5 +1,10 @@
 {
     "nezha": "哪吒監控",
+    "UUIDActions": "UUID 操作",
+    "CopyUUID": "複製 UUID",
+    "CopyUUIDInstallCommand": "複製含此 UUID 的安裝命令",
+    "UUIDCopied": "UUID 已複製",
+    "UUIDInstallCommandCopied": "已複製含此 UUID 的安裝命令",
     "theme": {
         "light": "亮色",
         "dark": "暗色",

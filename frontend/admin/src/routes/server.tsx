@@ -3,7 +3,6 @@ import { swrFetcher } from "@/api/api"
 import { deleteServer, forceUpdateServer } from "@/api/server"
 import { ActionButtonGroup } from "@/components/action-button-group"
 import { BatchMoveServerIcon } from "@/components/batch-move-server-icon"
-import { CopyButton } from "@/components/copy-button"
 import { HeaderButtonGroup } from "@/components/header-button-group"
 import { InstallCommandsMenu } from "@/components/install-commands"
 import { NoteMenu } from "@/components/note-menu"
@@ -169,7 +168,7 @@ export default function ServerPage() {
             header: "UUID",
             cell: ({ row }) => {
                 const s = row.original
-                return <CopyButton text={s.uuid} />
+                return <InstallCommandsMenu uuid={s.uuid} uuidActions />
             },
         },
         {
