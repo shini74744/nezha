@@ -64,6 +64,12 @@ func createDDNS(c *gin.Context) (uint64, error) {
 	}
 
 	p.UserID = getUid(c)
+	if df.NotificationGroupID != nil {
+		if err := validateDDNSNotificationGroup(c, *df.NotificationGroupID, p.UserID); err != nil {
+			return 0, err
+		}
+		p.NotificationGroupID = *df.NotificationGroupID
+	}
 	p.Name = df.Name
 	enableIPv4 := df.EnableIPv4
 	enableIPv6 := df.EnableIPv6
@@ -133,6 +139,12 @@ func updateDDNS(c *gin.Context) (any, error) {
 
 	if !p.HasPermission(c) {
 		return nil, singleton.Localizer.ErrorT("permission denied")
+	}
+	if df.NotificationGroupID != nil {
+		if err := validateDDNSNotificationGroup(c, *df.NotificationGroupID, p.UserID); err != nil {
+			return nil, err
+		}
+		p.NotificationGroupID = *df.NotificationGroupID
 	}
 
 	p.Name = df.Name

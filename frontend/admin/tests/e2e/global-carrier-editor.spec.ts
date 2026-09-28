@@ -26,7 +26,7 @@ for(const width of [1366,390])test("global carriers and link tags editor "+width
  await row.getByRole("button",{name:"编辑服务器",exact:true}).click();
  const dialog=page.getByRole("dialog"),editor=dialog.locator("[data-other-routes-editor]");
  await expect(dialog.getByText("更换 Logo",{exact:true})).toHaveCount(0);
- for(const name of ["服务器厂商 Logo","链接标签","网络路由","上传 Logo 服务器厂商"]){await dialog.getByRole("button",{name:name+"说明",exact:true}).click();await expect(page.locator("[data-setting-help]")).toBeVisible();await page.keyboard.press("Escape");await expect(page.locator("[data-setting-help]")).toHaveCount(0)}
+ await dialog.getByRole("button",{name:"服务器厂商 Logo",exact:true}).click();for(const name of ["服务器厂商 Logo","链接标签","网络路由","上传 Logo 服务器厂商"]){await dialog.getByRole("button",{name:name+"说明",exact:true}).click();await expect(page.locator("[data-setting-help]")).toBeVisible();await page.keyboard.press("Escape");await expect(page.locator("[data-setting-help]")).toHaveCount(0)}
  await expect(editor.locator("[data-other-routes-entry]")).toContainText("其他运营商");
  await expect(editor).not.toContainText("目录覆盖");
  for(const label of ["500G","1T","无限"])await dialog.getByRole("button",{name:label,exact:true}).click();

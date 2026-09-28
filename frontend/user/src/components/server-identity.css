@@ -1,15 +1,15 @@
 [data-server-card] { position:relative; }
 .nz-server-identity { position:relative; }
-.nz-server-identity > [data-provider-logo-box] { position:absolute; bottom:calc(100% + 4px); height:var(--nz-logo-desktop-height,28px)!important; left:var(--nz-logo-desktop-center,76px); transform:translateX(-50%); margin:0!important; }
+.nz-server-identity > [data-provider-logo-box] { position:absolute; bottom:calc(100% + var(--nz-logo-desktop-gap,4px)); height:var(--nz-logo-desktop-height,28px)!important; left:var(--nz-logo-desktop-center,76px); transform:translateX(-50%); margin:0!important; }
 [data-provider-logo] { max-height:var(--nz-logo-desktop-height,28px)!important; transform:translate(var(--nz-logo-dx,0px),var(--nz-logo-dy,0px)) scale(var(--nz-logo-ds,1)); transform-origin:center; pointer-events:none; }
 .nz-server-identity > [data-server-status],.nz-server-identity > [data-server-flag] { align-self:start; }
 .nz-server-identity > [data-server-status] { margin-top:4px; }
 .nz-server-identity > [data-server-flag] { height:16px; line-height:16px; }
 .nz-server-identity > [data-server-name] { margin:0; line-height:16px; }
 @media (max-width:1023px) {
- [data-provider-logo] { transform:translate(var(--nz-logo-mx,0px),var(--nz-logo-my,0px)) scale(var(--nz-logo-ms,1)); max-width:64px!important; max-height:24px!important; }
+ [data-provider-logo] { transform:translate(var(--nz-logo-mx,0px),var(--nz-logo-my,0px)) scale(var(--nz-logo-ms,1)); max-width:var(--nz-logo-mobile-width,64px)!important; max-height:var(--nz-logo-mobile-height,24px)!important; visibility:var(--nz-logo-mobile-visible,visible); }
  .nz-server-identity:not([data-inline]) { position:static; }
  .nz-server-identity:not([data-inline]) > [data-provider-logo-box][data-mobile-slot] {
-  position:absolute; left:var(--nz-logo-slot-left,12px); top:12px; bottom:auto; transform:none; width:var(--nz-logo-slot-width,92px)!important; max-width:none!important; height:24px!important; margin:0!important;
+  position:absolute; left:var(--nz-logo-slot-left,12px); top:var(--nz-logo-mobile-top,12px); bottom:auto; transform:none; width:var(--nz-logo-slot-width,92px)!important; max-width:none!important; height:var(--nz-logo-mobile-height,24px)!important; margin:0!important;
  }
 }

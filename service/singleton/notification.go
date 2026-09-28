@@ -207,6 +207,11 @@ func (c *NotificationClass) UnMuteNotification(notificationGroupID uint64, muteL
 
 // SendNotification 向指定的通知方式组的所有通知方式发送通知
 func (c *NotificationClass) SendNotification(notificationGroupID uint64, desc string, muteLabel string, ext ...*model.Server) {
+	c.SendEvent(notificationGroupID, desc, muteLabel, model.NotificationEvent{Kind: "other"}, ext...)
+}
+
+// SendEvent carries an explicit event kind; never infer it from translated message text.
+func (c *NotificationClass) SendEvent(notificationGroupID uint64, desc string, muteLabel string, event model.NotificationEvent, ext ...*model.Server) {
 	if muteLabel != "" {
 		// 将通知方式组名称加入静音标志
 		muteLabel := NotificationMuteLabel.AppendNotificationGroupName(muteLabel, c.GetGroupName(notificationGroupID))
@@ -251,16 +256,21 @@ func (c *NotificationClass) SendNotification(notificationGroupID uint64, desc st
 	c.listMu.RUnlock()
 
 	for _, n := range notifications {
+		if n.EventDisabled(event.Kind) {
+			continue
+		}
 		log.Printf("NEZHA>> Try to notify %s", n.Name)
-	}
-	for _, n := range notifications {
 		ns := model.NotificationServerBundle{
 			Notification: n,
+			Event:        &event,
 			Server:       nil,
 			Loc:          Loc,
 		}
 		if len(ext) > 0 {
 			ns.Server = ext[0]
+		}
+		if event.IP == "" && ns.Server != nil && ns.Server.GeoIP != nil {
+			event.IP = IPDesensitize(ns.Server.GeoIP.IP.Join())
 		}
 		if err := ns.Send(desc); err != nil {
 			log.Printf("NEZHA>> Sending notification to %s failed: %v", n.Name, err)

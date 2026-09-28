@@ -751,7 +751,7 @@ func (ss *ServiceSentinel) processReport(r ReportData, serverShared *ServerClass
 			errMsg = mh.Data
 			if cs.Notify {
 				muteLabel := NotificationMuteLabel.ServiceTLS(mh.GetId(), "network")
-				go NotificationShared.SendNotification(cs.NotificationGroupID, Localizer.Tf("[TLS] Fetch cert info failed, Reporter: %s, Error: %s", cs.Name, errMsg), muteLabel)
+				go NotificationShared.SendEvent(cs.NotificationGroupID, Localizer.Tf("[TLS] Fetch cert info failed, Reporter: %s, Error: %s", cs.Name, errMsg), muteLabel, model.NotificationEvent{Kind: "tls", RuleName: cs.Name})
 			}
 		}
 	} else {
@@ -794,7 +794,7 @@ func (ss *ServiceSentinel) processReport(r ReportData, serverShared *ServerClass
 					// 静音规则： 服务id+证书过期时间
 					// 用于避免多个监测点对相同证书同时报警
 					muteLabel := NotificationMuteLabel.ServiceTLS(mh.GetId(), fmt.Sprintf("expire_%s", expiresTimeStr))
-					go NotificationShared.SendNotification(notificationGroupID, fmt.Sprintf("[TLS] %s %s", serviceName, errMsg), muteLabel)
+					go NotificationShared.SendEvent(notificationGroupID, fmt.Sprintf("[TLS] %s %s", serviceName, errMsg), muteLabel, model.NotificationEvent{Kind: "tls", RuleName: serviceName})
 				}
 
 				// 证书变更提醒
@@ -804,7 +804,7 @@ func (ss *ServiceSentinel) processReport(r ReportData, serverShared *ServerClass
 						oldCert[0], expiresOld.Format("2006-01-02 15:04:05"), newCert[0], expiresNew.Format("2006-01-02 15:04:05"))
 
 					// 证书变更后会自动更新缓存，所以不需要静音
-					go NotificationShared.SendNotification(notificationGroupID, fmt.Sprintf("[TLS] %s %s", serviceName, errMsg), "")
+					go NotificationShared.SendEvent(notificationGroupID, fmt.Sprintf("[TLS] %s %s", serviceName, errMsg), "", model.NotificationEvent{Kind: "tls", RuleName: serviceName})
 				}
 			}
 		}
@@ -832,11 +832,11 @@ func delayCheck(r *ReportData, m map[uint64]*model.Server, ss *model.Service, mh
 	if mh.Delay > ss.MaxLatency {
 		// 延迟超过最大值
 		msg := Localizer.Tf("[Latency] %s %2f > %2f, Reporter: %s", ss.Name, mh.Delay, ss.MaxLatency, reporterServer.Name)
-		go NotificationShared.SendNotification(notificationGroupID, msg, minMuteLabel)
+		go NotificationShared.SendEvent(notificationGroupID, msg, minMuteLabel, model.NotificationEvent{Kind: "service_alert", RuleName: ss.Name, ServerName: reporterServer.Name, ServerID: reporterServer.ID})
 	} else if mh.Delay < ss.MinLatency {
 		// 延迟低于最小值
 		msg := Localizer.Tf("[Latency] %s %2f < %2f, Reporter: %s", ss.Name, mh.Delay, ss.MinLatency, reporterServer.Name)
-		go NotificationShared.SendNotification(notificationGroupID, msg, maxMuteLabel)
+		go NotificationShared.SendEvent(notificationGroupID, msg, maxMuteLabel, model.NotificationEvent{Kind: "service_alert", RuleName: ss.Name, ServerName: reporterServer.Name, ServerID: reporterServer.ID})
 	} else {
 		// 正常延迟， 清除静音缓存
 		NotificationShared.UnMuteNotification(notificationGroupID, minMuteLabel)
@@ -865,7 +865,11 @@ func notifyCheck(r *ReportData, m map[uint64]*model.Server,
 			NotificationShared.UnMuteNotification(notificationGroupID, muteLabel)
 		}
 
-		go NotificationShared.SendNotification(notificationGroupID, notificationMsg, muteLabel)
+		kind := "service_alert"
+		if stateCode == StatusGood {
+			kind = "service_recovery"
+		}
+		go NotificationShared.SendEvent(notificationGroupID, notificationMsg, muteLabel, model.NotificationEvent{Kind: kind, RuleName: ss.Name, ServerName: reporterServer.Name, ServerID: reporterServer.ID})
 	}
 
 	// 判断是否需要触发任务

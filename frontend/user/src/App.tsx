@@ -44,6 +44,7 @@ const MainApp: React.FC = () => {
 	const { i18n } = useTranslation();
 	const { setTheme } = useTheme();
 	const [isCustomCodeInjected, setIsCustomCodeInjected] = useState(false);
+ const cardPreview = window.parent!==window&&new URLSearchParams(window.location.search).get("card-preview")==="1";
 	const { backgroundImage: customBackgroundImage } = useBackground();
 
 	useEffect(() => {
@@ -51,7 +52,7 @@ const MainApp: React.FC = () => {
 	}, []);
 
 	useEffect(() => {
-		if (settingData?.data?.config?.custom_code) {
+		if (!cardPreview && settingData?.data?.config?.custom_code) {
 			InjectContext(settingData?.data?.config?.custom_code);
 			setIsCustomCodeInjected(true);
 		}
@@ -70,7 +71,7 @@ const MainApp: React.FC = () => {
 
 	const initialBackendError = !settingData ? toError(error) : null;
 
-	if (settingData?.data?.config?.custom_code && !isCustomCodeInjected) {
+	if (!cardPreview && settingData?.data?.config?.custom_code && !isCustomCodeInjected) {
 		return null;
 	}
 
@@ -81,7 +82,7 @@ const MainApp: React.FC = () => {
 		i18n.changeLanguage(settingData?.data?.config?.language);
 	}
 
-	if(window.parent!==window&&new URLSearchParams(window.location.search).get("card-preview")==="1")return <ErrorBoundary><AppearanceProvider raw={settingData?.data?.config?.appearance_config}><NativeEffects/><CardPreview/></AppearanceProvider></ErrorBoundary>;
+	if(cardPreview)return <ErrorBoundary><AppearanceProvider raw={settingData?.data?.config?.appearance_config}><NativeEffects preview/><CardPreview/></AppearanceProvider></ErrorBoundary>;
  const customMobileBackgroundImage =
 		window.CustomMobileBackgroundImage !== ""
 			? window.CustomMobileBackgroundImage

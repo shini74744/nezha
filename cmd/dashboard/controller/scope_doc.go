@@ -96,6 +96,7 @@
 //	POST   /api/v1/batch-delete/nat                  nezha:nat:delete
 //
 //	GET    /api/v1/notification                      nezha:notification:read
+//	GET    /api/v1/notification/{id}/editor          nezha:notification:write
 //	POST   /api/v1/notification                      nezha:notification:write
 //	PATCH  /api/v1/notification/{id}                 nezha:notification:write
 //	POST   /api/v1/batch-delete/notification         nezha:notification:delete

@@ -2,6 +2,10 @@ import { ModelNotification, ModelNotificationForm } from "@/types"
 
 import { FetcherMethod, fetcher } from "./api"
 
+// Secrets are loaded only for an explicitly opened, write-authorized editor.
+export const getNotificationEditor = (id: number): Promise<ModelNotification> =>
+    fetcher<ModelNotification>(FetcherMethod.GET, `/api/v1/notification/${id}/editor`)
+
 export const createNotification = async (data: ModelNotificationForm): Promise<number> => {
     return fetcher<number>(FetcherMethod.POST, "/api/v1/notification", data)
 }

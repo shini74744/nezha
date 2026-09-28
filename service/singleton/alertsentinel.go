@@ -1,7 +1,6 @@
 package singleton
 
 import (
-	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -189,20 +188,18 @@ func checkStatusForServer(alert *model.AlertRule, server *model.Server) {
 		// 始终触发模式或上次检查不为失败时触发报警（跳过单次触发+上次失败的情况）
 		if alert.TriggerMode == model.ModeAlwaysTrigger || alertsPrevState[alert.ID][server.ID] != _RuleCheckFail {
 			alertsPrevState[alert.ID][server.ID] = _RuleCheckFail
-			message := fmt.Sprintf("[%s] %s(%s) %s", Localizer.T("Incident"),
-				server.Name, IPDesensitize(server.GeoIP.IP.Join()), alert.Name)
+			message, event := alertNotification(alert, server, false)
 			go CronShared.SendTriggerTasks(alert.FailTriggerTasks, curServer.ID, alert.UserID)
-			go NotificationShared.SendNotification(alert.NotificationGroupID, message, NotificationMuteLabel.ServerIncident(server.ID, alert.ID), &curServer)
+			go NotificationShared.SendEvent(alert.NotificationGroupID, message, NotificationMuteLabel.ServerIncident(server.ID, alert.ID), event, &curServer)
 			// 清除恢复通知的静音缓存
 			NotificationShared.UnMuteNotification(alert.NotificationGroupID, NotificationMuteLabel.ServerIncidentResolved(server.ID, alert.ID))
 		}
 	} else {
 		// 本次通过检查但上一次的状态为失败，则发送恢复通知
 		if alertsPrevState[alert.ID][server.ID] == _RuleCheckFail {
-			message := fmt.Sprintf("[%s] %s(%s) %s", Localizer.T("Resolved"),
-				server.Name, IPDesensitize(server.GeoIP.IP.Join()), alert.Name)
+			message, event := alertNotification(alert, server, true)
 			go CronShared.SendTriggerTasks(alert.RecoverTriggerTasks, curServer.ID, alert.UserID)
-			go NotificationShared.SendNotification(alert.NotificationGroupID, message, NotificationMuteLabel.ServerIncidentResolved(server.ID, alert.ID), &curServer)
+			go NotificationShared.SendEvent(alert.NotificationGroupID, message, NotificationMuteLabel.ServerIncidentResolved(server.ID, alert.ID), event, &curServer)
 			// 清除失败通知的静音缓存
 			NotificationShared.UnMuteNotification(alert.NotificationGroupID, NotificationMuteLabel.ServerIncident(server.ID, alert.ID))
 		}

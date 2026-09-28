@@ -1,3 +1,4 @@
+import { swrFetcher } from "@/api/api"
 import { createDDNSProfile, updateDDNSProfile } from "@/api/ddns"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -32,14 +33,14 @@ import {
 import { IconButton } from "@/components/xui/icon-button"
 import { conv } from "@/lib/utils"
 import { asOptionalField } from "@/lib/utils"
-import { ModelDDNSProfile } from "@/types"
+import { ModelDDNSProfile, ModelNotificationGroupResponseItem } from "@/types"
 import { ddnsRequestTypes, ddnsTypes } from "@/types"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
-import { KeyedMutator } from "swr"
+import useSWR, { KeyedMutator } from "swr"
 import { z } from "zod"
 
 import { Textarea } from "./ui/textarea"
@@ -51,6 +52,7 @@ interface DDNSCardProps {
 }
 
 const ddnsFormSchema = z.object({
+    notification_group_id: z.coerce.number().int().min(0),
     max_retries: z.coerce.number().int().min(1),
     enable_ipv4: asOptionalField(z.boolean()),
     enable_ipv6: asOptionalField(z.boolean()),
@@ -76,6 +78,7 @@ export const DDNSCard: React.FC<DDNSCardProps> = ({ data, providers, mutate }) =
         resolver: zodResolver(ddnsFormSchema),
         defaultValues: data
             ? {
+                  notification_group_id: data.notification_group_id ?? 0,
                   max_retries: data.max_retries ?? 3,
                   enable_ipv4: data.enable_ipv4 ?? false,
                   enable_ipv6: data.enable_ipv6 ?? false,
@@ -92,6 +95,7 @@ export const DDNSCard: React.FC<DDNSCardProps> = ({ data, providers, mutate }) =
                   webhook_headers: data.webhook_headers ?? "",
               }
             : {
+                  notification_group_id: 0,
                   max_retries: 3,
                   enable_ipv4: false,
                   enable_ipv6: false,
@@ -113,6 +117,10 @@ export const DDNSCard: React.FC<DDNSCardProps> = ({ data, providers, mutate }) =
     })
 
     const [open, setOpen] = useState(false)
+    const { data: notifierGroup, error: groupError } = useSWR<ModelNotificationGroupResponseItem[]>(
+        open ? "/api/v1/notification-group" : null,
+        swrFetcher,
+    )
 
     const onSubmit = async (values: DDNSFormData) => {
         try {
@@ -131,13 +139,17 @@ export const DDNSCard: React.FC<DDNSCardProps> = ({ data, providers, mutate }) =
         }
         setOpen(false)
         await mutate()
-        form.reset()
+        form.reset(values)
     }
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                {data ? <IconButton variant="outline" icon="edit" /> : <IconButton icon="plus" />}
+                {data ? (
+                    <IconButton variant="outline" icon="edit" aria-label="编辑 DDNS" />
+                ) : (
+                    <IconButton icon="plus" aria-label="添加 DDNS" />
+                )}
             </DialogTrigger>
             <DialogContent className="sm:max-w-xl">
                 <ScrollArea className="max-h-[calc(100dvh-5rem)] p-3">
@@ -392,6 +404,74 @@ export const DDNSCard: React.FC<DDNSCardProps> = ({ data, providers, mutate }) =
                                                     </Label>
                                                 </div>
                                             </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="notification_group_id"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="flex items-center gap-2">
+                                                DDNS 结果通知
+                                                <details className="text-xs font-normal">
+                                                    <summary
+                                                        className="cursor-pointer"
+                                                        aria-label="DDNS 通知说明"
+                                                    >
+                                                        ？
+                                                    </summary>
+                                                    <p className="mt-2">
+                                                        每个域名的 A / AAAA
+                                                        操作重试结束后通知最终结果。选择通知组后，在
+                                                        TG 通知的“DDNS 更新成功 /
+                                                        失败”模块勾选提示内容；默认关闭。保存配置本身不会执行
+                                                        DNS
+                                                        更新或发送测试。更新成功表示服务商请求执行成功，不保证所有
+                                                        DNS 缓存已立即刷新。
+                                                    </p>
+                                                </details>
+                                            </FormLabel>
+                                            <FormControl>
+                                                <select
+                                                    aria-label="DDNS 结果通知组"
+                                                    className="w-full rounded border bg-background p-2"
+                                                    value={String(field.value)}
+                                                    onChange={(e) =>
+                                                        field.onChange(Number(e.target.value))
+                                                    }
+                                                >
+                                                    <option value="0">不发送 DDNS 通知</option>
+                                                    {notifierGroup?.map((item) => (
+                                                        <option
+                                                            key={item.group.id}
+                                                            value={item.group.id}
+                                                        >
+                                                            {item.group.name}
+                                                        </option>
+                                                    ))}
+                                                    {Number(field.value) > 0 &&
+                                                        !notifierGroup?.some(
+                                                            (item) =>
+                                                                item.group.id ===
+                                                                Number(field.value),
+                                                        ) && (
+                                                            <option value={String(field.value)}>
+                                                                通知组 #{String(field.value)}
+                                                                （加载中或不可用）
+                                                            </option>
+                                                        )}
+                                                </select>
+                                            </FormControl>
+                                            {groupError && (
+                                                <p
+                                                    role="alert"
+                                                    className="text-xs text-destructive"
+                                                >
+                                                    通知组读取失败，请关闭后重试；原有选择不会被清空。
+                                                </p>
+                                            )}
                                             <FormMessage />
                                         </FormItem>
                                     )}

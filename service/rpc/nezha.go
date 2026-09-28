@@ -144,12 +144,12 @@ func (s *NezhaHandler) RequestTask(stream pb.NezhaService_RequestTaskServer) err
 				var curServer model.Server
 				copier.Copy(&curServer, server)
 				if cr.PushSuccessful && result.GetSuccessful() {
-					singleton.NotificationShared.SendNotification(cr.NotificationGroupID, fmt.Sprintf("[%s] %s, %s\n%s", singleton.Localizer.T("Scheduled Task Executed Successfully"),
-						cr.Name, server.Name, result.GetData()), "", &curServer)
+					singleton.NotificationShared.SendEvent(cr.NotificationGroupID, fmt.Sprintf("[%s] %s, %s\n%s", singleton.Localizer.T("Scheduled Task Executed Successfully"),
+						cr.Name, server.Name, result.GetData()), "", model.NotificationEvent{Kind: "task_success", RuleName: cr.Name}, &curServer)
 				}
 				if !result.GetSuccessful() {
-					singleton.NotificationShared.SendNotification(cr.NotificationGroupID, fmt.Sprintf("[%s] %s, %s\n%s", singleton.Localizer.T("Scheduled Task Executed Failed"),
-						cr.Name, server.Name, result.GetData()), "", &curServer)
+					singleton.NotificationShared.SendEvent(cr.NotificationGroupID, fmt.Sprintf("[%s] %s, %s\n%s", singleton.Localizer.T("Scheduled Task Executed Failed"),
+						cr.Name, server.Name, result.GetData()), "", model.NotificationEvent{Kind: "task_failure", RuleName: cr.Name}, &curServer)
 				}
 				singleton.DB.Model(cr).Updates(model.Cron{
 					LastExecutedAt: time.Now().Add(time.Second * -1 * time.Duration(result.GetDelay())),
