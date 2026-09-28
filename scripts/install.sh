@@ -78,4 +78,7 @@ install -m 755 "$tmp/nezha-agent" "$binary" || rollback
 "$binary" service uninstall >/dev/null 2>&1 || true
 "$binary" service install || rollback
 "$binary" service start || rollback
-echo "Installed from shini74744/agent. Configuration/previous binary backup: $backup"
+printf '\033[0;32m%s\033[0m\n' "nezha-agent successfully installed and started（安装成功，服务已启动）"
+printf '%s\n' "下载来源：shini74744/agent"
+printf '%s\n' "配置及旧程序备份：$backup"
+printf '%s\n' "是否已连接面板，请查看面板在线状态；服务启动成功不代表认证或连接成功。"
