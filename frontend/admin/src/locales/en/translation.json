@@ -1,5 +1,10 @@
 {
     "nezha": "Nezha Monitoring",
+    "UUIDActions": "UUID actions",
+    "CopyUUID": "Copy UUID",
+    "CopyUUIDInstallCommand": "Copy install command with UUID",
+    "UUIDCopied": "UUID copied",
+    "UUIDInstallCommandCopied": "Install command with UUID copied",
     "theme": {
         "light": "Light",
         "dark": "Dark",

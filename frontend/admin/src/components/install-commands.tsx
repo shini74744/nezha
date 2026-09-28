@@ -3,6 +3,10 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuPortal,
+    DropdownMenuSub,
+    DropdownMenuSubContent,
+    DropdownMenuSubTrigger,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/hooks/useAuth"
@@ -10,7 +14,7 @@ import useSettings from "@/hooks/useSetting"
 import { copyToClipboard } from "@/lib/utils"
 import { ModelProfile, ModelSetting } from "@/types"
 import i18next from "i18next"
-import { Check, Copy, Download } from "lucide-react"
+import { Check, Clipboard, Copy, Download } from "lucide-react"
 import { forwardRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
@@ -25,10 +29,11 @@ type InstallCommandsMenuProps = ButtonProps & {
     uuid?: string
     iconOnly?: boolean
     menuItem?: boolean
+    uuidActions?: boolean
 }
 
 export const InstallCommandsMenu = forwardRef<HTMLButtonElement, InstallCommandsMenuProps>(
-    ({ uuid, iconOnly = false, menuItem = false, ...props }, ref) => {
+    ({ uuid, iconOnly = false, menuItem = false, uuidActions = false, ...props }, ref) => {
         const [copy, setCopy] = useState(false)
         const { data: settings } = useSettings()
         const { profile } = useAuth()
@@ -44,6 +49,7 @@ export const InstallCommandsMenu = forwardRef<HTMLButtonElement, InstallCommands
                     await copyToClipboard(
                         generateCommand(type, settings!.config, profile, uuid) || "",
                     )
+                    if (uuidActions) toast.success(t("UUIDInstallCommandCopied"))
                 } catch (e: Error | any) {
                     console.error(e)
                     toast(t("Error"), {
@@ -57,10 +63,49 @@ export const InstallCommandsMenu = forwardRef<HTMLButtonElement, InstallCommands
             }
         }
 
+        const copyUUID = async () => {
+            if (!uuid) return
+            try {
+                await copyToClipboard(uuid)
+                toast.success(t("UUIDCopied"))
+            } catch (e) {
+                toast.error(t("Error"), { description: e instanceof Error ? e.message : String(e) })
+            }
+        }
+        const osItems = [OSTypes.Linux, OSTypes.macOS, OSTypes.Windows].map((type) => (
+            <DropdownMenuItem
+                key={type}
+                className="nezha-copy"
+                disabled={
+                    uuidActions &&
+                    (!uuid || !profile?.agent_secret || !settings?.config?.install_host)
+                }
+                onSelect={() => {
+                    void switchState(type)
+                }}
+            >
+                {OSTypes[type]}
+            </DropdownMenuItem>
+        ))
+
         return (
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    {menuItem ? (
+                    {uuidActions ? (
+                        <Button
+                            ref={ref}
+                            type="button"
+                            size="icon"
+                            variant="outline"
+                            className="rounded-lg shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]"
+                            title={t("UUIDActions")}
+                            aria-label={t("UUIDActions")}
+                            disabled={!uuid}
+                            {...props}
+                        >
+                            <Clipboard className="h-4 w-4" />
+                        </Button>
+                    ) : menuItem ? (
                         <button
                             type="button"
                             className="flex w-full items-center text-sm px-2 py-2 hover:bg-accent hover:text-accent-foreground"
@@ -95,32 +140,36 @@ export const InstallCommandsMenu = forwardRef<HTMLButtonElement, InstallCommands
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                     side={menuItem ? "right" : undefined}
-                    align={menuItem ? "start" : undefined}
+                    align={menuItem || uuidActions ? "start" : undefined}
+                    sideOffset={4}
+                    className={uuidActions ? "w-64 max-w-[calc(100vw-16px)]" : undefined}
                 >
-                    <DropdownMenuItem
-                        className="nezha-copy"
-                        onClick={async () => {
-                            switchState(OSTypes.Linux)
-                        }}
-                    >
-                        Linux
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                        className="nezha-copy"
-                        onClick={async () => {
-                            switchState(OSTypes.macOS)
-                        }}
-                    >
-                        macOS
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                        className="nezha-copy"
-                        onClick={async () => {
-                            switchState(OSTypes.Windows)
-                        }}
-                    >
-                        Windows
-                    </DropdownMenuItem>
+                    {uuidActions ? (
+                        <>
+                            <DropdownMenuItem
+                                className="nezha-copy"
+                                onSelect={() => {
+                                    void copyUUID()
+                                }}
+                            >
+                                <Clipboard className="h-4 w-4" />
+                                {t("CopyUUID")}
+                            </DropdownMenuItem>
+                            <DropdownMenuSub>
+                                <DropdownMenuSubTrigger>
+                                    <Download className="h-4 w-4" />
+                                    {t("CopyUUIDInstallCommand")}
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuPortal>
+                                    <DropdownMenuSubContent sideOffset={4}>
+                                        {osItems}
+                                    </DropdownMenuSubContent>
+                                </DropdownMenuPortal>
+                            </DropdownMenuSub>
+                        </>
+                    ) : (
+                        osItems
+                    )}
                 </DropdownMenuContent>
             </DropdownMenu>
         )
