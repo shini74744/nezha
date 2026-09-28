@@ -184,6 +184,7 @@ export const applyPublicNoteDate = (obj: PublicNote, path: string, date: Date): 
     const prevVal: string | undefined = curRead ? curRead[leafKey] : undefined
 
     const d = new Date(date)
+    d.setHours(0, 0, 0, 0)
     if (prevVal) {
         const pd = new Date(prevVal)
         if (!isNaN(pd.getTime())) {
@@ -200,6 +201,27 @@ export const applyPublicNoteDate = (obj: PublicNote, path: string, date: Date): 
     }
     curWrite[leafKey] = d.toISOString()
     return draft
+}
+
+/** Local browser time, matching the existing calendar and ISO save behavior. */
+export const publicNoteTime = (value?: string): string => {
+    const d = value ? new Date(value) : undefined
+    if (!d || Number.isNaN(d.getTime())) return "00:00:00"
+    return [d.getHours(), d.getMinutes(), d.getSeconds()].map(v => String(v).padStart(2, "0")).join(":")
+}
+export const publicNoteDateTimeLabel = (value?: string): string => {
+    const d = value ? new Date(value) : undefined
+    if (!d || Number.isNaN(d.getTime())) return "YYYY-MM-DD 00:00:00"
+    return d.toLocaleDateString() + " " + publicNoteTime(value)
+}
+export const applyPublicNoteTime = (obj: PublicNote, path: "billingDataMod.startDate" | "billingDataMod.endDate", time: string): PublicNote => {
+    if (!/^(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/.test(time)) return obj
+    const value = obj.billingDataMod?.[path === "billingDataMod.startDate" ? "startDate" : "endDate"]
+    const d = value ? new Date(value) : undefined
+    if (!d || Number.isNaN(d.getTime())) return obj
+    const [hours, minutes, seconds] = time.split(":").map(Number)
+    d.setHours(hours, minutes, seconds, 0)
+    return applyPublicNotePatch(obj, path, d.toISOString())
 }
 
 /**
