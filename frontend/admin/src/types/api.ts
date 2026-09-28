@@ -295,6 +295,7 @@ export interface ModelCycleTransferStats {
 }
 
 export interface ModelDDNSForm {
+    notification_group_id?: number
     access_id?: string
     access_secret?: string
     domains: string[]
@@ -315,6 +316,7 @@ export interface ModelDDNSForm {
 }
 
 export interface ModelDDNSProfile {
+    notification_group_id?: number
     access_id: string
     access_secret: string
     created_at: string
@@ -418,6 +420,7 @@ export interface ModelNATForm {
 }
 
 export interface ModelNotification {
+    event_templates?: import("@/lib/notification-events").EventConfig
     created_at: string
     id: number
     name: string
@@ -432,6 +435,9 @@ export interface ModelNotification {
 }
 
 export interface ModelNotificationForm {
+    /** Transient test request, never stored in notification settings. */
+    test_event?: { kind: string; server_id?: number }
+    event_templates?: import("@/lib/notification-events").EventConfig
     /** @minLength 1 */
     name: string
     request_body: string

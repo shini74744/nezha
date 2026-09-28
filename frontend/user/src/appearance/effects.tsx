@@ -106,7 +106,7 @@ function analytics(scope: FeatureScope, f: Feature) {
 		encodeURIComponent(f.measurementId);
 	document.head.append(node);
 }
-export function NativeEffects() {
+export function NativeEffects({preview=false}:{preview?:boolean}={}) {
 	const config = useAppearance(),
 		{ setTheme } = useTheme(),
 		{ pathname } = useLocation();
@@ -120,7 +120,7 @@ export function NativeEffects() {
 		} else darkApplied.current = false;
 	}, [config.enabled, config.features.dark.enabled, setTheme]);
 	useEffect(() => {
-		if (!config.enabled || !config.features.sponsor.enabled) return;
+		if (preview || !config.enabled || !config.features.sponsor.enabled) return;
 		const scope = new FeatureScope("sponsor");
 		const timer = window.setTimeout(
 			() => sponsor(scope, config.features.sponsor),
@@ -130,7 +130,7 @@ export function NativeEffects() {
 			window.clearTimeout(timer);
 			scope.dispose();
 		};
-	}, [config, pathname]);
+	}, [config, pathname, preview]);
 	useEffect(() => {
 		if (!config.enabled) return;
 		const scopes: FeatureScope[] = [];
@@ -139,7 +139,7 @@ export function NativeEffects() {
 				name: string,
 				run: (scope: FeatureScope, f: Feature) => void | Promise<void>,
 			) => {
-				if (!config.features[name]?.enabled) return;
+				if (!config.features[name]?.enabled || (preview && name!=="font")) return;
 				const scope = new FeatureScope(name);
 				scopes.push(scope);
 				try {
@@ -166,12 +166,12 @@ export function NativeEffects() {
 			window.clearTimeout(timer);
 			for (const scope of scopes.reverse()) scope.dispose();
 		};
-	}, [config]);
+	}, [config, preview]);
 	if (!config.enabled) return null;
 	return (
 		<>
-			<NativeBackground />
-			<NativeFooterIP />
+			{!preview&&<NativeBackground />}
+			{!preview&&<NativeFooterIP />}
 		</>
 	);
 }

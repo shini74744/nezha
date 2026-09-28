@@ -31,17 +31,28 @@ func (provider *Provider) GetProfileID() uint64 {
 	return provider.DDNSProfile.ID
 }
 
-func (provider *Provider) UpdateDomain(ctx context.Context, overrideDomains ...string) {
+// UpdateResult describes the final outcome after retries, without provider errors
+// that can contain secrets. One result is returned per enabled domain/record.
+type UpdateResult struct {
+	Domain     string
+	RecordType string
+	IP         string
+	Action     string
+	Success    bool
+	Detail     string
+	Attempts   int
+}
+
+func (provider *Provider) UpdateDomain(ctx context.Context, overrideDomains ...string) []UpdateResult {
 	domains := utils.IfOr(len(overrideDomains) > 0, overrideDomains, provider.DDNSProfile.Domains)
 	maxRetries := int(provider.DDNSProfile.MaxRetries)
 	if maxRetries <= 0 {
 		maxRetries = 1
 	}
-
+	var results []UpdateResult
 	for _, domain := range domains {
 		var prefix, zone string
 		var soaErr error
-
 		for retries := 0; retries < maxRetries; retries++ {
 			prefix, zone, soaErr = provider.splitDomainSOA(ctx, domain)
 			if soaErr == nil {
@@ -49,52 +60,59 @@ func (provider *Provider) UpdateDomain(ctx context.Context, overrideDomains ...s
 			}
 			log.Printf("NEZHA>> Failed to split domain SOA for %s (attempt %d/%d): %v", domain, retries+1, maxRetries, soaErr)
 		}
-
-		if soaErr != nil {
-			log.Printf("NEZHA>> Failed to split domain SOA for %s after %d retries, skipping domain", domain, maxRetries)
-			continue
-		}
-
-		// 独立处理 IPv4 更新或删除
-		if provider.DDNSProfile.EnableIPv4 != nil && *provider.DDNSProfile.EnableIPv4 {
-			for retries := 0; retries < maxRetries; retries++ {
-				log.Printf("NEZHA>> Updating IPv4 record of domain %s: %d/%d", domain, retries+1, maxRetries)
-				var ipv4Err error
-				if provider.IPAddrs.IPv4Addr == "" {
-					ipv4Err = provider.deleteDomainRecord(ctx, prefix, zone, "A")
-				} else {
-					ipv4Err = provider.addDomainRecord(ctx, prefix, zone, "A", provider.IPAddrs.IPv4Addr)
-				}
-
-				if ipv4Err != nil {
-					log.Printf("NEZHA>> Failed to update IPv4 record of domain %s: %v", domain, ipv4Err)
-				} else {
-					log.Printf("NEZHA>> Update IPv4 record of domain %s succeeded", domain)
-					break
+		for _, rec := range []struct {
+			kind, ip string
+			enabled  *bool
+		}{
+			{"A", provider.IPAddrs.IPv4Addr, provider.DDNSProfile.EnableIPv4},
+			{"AAAA", provider.IPAddrs.IPv6Addr, provider.DDNSProfile.EnableIPv6},
+		} {
+			if rec.enabled == nil || !*rec.enabled {
+				continue
+			}
+			r := UpdateResult{Domain: domain, RecordType: rec.kind, IP: rec.ip, Action: "更新"}
+			if rec.ip == "" {
+				r.Action = "删除"
+			}
+			if soaErr != nil {
+				r.Detail = "无法确定域名 SOA，未执行记录更新"
+				r.Attempts = maxRetries
+				results = append(results, r)
+				continue
+			}
+			if rec.ip == "" {
+				if _, ok := provider.Setter.(libdns.RecordDeleter); !ok {
+					r.Detail = "提供商不支持删除记录，未执行删除"
+					results = append(results, r)
+					continue
 				}
 			}
-		}
-
-		// 独立处理 IPv6 更新或删除
-		if provider.DDNSProfile.EnableIPv6 != nil && *provider.DDNSProfile.EnableIPv6 {
 			for retries := 0; retries < maxRetries; retries++ {
-				log.Printf("NEZHA>> Updating IPv6 record of domain %s: %d/%d", domain, retries+1, maxRetries)
-				var ipv6Err error
-				if provider.IPAddrs.IPv6Addr == "" {
-					ipv6Err = provider.deleteDomainRecord(ctx, prefix, zone, "AAAA")
+				r.Attempts = retries + 1
+				var err error
+				if rec.ip == "" {
+					err = provider.deleteDomainRecord(ctx, prefix, zone, rec.kind)
 				} else {
-					ipv6Err = provider.addDomainRecord(ctx, prefix, zone, "AAAA", provider.IPAddrs.IPv6Addr)
+					err = provider.addDomainRecord(ctx, prefix, zone, rec.kind, rec.ip)
 				}
-
-				if ipv6Err != nil {
-					log.Printf("NEZHA>> Failed to update IPv6 record of domain %s: %v", domain, ipv6Err)
-				} else {
-					log.Printf("NEZHA>> Update IPv6 record of domain %s succeeded", domain)
+				if err == nil {
+					r.Success = true
 					break
 				}
+				log.Printf("NEZHA>> Failed to update %s record for %s (attempt %d/%d): %v", rec.kind, domain, retries+1, maxRetries, err)
 			}
+			if r.Success {
+				r.Detail = r.Action + "请求执行成功（DNS 缓存生效可能延迟）"
+			} else {
+				r.Detail = r.Action + "失败，已用尽重试次数；请检查 DNS 服务商配置和网络"
+			}
+			if provider.DDNSProfile.Provider == model.ProviderDummy && r.Success {
+				r.Detail = "模拟提供商执行完成，未修改 DNS 记录"
+			}
+			results = append(results, r)
 		}
 	}
+	return results
 }
 
 func (provider *Provider) addDomainRecord(ctx context.Context, prefix, zone, recType, addr string) error {

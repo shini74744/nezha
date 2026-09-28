@@ -171,8 +171,11 @@ func (c *ServerClass) UpdateDDNS(server *model.Server, ip *model.IP) error {
 
 	for _, provider := range providers {
 		domains := server.OverrideDDNSDomains[provider.GetProfileID()]
+		serverID, ownerUID := server.ID, server.GetUserID()
 		go func(provider *ddns.Provider) {
-			provider.UpdateDomain(ctx, domains...)
+			for _, result := range provider.UpdateDomain(ctx, domains...) {
+				notifyDDNSResult(serverID, ownerUID, provider.DDNSProfile, result)
+			}
 		}(provider)
 	}
 

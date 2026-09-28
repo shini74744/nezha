@@ -68,6 +68,10 @@ func createNotification(c *gin.Context) (uint64, error) {
 	n.RequestHeader = nf.RequestHeader
 	n.RequestBody = nf.RequestBody
 	n.URL = nf.URL
+	n.EventTemplates = nf.EventTemplates
+	if err := n.ValidateEventTemplates(); err != nil {
+		return 0, err
+	}
 	verifyTLS := nf.VerifyTLS
 	n.VerifyTLS = &verifyTLS
 	formatMetricUnits := nf.FormatMetricUnits
@@ -80,7 +84,11 @@ func createNotification(c *gin.Context) (uint64, error) {
 	}
 	// 未勾选跳过检查
 	if !nf.SkipCheck {
-		if err := ns.Send(singleton.Localizer.T("a test message")); err != nil {
+		prepared, message, err := prepareNotificationTest(c, &ns, nf.TestEvent)
+		if err != nil {
+			return 0, err
+		}
+		if err := prepared.Send(message); err != nil {
 			return 0, err
 		}
 	}
@@ -144,6 +152,12 @@ func updateNotification(c *gin.Context) (any, error) {
 		n.RequestBody = nf.RequestBody
 	}
 
+	if nf.EventTemplates != nil {
+		n.EventTemplates = nf.EventTemplates
+	}
+	if err := n.ValidateEventTemplates(); err != nil {
+		return nil, err
+	}
 	ns := model.NotificationServerBundle{
 		Notification: &n,
 		Server:       nil,
@@ -151,7 +165,11 @@ func updateNotification(c *gin.Context) (any, error) {
 	}
 	// 未勾选跳过检查
 	if !nf.SkipCheck {
-		if err := ns.Send(singleton.Localizer.T("a test message")); err != nil {
+		prepared, message, err := prepareNotificationTest(c, &ns, nf.TestEvent)
+		if err != nil {
+			return nil, err
+		}
+		if err := prepared.Send(message); err != nil {
 			return nil, err
 		}
 	}

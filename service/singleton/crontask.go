@@ -73,7 +73,7 @@ func NewCronClass() *CronClass {
 	// 向注册错误的计划任务所在通知组发送通知
 	for _, gid := range notificationGroupList {
 		notificationMsgMap[gid].WriteString(Localizer.T("] These tasks will not execute properly. Fix them in the admin dashboard."))
-		NotificationShared.SendNotification(gid, notificationMsgMap[gid].String(), "")
+		NotificationShared.SendEvent(gid, notificationMsgMap[gid].String(), "", model.NotificationEvent{Kind: "task_failure"})
 	}
 	cronx.Start()
 
@@ -318,7 +318,7 @@ func CronTrigger(cr *model.Cron, triggerServer ...uint64) func() {
 					// 保存当前服务器状态信息
 					curServer := model.Server{}
 					copier.Copy(&curServer, s)
-					go NotificationShared.SendNotification(cr.NotificationGroupID, Localizer.Tf("[Task failed] %s: server %s is offline and cannot execute the task", cr.Name, s.Name), "", &curServer)
+					go NotificationShared.SendEvent(cr.NotificationGroupID, Localizer.Tf("[Task failed] %s: server %s is offline and cannot execute the task", cr.Name, s.Name), "", model.NotificationEvent{Kind: "task_failure", RuleName: cr.Name}, &curServer)
 				}
 			}
 			return
@@ -350,7 +350,7 @@ func CronTrigger(cr *model.Cron, triggerServer ...uint64) func() {
 				// 保存当前服务器状态信息
 				curServer := model.Server{}
 				copier.Copy(&curServer, s)
-				go NotificationShared.SendNotification(cr.NotificationGroupID, Localizer.Tf("[Task failed] %s: server %s is offline and cannot execute the task", cr.Name, s.Name), "", &curServer)
+				go NotificationShared.SendEvent(cr.NotificationGroupID, Localizer.Tf("[Task failed] %s: server %s is offline and cannot execute the task", cr.Name, s.Name), "", model.NotificationEvent{Kind: "task_failure", RuleName: cr.Name}, &curServer)
 			}
 		}
 	}

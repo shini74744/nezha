@@ -29,18 +29,20 @@ type NotificationServerBundle struct {
 	Notification *Notification
 	Server       *Server
 	Loc          *time.Location
+	Event        *NotificationEvent
 }
 
 type Notification struct {
 	Common
-	Name              string `json:"name"`
-	URL               string `json:"url"`
-	RequestMethod     uint8  `json:"request_method"`
-	RequestType       uint8  `json:"request_type"`
-	RequestHeader     string `json:"request_header" gorm:"type:longtext"`
-	RequestBody       string `json:"request_body" gorm:"type:longtext"`
-	VerifyTLS         *bool  `json:"verify_tls,omitempty"`
-	FormatMetricUnits *bool  `json:"format_metric_units,omitempty"`
+	EventTemplates    *NotificationEventConfig `json:"event_templates,omitempty" gorm:"serializer:json;type:text"`
+	Name              string                   `json:"name"`
+	URL               string                   `json:"url"`
+	RequestMethod     uint8                    `json:"request_method"`
+	RequestType       uint8                    `json:"request_type"`
+	RequestHeader     string                   `json:"request_header" gorm:"type:longtext"`
+	RequestBody       string                   `json:"request_body" gorm:"type:longtext"`
+	VerifyTLS         *bool                    `json:"verify_tls,omitempty"`
+	FormatMetricUnits *bool                    `json:"format_metric_units,omitempty"`
 }
 
 func (ns *NotificationServerBundle) reqURL(message string) string {
@@ -111,6 +113,11 @@ func (n *Notification) setRequestHeader(req *http.Request) error {
 }
 
 func (ns *NotificationServerBundle) Send(message string) error {
+	prepared, rendered, skip, err := ns.prepareEvent(message)
+	if err != nil || skip {
+		return err
+	}
+	ns, message = prepared, rendered
 	n := ns.Notification
 	verifyTLS := n.VerifyTLS != nil && *n.VerifyTLS
 
@@ -194,8 +201,8 @@ func (ns *NotificationServerBundle) replaceParamsInString(str string, message st
 			"#SERVER.MEM#", mod(ns.formatUsage(true, float64(state.MemUsed)/float64(host.MemTotal))),
 			"#SERVER.SWAP#", mod(ns.formatUsage(true, float64(state.SwapUsed)/float64(host.SwapTotal))),
 			"#SERVER.DISK#", mod(ns.formatUsage(true, float64(state.DiskUsed)/float64(host.DiskTotal))),
-			"#SERVER.SPEEDIN#", mod(fmt.Sprintf("%s/s", ns.formatSize(state.NetInSpeed))),
-			"#SERVER.SPEEDOUT#", mod(fmt.Sprintf("%s/s", ns.formatSize(state.NetOutSpeed))),
+			"#SERVER.SPEEDIN#", mod(ns.formatSpeed(state.NetInSpeed)),
+			"#SERVER.SPEEDOUT#", mod(ns.formatSpeed(state.NetOutSpeed)),
 			"#SERVER.TRANSFERIN#", mod(ns.formatSize(state.NetInTransfer)),
 			"#SERVER.TRANSFEROUT#", mod(ns.formatSize(state.NetOutTransfer)),
 
@@ -254,6 +261,12 @@ func (ns *NotificationServerBundle) formatUsage(toPercentage bool, usage float64
 	return fmt.Sprintf("%f", usage)
 }
 
+func (ns *NotificationServerBundle) formatSpeed(bytesPerSecond uint64) string {
+	if ns.Notification.FormatMetricUnits != nil && *ns.Notification.FormatMetricUnits {
+		return fmt.Sprintf("%.2f Mbps", float64(bytesPerSecond)*8/1_000_000)
+	}
+	return fmt.Sprintf("%d B/s", bytesPerSecond)
+}
 func (ns *NotificationServerBundle) formatSize(size uint64) string {
 	if ns.Notification.FormatMetricUnits != nil && *ns.Notification.FormatMetricUnits {
 		return utils.Bytes(size)

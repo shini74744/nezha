@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import {formatBillingCycle} from "@/lib/billing-cycle";
 import {
 	cn,
 	getDaysBetweenDatesWithAutoRenewal,
@@ -12,7 +13,7 @@ export default function BillingInfo({
 }: {
 	parsedData: PublicNoteData;
 }) {
-	const { t } = useTranslation();
+	const { t,i18n } = useTranslation();
 	if (!parsedData?.billingDataMod) {
 		return null;
 	}
@@ -53,7 +54,7 @@ export default function BillingInfo({
 			parsedData.billingDataMod.amount !== "-1" ? (
 				<p className={cn("text-[10px] text-muted-foreground ")}>
 					{t("billingInfo.price")}: {parsedData.billingDataMod.amount}/
-					{parsedData.billingDataMod.cycle}
+					{formatBillingCycle(parsedData.billingDataMod.cycle,i18n.resolvedLanguage||i18n.language)}
 				</p>
 			) : parsedData.billingDataMod.amount === "0" ? (
 				<p className={cn("text-[10px] text-green-600 ")}>
@@ -86,7 +87,7 @@ export default function BillingInfo({
 			parsedData.billingDataMod.amount !== "-1" ? (
 				<p className={cn("text-[10px] text-muted-foreground ")}>
 					{t("billingInfo.price")}: {parsedData.billingDataMod.amount}/
-					{parsedData.billingDataMod.cycle}
+					{formatBillingCycle(parsedData.billingDataMod.cycle,i18n.resolvedLanguage||i18n.language)}
 				</p>
 			) : parsedData.billingDataMod.amount === "0" ? (
 				<p className={cn("text-[10px] text-green-600 ")}>
