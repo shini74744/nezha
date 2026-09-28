@@ -1,4 +1,60 @@
 import {test,expect} from "@playwright/test";
+
+for(const [width,timezoneId] of [[360,"Asia/Shanghai"],[390,"Asia/Shanghai"],[430,"Asia/Shanghai"],[1366,"Asia/Shanghai"],[390,"UTC"]] as const)test("billing dates expose editable seconds "+width+" "+timezoneId,async({browser})=>{
+ const page=await browser.newPage({viewport:{width,height:900},timezoneId,locale:"zh-CN"});
+ try{
+ let server:any={id:11,host:{version:"2.3.5"},name:"日期时间测试",display_index:0,user_id:1,uuid:"fixture",public_note:JSON.stringify({billingDataMod:{startDate:"2026-09-22T00:00:00+08:00",endDate:"2026-10-22T23:59:58+08:00"},unknown:"keep"}),note:"",enable_ddns:false,hide_for_guest:false};
+ const updates:any[]=[],errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
+ await page.route("**/api/v1/**",r=>{const path=new URL(r.request().url()).pathname;let data:any=[];
+  if(path==="/api/v1/profile")data={id:1,username:"admin",role:0};
+  if(path==="/api/v1/setting")data={config:{site_name:"测试",language:"zh-CN"},version:"test"};
+  if(path==="/api/v1/server")data=[server];
+  if(path==="/api/v1/server/11"&&r.request().method()==="PATCH"){updates.push(r.request().postDataJSON());server={...server,...updates.at(-1)}}
+  return r.fulfill({json:{success:true,data}});
+ });
+ await page.goto("/dashboard");
+ const edit=page.getByRole("row").filter({has:page.getByText("日期时间测试",{exact:true})}).getByRole("button",{name:"编辑服务器",exact:true});
+ await edit.click();
+ const dialog=page.getByRole("dialog").first(),start=page.getByRole("button",{name:"开始时间日期时间",exact:true}),end=page.getByRole("button",{name:"结束时间日期时间",exact:true});
+ await expect(start).toContainText(timezoneId==="UTC"?"16:00:00":"00:00:00");
+ await expect(end).toContainText(timezoneId==="UTC"?"15:59:58":"23:59:58");
+ const expected=await page.evaluate(()=>{
+  const start=new Date("2026-09-22T00:00:00+08:00"),end=new Date("2026-10-22T23:59:58+08:00");
+  start.setHours(13,14,15,0);end.setHours(0,2,3,0);return {start:start.toISOString(),end:end.toISOString()};
+ });
+ await start.click();
+ for(const [unit,value] of [["小时","13"],["分钟","14"],["秒","15"]])await page.getByLabel("开始时间"+unit,{exact:true}).selectOption(value);
+ await expect(start).toContainText("13:14:15");expect(updates).toHaveLength(0);
+ await page.locator("[data-billing-time-picker]").scrollIntoViewIfNeeded();
+ await expect(page.locator("[data-billing-time-picker]")).toBeInViewport();
+ expect(await page.locator("[data-billing-time-picker]").evaluate(el=>{const r=el.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth})).toBe(true);
+ await page.screenshot({path:"test-results/billing-time-"+width+"-"+timezoneId.replace("/","-")+".png"});
+ await page.keyboard.press("Escape");
+ await end.click();
+ for(const [unit,value] of [["小时","00"],["分钟","02"],["秒","03"]])await page.getByLabel("结束时间"+unit,{exact:true}).selectOption(value);
+ await page.keyboard.press("Escape");
+ await dialog.locator('button[type="submit"]').click();await expect.poll(()=>updates.length).toBe(1);
+ const saved=JSON.parse(updates[0].public_note);
+ expect(saved.billingDataMod).toMatchObject({startDate:expected.start,endDate:expected.end});expect(saved.unknown).toBe("keep");
+ await edit.click();await expect(start).toContainText("13:14:15");await expect(end).toContainText("00:02:03");
+ await start.click();await page.locator('[data-slot="calendar"] button[data-day]').nth(15).click();
+ await expect(start).toContainText("13:14:15");expect(updates).toHaveLength(1);await page.keyboard.press("Escape");
+ await dialog.getByRole("button",{name:"清除日期",exact:true}).first().click();await expect(start).toHaveText("YYYY-MM-DD 00:00:00");
+ await start.click();await expect(page.getByLabel("开始时间秒",{exact:true})).toBeDisabled();
+ await page.locator('[data-slot="calendar"] button[data-day]').nth(15).click();await expect(start).toContainText("00:00:00");
+ await page.keyboard.press("Escape");
+ await dialog.getByRole("button",{name:"设置为不过期",exact:true}).click();await expect(end).toContainText("不过期");
+ await end.click();await expect(page.getByLabel("结束时间秒",{exact:true})).toBeDisabled();
+ await page.locator('[data-slot="calendar"] button[data-day]').nth(15).click();await expect(end).toContainText("00:00:00");
+ await page.keyboard.press("Escape");
+ await dialog.getByRole("button",{name:"清除日期",exact:true}).last().click();
+ await dialog.locator('button[type="submit"]').click();await expect.poll(()=>updates.length).toBe(2);
+ expect(JSON.parse(updates[1].public_note).billingDataMod.endDate).toBeUndefined();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ expect(errors).toEqual([]);
+ }finally{await page.close()}
+});
+
 for(const width of [1366,390])test("bilingual note autofill and roundtrip "+width,async({page})=>{
  await page.setViewportSize({width,height:900});
  const original={billingDataMod:{startDate:"2026-06-15T00:00:00+08:00",endDate:"2026-07-15T00:00:00+08:00",autoRenewal:"1",cycle:"月"},planDataMod:{bandwidth:"5000Mbps",trafficVol:"5TB/月",trafficType:"0",IPv4:"1",IPv6:"0",networkRoute:"163PP/CN2,CMI/CMIN2,10099/9929专线",extra:"三网顶级优化",custom:"keep"},unknown:{keep:true}};
@@ -16,15 +72,15 @@ for(const width of [1366,390])test("bilingual note autofill and roundtrip "+widt
  const row=page.getByRole("row").filter({has:page.getByText("备注兼容测试",{exact:true})});
  await row.getByRole("button",{name:"编辑服务器",exact:true}).click();
  const dialog=page.getByRole("dialog");
- await expect(dialog.getByLabel("中国电信")).toHaveValue("163PP/CN2");
- await expect(dialog.getByLabel("中国移动")).toHaveValue("CMI/CMIN2");
- await expect(dialog.getByLabel("中国联通")).toHaveValue("10099/9929专线");
+ await expect(dialog.locator("#route-telecom")).toHaveValue("163PP/CN2");
+ await expect(dialog.locator("#route-mobile")).toHaveValue("CMI/CMIN2");
+ await expect(dialog.locator("#route-unicom")).toHaveValue("10099/9929专线");
  await expect(dialog.getByRole("combobox").filter({hasText:"未指定（默认双向）"})).toBeVisible();
  const ips=dialog.locator("[data-ip-options]");
  await ips.scrollIntoViewIfNeeded();
  await expect.poll(()=>ips.evaluate(el=>{const labels=el.querySelectorAll("label"),a=labels[0].getBoundingClientRect(),b=labels[1].getBoundingClientRect();return Math.abs(a.y-b.y)<2&&b.x>a.x;})).toBe(true);
  await page.screenshot({path:"test-results/ip-options-"+width+".png"});
- await dialog.getByLabel("中国电信").fill("CN2 GIA");
+ await dialog.locator("#route-telecom").fill("CN2 GIA");
  await dialog.getByLabel("流量重置日",{exact:true}).fill("15");
  await dialog.getByRole("button",{name:"原始文本",exact:true}).click();
  const raw=dialog.getByRole("textbox",{name:"公开备注原始文本"});
@@ -32,18 +88,18 @@ for(const width of [1366,390])test("bilingual note autofill and roundtrip "+widt
  expect(doc.套餐信息.运营商线路.中国电信).toBe("CN2 GIA");expect(doc.unknown).toEqual({keep:true});
  doc.套餐信息.流量="6TB/月";await raw.fill(JSON.stringify(doc));
  await dialog.getByRole("button",{name:"自定义字段",exact:true}).click();
- await expect(dialog.getByLabel("中国电信")).toHaveValue("CN2 GIA");
+ await expect(dialog.locator("#route-telecom")).toHaveValue("CN2 GIA");
  await expect(dialog.locator('input[value="6TB/月"]')).toBeVisible();
  await dialog.getByRole("button",{name:"自定义字段",exact:true}).click();
- await expect(dialog.getByLabel("中国电信")).toHaveValue("CN2 GIA");
- await dialog.getByLabel("中国联通").scrollIntoViewIfNeeded();
+ await expect(dialog.locator("#route-telecom")).toHaveValue("CN2 GIA");
+ await dialog.locator("#route-unicom").scrollIntoViewIfNeeded();
  await page.screenshot({path:"test-results/public-note-"+width+".png"});
  await dialog.locator('button[type="submit"]').click();await expect.poll(()=>updates.length).toBe(1);
  const saved=JSON.parse(updates[0].public_note);
  expect(saved.planDataMod).toMatchObject({trafficVol:"6TB/月",trafficType:"0",resetDay:"15",networkRoute:"CN2 GIA,CMI/CMIN2,10099/9929专线",custom:"keep"});
  expect(saved.unknown).toEqual({keep:true});
  await row.getByRole("button",{name:"编辑服务器",exact:true}).click();
- await expect(dialog.getByLabel("中国电信")).toHaveValue("CN2 GIA");
+ await expect(dialog.locator("#route-telecom")).toHaveValue("CN2 GIA");
  await dialog.getByRole("button",{name:"原始文本",exact:true}).click();await raw.fill("不是JSON的旧备注");
  await dialog.getByRole("button",{name:"自定义字段",exact:true}).click();await expect(raw).toHaveValue("不是JSON的旧备注");
  expect(errors).toEqual([]);

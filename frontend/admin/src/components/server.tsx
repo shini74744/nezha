@@ -37,6 +37,9 @@ import { IconButton } from "@/components/xui/icon-button"
 import {
     type PublicNote,
     applyPublicNoteDate,
+    applyPublicNoteTime,
+    publicNoteTime,
+    publicNoteDateTimeLabel,
     applyPublicNotePatch,
     detectPublicNoteMode,
     normalizeISO,
@@ -64,6 +67,26 @@ import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { KeyedMutator } from "swr"
 import { z } from "zod"
+
+function BillingTimePicker({value,label,onChange}:{value?:string;label:string;onChange:(time:string)=>void}) {
+    const parts = publicNoteTime(value).split(":")
+    const disabled = !value || Number.isNaN(new Date(value).getTime())
+    return <div data-billing-time-picker className="border-t p-3 space-y-2">
+        <div className="flex items-center gap-1 text-xs">
+            时分秒
+            <SettingHelp label="时分秒">使用浏览器本地时区，与上方日期一致。新选日期默认 00:00:00；修改日期保留已设置的时间。请先选择日期，清除日期或设为不过期时不可设置时间。</SettingHelp>
+        </div>
+        <div className="flex items-center gap-2">
+            {["小时","分钟","秒"].map((part,index)=><select
+                key={part} aria-label={label+part} disabled={disabled} value={parts[index]}
+                className="h-10 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-sm"
+                onChange={e=>{const next=[...parts];next[index]=e.target.value;onChange(next.join(":"))}}
+            >
+                {Array.from({length:index===0?24:60},(_,i)=>String(i).padStart(2,"0")).map(v=><option key={v} value={v}>{v}</option>)}
+            </select>)}
+        </div>
+    </div>
+}
 
 interface ServerCardProps {
     data: ModelServer
@@ -483,23 +506,18 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                             <PopoverTrigger asChild>
                                                                 <Button
                                                                     variant="outline"
-                                                                    className="w-full justify-start text-left font-normal"
+                                                                    className="w-full justify-start text-left font-normal tabular-nums"
+                                                                    type="button"
+                                                                    aria-label={t("PublicNote.StartDate")+"日期时间"}
                                                                 >
-                                                                    {publicNoteObj.billingDataMod
-                                                                        ?.startDate
-                                                                        ? new Date(
-                                                                              publicNoteObj
-                                                                                  .billingDataMod!
-                                                                                  .startDate!,
-                                                                          ).toLocaleDateString()
-                                                                        : "YYYY-MM-DD"}
+                                                                    {publicNoteDateTimeLabel(publicNoteObj.billingDataMod?.startDate)}
                                                                 </Button>
                                                             </PopoverTrigger>
                                                             <PopoverContent
-                                                                className="p-0 w-[300px] max-h-[60dvh] overflow-hidden"
+                                                                className="p-0 w-[300px] max-w-[calc(100vw-32px)] max-h-[70dvh] overflow-y-auto"
                                                                 align="start"
                                                             >
-                                                                <div className="max-h-[500px] overflow-y-auto">
+                                                                <div>
                                                                     <Calendar
                                                                         className="w-full min-h-[320px]"
                                                                         mode="single"
@@ -529,6 +547,11 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                                             )
                                                                         }}
                                                                         autoFocus
+                                                                    />
+                                                                    <BillingTimePicker
+                                                                        value={publicNoteObj.billingDataMod?.startDate}
+                                                                        label={t("PublicNote.StartDate")}
+                                                                        onChange={time=>setPublicNoteObj(prev=>applyPublicNoteTime(prev,"billingDataMod.startDate",time))}
                                                                     />
                                                                 </div>
                                                             </PopoverContent>
@@ -580,30 +603,20 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                             <PopoverTrigger asChild>
                                                                 <Button
                                                                     variant="outline"
-                                                                    className="w-full justify-start text-left font-normal"
+                                                                    className="w-full justify-start text-left font-normal tabular-nums"
+                                                                    type="button"
+                                                                    aria-label={t("PublicNote.EndDate")+"日期时间"}
                                                                 >
-                                                                    {publicNoteObj.billingDataMod
-                                                                        ?.endDate
-                                                                        ? publicNoteObj
-                                                                              .billingDataMod
-                                                                              ?.endDate ===
-                                                                          "0000-00-00T23:59:59+08:00"
-                                                                            ? t(
-                                                                                  "PublicNote.NoExpiry",
-                                                                              )
-                                                                            : new Date(
-                                                                                  publicNoteObj
-                                                                                      .billingDataMod
-                                                                                      ?.endDate as string,
-                                                                              ).toLocaleDateString()
-                                                                        : "YYYY-MM-DD"}
+                                                                    {publicNoteObj.billingDataMod?.endDate === "0000-00-00T23:59:59+08:00"
+                                                                        ? t("PublicNote.NoExpiry")
+                                                                        : publicNoteDateTimeLabel(publicNoteObj.billingDataMod?.endDate)}
                                                                 </Button>
                                                             </PopoverTrigger>
                                                             <PopoverContent
-                                                                className="p-0 w-[300px] max-h-[60dvh] overflow-hidden"
+                                                                className="p-0 w-[300px] max-w-[calc(100vw-32px)] max-h-[70dvh] overflow-y-auto"
                                                                 align="start"
                                                             >
-                                                                <div className="max-h-[500px] overflow-y-auto">
+                                                                <div>
                                                                     <Calendar
                                                                         className="w-full min-h-[320px]"
                                                                         mode="single"
@@ -637,6 +650,11 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                                             )
                                                                         }}
                                                                         autoFocus
+                                                                    />
+                                                                    <BillingTimePicker
+                                                                        value={publicNoteObj.billingDataMod?.endDate}
+                                                                        label={t("PublicNote.EndDate")}
+                                                                        onChange={time=>setPublicNoteObj(prev=>applyPublicNoteTime(prev,"billingDataMod.endDate",time))}
                                                                     />
                                                                 </div>
                                                             </PopoverContent>
