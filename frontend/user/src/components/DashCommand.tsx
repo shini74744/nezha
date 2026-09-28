@@ -26,9 +26,9 @@ export function DashCommand() {
 	const { t } = useTranslation();
 	const { setTheme } = useTheme();
 
-	const { lastData, connected } = useWebSocketContext();
+	const { lastData, inventoryData, connected } = useWebSocketContext();
 
-	const nezhaWsData = lastData;
+	const nezhaWsData = inventoryData ?? lastData;
 
 	useEffect(() => {
 		const down = (e: KeyboardEvent) => {

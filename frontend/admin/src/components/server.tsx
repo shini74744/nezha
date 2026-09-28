@@ -78,6 +78,7 @@ export const serverFormSchema = z.object({
     public_note: asOptionalField(z.string()),
     display_index: z.coerce.number().int(),
     hide_for_guest: asOptionalField(z.boolean()),
+    hide_for_display: asOptionalField(z.boolean()),
     enable_ddns: asOptionalField(z.boolean()),
     ddns_profiles: asOptionalField(z.array(z.number())),
     ddns_profiles_raw: asOptionalField(z.string()),
@@ -323,46 +324,48 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                     <></>
                                 )}
 
-                                <FormField
-                                    control={form.control}
-                                    name="enable_ddns"
-                                    render={({ field }) => (
-                                        <FormItem className="flex items-center space-x-2">
-                                            <FormControl>
-                                                <div className="flex items-center gap-2">
-                                                    <Checkbox
-                                                        checked={field.value}
-                                                        onCheckedChange={field.onChange}
-                                                    />
-                                                    <Label className="text-sm">
-                                                        {t("EnableDDNS")}
-                                                    </Label>
-                                                </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="hide_for_guest"
-                                    render={({ field }) => (
-                                        <FormItem className="flex items-center space-x-2">
-                                            <FormControl>
-                                                <div className="flex items-center gap-2">
-                                                    <Checkbox
-                                                        checked={field.value}
-                                                        onCheckedChange={field.onChange}
-                                                    />
-                                                    <Label className="text-sm">
-                                                        {t("HideForGuest")}
-                                                    </Label>
-                                                </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                <div data-server-visibility-options className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:gap-x-6">
+                                    <FormField
+                                        control={form.control}
+                                        name="enable_ddns"
+                                        render={({ field }) => (
+                                            <FormItem className="flex min-h-8 items-center gap-1 space-y-0 whitespace-nowrap sm:gap-2">
+                                                <FormControl>
+                                                    <Checkbox aria-label={t("EnableDDNS")} checked={field.value} onCheckedChange={field.onChange} />
+                                                </FormControl>
+                                                <FormLabel className="cursor-pointer text-xs sm:text-sm">{t("EnableDDNS")}</FormLabel>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="hide_for_guest"
+                                        render={({ field }) => (
+                                            <FormItem className="flex min-h-8 items-center gap-1 space-y-0 whitespace-nowrap sm:gap-2">
+                                                <FormControl>
+                                                    <Checkbox aria-label={t("HideForGuest")} checked={field.value} onCheckedChange={field.onChange} />
+                                                </FormControl>
+                                                <FormLabel className="cursor-pointer text-xs sm:text-sm">{t("HideForGuest")}</FormLabel>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="hide_for_display"
+                                        render={({ field }) => (
+                                            <FormItem className="flex min-h-8 items-center gap-1 space-y-0 whitespace-nowrap sm:gap-2">
+                                                <FormControl>
+                                                    <Checkbox aria-label="普通隐藏" checked={!!field.value} onCheckedChange={field.onChange} />
+                                                </FormControl>
+                                                <FormLabel className="cursor-pointer text-xs sm:text-sm">普通隐藏</FormLabel>
+                                                <button type="button" title="仅未登录访客默认不展示，连续点击前台小鸡插画 5 下展开，再点 5 下收起。登录后不受普通隐藏影响。不是权限保护；同时勾选“对游客隐藏”时，仍需管理员或所属用户登录。" aria-label="普通隐藏说明" className="flex min-h-6 min-w-6 items-center justify-center text-muted-foreground"><HelpCircle size={14} /></button>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
                                 <FormField
                                     control={form.control}
                                     name="note"

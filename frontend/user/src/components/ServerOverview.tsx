@@ -1,3 +1,5 @@
+import {useRef} from "react";
+import {createFiveTapGate} from "@/lib/five-tap";
 import {useFeature} from "@/appearance/context";
 import {NativeSpeed} from "@/appearance/widgets";
 import {
@@ -12,6 +14,8 @@ import { cn } from "@/lib/utils";
 import NumericText from "./NumericText";
 
 type ServerOverviewProps = {
+	onToggleDisplayHidden?: () => void;
+	displayHiddenExpanded?: boolean;
 	online: number;
 	offline: number;
 	total: number;
@@ -22,6 +26,8 @@ type ServerOverviewProps = {
 };
 
 export default function ServerOverview({
+	onToggleDisplayHidden,
+	displayHiddenExpanded = false,
 	online,
 	offline,
 	total,
@@ -31,6 +37,8 @@ export default function ServerOverview({
 	downSpeed,
 }: ServerOverviewProps) {
 	const { t } = useTranslation();
+	const tapGate = useRef(createFiveTapGate());
+	const tapIllustration = () => { if (tapGate.current(Date.now())) onToggleDisplayHidden?.(); };
 	const { status, setStatus } = useStatus();
 const brand=useFeature("branding");
 
@@ -170,6 +178,14 @@ const brand=useFeature("branding");
 						<img
 							className="absolute right-3 top-[-85px] z-50 w-20 scale-90 group-hover:opacity-50 md:scale-100 transition-all"
 							alt={"animated-man"}
+                            role="button"
+                            tabIndex={0}
+                            aria-label="页面插画"
+                            aria-pressed={displayHiddenExpanded}
+                            draggable={false}
+                            style={{touchAction:"manipulation",cursor:"pointer"}}
+                            onClick={tapIllustration}
+                            onKeyDown={e=>{if(!e.repeat && (e.key==="Enter" || e.key===" ")){e.preventDefault();tapIllustration();}}}
 							src={customIllustration}
 							loading="eager"
 						/>

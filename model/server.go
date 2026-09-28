@@ -22,11 +22,12 @@ type Server struct {
 
 	Name                   string `json:"name"`
 	UUID                   string `json:"uuid,omitempty" gorm:"unique"`
-	Note                   string `json:"note,omitempty"`           // 管理员可见备注
-	PublicNote             string `json:"public_note,omitempty"`    // 公开备注
-	DisplayIndex           int    `json:"display_index"`            // 展示排序，越大越靠前
-	HideForGuest           bool   `json:"hide_for_guest,omitempty"` // 对游客隐藏
-	EnableDDNS             bool   `json:"enable_ddns,omitempty"`    // 启用DDNS
+	Note                   string `json:"note,omitempty"`                        // 管理员可见备注
+	PublicNote             string `json:"public_note,omitempty"`                 // 公开备注
+	DisplayIndex           int    `json:"display_index"`                         // 展示排序，越大越靠前
+	HideForGuest           bool   `json:"hide_for_guest,omitempty"`              // 对游客隐藏
+	HideForDisplay         bool   `json:"hide_for_display" gorm:"default:false"` // 普通隐藏，仅前台展示筛选
+	EnableDDNS             bool   `json:"enable_ddns,omitempty"`                 // 启用DDNS
 	DDNSProfilesRaw        string `gorm:"default:'[]';column:ddns_profiles_raw" json:"-"`
 	OverrideDDNSDomainsRaw string `gorm:"default:'{}';column:override_ddns_domains_raw" json:"-"`
 
@@ -647,6 +648,7 @@ func (s *Server) RuntimeCopy(runtime RuntimeSnapshot) *Server {
 		PublicNote:              s.PublicNote,
 		DisplayIndex:            s.DisplayIndex,
 		HideForGuest:            s.HideForGuest,
+		HideForDisplay:          s.HideForDisplay,
 		EnableDDNS:              s.EnableDDNS,
 		DDNSProfilesRaw:         s.DDNSProfilesRaw,
 		OverrideDDNSDomainsRaw:  s.OverrideDDNSDomainsRaw,

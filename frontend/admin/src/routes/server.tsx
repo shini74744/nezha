@@ -10,6 +10,7 @@ import { ServerCard } from "@/components/server"
 import { ServerConfigCard } from "@/components/server-config"
 import { ServerConfigCardBatch } from "@/components/server-config-batch"
 import { ServerSortDialog } from "@/components/server-sort-dialog"
+import { ServerVisibilityBatch } from "@/components/server-visibility-batch"
 import { TerminalButton } from "@/components/terminal"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -215,6 +216,7 @@ export default function ServerPage() {
                         mutate: mutate,
                     }}
                 >
+                    <ServerVisibilityBatch servers={selectedRows.map(r => r.original)} onUpdated={() => mutate()} />
                     {profile?.role === 0 && (
                         <ServerSortDialog servers={dataCache} mutate={mutate} />
                     )}

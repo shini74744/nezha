@@ -3,10 +3,11 @@ package model
 import "time"
 
 type StreamServer struct {
-	ID           uint64 `json:"id,omitempty"`
-	Name         string `json:"name,omitempty"`
-	PublicNote   string `json:"public_note,omitempty"`   // 公开备注，只第一个数据包有值
-	DisplayIndex int    `json:"display_index,omitempty"` // 展示排序，越大越靠前
+	HideForDisplay bool   `json:"hide_for_display"` // 普通隐藏，不改变访问权限
+	ID             uint64 `json:"id,omitempty"`
+	Name           string `json:"name,omitempty"`
+	PublicNote     string `json:"public_note,omitempty"`   // 公开备注，只第一个数据包有值
+	DisplayIndex   int    `json:"display_index,omitempty"` // 展示排序，越大越靠前
 
 	Host        *Host      `json:"host,omitempty"`
 	State       *HostState `json:"state,omitempty"`
@@ -21,8 +22,9 @@ type StreamServerData struct {
 }
 
 type ServerForm struct {
-	Name string `json:"name,omitempty"`
-	Note string `json:"note,omitempty" validate:"optional"` // 管理员可见备注
+	HideForDisplay *bool  `json:"hide_for_display,omitempty" validate:"optional"` // nil preserves older clients
+	Name           string `json:"name,omitempty"`
+	Note           string `json:"note,omitempty" validate:"optional"` // 管理员可见备注
 	// PublicNote is opaque public metadata consumed by independently maintained
 	// user themes. The Dashboard stores/transports it but never renders it as
 	// HTML or navigates URL-like fields. Themes must validate schemes before

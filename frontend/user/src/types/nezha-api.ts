@@ -5,6 +5,7 @@ export interface NezhaWebsocketResponse {
 }
 
 export interface NezhaServer {
+	hide_for_display?: boolean;
 	id: number;
 	name: string;
 	public_note: string;

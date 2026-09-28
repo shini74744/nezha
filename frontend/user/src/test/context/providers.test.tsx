@@ -274,6 +274,44 @@ describe("WebSocketProvider", () => {
 		expect(screen.getByTestId("message-count")).toHaveTextContent("2");
 	});
 
+	it("folds ordinary hidden inventory without losing notes or detail data", async () => {
+        function InventoryProbe() {
+            const c = useWebSocketContext();
+            return <><p data-testid="visible">{c.inventoryData?.servers.map(s=>s.name).join(",")}</p>
+                <p data-testid="raw">{c.lastData?.servers.length}</p>
+                <p data-testid="note">{c.lastData?.servers.find(s=>s.id===2)?.public_note}</p>
+                <button onClick={()=>c.setShowDisplayHidden?.(!c.showDisplayHidden)}>toggle ordinary</button></>;
+        }
+        renderWebSocketProvider(<InventoryProbe />);
+        const socket = FakeWebSocket.instances[0];
+        const servers = [createServer({id:1,name:"public"}),createServer({id:2,name:"folded",hide_for_display:true,public_note:"saved-note"})];
+        act(()=>{socket.open();socket.message(JSON.stringify({now:1,servers}));socket.message(JSON.stringify({now:2,servers:servers.map(({public_note,...s})=>s)}))});
+        expect(screen.getByTestId("visible")).toHaveTextContent(/^public$/);
+        expect(screen.getByTestId("raw")).toHaveTextContent("2");
+        expect(screen.getByTestId("note")).toHaveTextContent("saved-note");
+        await userEvent.click(screen.getByText("toggle ordinary"));
+        expect(screen.getByTestId("visible")).toHaveTextContent("public,folded");
+        await userEvent.click(screen.getByText("toggle ordinary"));
+        expect(screen.getByTestId("visible")).toHaveTextContent(/^public$/);
+    });
+
+    it("does not fold authenticated inventory and resets guest preference on logout", async () => {
+        function Probe() {
+            const c=useWebSocketContext();
+            return <><p data-testid="inventory">{c.inventoryData?.servers.length}</p>
+                <button onClick={()=>c.setShowDisplayHidden?.(!c.showDisplayHidden)}>toggle</button></>;
+        }
+        const view=render(<WebSocketProvider url="/api/v1/ws/server" authenticated><Probe /></WebSocketProvider>);
+        const socket=FakeWebSocket.instances[0];
+        act(()=>{socket.open();socket.message(JSON.stringify({now:1,servers:[createServer({id:1,hide_for_display:true}),createServer({id:2})]}))});
+        expect(screen.getByTestId("inventory")).toHaveTextContent("2");
+        await userEvent.click(screen.getByText("toggle"));
+        await userEvent.click(screen.getByText("toggle"));
+        expect(screen.getByTestId("inventory")).toHaveTextContent("2");
+        view.rerender(<WebSocketProvider url="/api/v1/ws/server"><Probe /></WebSocketProvider>);
+        expect(screen.getByTestId("inventory")).toHaveTextContent("1");
+    });
+
 	it("normalizes missing and non-array server collections", () => {
 		renderWebSocketProvider(<WebSocketProbe />);
 		const socket = FakeWebSocket.instances[0];
