@@ -39,7 +39,7 @@ export default function BillingInfo({
 			} catch (error) {
 				console.error(error);
 				return (
-					<div className={cn("text-[10px] text-muted-foreground text-red-600")}>
+					<div data-billing-expiry className={cn("text-[10px] text-muted-foreground text-red-600")}>
 						{t("billingInfo.remaining")}: {t("billingInfo.error")}
 					</div>
 				);
@@ -52,21 +52,21 @@ export default function BillingInfo({
 			{parsedData.billingDataMod.amount &&
 			parsedData.billingDataMod.amount !== "0" &&
 			parsedData.billingDataMod.amount !== "-1" ? (
-				<p className={cn("text-[10px] text-muted-foreground ")}>
-					{t("billingInfo.price")}: {parsedData.billingDataMod.amount}/
+				<p data-billing-price title={`${t("billingInfo.price")}: ${parsedData.billingDataMod.amount}/${formatBillingCycle(parsedData.billingDataMod.cycle,i18n.resolvedLanguage||i18n.language)}`} className={cn("text-[10px] text-muted-foreground ")}>
+					<span data-billing-price-label>{t("billingInfo.price")}: </span>{parsedData.billingDataMod.amount}/
 					{formatBillingCycle(parsedData.billingDataMod.cycle,i18n.resolvedLanguage||i18n.language)}
 				</p>
 			) : parsedData.billingDataMod.amount === "0" ? (
-				<p className={cn("text-[10px] text-green-600 ")}>
+				<p data-billing-price title={t("billingInfo.free")} className={cn("text-[10px] text-green-600 ")}>
 					{t("billingInfo.free")}
 				</p>
 			) : parsedData.billingDataMod.amount === "-1" ? (
-				<p className={cn("text-[10px] text-pink-600 ")}>
+				<p data-billing-price title={t("billingInfo.usage-baseed")} className={cn("text-[10px] text-pink-600 ")}>
 					{t("billingInfo.usage-baseed")}
 				</p>
 			) : null}
 			{hasBillingDates && (
-				<div className={cn("text-[10px] text-muted-foreground")}>
+				<div data-billing-expiry className={cn("text-[10px] text-muted-foreground")}>
 					{t("billingInfo.remaining")}:{" "}
 					{isNeverExpire
 						? t("billingInfo.indefinite")
@@ -85,20 +85,20 @@ export default function BillingInfo({
 			{parsedData.billingDataMod.amount &&
 			parsedData.billingDataMod.amount !== "0" &&
 			parsedData.billingDataMod.amount !== "-1" ? (
-				<p className={cn("text-[10px] text-muted-foreground ")}>
-					{t("billingInfo.price")}: {parsedData.billingDataMod.amount}/
+				<p data-billing-price title={`${t("billingInfo.price")}: ${parsedData.billingDataMod.amount}/${formatBillingCycle(parsedData.billingDataMod.cycle,i18n.resolvedLanguage||i18n.language)}`} className={cn("text-[10px] text-muted-foreground ")}>
+					<span data-billing-price-label>{t("billingInfo.price")}: </span>{parsedData.billingDataMod.amount}/
 					{formatBillingCycle(parsedData.billingDataMod.cycle,i18n.resolvedLanguage||i18n.language)}
 				</p>
 			) : parsedData.billingDataMod.amount === "0" ? (
-				<p className={cn("text-[10px] text-green-600 ")}>
+				<p data-billing-price title={t("billingInfo.free")} className={cn("text-[10px] text-green-600 ")}>
 					{t("billingInfo.free")}
 				</p>
 			) : parsedData.billingDataMod.amount === "-1" ? (
-				<p className={cn("text-[10px] text-pink-600 ")}>
+				<p data-billing-price title={t("billingInfo.usage-baseed")} className={cn("text-[10px] text-pink-600 ")}>
 					{t("billingInfo.usage-baseed")}
 				</p>
 			) : null}
-			<p className={cn("text-[10px] text-muted-foreground text-red-600")}>
+			<p data-billing-expiry className={cn("text-[10px] text-muted-foreground text-red-600")}>
 				{t("billingInfo.expired")}: {daysLeftObject.days * -1}{" "}
 				{t("billingInfo.days")}
 			</p>

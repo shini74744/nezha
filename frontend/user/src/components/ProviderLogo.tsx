@@ -10,7 +10,7 @@ export default function ProviderLogo({value,mobileSlot=false}:{value?:LogoValue;
    if(a&&b){const start=a.getBoundingClientRect();const range=document.createRange();range.selectNodeContents(b);const end=range.getBoundingClientRect();left=start.left-c.left-card.clientLeft;width=Math.max(24,end.right-start.left)}
    box.style.setProperty("--nz-logo-slot-left",left+"px");box.style.setProperty("--nz-logo-slot-width",width+"px");
    const img=box.querySelector("img"),ratio=(img?.naturalWidth&&img.naturalHeight)?img.naturalWidth/img.naturalHeight:1;
-   const obstacles=[...card.querySelectorAll<HTMLElement>("[data-server-name],[data-server-status],[data-server-flag],[data-mobile-billing]")].map(el=>el.getBoundingClientRect()).filter(r=>r.width&&r.height).map(r=>({left:r.left-c.left-card.clientLeft,right:r.right-c.left-card.clientLeft,top:r.top-c.top-card.clientTop,bottom:r.bottom-c.top-card.clientTop}));
+   const obstacles=[...card.querySelectorAll<HTMLElement>("[data-server-name],[data-server-status],[data-server-flag],[data-mobile-billing] [data-billing-expiry],[data-mobile-billing] [data-billing-price],[data-mobile-billing] [data-expiry-progress],[data-mobile-billing] [data-server-link-tags]")].map(el=>el.getBoundingClientRect()).filter(r=>r.width&&r.height).map(r=>({left:r.left-c.left-card.clientLeft,right:r.right-c.left-card.clientLeft,top:r.top-c.top-card.clientTop,bottom:r.bottom-c.top-card.clientTop}));
    const limit=a?a.getBoundingClientRect().top-c.top-card.clientTop-4:48;
    let fit:{top:number;width:number;height:number}|undefined;
    for(let cap=24;cap>=8&&!fit;cap--){
