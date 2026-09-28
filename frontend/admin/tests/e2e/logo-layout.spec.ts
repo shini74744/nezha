@@ -13,7 +13,7 @@ for(const width of [360,390,430,1366])for(const variant of ["short","long","no-e
  const r=await image.boundingBox();const cardRect=await page.locator("[data-server-card]").boundingBox();expect(r!.y).toBeGreaterThanOrEqual(cardRect!.y);if(width<1024){expect(r!.height).toBeLessThanOrEqual(24);expect(r!.width).toBeLessThanOrEqual(64);
  const slot=await page.locator("[data-server-card]").evaluate(el=>{const a=el.querySelector('[data-metric-label="cpu"]')!.getBoundingClientRect();const range=document.createRange();range.selectNodeContents(el.querySelector('[data-metric-label="memory"]')!);const b=range.getBoundingClientRect();return {left:a.left,right:b.right,top:a.top}});
  expect(Math.abs(r!.x+r!.width/2-(slot.left+slot.right)/2)).toBeLessThan(1);expect(r!.y+r!.height).toBeLessThanOrEqual(slot.top-4);
- const obstacles=await page.locator("[data-server-card]").evaluate(el=>[...el.querySelectorAll("[data-server-name],[data-server-status],[data-server-flag],[data-mobile-billing]")].map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height}}));
+ const obstacles=await page.locator("[data-server-card]").evaluate(el=>[...el.querySelectorAll("[data-server-name],[data-server-status],[data-server-flag],[data-mobile-billing] [data-billing-expiry],[data-mobile-billing] [data-billing-price],[data-mobile-billing] [data-expiry-progress],[data-mobile-billing] [data-server-link-tags]")].map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height}}));
  for(const o of obstacles)expect(r!.x<o.x+o.width&&r!.x+r!.width>o.x&&r!.y<o.y+o.height&&r!.y+r!.height>o.y).toBe(false);
  const innerTop=await page.locator("[data-server-card]").evaluate(el=>el.getBoundingClientRect().top+(el as HTMLElement).clientTop);
  let gaps=[{top:innerTop+12,bottom:slot.top-4}];
@@ -28,6 +28,54 @@ for(const width of [360,390,430,1366])for(const variant of ["short","long","no-e
  }
  await page.screenshot({path:"test-results/logo-layout-"+width+"-"+variant+".png",fullPage:true});
 });
+
+for(const width of [360,390,430,1366])for(const online of [true,false])test("mobile expiry stays fixed when price changes "+width+" "+online,async({page})=>{
+ await page.setViewportSize({width,height:900});
+ await page.addInitScript(()=>{localStorage.setItem("inline","0");localStorage.setItem("showMap","0");localStorage.setItem("showServices","0")});
+ let amount="",endDate="2027-09-01T00:00:00+08:00";
+ await page.routeWebSocket("**/api/v1/ws/server",ws=>ws.send(JSON.stringify({now:Date.now(),online:online?1:0,servers:[createServer({id:11,name:"美国堪萨斯母鸡2",last_active:online?new Date().toISOString():"2020-01-01T00:00:00Z",public_note:JSON.stringify({billingDataMod:{startDate:endDate?"2026-09-01T00:00:00+08:00":"",endDate,cycle:"Year",amount}})})]})));
+ await page.route("**/api/v1/**",r=>{const path=new URL(r.request().url()).pathname;let data:any=[];if(path==="/api/v1/setting")data={config:{language:"zh-CN",site_name:"到期固定测试"}};if(path.includes("/service"))data={services:{},cycle_transfer_stats:{}};if(path==="/api/v1/server-traffic")data={};return r.fulfill({json:{success:true,data}})});
+ const snapshot=()=>page.locator("[data-server-card]").evaluate(el=>{
+  const c=el.getBoundingClientRect(),rect=(s:string)=>{const e=el.querySelector(s);if(!e)return null;const r=e.getBoundingClientRect();return [r.x-c.x,r.y-c.y,r.width,r.height]};
+  return {size:[c.width,c.height],expiry:rect("[data-mobile-billing-row] [data-billing-expiry]"),bar:rect("[data-mobile-billing-row] [data-expiry-progress]"),name:rect("[data-server-name]"),cpu:rect("[data-metric-label=cpu]"),memory:rect("[data-metric-label=memory]")};
+ });
+ let baseline:any;
+ for(const value of ["","$251.16","$99999999999.99","0","-1"]){
+  amount=value;await page.goto("/");await expect(page.locator("[data-server-name]")).toHaveText("美国堪萨斯母鸡2");
+  await page.evaluate(()=>document.fonts.ready);
+  const current=await snapshot();
+  if(width<1024){
+   if(baseline)expect(current).toEqual(baseline);else{
+    baseline=current;
+    const originalLayout=await page.addStyleTag({content:"@media(max-width:1023px){[data-mobile-billing],[data-mobile-billing-row]{width:auto!important;min-width:auto!important}[data-mobile-billing-row]{display:flex!important}}"});
+    expect(await snapshot()).toEqual(current);
+    await originalLayout.evaluate(el=>el.remove());
+   }
+   if(value){
+    const price=(await page.locator("[data-mobile-billing-row] [data-billing-price]").boundingBox())!,bar=(await page.locator("[data-mobile-billing-row] [data-expiry-progress]").boundingBox())!,card=(await page.locator("[data-server-card]").boundingBox())!;
+    expect(price.x).toBeGreaterThanOrEqual(bar.x+bar.width+7);
+    expect(price.x+price.width).toBeLessThanOrEqual(card.x+card.width);
+    expect(price.height).toBe(15);
+   }
+   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  }else if(value){
+   const price=(await page.locator("[data-server-billing] [data-billing-price]").boundingBox())!,expiry=(await page.locator("[data-server-billing] [data-billing-expiry]").boundingBox())!;
+   expect(price.y).toBeLessThan(expiry.y);
+  }
+  if(value==="$251.16")await page.locator("[data-server-card]").screenshot({path:"test-results/mobile-expiry-price-"+width+"-"+online+".png"});
+ }
+ if(width<1024){
+  for(const date of ["0000-00-00T00:00:00+08:00",""]){
+   endDate=date;amount="";await page.goto("/");await expect(page.locator("[data-server-name]")).toHaveText("美国堪萨斯母鸡2");
+   const before=await snapshot();amount="$251.16";await page.reload();await expect(page.locator("[data-mobile-billing-row] [data-billing-price]")).toBeVisible();
+   const after=await snapshot();
+   if(date)expect(after).toEqual(before);
+   else{expect(after.expiry).toBeNull();expect(after.bar).toBeNull()}
+   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  }
+ }
+});
+
 for(const width of [390,1366])test("provider groups and live card preview "+width,async({page})=>{
  test.setTimeout(90000);const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));await page.setViewportSize({width,height:950});
  const now=Date.now();let groups:any[]=[],entries:any[]=[{id:"provider-test",kind:"provider",name:"香港常用云",regions:[],aliases:"HK Cloud",groupId:"",logo:asset,version:1}];

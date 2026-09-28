@@ -84,7 +84,7 @@ const brand=useFeature("branding");
 					"lg:flex": fixedTopServerName,
 				})}
 			>
-				<div className="flex items-center gap-2">{parsedData?.billingDataMod && <BillingInfo parsedData={parsedData} />}</div>
+				<div data-mobile-billing-row className="flex items-center gap-2">{parsedData?.billingDataMod && <BillingInfo parsedData={parsedData} />}</div>
 <ServerLinkTags tags={parsedData?.planDataMod?.linkTags}/>
 			</div>
 			<div className="flex flex-col lg:items-start items-center gap-2">
@@ -211,7 +211,7 @@ const brand=useFeature("branding");
 					"lg:flex": fixedTopServerName,
 				})}
 			>
-				<div className="flex items-center gap-2">{parsedData?.billingDataMod && <BillingInfo parsedData={parsedData} />}</div>
+				<div data-mobile-billing-row className="flex items-center gap-2">{parsedData?.billingDataMod && <BillingInfo parsedData={parsedData} />}</div>
 <ServerLinkTags tags={parsedData?.planDataMod?.linkTags}/>
 			</div>
 			{/* Legacy traffic enhancement applies to online cards only. */}
