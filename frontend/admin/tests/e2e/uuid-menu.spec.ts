@@ -46,7 +46,7 @@ for (const width of [1366, 390]) {
                 exact: true,
                 includeHidden: true,
             })
-            await trigger.scrollIntoViewIfNeeded()
+            await trigger.click({ trial: true })
             const row = trigger.locator("xpath=ancestor::tr")
             const before = await row.boundingBox()
             await trigger.click()
@@ -79,7 +79,7 @@ for (const width of [1366, 390]) {
             await expect(menu).toHaveCount(0)
             await trigger.click()
             await expect(menu).toBeVisible()
-            await page.screenshot({ path: "test-results/uuid-menu-" + width + "-" + os + ".png" })
+            await page.screenshot({ path: "test-results/uuid-menu-" + width + "-" + os + ".png", animations: "disabled" })
             await page.keyboard.press("Escape")
             await expect(menu).toHaveCount(0)
             expect(errors).toEqual([])
