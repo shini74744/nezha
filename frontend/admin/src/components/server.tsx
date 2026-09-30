@@ -994,11 +994,10 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                         </div>
                                                     </fieldset>
                                                     <div className="space-y-1 sm:col-span-2">
-                                                        <Label htmlFor="traffic-reset-day" className="text-xs">流量重置日</Label>
+                                                        <div className="flex items-center"><Label htmlFor="traffic-reset-day" className="text-xs">流量重置日</Label><SettingHelp label="流量重置日">每月该日北京时间 00:00 开始新周期，历史记录保留；没有该日则取月末。留空使用账单开始日期的日号，无开始日期则为 1 日。未指定流量类型按双向统计。</SettingHelp></div>
                                                         <Input id="traffic-reset-day" type="number" min={1} max={31} placeholder="1–31，可留空"
                                                             value={publicNoteObj.planDataMod?.resetDay ?? ""}
                                                             onChange={e=>patchPublicNote("planDataMod.resetDay",e.target.value)}/>
-                                                        <p className="text-xs text-muted-foreground">每月该日北京时间 00:00 开始新周期，历史记录保留；没有该日则取月末。留空使用账单开始日期的日号，无开始日期则为 1 日。未指定流量类型按双向统计。</p>
                                                         {publicNoteErrors["plan.resetDay"] && <p className="text-xs text-destructive">{publicNoteErrors["plan.resetDay"]}</p>}
                                                     </div>
                                                     <div className="space-y-1 sm:col-span-2">

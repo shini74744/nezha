@@ -6,6 +6,11 @@
 .nz-server-identity > [data-server-status] { margin-top:4px; }
 .nz-server-identity > [data-server-flag] { height:16px; line-height:16px; }
 .nz-server-identity > [data-server-name] { margin:0; line-height:16px; }
+@media (min-width:1024px) {
+ .nz-server-identity > [data-provider-logo-box][data-desktop-logo-placement="left"] {
+  top:var(--nz-logo-desktop-fallback-top); bottom:auto;
+ }
+}
 @media (max-width:1023px) {
  /* Center expiry independently of price. Price uses only the free right side,
     never shifts expiry or wraps into another line / increases card height. */

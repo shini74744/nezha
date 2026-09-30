@@ -4,6 +4,20 @@ import ServerLinkTags from "@/components/ServerLinkTags";
 import {safeLink} from "../../../shared/link-tags";
 import {parsePublicNote} from "@/lib/utils";
 describe("server link tags",()=>{
+ it.each([
+  ["baidu.com","https://baidu.com/"],
+  [" example.com:8080/path?q=1#top ","https://example.com:8080/path?q=1#top"],
+  ["http://example.com/path","http://example.com/path"],
+  ["https://example.com/path","https://example.com/path"],
+  ["192.0.2.1:8080","https://192.0.2.1:8080/"],
+  ["localhost:3000","https://localhost:3000/"],
+  ["[2001:db8::1]:8080","https://[2001:db8::1]:8080/"],
+ ])("normalizes %s without requiring HTTPS",(input,expected)=>expect(safeLink(input)).toBe(expected));
+ it.each(["javascript:alert(1)","data:text/html,x","ftp://example.com","/relative/path","//example.com","example.com@evil.com","https://user:pass@example.com","java\nscript:alert(1)","example.com\\@evil.com","not a domain","", "example.com:99999"])("rejects unsafe or invalid input %j",input=>expect(safeLink(input)).toBe(""));
+ it("renders a bare domain as an absolute HTTPS link",()=>{
+  render(<ServerLinkTags tags={[{name:"官网",url:"baidu.com"}]}/>);
+  expect(screen.getByRole("link",{name:"官网"})).toHaveAttribute("href","https://baidu.com/");
+ });
  it.each([undefined,{amount:"33刀",cycle:"Month"}])("preserves tags with billing %j",billingDataMod=>{
   const tags=[{name:"购买",url:"https://example.com/buy"}];
   expect(parsePublicNote(JSON.stringify({billingDataMod,planDataMod:{linkTags:tags}}))?.planDataMod?.linkTags).toEqual(tags);
