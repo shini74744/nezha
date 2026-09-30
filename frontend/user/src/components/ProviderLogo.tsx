@@ -3,10 +3,34 @@ import type {CSSProperties} from "react";
 import {useLayoutEffect,useRef,useState} from "react";
 import {safeLogoSource} from "../../../shared/other-routes";
 import type {LogoValue} from "../../../shared/logo";
-export default function ProviderLogo({value,mobileSlot=false}:{value?:LogoValue;mobileSlot?:boolean}){
+export default function ProviderLogo({value,mobileSlot=false,offline=false}:{value?:LogoValue;mobileSlot?:boolean;offline?:boolean}){
  const src=safeLogoSource(value?.logo),[failed,setFailed]=useState(""),ref=useRef<HTMLSpanElement>(null);
  useLayoutEffect(()=>{const box=ref.current,card=box?.closest<HTMLElement>("[data-server-card]"),heading=box?.parentElement;if(!box||!card||!heading)return;let frame=0,disposed=false;
-  const measure=()=>{if(disposed)return;const c=card.getBoundingClientRect(),h=heading.getBoundingClientRect(),progress=heading.querySelector<HTMLElement>("[data-expiry-progress]"),anchor=progress?.getBoundingClientRect().width?progress:heading.querySelector<HTMLElement>("[data-server-name]");if(anchor){const a=anchor.getBoundingClientRect();const width=anchor===progress?a.width:70;box.style.setProperty("--nz-logo-desktop-width",width+"px");box.style.setProperty("--nz-logo-desktop-center",(a.left-h.left+width/2)+"px")}const desktopTop=c.top+card.clientTop,desktopBottom=Math.max(desktopTop,h.top-4),desktopHeight=Math.min(28,desktopBottom-desktopTop);box.style.setProperty("--nz-logo-desktop-height",desktopHeight+"px");box.style.setProperty("--nz-logo-desktop-gap",(h.top-(desktopTop+desktopBottom)/2-desktopHeight/2-3)+"px");if(!mobileSlot)return;const a=card.querySelector<HTMLElement>('[data-metric-label="cpu"]'),b=card.querySelector<HTMLElement>('[data-metric-label="memory"]');let left=12,width=92;
+  const measure=()=>{if(disposed)return;const c=card.getBoundingClientRect(),h=heading.getBoundingClientRect(),progress=heading.querySelector<HTMLElement>("[data-expiry-progress]"),name=heading.querySelector<HTMLElement>("[data-server-name]"),anchor=progress?.getBoundingClientRect().width?progress:name;
+   let anchorWidth=70;
+   if(anchor){const a=anchor.getBoundingClientRect();anchorWidth=anchor===progress?a.width:70;box.style.setProperty("--nz-logo-desktop-width",anchorWidth+"px");box.style.setProperty("--nz-logo-desktop-center",(a.left-h.left+anchorWidth/2)+"px")}
+   const desktopTop=c.top+card.clientTop,desktopBottom=Math.max(desktopTop,h.top-4),desktopHeight=Math.min(28,desktopBottom-desktopTop);
+   box.style.setProperty("--nz-logo-desktop-height",desktopHeight+"px");box.style.setProperty("--nz-logo-desktop-gap",(h.top-(desktopTop+desktopBottom)/2-desktopHeight/2-3)+"px");
+   delete box.dataset.desktopLogoPlacement;
+   // Offline cards may have no room above a multiline name. Use only the
+   // existing space below the status/flag, never move text or resize the card.
+   const logoImg=box.querySelector("img"),logoRatio=logoImg?.naturalWidth&&logoImg.naturalHeight?logoImg.naturalWidth/logoImg.naturalHeight:1;
+   const desiredHeight=Math.min(28,logoImg?.naturalHeight||28,anchorWidth/logoRatio);
+   if(offline&&window.matchMedia("(min-width: 1024px)").matches&&name&&desktopHeight<desiredHeight){
+    const n=name.getBoundingClientRect(),padding=getComputedStyle(card);
+    const left=c.left+card.clientLeft+parseFloat(padding.paddingLeft),right=n.left-6;
+    const top=Math.max(n.bottom,...[...heading.querySelectorAll<HTMLElement>("[data-server-status],[data-server-flag]")].map(e=>e.getBoundingClientRect().bottom))+4;
+    const bottom=c.bottom-card.clientTop-parseFloat(padding.paddingBottom);
+    const width=Math.min(right-left,70),height=Math.min(28,bottom-top);
+    if(width>=16&&height>=16){
+     box.dataset.desktopLogoPlacement="left";
+     box.style.setProperty("--nz-logo-desktop-width",width+"px");
+     box.style.setProperty("--nz-logo-desktop-center",((left+right)/2-h.left)+"px");
+     box.style.setProperty("--nz-logo-desktop-height",height+"px");
+     box.style.setProperty("--nz-logo-desktop-fallback-top",((top+bottom-height)/2-h.top)+"px");
+    }
+   }
+   if(!mobileSlot)return;const a=card.querySelector<HTMLElement>('[data-metric-label="cpu"]'),b=card.querySelector<HTMLElement>('[data-metric-label="memory"]');let left=12,width=92;
    if(a&&b){const start=a.getBoundingClientRect();const range=document.createRange();range.selectNodeContents(b);const end=range.getBoundingClientRect();left=start.left-c.left-card.clientLeft;width=Math.max(24,end.right-start.left)}
    box.style.setProperty("--nz-logo-slot-left",left+"px");box.style.setProperty("--nz-logo-slot-width",width+"px");
    const img=box.querySelector("img"),ratio=(img?.naturalWidth&&img.naturalHeight)?img.naturalWidth/img.naturalHeight:1;
@@ -29,7 +53,7 @@ export default function ProviderLogo({value,mobileSlot=false}:{value?:LogoValue;
 
   };
   const schedule=()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(measure)};const observer=new ResizeObserver(schedule);observer.observe(card);observer.observe(heading);const img=box.querySelector("img");img?.addEventListener("load",schedule);for(const e of card.querySelectorAll("[data-metric-label]"))observer.observe(e);window.addEventListener("resize",schedule);document.fonts?.ready.then(schedule);measure();return()=>{disposed=true;img?.removeEventListener("load",schedule);observer.disconnect();cancelAnimationFrame(frame);window.removeEventListener("resize",schedule)};
- },[src,mobileSlot,failed]);
+ },[src,mobileSlot,failed,offline]);
  if(!src||failed===src)return null;
  const desktop=logoPlacement(value?.logoLayout,"desktop"),mobile=logoPlacement(value?.logoLayout,"mobile");
  const vars={"--nz-logo-dx":desktop.x+"px","--nz-logo-dy":desktop.y+"px","--nz-logo-ds":desktop.scale/100,"--nz-logo-mx":mobile.x+"px","--nz-logo-my":mobile.y+"px","--nz-logo-ms":mobile.scale/100} as CSSProperties;

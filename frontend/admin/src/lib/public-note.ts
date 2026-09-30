@@ -118,7 +118,7 @@ export const validatePublicNote = (pn: PublicNote) => {
 
     if (pn.planDataMod?.resetDay && !/^(?:[1-9]|[12][0-9]|3[01])$/.test(pn.planDataMod.resetDay)) errors["plan.resetDay"]="重置日必须为 1–31"
 
-    if(pn.planDataMod?.linkTags?.some(t=>(t.name||t.url)&&(!t.name.trim()||!safeLink(t.url))))errors["plan.linkTags"]="链接标签需要名称和有效的 HTTP/HTTPS 网址";
+    if(pn.planDataMod?.linkTags?.some(t=>(t.name||t.url)&&(!t.name.trim()||!safeLink(t.url))))errors["plan.linkTags"]="链接标签需要名称和有效网址（可直接填写域名）";
 
     // Date validity checks
     if (pn.billingDataMod?.startDate && !isValidISOLike(pn.billingDataMod.startDate)) {
