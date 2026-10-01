@@ -36,6 +36,9 @@ class InstallerTest(unittest.TestCase):
             result = subprocess.run(["sh", str(script)], env=env, capture_output=True, text=True)
             failed = corrupt or fail_download or fail_install
             self.assertEqual(result.returncode != 0, failed, result.stdout+result.stderr)
+            self.assertNotIn("下载来源", result.stdout)
+            if not failed:
+                self.assertEqual("已有配置或旧程序备份：" in result.stdout, existing)
             if corrupt or fail_download:
                 self.assertFalse(log.exists())
                 if existing: self.assertEqual((installed/"nezha-agent").read_text(), old)
