@@ -524,7 +524,7 @@ export interface ModelRule {
      * @default "hour"
      */
     cycle_unit?: "hour" | "day" | "week" | "month" | "year"
-    /** 持续时间 (秒) */
+    /** 兼容字段：检测窗口采样次数，每次约 3 秒；可视化界面自动换算为秒。 */
     duration?: number
     /** 覆盖范围的排除 */
     ignore?: Record<string, boolean>

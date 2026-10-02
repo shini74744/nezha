@@ -166,6 +166,8 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	auth.PATCH("/service/:id", restScopeMiddleware(model.ScopeServiceWrite), commonHandler(updateService))
 	auth.POST("/batch-delete/service", restScopeMiddleware(model.ScopeServiceDelete), commonHandler(batchDeleteService))
 
+	auth.GET("/server-expiry", restScopeMiddleware(model.ScopeAdminAll), adminHandler(listServerExpiry))
+	auth.PUT("/server-expiry", restScopeMiddleware(model.ScopeAdminAll), adminHandler(saveServerExpiry))
 	auth.GET("/notification-group", restScopeMiddleware(model.ScopeNotificationGroupRead), commonHandler(listNotificationGroup))
 	auth.POST("/notification-group", restScopeMiddleware(model.ScopeNotificationGroupWrite), commonHandler(createNotificationGroup))
 	auth.PATCH("/notification-group/:id", restScopeMiddleware(model.ScopeNotificationGroupWrite), commonHandler(updateNotificationGroup))

@@ -83,7 +83,7 @@ func AlertSentinelStart() {
 	time.Sleep(time.Second * 10)
 	lastPrint := time.Now()
 	var checkCount uint64
-	ticker := time.Tick(3 * time.Second) // 3秒钟检查一次
+	ticker := time.Tick(time.Duration(model.AlertSampleIntervalSeconds) * time.Second)
 	for startedAt := range ticker {
 		checkStatus()
 		checkCount++

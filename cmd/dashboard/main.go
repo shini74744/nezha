@@ -79,6 +79,10 @@ func initSystem(bus chan<- *model.Service) error {
 		return err
 	}
 
+	if _, err := singleton.CronShared.AddFunc("0 * * * * *", singleton.CheckServerExpiry); err != nil {
+		return err
+	}
+
 	if err := singleton.StartJWTSessionGC(); err != nil {
 		return err
 	}

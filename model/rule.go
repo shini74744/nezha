@@ -1,6 +1,7 @@
 package model
 
 import (
+	"math"
 	"slices"
 	"strings"
 	"time"
@@ -14,6 +15,10 @@ const (
 	RuleCoverAll = iota
 	RuleCoverIgnoreAll
 )
+
+// AlertSampleIntervalSeconds is the cadence of alert snapshots. The legacy
+// JSON duration field stores sample counts, not elapsed seconds.
+const AlertSampleIntervalSeconds = 3
 
 // MaxAlertRuleDuration is the largest duration that can be converted to int
 // on every architecture supported by Go. Alert rules are persisted as uint64,
@@ -40,13 +45,21 @@ type Rule struct {
 	CycleStart    *time.Time      `json:"cycle_start,omitempty" validate:"optional"`                                                // 流量统计的开始时间
 	CycleInterval uint64          `json:"cycle_interval,omitempty" validate:"optional"`                                             // 流量统计周期
 	CycleUnit     string          `json:"cycle_unit,omitempty" enums:"hour,day,week,month,year" validate:"optional" default:"hour"` // 流量统计周期单位，默认hour,可选(hour, day, week, month, year)
-	Duration      uint64          `json:"duration,omitempty" validate:"optional"`                                                   // 持续时间 (秒)
+	Duration      uint64          `json:"duration,omitempty" validate:"optional"`                                                   // 检测窗口采样次数（兼容字段）；实际秒数 = Duration * AlertSampleIntervalSeconds
 	Cover         uint64          `json:"cover"`                                                                                    // 覆盖范围 RuleCoverAll/IgnoreAll
 	Ignore        map[uint64]bool `json:"ignore,omitempty" validate:"optional"`                                                     // 覆盖范围的排除
 
 	// 只作为缓存使用，记录下次该检测的时间
 	NextTransferAt  map[uint64]time.Time `json:"-"`
 	LastCycleStatus map[uint64]bool      `json:"-"`
+}
+
+// HasValidThresholdRange rejects contradictory active bounds. A non-positive
+// bound remains disabled for compatibility with existing rules.
+func (u *Rule) HasValidThresholdRange() bool {
+	return u != nil && !math.IsNaN(u.Min) && !math.IsNaN(u.Max) &&
+		!math.IsInf(u.Min, 0) && !math.IsInf(u.Max, 0) &&
+		!(u.Min > 0 && u.Max > 0 && u.Min >= u.Max)
 }
 
 func percentage(used, total uint64) float64 {
@@ -151,7 +164,7 @@ func (u *Rule) Snapshot(cycleTransferStats *CycleTransferStats, server *Server, 
 	case "net_out_speed":
 		src = float64(state.NetOutSpeed)
 	case "net_all_speed":
-		src = float64(state.NetOutSpeed + state.NetOutSpeed)
+		src = float64(state.NetInSpeed) + float64(state.NetOutSpeed)
 	case "transfer_in":
 		src = float64(state.NetInTransfer)
 	case "transfer_out":

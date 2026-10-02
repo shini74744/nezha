@@ -1,6 +1,8 @@
 import { z } from "zod"
 import { normalizeNote, chineseNote } from "./public-note-compat"
 import {safeLink} from "../../../shared/link-tags"
+import { beijingBillingISO, formatBillingTime } from "../../../shared/billing-time"
+export { billingCalendarDate } from "../../../shared/billing-time"
 
 import i18n from "./i18n"
 
@@ -74,8 +76,7 @@ export const isValidISOLike = (v: string) => {
 export const normalizeISO = (v?: string) => {
     if (!v) return undefined
     if (v === "0000-00-00T23:59:59+08:00") return v
-    const date = new Date(v)
-    return isNaN(date.getTime()) ? v : date.toISOString()
+    return beijingBillingISO(v) || v
 }
 
 /**
@@ -183,14 +184,8 @@ export const applyPublicNoteDate = (obj: PublicNote, path: string, date: Date): 
     const leafKey = keys[keys.length - 1]
     const prevVal: string | undefined = curRead ? curRead[leafKey] : undefined
 
-    const d = new Date(date)
-    d.setHours(0, 0, 0, 0)
-    if (prevVal) {
-        const pd = new Date(prevVal)
-        if (!isNaN(pd.getTime())) {
-            d.setHours(pd.getHours(), pd.getMinutes(), pd.getSeconds(), 0)
-        }
-    }
+    const selectedDay = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-")
+    const nextValue = selectedDay + "T" + publicNoteTime(prevVal) + "+08:00"
 
     // Write back
     let curWrite: any = draft
@@ -199,29 +194,21 @@ export const applyPublicNoteDate = (obj: PublicNote, path: string, date: Date): 
         curWrite[k] = { ...(curWrite[k] ?? {}) }
         curWrite = curWrite[k]
     }
-    curWrite[leafKey] = d.toISOString()
+    curWrite[leafKey] = nextValue
     return draft
 }
 
-/** Local browser time, matching the existing calendar and ISO save behavior. */
-export const publicNoteTime = (value?: string): string => {
-    const d = value ? new Date(value) : undefined
-    if (!d || Number.isNaN(d.getTime())) return "00:00:00"
-    return [d.getHours(), d.getMinutes(), d.getSeconds()].map(v => String(v).padStart(2, "0")).join(":")
-}
-export const publicNoteDateTimeLabel = (value?: string): string => {
-    const d = value ? new Date(value) : undefined
-    if (!d || Number.isNaN(d.getTime())) return "YYYY-MM-DD 00:00:00"
-    return d.toLocaleDateString() + " " + publicNoteTime(value)
-}
+/** Always edit and display Beijing wall time, including on overseas browsers. */
+export const publicNoteTime = (value?: string): string =>
+    beijingBillingISO(value)?.slice(11, 19) || "00:00:00"
+export const publicNoteDateTimeLabel = (value?: string): string =>
+    beijingBillingISO(value) ? formatBillingTime(value) : "YYYY-MM-DD 00:00:00"
 export const applyPublicNoteTime = (obj: PublicNote, path: "billingDataMod.startDate" | "billingDataMod.endDate", time: string): PublicNote => {
     if (!/^(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/.test(time)) return obj
     const value = obj.billingDataMod?.[path === "billingDataMod.startDate" ? "startDate" : "endDate"]
-    const d = value ? new Date(value) : undefined
-    if (!d || Number.isNaN(d.getTime())) return obj
-    const [hours, minutes, seconds] = time.split(":").map(Number)
-    d.setHours(hours, minutes, seconds, 0)
-    return applyPublicNotePatch(obj, path, d.toISOString())
+    const iso = beijingBillingISO(value)
+    if (!iso) return obj
+    return applyPublicNotePatch(obj, path, iso.slice(0, 10) + "T" + time + "+08:00")
 }
 
 /**

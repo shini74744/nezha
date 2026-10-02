@@ -1,6 +1,6 @@
 import {test,expect} from "@playwright/test";
 
-for(const [width,timezoneId] of [[360,"Asia/Shanghai"],[390,"Asia/Shanghai"],[430,"Asia/Shanghai"],[1366,"Asia/Shanghai"],[390,"UTC"]] as const)test("billing dates expose editable seconds "+width+" "+timezoneId,async({browser})=>{
+for(const [width,timezoneId] of [[360,"Asia/Shanghai"],[390,"Asia/Shanghai"],[430,"Asia/Shanghai"],[1366,"Asia/Shanghai"],[390,"UTC"],[390,"America/New_York"]] as const)test("billing dates expose editable seconds "+width+" "+timezoneId,async({browser})=>{
  const page=await browser.newPage({viewport:{width,height:900},timezoneId,locale:"zh-CN"});
  try{
  let server:any={id:11,host:{version:"2.3.5"},name:"日期时间测试",display_index:0,user_id:1,uuid:"fixture",public_note:JSON.stringify({billingDataMod:{startDate:"2026-09-22T00:00:00+08:00",endDate:"2026-10-22T23:59:58+08:00"},unknown:"keep"}),note:"",enable_ddns:false,hide_for_guest:false};
@@ -16,12 +16,9 @@ for(const [width,timezoneId] of [[360,"Asia/Shanghai"],[390,"Asia/Shanghai"],[43
  const edit=page.getByRole("row").filter({has:page.getByText("日期时间测试",{exact:true})}).getByRole("button",{name:"编辑服务器",exact:true});
  await edit.click();
  const dialog=page.getByRole("dialog").first(),start=page.getByRole("button",{name:"开始时间日期时间",exact:true}),end=page.getByRole("button",{name:"结束时间日期时间",exact:true});
- await expect(start).toContainText(timezoneId==="UTC"?"16:00:00":"00:00:00");
- await expect(end).toContainText(timezoneId==="UTC"?"15:59:58":"23:59:58");
- const expected=await page.evaluate(()=>{
-  const start=new Date("2026-09-22T00:00:00+08:00"),end=new Date("2026-10-22T23:59:58+08:00");
-  start.setHours(13,14,15,0);end.setHours(0,2,3,0);return {start:start.toISOString(),end:end.toISOString()};
- });
+ await expect(start).toContainText("00:00:00");
+ await expect(end).toContainText("23:59:58");
+ const expected={start:"2026-09-22T13:14:15.000+08:00",end:"2026-10-22T00:02:03.000+08:00"};
  await start.click();
  for(const [unit,value] of [["小时","13"],["分钟","14"],["秒","15"]])await page.getByLabel("开始时间"+unit,{exact:true}).selectOption(value);
  await expect(start).toContainText("13:14:15");expect(updates).toHaveLength(0);
@@ -29,24 +26,24 @@ for(const [width,timezoneId] of [[360,"Asia/Shanghai"],[390,"Asia/Shanghai"],[43
  await expect(page.locator("[data-billing-time-picker]")).toBeInViewport();
  expect(await page.locator("[data-billing-time-picker]").evaluate(el=>{const r=el.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth})).toBe(true);
  await page.screenshot({path:"test-results/billing-time-"+width+"-"+timezoneId.replace("/","-")+".png"});
- await page.keyboard.press("Escape");
+ await page.keyboard.press("Escape");await expect(page.locator("[data-billing-time-picker]")).toHaveCount(0);
  await end.click();
  for(const [unit,value] of [["小时","00"],["分钟","02"],["秒","03"]])await page.getByLabel("结束时间"+unit,{exact:true}).selectOption(value);
- await page.keyboard.press("Escape");
+ await page.keyboard.press("Escape");await expect(page.locator("[data-billing-time-picker]")).toHaveCount(0);
  await dialog.locator('button[type="submit"]').click();await expect.poll(()=>updates.length).toBe(1);
  const saved=JSON.parse(updates[0].public_note);
  expect(saved.billingDataMod).toMatchObject({startDate:expected.start,endDate:expected.end});expect(saved.unknown).toBe("keep");
  await edit.click();await expect(start).toContainText("13:14:15");await expect(end).toContainText("00:02:03");
  await start.click();await page.locator('[data-slot="calendar"] button[data-day]').nth(15).click();
- await expect(start).toContainText("13:14:15");expect(updates).toHaveLength(1);await page.keyboard.press("Escape");
+ await expect(start).toContainText("13:14:15");expect(updates).toHaveLength(1);await page.keyboard.press("Escape");await expect(page.locator("[data-billing-time-picker]")).toHaveCount(0);
  await dialog.getByRole("button",{name:"清除日期",exact:true}).first().click();await expect(start).toHaveText("YYYY-MM-DD 00:00:00");
  await start.click();await expect(page.getByLabel("开始时间秒",{exact:true})).toBeDisabled();
  await page.locator('[data-slot="calendar"] button[data-day]').nth(15).click();await expect(start).toContainText("00:00:00");
- await page.keyboard.press("Escape");
+ await page.keyboard.press("Escape");await expect(page.locator("[data-billing-time-picker]")).toHaveCount(0);
  await dialog.getByRole("button",{name:"设置为不过期",exact:true}).click();await expect(end).toContainText("不过期");
  await end.click();await expect(page.getByLabel("结束时间秒",{exact:true})).toBeDisabled();
  await page.locator('[data-slot="calendar"] button[data-day]').nth(15).click();await expect(end).toContainText("00:00:00");
- await page.keyboard.press("Escape");
+ await page.keyboard.press("Escape");await expect(page.locator("[data-billing-time-picker]")).toHaveCount(0);
  await dialog.getByRole("button",{name:"清除日期",exact:true}).last().click();
  await dialog.locator('button[type="submit"]').click();await expect.poll(()=>updates.length).toBe(2);
  expect(JSON.parse(updates[1].public_note).billingDataMod.endDate).toBeUndefined();

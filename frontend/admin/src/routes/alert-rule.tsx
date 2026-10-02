@@ -14,6 +14,8 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+import { useNotification } from "@/hooks/useNotfication"
+import { ruleSummary } from "@/lib/alert-rule-editor"
 import { selectableTableFeatures } from "@/lib/table"
 import { ModelAlertRule, triggerModes } from "@/types"
 import { ColumnDef, flexRender, useTable } from "@tanstack/react-table"
@@ -24,6 +26,7 @@ import useSWR from "swr"
 
 export default function AlertRulePage() {
     const { t } = useTranslation()
+    const { notifierGroup } = useNotification()
 
     const { data, mutate, error, isLoading } = useSWR<ModelAlertRule[]>(
         "/api/v1/alert-rule",
@@ -78,17 +81,34 @@ export default function AlertRulePage() {
             header: t("NotifierGroup"),
             accessorKey: "ngroup",
             accessorFn: (row) => row.notification_group_id,
+            cell: ({ row }) =>
+                notifierGroup?.find((g) => g.group.id === row.original.notification_group_id)?.group
+                    .name ||
+                (row.original.notification_group_id
+                    ? `#${row.original.notification_group_id}`
+                    : "不发送"),
         },
         {
             header: t("TriggerMode"),
             accessorKey: "trigger Mode",
             accessorFn: (row) => triggerModes[row.trigger_mode] || "",
+            cell: ({ row }) => (row.original.trigger_mode === 1 ? "单次触发" : "持续触发"),
         },
         {
             header: t("Rules"),
             cell: ({ row }) => {
                 const s = row.original
-                return <CopyButton text={JSON.stringify(s.rules)} />
+                return (
+                    <div className="min-w-52 max-w-sm space-y-2 whitespace-normal break-words">
+                        {s.rules.map((rule, index) => (
+                            <p key={index} className="text-xs leading-relaxed">
+                                {index > 0 ? "且 " : ""}
+                                {ruleSummary(rule)}
+                            </p>
+                        ))}
+                        <CopyButton text={JSON.stringify(s.rules)} />
+                    </div>
+                )
             },
         },
         {
@@ -105,6 +125,17 @@ export default function AlertRulePage() {
             header: t("Enable"),
             accessorKey: "enable",
             accessorFn: (row) => row.enable,
+            cell: ({ row }) => (
+                <span
+                    className={
+                        row.original.enable
+                            ? "text-green-700 dark:text-green-400"
+                            : "text-muted-foreground"
+                    }
+                >
+                    {row.original.enable ? "已启用" : "已停用"}
+                </span>
+            ),
         },
         {
             id: "actions",
@@ -141,8 +172,8 @@ export default function AlertRulePage() {
 
     return (
         <div className="px-3">
-            <div className="flex mt-6 mb-4">
-                <NotificationTab className="flex-1 mr-4 sm:max-w-[40%]" />
+            <div className="flex flex-wrap gap-3 mt-6 mb-4">
+                <NotificationTab className="w-full sm:flex-1 sm:max-w-2xl" />
                 <HeaderButtonGroup
                     className="flex ml-auto self-end sm:self-auto gap-2 flex-wrap shrink-0"
                     delete={{

@@ -44,8 +44,9 @@ func (ns *NotificationServerBundle) PrepareEventTest(kind string, server *Server
 		"service_alert": "服务连接超时", "service_recovery": "服务已恢复正常",
 		"task_success": "任务执行成功（未实际执行任务）", "task_failure": "任务执行失败（未实际执行任务）",
 		"tls": "证书将在七天内到期", "other": "其他系统事件",
-		"ip_change":    "IP 地址变更（未实际变更地址）",
-		"ddns_success": "DDNS 更新成功（未修改 DNS 记录）", "ddns_failure": "DDNS 更新失败（未修改 DNS 记录）",
+		"server_expiry": "购买时间：2026-09-02 00:00:00 +0800\n到期时间：2026-10-02 00:00:00 +0800\n付款周期：月\n剩余：模拟到期提醒（未修改日期）",
+		"ip_change":     "IP 地址变更（未实际变更地址）",
+		"ddns_success":  "DDNS 更新成功（未修改 DNS 记录）", "ddns_failure": "DDNS 更新失败（未修改 DNS 记录）",
 	}
 	if kind == "ip_change" {
 		var lines []string

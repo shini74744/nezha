@@ -38,7 +38,8 @@ type NotificationEventConfig struct {
 
 var NotificationEventTitles = map[string]string{
 	"offline": "🔴 服务器离线", "online": "🟢 服务器上线",
-	"ip_change": "🌐 IP 地址变更", "alert": "⚠️ 资源告警", "alert_recovery": "✅ 资源告警恢复",
+	"server_expiry": "⏰ 服务器到期通知",
+	"ip_change":     "🌐 IP 地址变更", "alert": "⚠️ 资源告警", "alert_recovery": "✅ 资源告警恢复",
 	"service_alert": "🔴 服务异常", "service_recovery": "🟢 服务恢复",
 	"tls": "🔐 TLS 证书通知", "task_success": "✅ 任务执行成功",
 	"task_failure": "❌ 任务执行失败", "other": "🔔 其他通知",

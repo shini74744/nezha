@@ -24,6 +24,7 @@ import NotificationGroupPage from "./routes/notification-group"
 import ServerGroupPage from "./routes/server-group"
 import AlertRulePage from "./routes/alert-rule"
 import NotificationPage from "./routes/notification"
+import ServerExpiryPage from "./routes/server-expiry"
 import OnlineUserPage from "./routes/online-user"
 import ProfilePage from "./routes/profile"
 import SettingsPage from "./routes/settings"
@@ -78,6 +79,10 @@ const router = createBrowserRouter([
                         </NotificationProvider>
                     </ServerProvider>
                 ),
+            },
+            {
+                path: "/dashboard/server-expiry",
+                element: <NotificationProvider withNotifierGroup><ServerExpiryPage /></NotificationProvider>,
             },
             {
                 path: "/dashboard/alert-rule",
