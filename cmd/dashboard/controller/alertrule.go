@@ -178,6 +178,9 @@ func validateRule(c *gin.Context, r *model.AlertRule) error {
 			if !rule.IsSupportedType() {
 				return singleton.Localizer.ErrorT("unsupported rule type")
 			}
+			if !rule.HasValidThresholdRange() {
+				return singleton.Localizer.ErrorT("active minimum threshold must be less than maximum threshold")
+			}
 			switch rule.Cover {
 			case model.RuleCoverAll, model.RuleCoverIgnoreAll:
 			default:

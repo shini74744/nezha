@@ -1,5 +1,9 @@
 import { type ClassValue, clsx } from "clsx";
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import { parseBillingTime } from "../../../shared/billing-time";
+dayjs.extend(utc);
+const billingDayjs = (value: string | number) => dayjs.utc(typeof value === "string" ? parseBillingTime(value) ?? NaN : value).utcOffset(480);
 import { twMerge } from "tailwind-merge";
 import type { NezhaServer } from "@/types/nezha-api";
 
@@ -104,7 +108,7 @@ export function getDaysBetweenDatesWithAutoRenewal({
 	}
 
 	const nowTime = Date.now();
-	const endTime = dayjs(endDate).valueOf();
+	const endTime = billingDayjs(endDate).valueOf();
 
 	if (autoRenewal !== "1") {
 		return {
@@ -112,11 +116,11 @@ export function getDaysBetweenDatesWithAutoRenewal({
 			cycleLabel: cycleLabel,
 			remainingPercentage:
 				getDaysBetweenDates(endDate, new Date(nowTime).toISOString()) /
-					dayjs(endDate).diff(startDate, "day") >
+					billingDayjs(endDate).diff(billingDayjs(startDate), "day") >
 				1
 					? 1
 					: getDaysBetweenDates(endDate, new Date(nowTime).toISOString()) /
-						dayjs(endDate).diff(startDate, "day"),
+						billingDayjs(endDate).diff(billingDayjs(startDate), "day"),
 		};
 	}
 
@@ -153,8 +157,11 @@ export function getNextCycleTime(
 	months: number,
 	specifiedDate: number,
 ): number {
-	const start = dayjs(startDate);
-	const checkDate = dayjs(specifiedDate);
+	// Perform calendar arithmetic on a UTC clock shifted to Beijing wall time.
+	// This avoids the browser timezone and its daylight-saving transitions.
+	const beijingOffset = 8 * 60 * 60 * 1000;
+	const start = dayjs.utc(startDate + beijingOffset);
+	const checkDate = dayjs.utc(specifiedDate + beijingOffset);
 
 	if (!start.isValid() || months <= 0) {
 		throw new Error("参数无效：请检查起始日期、周期月份数和指定日期。");
@@ -169,13 +176,13 @@ export function getNextCycleTime(
 		whileStatus = nextDate.valueOf() <= checkDate.valueOf();
 	}
 
-	return nextDate.valueOf(); // 返回时间毫秒数
+	return nextDate.valueOf() - beijingOffset; // Return the actual instant.
 }
 
 export function getDaysBetweenDates(date1: string, date2: string): number {
 	const oneDay = 24 * 60 * 60 * 1000; // 一天的毫秒数
-	const firstDate = new Date(date1);
-	const secondDate = new Date(date2);
+	const firstDate = parseBillingTime(date1) || new Date(NaN);
+	const secondDate = parseBillingTime(date2) || new Date(NaN);
 
 	// 计算两个日期之间的天数差异
 	return Math.round((firstDate.getTime() - secondDate.getTime()) / oneDay);

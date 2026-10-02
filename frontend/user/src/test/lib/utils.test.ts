@@ -109,6 +109,11 @@ describe("date and billing helpers", () => {
 		expect(renewed.remainingPercentage).toBeLessThanOrEqual(1);
 	});
 
+	it("keeps Beijing afternoon and midnight renewal dates across DST", () => {
+		expect(new Date(getNextCycleTime(Date.parse("2026-09-02T16:00:00+08:00"), 1, Date.parse("2026-09-03T00:00:00+08:00"))).toISOString()).toBe("2026-10-02T08:00:00.000Z");
+		expect(new Date(getNextCycleTime(Date.parse("2026-09-02T16:00:00Z"), 1, Date.parse("2026-09-04T00:00:00+08:00"))).toISOString()).toBe("2026-10-02T16:00:00.000Z");
+		expect(getDaysBetweenDates("2026-10-02T16:00:00", "2026-10-01T08:00:00Z")).toBe(1);
+	});
 	it("rejects invalid cycle calculations", () => {
 		expect(() => getNextCycleTime(Date.UTC(2025, 0, 1), 0, Date.now())).toThrow(
 			"参数无效",

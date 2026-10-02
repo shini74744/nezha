@@ -72,7 +72,7 @@ func (r *AlertRule) IsSafeToEvaluate() bool {
 		return false
 	}
 	for _, rule := range r.Rules {
-		if rule == nil || !rule.IsSupportedType() {
+		if rule == nil || !rule.IsSupportedType() || !rule.HasValidThresholdRange() {
 			return false
 		}
 		switch rule.Cover {

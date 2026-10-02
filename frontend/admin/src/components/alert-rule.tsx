@@ -1,745 +1,385 @@
 import { createAlertRule, updateAlertRule } from "@/api/alert-rule"
+import { swrFetcher } from "@/api/api"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
     Dialog,
-    DialogClose,
     DialogContent,
     DialogDescription,
-    DialogFooter,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
-import {
-    Form,
-    FormControl,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-} from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 import { IconButton } from "@/components/xui/icon-button"
 import { useNotification } from "@/hooks/useNotfication"
-import { conv } from "@/lib/utils"
-import { ModelAlertRule } from "@/types"
-import { triggerModes } from "@/types"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useEffect, useState } from "react"
-import { useForm, useWatch } from "react-hook-form"
+import {
+    newAlertCondition,
+    parseAlertRules,
+    ruleSummary,
+    validateAlertRules,
+} from "@/lib/alert-rule-editor"
+import type { ModelAlertRule, ModelAlertRuleForm, ModelCron, ModelRule } from "@/types"
+import { type FormEvent, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
-import { KeyedMutator } from "swr"
-import { z } from "zod"
+import useSWR, { type KeyedMutator } from "swr"
 
-import { Combobox } from "./ui/combobox"
-import { Textarea } from "./ui/textarea"
+import {
+    AlertCondition,
+    AlertField,
+    AlertHelp,
+    AlertSelection,
+    alertSelectClass,
+} from "./alert-condition-editor"
 
 interface AlertRuleCardProps {
     data?: ModelAlertRule
     mutate: KeyedMutator<ModelAlertRule[]>
 }
+const templates = [
+    ["offline", "服务器离线"],
+    ["cpu", "CPU 使用率"],
+    ["memory", "内存使用率"],
+    ["disk", "磁盘使用率"],
+    ["tcp_conn_count", "TCP 连接数"],
+    ["udp_conn_count", "UDP 连接数"],
+    ["transfer_all_cycle", "周期流量"],
+] as const
 
-const cycleUnitSchema = z.enum(["hour", "day", "week", "month", "year"])
-
-const ruleSchema = z.object({
-    type: z.string(),
-    min: z.number().optional(),
-    max: z.number().optional(),
-    cycle_start: z.string().optional(),
-    cycle_interval: z.number().optional(),
-    cycle_unit: cycleUnitSchema.optional(),
-    duration: z.number().optional(),
-    cover: z.number().int().min(0),
-    ignore: z.record(z.string(), z.boolean()).optional(),
-    next_transfer_at: z.record(z.string(), z.string()).optional(),
-    last_cycle_status: z.boolean().optional(),
-})
-
-const alertRuleFormSchema = z.object({
-    name: z.string().min(1),
-    rules_raw: z.string().refine(
-        (val) => {
-            try {
-                JSON.parse(val)
-                return true
-            } catch {
-                return false
-            }
-        },
-        {
-            message: "Invalid JSON string",
-        },
-    ),
-    rules: z.array(ruleSchema),
-    fail_trigger_tasks: z.array(z.number()),
-    fail_trigger_tasks_raw: z.string(),
-    recover_trigger_tasks: z.array(z.number()),
-    recover_trigger_tasks_raw: z.string(),
-    notification_group_id: z.coerce.number().int(),
-    trigger_mode: z.coerce.number().int().min(0),
-    enable: z.boolean().optional(),
-})
-
-export const AlertRuleCard: React.FC<AlertRuleCardProps> = ({ data, mutate }) => {
-    const { t } = useTranslation()
-
-    type AlertRuleEntry = z.output<typeof ruleSchema>
-    type AlertRuleFormInput = z.input<typeof alertRuleFormSchema>
-    type AlertRuleFormData = z.output<typeof alertRuleFormSchema>
-
-    const form = useForm<AlertRuleFormInput, unknown, AlertRuleFormData>({
-        resolver: zodResolver(alertRuleFormSchema),
-        defaultValues: data
-            ? {
-                  ...data,
-                  rules_raw: JSON.stringify(data.rules),
-                  fail_trigger_tasks_raw: conv.arrToStr(data.fail_trigger_tasks),
-                  recover_trigger_tasks_raw: conv.arrToStr(data.recover_trigger_tasks),
-              }
-            : {
-                  name: "",
-                  rules_raw: "",
-                  rules: [],
-                  fail_trigger_tasks: [],
-                  fail_trigger_tasks_raw: "",
-                  recover_trigger_tasks: [],
-                  recover_trigger_tasks_raw: "",
-                  notification_group_id: 0,
-                  trigger_mode: 0,
-              },
-        resetOptions: {
-            keepDefaultValues: false,
-        },
-    })
-
+export const AlertRuleCard = ({ data, mutate }: AlertRuleCardProps) => {
     const [open, setOpen] = useState(false)
-
-    // 结构化规则编辑状态：从已有数据或 rules_raw 初始化
-    const initialRules = (() => {
-        try {
-            if (data?.rules) return data.rules
-            const raw = form.getValues("rules_raw")
-            if (!raw) return []
-            const parsed: unknown = JSON.parse(raw)
-            return z.array(ruleSchema).parse(parsed)
-        } catch {
-            return []
-        }
-    })()
-    const [rulesUI, setRulesUI] = useState<AlertRuleEntry[]>(initialRules)
-
-    // 同步到 rules_raw（提交仍走 JSON 字符串）
-    useEffect(() => {
-        try {
-            form.setValue("rules_raw", JSON.stringify(rulesUI), { shouldDirty: true })
-        } catch {
-            // ignore
-        }
-    }, [form, rulesUI])
-
-    const rulesRaw = useWatch({ control: form.control, name: "rules_raw" })
-
-    const onSubmit = async (values: AlertRuleFormData) => {
-        values.rules = z.array(ruleSchema).parse(JSON.parse(values.rules_raw))
-        values.fail_trigger_tasks = conv.strToArr(values.fail_trigger_tasks_raw).map(Number)
-        values.recover_trigger_tasks = conv.strToArr(values.recover_trigger_tasks_raw).map(Number)
-        const requiredFields = { ...values }
-        delete (requiredFields as Record<string, unknown>).rules_raw
-        try {
-            if (data?.id) {
-                await updateAlertRule(data.id, requiredFields)
-            } else {
-                await createAlertRule(requiredFields)
-            }
-        } catch (e) {
-            console.error(e)
-            toast(t("Error"), {
-                description: t("Results.UnExpectedError"),
-            })
-            return
-        }
-        setOpen(false)
-        await mutate()
-        form.reset()
-    }
-
-    const { notifierGroup } = useNotification()
-    const ngroupList = notifierGroup?.map((ng) => ({
-        value: `${ng.group.id}`,
-        label: ng.group.name,
-    })) || [{ value: "", label: "" }]
-
+    const { t } = useTranslation()
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                {data ? <IconButton variant="outline" icon="edit" /> : <IconButton icon="plus" />}
+                {data ? (
+                    <IconButton
+                        variant="outline"
+                        icon="edit"
+                        aria-label={"编辑警报规则 " + data.name}
+                    />
+                ) : (
+                    <IconButton variant="outline" icon="plus" aria-label="创建警报规则" />
+                )}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-xl">
-                <ScrollArea className="max-h-[calc(100dvh-5rem)] p-3">
-                    <div className="items-center mx-1">
-                        <DialogHeader>
-                            <DialogTitle>
-                                {data ? t("EditAlertRule") : t("CreateAlertRule")}
-                            </DialogTitle>
-                            <DialogDescription />
-                        </DialogHeader>
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2 my-2">
-                                <FormField
-                                    control={form.control}
-                                    name="name"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>{t("Name")}</FormLabel>
-                                            <FormControl>
-                                                <Input {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                {/* 结构化规则编辑器 */}
-                                <FormItem>
-                                    <FormLabel>{t("Rules")}</FormLabel>
-                                    <div className="space-y-3">
-                                        {rulesUI.map((r, idx) => {
-                                            const isCycle =
-                                                typeof r.type === "string" &&
-                                                r.type.endsWith("_cycle")
-                                            const isOffline = r.type === "offline"
-                                            return (
-                                                <div
-                                                    key={idx}
-                                                    className="rounded-md border p-3 space-y-2"
-                                                >
-                                                    {/* 类型选择 */}
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                        <div>
-                                                            <Label className="text-sm">
-                                                                {t("Type")}
-                                                            </Label>
-                                                            <Select
-                                                                onValueChange={(val) => {
-                                                                    const next = [...rulesUI]
-                                                                    next[idx] = {
-                                                                        ...next[idx],
-                                                                        type: val,
-                                                                    }
-                                                                    // 切换类型时，若不是周期型，清理周期字段
-                                                                    if (!val.endsWith("_cycle")) {
-                                                                        delete next[idx].cycle_start
-                                                                        delete next[idx]
-                                                                            .cycle_interval
-                                                                        delete next[idx].cycle_unit
-                                                                    }
-                                                                    setRulesUI(next)
-                                                                }}
-                                                                defaultValue={r.type || ""}
-                                                            >
-                                                                <SelectTrigger>
-                                                                    <SelectValue
-                                                                        placeholder={t("Select")}
-                                                                    />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    {/* 资源类 */}
-                                                                    <SelectItem value="cpu">
-                                                                        cpu
-                                                                    </SelectItem>
-                                                                    <SelectItem value="gpu">
-                                                                        gpu
-                                                                    </SelectItem>
-                                                                    <SelectItem value="memory">
-                                                                        memory
-                                                                    </SelectItem>
-                                                                    <SelectItem value="swap">
-                                                                        swap
-                                                                    </SelectItem>
-                                                                    <SelectItem value="disk">
-                                                                        disk
-                                                                    </SelectItem>
-                                                                    {/* 网络类 */}
-                                                                    <SelectItem value="net_in_speed">
-                                                                        net_in_speed
-                                                                    </SelectItem>
-                                                                    <SelectItem value="net_out_speed">
-                                                                        net_out_speed
-                                                                    </SelectItem>
-                                                                    <SelectItem value="net_all_speed">
-                                                                        net_all_speed
-                                                                    </SelectItem>
-                                                                    <SelectItem value="transfer_in">
-                                                                        transfer_in
-                                                                    </SelectItem>
-                                                                    <SelectItem value="transfer_out">
-                                                                        transfer_out
-                                                                    </SelectItem>
-                                                                    <SelectItem value="transfer_all">
-                                                                        transfer_all
-                                                                    </SelectItem>
-                                                                    {/* 系统类 */}
-                                                                    <SelectItem value="offline">
-                                                                        offline
-                                                                    </SelectItem>
-                                                                    <SelectItem value="load1">
-                                                                        load1
-                                                                    </SelectItem>
-                                                                    <SelectItem value="load5">
-                                                                        load5
-                                                                    </SelectItem>
-                                                                    <SelectItem value="load15">
-                                                                        load15
-                                                                    </SelectItem>
-                                                                    <SelectItem value="process_count">
-                                                                        process_count
-                                                                    </SelectItem>
-                                                                    {/* 连接数 */}
-                                                                    <SelectItem value="tcp_conn_count">
-                                                                        tcp_conn_count
-                                                                    </SelectItem>
-                                                                    <SelectItem value="udp_conn_count">
-                                                                        udp_conn_count
-                                                                    </SelectItem>
-                                                                    {/* 温度 */}
-                                                                    <SelectItem value="temperature_max">
-                                                                        temperature_max
-                                                                    </SelectItem>
-                                                                    {/* 特殊：周期流量 */}
-                                                                    <SelectItem value="transfer_in_cycle">
-                                                                        transfer_in_cycle
-                                                                    </SelectItem>
-                                                                    <SelectItem value="transfer_out_cycle">
-                                                                        transfer_out_cycle
-                                                                    </SelectItem>
-                                                                    <SelectItem value="transfer_all_cycle">
-                                                                        transfer_all_cycle
-                                                                    </SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </div>
-                                                        <div>
-                                                            <Label className="text-sm">
-                                                                duration
-                                                            </Label>
-                                                            <Input
-                                                                type="number"
-                                                                value={r.duration ?? ""}
-                                                                onChange={(e) => {
-                                                                    const next = [...rulesUI]
-                                                                    next[idx] = {
-                                                                        ...next[idx],
-                                                                        duration: e.target.value
-                                                                            ? Number(e.target.value)
-                                                                            : undefined,
-                                                                    }
-                                                                    setRulesUI(next)
-                                                                }}
-                                                                placeholder="10"
-                                                            />
-                                                        </div>
-                                                    </div>
-
-                                                    {/* 阈值：offline 不需要 min/max */}
-                                                    {!isOffline && (
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                            <div>
-                                                                <Label className="text-sm">
-                                                                    min
-                                                                </Label>
-                                                                <Input
-                                                                    type="number"
-                                                                    value={r.min ?? ""}
-                                                                    onChange={(e) => {
-                                                                        const next = [...rulesUI]
-                                                                        next[idx] = {
-                                                                            ...next[idx],
-                                                                            min: e.target.value
-                                                                                ? Number(
-                                                                                      e.target
-                                                                                          .value,
-                                                                                  )
-                                                                                : undefined,
-                                                                        }
-                                                                        setRulesUI(next)
-                                                                    }}
-                                                                    placeholder="0"
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <Label className="text-sm">
-                                                                    max
-                                                                </Label>
-                                                                <Input
-                                                                    type="number"
-                                                                    value={r.max ?? ""}
-                                                                    onChange={(e) => {
-                                                                        const next = [...rulesUI]
-                                                                        next[idx] = {
-                                                                            ...next[idx],
-                                                                            max: e.target.value
-                                                                                ? Number(
-                                                                                      e.target
-                                                                                          .value,
-                                                                                  )
-                                                                                : undefined,
-                                                                        }
-                                                                        setRulesUI(next)
-                                                                    }}
-                                                                    placeholder="100"
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    {/* 覆盖/忽略 */}
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                        <div>
-                                                            <Label className="text-sm">cover</Label>
-                                                            <Select
-                                                                onValueChange={(val) => {
-                                                                    const next = [...rulesUI]
-                                                                    next[idx] = {
-                                                                        ...next[idx],
-                                                                        cover: Number(val),
-                                                                    }
-                                                                    setRulesUI(next)
-                                                                }}
-                                                                defaultValue={(
-                                                                    r.cover ?? 0
-                                                                ).toString()}
-                                                            >
-                                                                <SelectTrigger>
-                                                                    <SelectValue />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    <SelectItem value="0">
-                                                                        0（
-                                                                        {t(
-                                                                            "AlertRules.CoverAllServers",
-                                                                        )}
-                                                                        ）
-                                                                    </SelectItem>
-                                                                    <SelectItem value="1">
-                                                                        1（
-                                                                        {t(
-                                                                            "AlertRules.IgnoreAllSelectSpecific",
-                                                                        )}
-                                                                        ）
-                                                                    </SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </div>
-                                                        <div>
-                                                            <Label className="text-sm">
-                                                                {t("AlertRules.IgnoreHint", {
-                                                                    server: t("Server"),
-                                                                })}
-                                                            </Label>
-                                                            {/* 简化：以 JSON 对象输入 */}
-                                                            <Textarea
-                                                                className="resize-y"
-                                                                value={(() => {
-                                                                    try {
-                                                                        return r.ignore
-                                                                            ? JSON.stringify(
-                                                                                  r.ignore,
-                                                                              )
-                                                                            : ""
-                                                                    } catch {
-                                                                        return ""
-                                                                    }
-                                                                })()}
-                                                                onChange={(e) => {
-                                                                    const next = [...rulesUI]
-                                                                    try {
-                                                                        const obj = e.target.value
-                                                                            ? JSON.parse(
-                                                                                  e.target.value,
-                                                                              )
-                                                                            : undefined
-                                                                        next[idx] = {
-                                                                            ...next[idx],
-                                                                            ignore: obj,
-                                                                        }
-                                                                    } catch {
-                                                                        // 保持原值，避免无效 JSON 覆盖
-                                                                    }
-                                                                    setRulesUI(next)
-                                                                }}
-                                                                placeholder={t(
-                                                                    "AlertRules.IgnoreExample",
-                                                                )}
-                                                            />
-                                                        </div>
-                                                    </div>
-
-                                                    {/* 周期型字段 */}
-                                                    {isCycle && (
-                                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                                            <div className="sm:col-span-2">
-                                                                <Label className="text-sm">
-                                                                    cycle_start (RFC3339)
-                                                                </Label>
-                                                                <Input
-                                                                    value={r.cycle_start ?? ""}
-                                                                    onChange={(e) => {
-                                                                        const next = [...rulesUI]
-                                                                        next[idx] = {
-                                                                            ...next[idx],
-                                                                            cycle_start:
-                                                                                e.target.value ||
-                                                                                undefined,
-                                                                        }
-                                                                        setRulesUI(next)
-                                                                    }}
-                                                                    placeholder="2022-01-01T00:00:00+08:00"
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <Label className="text-sm">
-                                                                    cycle_interval
-                                                                </Label>
-                                                                <Input
-                                                                    type="number"
-                                                                    value={r.cycle_interval ?? ""}
-                                                                    onChange={(e) => {
-                                                                        const next = [...rulesUI]
-                                                                        next[idx] = {
-                                                                            ...next[idx],
-                                                                            cycle_interval: e.target
-                                                                                .value
-                                                                                ? Number(
-                                                                                      e.target
-                                                                                          .value,
-                                                                                  )
-                                                                                : undefined,
-                                                                        }
-                                                                        setRulesUI(next)
-                                                                    }}
-                                                                    placeholder="1"
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <Label className="text-sm">
-                                                                    cycle_unit
-                                                                </Label>
-                                                                <Select
-                                                                    onValueChange={(val) => {
-                                                                        const next = [...rulesUI]
-                                                                        next[idx] = {
-                                                                            ...next[idx],
-                                                                            cycle_unit:
-                                                                                cycleUnitSchema.parse(
-                                                                                    val,
-                                                                                ),
-                                                                        }
-                                                                        setRulesUI(next)
-                                                                    }}
-                                                                    defaultValue={
-                                                                        r.cycle_unit || "month"
-                                                                    }
-                                                                >
-                                                                    <SelectTrigger>
-                                                                        <SelectValue />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent>
-                                                                        <SelectItem value="hour">
-                                                                            hour
-                                                                        </SelectItem>
-                                                                        <SelectItem value="day">
-                                                                            day
-                                                                        </SelectItem>
-                                                                        <SelectItem value="week">
-                                                                            week
-                                                                        </SelectItem>
-                                                                        <SelectItem value="month">
-                                                                            month
-                                                                        </SelectItem>
-                                                                        <SelectItem value="year">
-                                                                            year
-                                                                        </SelectItem>
-                                                                    </SelectContent>
-                                                                </Select>
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    <div className="flex justify-between">
-                                                        <Button
-                                                            type="button"
-                                                            variant="secondary"
-                                                            onClick={() => {
-                                                                const next = [...rulesUI]
-                                                                next.splice(idx, 1)
-                                                                setRulesUI(next)
-                                                            }}
-                                                        >
-                                                            {t("Delete")}
-                                                        </Button>
-                                                        {/* 占位以对齐 */}
-                                                        <span />
-                                                    </div>
-                                                </div>
-                                            )
-                                        })}
-                                        <div className="flex items-center gap-2">
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                onClick={() => {
-                                                    setRulesUI([
-                                                        ...rulesUI,
-                                                        { type: "", cover: 0, duration: 10 },
-                                                    ])
-                                                }}
-                                            >
-                                                {t("Add")}
-                                            </Button>
-                                        </div>
-                                    </div>
-
-                                    {/* 高级：直接编辑 JSON（与结构化编辑器同步） */}
-                                    <FormLabel className="mt-3">{t("AdvancedJSON")}</FormLabel>
-                                    <FormControl>
-                                        <Textarea
-                                            className="resize-y"
-                                            value={rulesRaw}
-                                            onChange={(e) => {
-                                                // 同步到结构化编辑器
-                                                form.setValue("rules_raw", e.target.value, {
-                                                    shouldDirty: true,
-                                                })
-                                                try {
-                                                    const arr = JSON.parse(e.target.value)
-                                                    if (Array.isArray(arr)) setRulesUI(arr)
-                                                } catch {
-                                                    // ignore invalid
-                                                }
-                                            }}
-                                        />
-                                    </FormControl>
-                                </FormItem>
-                                <FormField
-                                    control={form.control}
-                                    name="notification_group_id"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>{t("NotifierGroup")}</FormLabel>
-                                            <FormControl>
-                                                <Combobox
-                                                    placeholder={t("Search")}
-                                                    options={ngroupList}
-                                                    onValueChange={field.onChange}
-                                                    defaultValue={String(field.value ?? "")}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="trigger_mode"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>{t("TriggerMode")}</FormLabel>
-                                            <Select
-                                                onValueChange={field.onChange}
-                                                defaultValue={`${field.value}`}
-                                            >
-                                                <FormControl>
-                                                    <SelectTrigger>
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    {Object.entries(triggerModes).map(([k, v]) => (
-                                                        <SelectItem key={k} value={k}>
-                                                            {v}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="fail_trigger_tasks_raw"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>
-                                                {t("TasksToTriggerOnAlert") +
-                                                    t("SeparateWithComma")}
-                                            </FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="1,2,3" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="recover_trigger_tasks_raw"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>
-                                                {t("TasksToTriggerAfterRecovery") +
-                                                    t("SeparateWithComma")}
-                                            </FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="1,2,3" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="enable"
-                                    render={({ field }) => (
-                                        <FormItem className="flex items-center space-x-2">
-                                            <FormControl>
-                                                <div className="flex items-center gap-2">
-                                                    <Checkbox
-                                                        checked={field.value}
-                                                        onCheckedChange={field.onChange}
-                                                    />
-                                                    <Label className="text-sm">{t("Enable")}</Label>
-                                                </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <DialogFooter className="justify-end">
-                                    <DialogClose asChild>
-                                        <Button type="button" className="my-2" variant="secondary">
-                                            {t("Close")}
-                                        </Button>
-                                    </DialogClose>
-                                    <Button type="submit" className="my-2">
-                                        {t("Confirm")}
-                                    </Button>
-                                </DialogFooter>
-                            </form>
-                        </Form>
-                    </div>
-                </ScrollArea>
+            <DialogContent className="w-[calc(100%-1.5rem)] max-w-[calc(100%-1.5rem)] sm:max-w-5xl max-h-[calc(100dvh-2rem)] overflow-y-auto p-4 sm:p-6">
+                <DialogHeader>
+                    <DialogTitle>{data ? t("EditAlertRule") : t("CreateAlertRule")}</DialogTitle>
+                    <DialogDescription>
+                        选择监控条件、服务器和通知方式。规则预览不会发送消息或执行任务。
+                    </DialogDescription>
+                </DialogHeader>
+                {open && (
+                    <AlertRuleEditor data={data} mutate={mutate} close={() => setOpen(false)} />
+                )}
             </DialogContent>
         </Dialog>
+    )
+}
+
+function AlertRuleEditor({ data, mutate, close }: AlertRuleCardProps & { close: () => void }) {
+    const [draft, setDraft] = useState<ModelAlertRuleForm>(() => ({
+        name: data?.name || "",
+        enable: data?.enable ?? false,
+        rules: data?.rules || [],
+        notification_group_id: data?.notification_group_id || 0,
+        trigger_mode: data?.trigger_mode ?? 0,
+        fail_trigger_tasks: data?.fail_trigger_tasks || [],
+        recover_trigger_tasks: data?.recover_trigger_tasks || [],
+    }))
+    // One source of truth. Invalid JSON remains visible and can never silently save older rules.
+    const [raw, setRaw] = useState(() =>
+        JSON.stringify(data?.rules || [newAlertCondition("offline")], null, 2),
+    )
+    const [mode, setMode] = useState<"visual" | "json">("visual")
+    const [error, setError] = useState("")
+    const [saving, setSaving] = useState(false)
+    const [template, setTemplate] = useState("cpu")
+    const [conditionVersion, setConditionVersion] = useState(0)
+    const { rules, error: parseError } = parseAlertRules(raw)
+    const validation = parseError || validateAlertRules(rules)
+    const { notifierGroup } = useNotification()
+    const groups =
+        notifierGroup?.map((item) => ({ id: item.group.id, name: item.group.name })) || []
+    const { data: servers, error: serverError } = useSWR<{ id: number; name: string }[]>(
+        "/api/v1/server",
+        swrFetcher,
+    )
+    const { data: tasks, error: taskError } = useSWR<ModelCron[]>("/api/v1/cron", swrFetcher)
+    const triggerTasks = tasks?.filter((task) => task.task_type === 1) || []
+    const patch = (change: Partial<ModelAlertRuleForm>) =>
+        setDraft((prev) => ({ ...prev, ...change }))
+    const updateRules = (next: ModelRule[]) => {
+        setRaw(JSON.stringify(next, null, 2))
+        setError("")
+    }
+    const save = async (event: FormEvent) => {
+        event.preventDefault()
+        if (saving) return
+        if (!draft.name.trim()) {
+            setError("请填写规则名称。")
+            return
+        }
+        if (validation) {
+            setError(validation)
+            return
+        }
+        setSaving(true)
+        setError("")
+        const payload = { ...draft, rules }
+        try {
+            if (data?.id) await updateAlertRule(data.id, payload)
+            else await createAlertRule(payload)
+        } catch (e) {
+            setError(e instanceof Error ? e.message : "保存失败，请稍后重试。")
+            setSaving(false)
+            return
+        }
+        toast.success("警报规则已保存")
+        close()
+        void mutate().catch(() => toast.error("规则已保存，但列表刷新失败，请刷新页面。"))
+    }
+    const selectedGroup = groups.find((g) => g.id === draft.notification_group_id)
+    const eventType =
+        rules.length && rules.every((r) => r.type === "offline")
+            ? "服务器状态（离线 / 上线）"
+            : "资源告警（告警 / 恢复）"
+    return (
+        <form onSubmit={save} className="min-w-0" noValidate>
+            <fieldset
+                disabled={saving}
+                className="min-w-0 grid grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-5"
+            >
+                <div className="min-w-0 space-y-5">
+                    <section className="space-y-4">
+                        <h3 className="font-semibold">基本设置</h3>
+                        <AlertField title="规则名称">
+                            <Input
+                                value={draft.name}
+                                onChange={(e) => patch({ name: e.target.value })}
+                            />
+                        </AlertField>
+                        <label className="flex items-center gap-2 text-sm">
+                            <input
+                                type="checkbox"
+                                checked={!!draft.enable}
+                                onChange={(e) => patch({ enable: e.target.checked })}
+                            />
+                            启用此警报规则
+                        </label>
+                    </section>
+                    <section className="space-y-3 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                                type="button"
+                                variant={mode === "visual" ? "default" : "outline"}
+                                aria-pressed={mode === "visual"}
+                                onClick={() => {
+                                    if (parseError) setError(parseError)
+                                    else setMode("visual")
+                                }}
+                            >
+                                可视化编辑
+                            </Button>
+                            <Button
+                                type="button"
+                                variant={mode === "json" ? "default" : "outline"}
+                                aria-pressed={mode === "json"}
+                                onClick={() => setMode("json")}
+                            >
+                                高级 JSON
+                            </Button>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                            同一规则中的所有条件都满足时才报警（AND）。需要任一条件触发，请分别新建警报规则。
+                        </p>
+                        {parseError && (
+                            <p role="alert" className="text-sm text-destructive">
+                                {parseError}
+                            </p>
+                        )}
+                        {mode === "json" && (
+                            <p className="text-sm text-muted-foreground">
+                                兼容说明：高级 JSON 的 duration 仍是采样次数，1 次约 3
+                                秒；可视化表单会自动换算为秒，旧数据无需修改。
+                            </p>
+                        )}
+                        {mode === "json" ? (
+                            <AlertField title="规则 JSON">
+                                <Textarea
+                                    className="min-h-72 font-mono text-xs resize-y"
+                                    spellCheck={false}
+                                    value={raw}
+                                    onChange={(e) => {
+                                        setRaw(e.target.value)
+                                        setError("")
+                                    }}
+                                />
+                            </AlertField>
+                        ) : (
+                            !parseError && (
+                                <>
+                                    {rules.map((rule, index) => (
+                                        <AlertCondition
+                                            key={`${conditionVersion}-${index}`}
+                                            rule={rule}
+                                            index={index}
+                                            servers={servers || []}
+                                            serverError={!!serverError}
+                                            onRemove={() => {
+                                                setConditionVersion((v) => v + 1)
+                                                updateRules(rules.filter((_, i) => i !== index))
+                                            }}
+                                            onChange={(next) =>
+                                                updateRules(
+                                                    rules.map((r, i) => (i === index ? next : r)),
+                                                )
+                                            }
+                                        />
+                                    ))}
+                                    <div className="flex flex-wrap gap-2 items-end">
+                                        <div className="min-w-0 flex-1">
+                                            <AlertField title="快速添加条件">
+                                                <select
+                                                    className={alertSelectClass}
+                                                    value={template}
+                                                    onChange={(e) => setTemplate(e.target.value)}
+                                                >
+                                                    {templates.map(([key, title]) => (
+                                                        <option key={key} value={key}>
+                                                            {title}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </AlertField>
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() =>
+                                                updateRules([...rules, newAlertCondition(template)])
+                                            }
+                                        >
+                                            添加条件
+                                        </Button>
+                                    </div>
+                                </>
+                            )
+                        )}
+                    </section>
+                    <section className="rounded-lg border p-4 space-y-4">
+                        <h3 className="font-semibold">通知与触发</h3>
+                        <AlertField title="通知组">
+                            <select
+                                className={alertSelectClass}
+                                value={draft.notification_group_id}
+                                onChange={(e) =>
+                                    patch({ notification_group_id: Number(e.target.value) })
+                                }
+                            >
+                                <option value={0}>不发送通知（只执行已选任务）</option>
+                                {draft.notification_group_id > 0 && !selectedGroup && (
+                                    <option value={draft.notification_group_id}>
+                                        未加载的通知组 #{draft.notification_group_id}（保留）
+                                    </option>
+                                )}
+                                {groups.map((g) => (
+                                    <option key={g.id} value={g.id}>
+                                        {g.name} #{g.id}
+                                    </option>
+                                ))}
+                            </select>
+                        </AlertField>
+                        <AlertField title="触发方式">
+                            <select
+                                className={alertSelectClass}
+                                value={draft.trigger_mode}
+                                onChange={(e) => patch({ trigger_mode: Number(e.target.value) })}
+                            >
+                                <option value={0}>持续触发（受通知去重限制）</option>
+                                <option value={1}>单次触发（恢复后可再次报警）</option>
+                            </select>
+                        </AlertField>
+                        <AlertHelp title="触发、恢复与去重说明">
+                            持续触发：异常期间会反复尝试通知及触发任务；通知仍受后台去重限制，并不是每秒发送。
+                            单次触发：进入异常时触发一次，恢复后下一次异常可以再次触发。两种模式均会在恢复时尝试通知并执行恢复任务。
+                            周期流量在新周期统计恢复正常后可重新触发。本次不修改后端的判断、去重或任务执行逻辑。
+                        </AlertHelp>
+                        <AlertSelection
+                            title="报警时触发的任务"
+                            options={triggerTasks}
+                            value={draft.fail_trigger_tasks.map(String)}
+                            onChange={(ids) => patch({ fail_trigger_tasks: ids.map(Number) })}
+                            error={!!taskError}
+                        />
+                        <AlertSelection
+                            title="恢复后触发的任务"
+                            options={triggerTasks}
+                            value={draft.recover_trigger_tasks.map(String)}
+                            onChange={(ids) => patch({ recover_trigger_tasks: ids.map(Number) })}
+                            error={!!taskError}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            只列出触发任务；保持空选不会执行任务。保存启用规则后，满足条件即可实际触发。
+                        </p>
+                    </section>
+                </div>
+                <aside
+                    className="min-w-0 rounded-lg border bg-muted/20 p-4 space-y-4 self-start lg:sticky lg:top-0"
+                    aria-label="规则实时预览"
+                >
+                    <div className="flex flex-wrap justify-between gap-2">
+                        <h3 className="font-semibold">规则实时预览</h3>
+                        <span className="text-xs text-muted-foreground">不发送 · 不执行</span>
+                    </div>
+                    <p className="font-medium break-words">{draft.name || "未命名规则"}</p>
+                    <p className="text-sm">
+                        {draft.enable ? "启用" : "停用"} ·{" "}
+                        {draft.trigger_mode === 1 ? "单次触发" : "持续触发"}
+                    </p>
+                    {validation ? (
+                        <p className="text-sm text-destructive">{validation}</p>
+                    ) : (
+                        <ol className="list-decimal pl-5 space-y-3 text-sm">
+                            {rules.map((rule, index) => (
+                                <li key={index} className="break-words">
+                                    {ruleSummary(rule)}
+                                </li>
+                            ))}
+                        </ol>
+                    )}
+                    <div className="border-t pt-3 space-y-2 text-sm break-words">
+                        <p>
+                            满足全部条件 →{" "}
+                            {draft.notification_group_id
+                                ? selectedGroup?.name || "通知组 #" + draft.notification_group_id
+                                : "不发送通知"}
+                        </p>
+                        <p>通知内容分类：{eventType}</p>
+                        <p>
+                            报警任务：{draft.fail_trigger_tasks.length} 项 · 恢复任务：
+                            {draft.recover_trigger_tasks.length} 项
+                        </p>
+                        <p className="text-muted-foreground">
+                            通知的“按事件分别设置内容”决定消息内容，本页决定何时触发。
+                        </p>
+                    </div>
+                </aside>
+                <div className="lg:col-span-2 min-w-0 space-y-3 border-t pt-4">
+                    {error && (
+                        <p role="alert" className="text-sm text-destructive break-words">
+                            {error}
+                        </p>
+                    )}
+                    <div className="flex flex-wrap justify-end gap-2">
+                        <Button type="button" variant="secondary" onClick={close}>
+                            取消
+                        </Button>
+                        <Button type="submit">{saving ? "保存中…" : "保存警报规则"}</Button>
+                    </div>
+                </div>
+            </fieldset>
+        </form>
     )
 }

@@ -40,6 +40,7 @@ import {
     applyPublicNoteTime,
     publicNoteTime,
     publicNoteDateTimeLabel,
+    billingCalendarDate,
     applyPublicNotePatch,
     detectPublicNoteMode,
     normalizeISO,
@@ -481,7 +482,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                         <>
                                             <div className="rounded-md border p-3 space-y-3">
                                                 <div className="text-sm font-medium opacity-80">
-                                                    {t("PublicNote.Billing")}
+                                                    {t("PublicNote.Billing")} <span className="text-xs text-muted-foreground">（北京时间 UTC+8）</span>
                                                 </div>
                                                 <div className="grid gap-3 sm:grid-cols-2">
                                                     <div className="space-y-1">
@@ -532,7 +533,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                                             publicNoteObj
                                                                                 .billingDataMod
                                                                                 ?.startDate
-                                                                                ? new Date(
+                                                                                ? billingCalendarDate(
                                                                                       publicNoteObj
                                                                                           .billingDataMod!
                                                                                           .startDate!,
@@ -635,7 +636,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                                                 .billingDataMod
                                                                                 ?.endDate !==
                                                                                 "0000-00-00T23:59:59+08:00"
-                                                                                ? new Date(
+                                                                                ? billingCalendarDate(
                                                                                       publicNoteObj
                                                                                           .billingDataMod
                                                                                           ?.endDate as string,

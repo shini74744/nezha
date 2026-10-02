@@ -137,8 +137,8 @@ export default function NotificationPage() {
 
     return (
         <div className="px-3">
-            <div className="flex mt-6 mb-4">
-                <NotificationTab className="flex-1 mr-4 sm:max-w-[40%]" />
+            <div className="flex flex-wrap gap-3 mt-6 mb-4">
+                <NotificationTab className="w-full sm:flex-1 sm:max-w-2xl" />
                 <HeaderButtonGroup
                     className="flex ml-auto self-end sm:self-auto gap-2 flex-wrap shrink-0"
                     delete={{

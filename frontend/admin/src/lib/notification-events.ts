@@ -8,6 +8,7 @@ export const eventKinds = [
     ["offline", "服务器离线", "🔴 服务器离线"],
     ["online", "服务器上线", "🟢 服务器上线"],
     ["ip_change", "IP 变更", "🌐 IP 地址变更"],
+    ["server_expiry", "服务器到期", "⏰ 服务器到期通知"],
     ["alert", "资源告警", "⚠️ 资源告警"],
     ["alert_recovery", "资源恢复", "✅ 资源告警恢复"],
     ["service_alert", "服务异常", "🔴 服务异常"],
@@ -30,6 +31,7 @@ export const eventGroups = [
     { id: "ddns", label: "DDNS 更新（成功 / 失败）", kinds: ["ddns_success", "ddns_failure"] },
     { id: "task", label: "任务执行（成功 / 失败）", kinds: ["task_success", "task_failure"] },
     { id: "ip_change", label: "IP 变更", kinds: ["ip_change"] },
+    { id: "server_expiry", label: "服务器到期", kinds: ["server_expiry"] },
     { id: "tls", label: "TLS 证书", kinds: ["tls"] },
     { id: "other", label: "其他通知", kinds: ["other"] },
 ]
@@ -113,6 +115,7 @@ export function eventPreview(kind: string, module: EventModule, formatUnits: boo
         offline: "[离线] 示例服务器(192.0.2.**) 服务器已离线",
         online: "[上线] 示例服务器(192.0.2.**) 服务器已恢复在线",
         ip_change: "[IP 变更] 示例服务器, 192.0.2.** => 198.51.100.**",
+        server_expiry: "购买时间：2026-09-02 00:00:00 +0800\n到期时间：2026-10-02 00:00:00 +0800\n付款周期：月\n剩余约 3 天（模拟）",
         alert: "[事件] 示例服务器(192.0.2.**) CPU 高负载",
         alert_recovery: "[恢复] 示例服务器(192.0.2.**) CPU 高负载",
         service_alert: "[故障] 网站监测 Reporter: 示例服务器, Error: 连接超时",
@@ -165,6 +168,7 @@ export function eventPreview(kind: string, module: EventModule, formatUnits: boo
                 ? "结果：更新失败，已用尽重试次数；请检查 DNS 服务商配置和网络"
                 : "结果：更新请求执行成功（DNS 缓存生效可能延迟）",
     }
+    if (kind === "server_expiry") delete values.rule
     if (kind.startsWith("ddns_")) values.rule = "规则：示例 DDNS 配置"
     // These producers do not carry host metrics; mirror the backend's omitted fields.
     if (kind === "tls" || kind === "other") delete values.server
