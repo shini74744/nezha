@@ -29,8 +29,8 @@ if (!rootElement) {
 }
 
 ReactDOM.createRoot(rootElement).render(
-	<ThemeProvider storageKey="vite-ui-theme">
-		<ThemeColorManager />
+	<ThemeProvider storageKey={import.meta.env.VITE_THEME_VARIANT === "doraemon" ? "doraemon-ui-theme" : "vite-ui-theme"}>
+		{import.meta.env.VITE_THEME_VARIANT !== "doraemon" && <ThemeColorManager />}
 		<QueryClientProvider client={queryClient}>
 			<WebSocketProvider url="/api/v1/ws/server">
 				<CommandProvider>

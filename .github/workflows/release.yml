@@ -27,13 +27,22 @@ jobs:
     steps:
       - name: Install dependencies
         run: |
-          apt update && apt install unzip curl -y
+          apt update && apt install unzip curl rsync -y
           wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
           chmod +x /usr/bin/yq
 
       - run: git config --global --add safe.directory /__w/nezha/nezha
 
       - uses: actions/checkout@v7.0.1
+
+      - name: Set up Node for the locally built Doraemon theme
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Enable the frontend package manager
+        run: npm install --global corepack@0.36.0
 
       - name: Prepare frontends' dists
         run: |

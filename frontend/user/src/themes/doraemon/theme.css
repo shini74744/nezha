@@ -1,0 +1,1721 @@
+/* Doraemon v1.2.0 visual adaptation. Scoped to this independently built theme. */
+html[data-probe-theme="doraemon"] {
+	--background: 199 87% 51%;
+	--foreground: 207 67% 19%;
+	--card: 0 0% 100%;
+	--card-foreground: 207 67% 19%;
+	--muted: 199 78% 95%;
+	--muted-foreground: 207 24% 40%;
+	--border: 198 64% 84%;
+	--accent: 197 85% 94%;
+	--accent-foreground: 205 74% 25%;
+	--primary: 199 100% 44%;
+	--primary-foreground: 0 0% 100%;
+	--popover: 0 0% 100%;
+	--popover-foreground: 207 67% 19%;
+	--dora-panel: #fff;
+	--dora-soft: #edf8ff;
+	--dora-ink: #163e59;
+	--dora-muted: #51728a;
+	--dora-line: #c1e5f4;
+	--dora-town: #9bd2eb;
+	--dora-town-line: #388fb9;
+	--dora-window: #e7f7ff;
+}
+html.dark[data-probe-theme="doraemon"] {
+	--background: 209 83% 10%;
+	--foreground: 197 75% 91%;
+	--card: 207 72% 15%;
+	--card-foreground: 197 75% 91%;
+	--muted: 207 62% 20%;
+	--muted-foreground: 201 35% 72%;
+	--border: 204 55% 30%;
+	--accent: 206 66% 22%;
+	--accent-foreground: 194 85% 91%;
+	--popover: 207 72% 15%;
+	--popover-foreground: 197 75% 91%;
+	--dora-panel: #0b2c44;
+	--dora-soft: #10374f;
+	--dora-ink: #e0f2ff;
+	--dora-muted: #a1c2d6;
+	--dora-line: #26526b;
+	--dora-town: #0d304d;
+	--dora-town-line: #16435d;
+	--dora-window: #d6be69;
+}
+.dora-theme {
+	min-height: 100vh;
+	color: var(--dora-ink);
+	font-family:
+		system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+	line-height: 1.5;
+	font-size: 14px;
+	isolation: isolate;
+}
+.dora-theme * {
+	box-sizing: border-box;
+}
+.dora-theme button,
+.dora-theme select {
+	cursor: pointer;
+}
+.dora-theme button:disabled {
+	cursor: default;
+}
+.dora-theme :focus-visible {
+	outline: 3px solid #f6c440;
+	outline-offset: 3px;
+}
+.dora-shell {
+	position: relative;
+	z-index: 1;
+	width: 100%;
+	max-width: 1440px;
+	padding: 24px 36px 30px;
+	margin: auto;
+}
+.dora-shell > .max-w-5xl,
+.dora-shell .server-info {
+	max-width: none;
+}
+.dora-scene {
+	position: fixed;
+	z-index: -1;
+	inset: 0;
+	overflow: hidden;
+	pointer-events: none;
+	background:
+		radial-gradient(circle at 25% 15%, #87defb66, transparent 45%),
+		linear-gradient(#55c8ef, #00a0e7 80%);
+	color: #b3e6f9;
+}
+.dark .dora-scene {
+	background:
+		radial-gradient(ellipse at 35% 0%, #113758, transparent 65%),
+		linear-gradient(#041326, #07334f);
+	color: #17425c;
+}
+.dora-stars {
+	position: absolute;
+	inset: 0;
+	background-image: radial-gradient(#fff7 1px, transparent 1px);
+	background-size: 36px 36px;
+	opacity: 0.3;
+}
+.dark .dora-stars {
+	opacity: 0.55;
+	background-size: 65px 65px;
+	animation: dora-twinkle 4s ease-in-out infinite alternate;
+}
+.dora-sun {
+	position: absolute;
+	left: -70px;
+	top: -55px;
+	width: 240px;
+	height: 240px;
+	border: 22px solid #ffe888;
+	border-radius: 50%;
+	background: #fff6bd;
+	box-shadow: 0 0 80px #fff39b88;
+}
+.dark .dora-sun {
+	width: 170px;
+	height: 170px;
+	left: -45px;
+	top: -25px;
+	background:
+		radial-gradient(circle at 38% 33%, #dcba4a 0 11%, transparent 12%),
+		radial-gradient(circle at 67% 72%, #dcc055 0 14%, transparent 15%), #ffed95;
+	border: 0;
+	box-shadow: 0 0 65px #e9d99155;
+}
+.dora-cloud {
+	position: absolute;
+	width: 240px;
+	opacity: 0.85;
+	animation: dora-float 10s ease-in-out infinite alternate;
+}
+.dora-cloud-a {
+	left: -90px;
+	top: 45%;
+}
+.dora-cloud-b {
+	right: -80px;
+	top: 66%;
+	width: 320px;
+	animation-delay: -5s;
+}
+.dark .dora-cloud {
+	opacity: 0.07;
+}
+.dora-flying {
+	position: absolute;
+	left: 12px;
+	top: 170px;
+	width: 75px;
+	animation: dora-float 7s ease-in-out infinite alternate;
+}
+.dora-town {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	width: 100%;
+	height: 190px;
+}
+.dora-header {
+	position: relative;
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	padding: 8px 16px 11px 10px;
+	background: var(--dora-panel);
+	border: 3px solid #d9f5ff;
+	border-bottom: 5px solid #e60012;
+	border-radius: 30px;
+	box-shadow: 0 8px 24px #00568722;
+	margin-bottom: 20px;
+	min-width: 0;
+}
+.dark .dora-header {
+	border-color: #2b6280;
+	border-bottom-color: #e60012;
+}
+.dora-avatar {
+	flex-shrink: 0;
+	width: 48px;
+	height: 48px;
+	overflow: hidden;
+	border: 3px solid #1195c9;
+	border-radius: 50%;
+	background: #e9f9ff;
+}
+.dora-avatar img {
+	width: 44px;
+	height: 56px;
+	object-fit: contain;
+	object-position: top;
+}
+.dora-brand {
+	display: flex;
+	min-width: 0;
+	flex: 1;
+	flex-direction: column;
+	text-decoration: none;
+	color: inherit;
+}
+.dora-brand strong {
+	font-size: 18px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	letter-spacing: 0.3px;
+}
+.dora-brand span {
+	font-size: 11px;
+	color: var(--dora-muted);
+}
+.dora-header-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.dora-connection {
+	font-size: 11px;
+	color: var(--dora-muted);
+	white-space: nowrap;
+}
+.dora-connection::before {
+	content: "";
+	display: inline-block;
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: #d19922;
+	margin-right: 5px;
+}
+.dora-connection.is-online::before {
+	background: #16a16c;
+}
+.dora-icon-button,
+.dora-sky-control {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	background: var(--dora-soft);
+	padding: 7px;
+	border-radius: 10px;
+	color: var(--dora-muted);
+}
+.dora-sky-control select {
+	background: transparent;
+	border: 0;
+	color: var(--dora-ink);
+	max-width: 126px;
+	font-size: 12px;
+	outline-offset: 5px;
+}
+.dora-sky-control option {
+	background: var(--dora-panel);
+	color: var(--dora-ink);
+}
+.dora-header-bell {
+	position: absolute;
+	z-index: 2;
+	bottom: -19px;
+	left: calc(50% - 13px);
+	width: 26px;
+	height: 26px;
+	transition: transform 0.2s;
+}
+.dora-header-bell:hover {
+	transform: rotate(20deg);
+}
+.dora-pocket {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 20px;
+	padding: 15px 24px;
+	background: var(--dora-panel);
+	border: 2px solid #e65079;
+	border-radius: 20px;
+	margin: 25px 0 16px;
+	overflow: hidden;
+}
+.dora-pocket > img {
+	width: 65px;
+}
+.dora-pocket strong {
+	font-size: 17px;
+}
+.dora-pocket p {
+	color: var(--dora-muted);
+	font-size: 13px;
+}
+.dora-pocket button {
+	margin-left: auto;
+	font-size: 24px;
+}
+.dora-gadget-float {
+	font-size: 25px;
+	animation: dora-pop 0.5s ease-out;
+}
+.dora-overview {
+	position: relative;
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 12px;
+	margin-top: 18px;
+}
+.dora-overview.without-map {
+	grid-template-columns: 1fr;
+}
+.dora-stat-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 10px;
+}
+.dora-stat {
+	position: relative;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	align-items: flex-start;
+	text-align: left;
+	min-height: 123px;
+	border: 2px solid var(--dora-line);
+	border-top: 5px solid var(--stat-color);
+	border-radius: 19px;
+	background: var(--dora-panel);
+	padding: 15px 14px;
+	color: var(--dora-ink);
+	box-shadow: 0 5px 0 #006a8c15;
+}
+.dora-stat > span {
+	font-size: 11px;
+	color: var(--dora-muted);
+	padding-right: 16px;
+}
+.dora-stat strong {
+	position: relative;
+	z-index: 1;
+	font-size: clamp(17px, 1.65vw, 26px);
+	font-weight: 800;
+	letter-spacing: -0.6px;
+	overflow-wrap: anywhere;
+}
+.dora-stat-icon {
+	position: absolute;
+	right: 10px;
+	top: 12px;
+	color: var(--stat-color);
+	opacity: 0.8;
+}
+.dora-stat-watermark {
+	position: absolute;
+	right: -5px;
+	bottom: 8px;
+	width: 64px;
+	height: 64px;
+	opacity: 0.08;
+	color: var(--stat-color);
+	transform: rotate(-15deg);
+}
+.dora-stat[aria-pressed="true"] {
+	outline: 2px solid #ffd259;
+	outline-offset: -5px;
+}
+.dora-secret-toggle {
+	position: absolute;
+	left: -58px;
+	top: 70px;
+	width: 54px;
+	z-index: 2;
+}
+.dora-map {
+	position: relative;
+	overflow: hidden;
+	background: var(--dora-panel);
+	border: 3px solid #e60012;
+	border-radius: 24px;
+	box-shadow: 0 5px 0 #00547725;
+	min-height: 255px;
+}
+.dora-map-title {
+	position: absolute;
+	inset: 12px 16px auto;
+	z-index: 1;
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 8px;
+}
+.dora-map-title strong {
+	font-size: 14px;
+}
+.dora-map-title p {
+	font-size: 11px;
+	color: var(--dora-muted);
+}
+.dora-map-title button {
+	padding: 5px 12px;
+	border: 2px solid #b4417b;
+	border-radius: 12px;
+	background: #f289ba;
+	color: #4f1735;
+	box-shadow: 0 3px 0 #a92b69;
+	font-size: 12px;
+}
+.dora-map > svg {
+	display: block;
+	width: 100%;
+	height: 100%;
+	min-height: 250px;
+	max-height: 300px;
+}
+.dora-country {
+	fill: #d5ebf5;
+	stroke: #badbe9;
+	stroke-width: 0.6;
+}
+.dora-country.occupied {
+	fill: #99d6f0;
+	cursor: pointer;
+}
+.dora-country.occupied:hover {
+	fill: #f5cc39;
+}
+.dark .dora-country {
+	fill: #143d58;
+	stroke: #28506c;
+}
+.dark .dora-country.occupied {
+	fill: #236185;
+}
+.dora-map-dot {
+	fill: #ed2348;
+	stroke: #fff;
+	stroke-width: 1.5;
+}
+.dora-map-halo {
+	fill: #ff527155;
+	animation: dora-twinkle 1.5s infinite alternate;
+}
+.dora-map g {
+	cursor: pointer;
+}
+.dora-map g:focus .dora-map-dot {
+	fill: #ffcc32;
+}
+.dora-map-peek {
+	position: absolute;
+	bottom: -51px;
+	left: 18px;
+	width: 77px;
+	pointer-events: none;
+}
+.dora-map-caption {
+	position: absolute;
+	bottom: 10px;
+	right: 16px;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	max-width: 70%;
+	font-size: 11px;
+}
+.dora-map-caption span {
+	white-space: nowrap;
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: var(--dora-muted);
+}
+.dora-door-panel {
+	position: absolute;
+	inset: 0;
+	z-index: 3;
+	display: flex;
+	align-items: center;
+	gap: 20px;
+	background: var(--dora-panel);
+	padding: 22px;
+}
+.dora-door-panel > img {
+	width: 68px;
+	animation: dora-pop 0.4s ease-out;
+}
+.dora-door-panel > div {
+	flex: 1;
+	min-width: 0;
+}
+.dora-door-panel strong {
+	display: block;
+	margin-bottom: 8px;
+}
+.dora-destinations {
+	display: grid;
+	gap: 6px;
+	max-height: 130px;
+	overflow: auto;
+}
+.dora-destinations a {
+	color: var(--dora-ink);
+	font-size: 12px;
+	background: var(--dora-soft);
+	padding: 4px 8px;
+	border-radius: 7px;
+	overflow-wrap: anywhere;
+}
+.dora-door-panel button {
+	font-size: 12px;
+	margin-top: 10px;
+	color: var(--dora-muted);
+	text-decoration: underline;
+}
+.dora-theme .server-overview-controls {
+	margin-top: 16px;
+	gap: 10px;
+}
+.dora-theme .server-overview-controls > section {
+	overflow-x: auto;
+	scrollbar-width: none;
+	padding: 3px;
+}
+.dora-theme .server-card-list {
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 12px;
+	margin-top: 14px;
+}
+.dora-card {
+	overflow: hidden;
+	min-width: 0;
+	background: var(--dora-panel);
+	border: 2px solid #dcf5ff;
+	border-radius: 20px;
+	box-shadow: 0 6px 0 #086a9d28;
+	cursor: pointer;
+	transition:
+		transform 0.2s,
+		box-shadow 0.2s;
+}
+.dark .dora-card {
+	border-color: #275875;
+	box-shadow: 0 6px 0 #00121c55;
+}
+.dora-card:hover {
+	transform: translateY(-3px);
+	box-shadow: 0 10px 18px #03426330;
+}
+.dora-card-head {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 12px 12px 15px;
+	background: linear-gradient(120deg, #1cb2eb, #008ed6);
+	border-bottom: 5px solid #e60012;
+	color: white;
+}
+.dora-card-head > div {
+	min-width: 0;
+	flex: 1;
+}
+.dora-card-head h2 {
+	font-size: 13px;
+	font-weight: 750;
+	line-height: 1.5;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.dora-card-head span {
+	font-size: 10px;
+	color: #fff;
+}
+.dora-card-head .dora-card-bell {
+	position: absolute;
+	width: 18px;
+	height: 18px;
+	bottom: -11px;
+	left: calc(50% - 9px);
+	z-index: 1;
+}
+.dora-nose {
+	flex-shrink: 0;
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	background: radial-gradient(
+		circle at 30% 28%,
+		#fff 0 11%,
+		#ffbbc3 12% 20%,
+		#ed173a 40%
+	);
+	border: 1.5px solid #fff;
+	box-shadow: 0 0 0 3px #ffffff22;
+}
+.is-offline .dora-card-head {
+	background: linear-gradient(120deg, #617f93, #43657e);
+}
+.is-offline .dora-nose {
+	filter: grayscale(1);
+}
+.is-offline .dora-card-head {
+	border-bottom-color: #a47a87;
+}
+.dora-card-body {
+	display: flex;
+	flex-direction: column;
+	gap: 11px;
+	padding: 15px 12px 12px;
+	min-height: 255px;
+}
+.dora-card-meta {
+	display: flex;
+	gap: 3px;
+	flex-wrap: wrap;
+	font-size: 10px;
+	color: var(--dora-muted);
+}
+.dora-card-meta span {
+	background: var(--dora-soft);
+	padding: 1px 5px;
+	border-radius: 6px;
+}
+.dora-meters {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 10px 12px;
+}
+.dora-meter {
+	min-width: 0;
+}
+.dora-meter > div:first-child {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 4px;
+	font-size: 10px;
+}
+.dora-meter span {
+	display: flex;
+	align-items: center;
+	gap: 3px;
+	color: var(--dora-muted);
+	min-width: 0;
+	white-space: nowrap;
+}
+.dora-meter small {
+	display: none;
+}
+.dora-meter svg {
+	color: var(--meter-color);
+	flex-shrink: 0;
+}
+.dora-meter b {
+	font-size: 11px;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+.dora-meter p {
+	font-size: 9px;
+	color: var(--dora-muted);
+	margin-top: 3px;
+	white-space: nowrap;
+}
+.dora-meter-track {
+	height: 4px;
+	border-radius: 4px;
+	overflow: hidden;
+	background: var(--dora-soft);
+	margin-top: 4px;
+}
+.dora-meter-track i {
+	display: block;
+	height: 100%;
+	background: var(--meter-color);
+	border-radius: 4px;
+	transition: width 0.4s;
+}
+.dora-transfer {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 6px;
+}
+.dora-transfer > div {
+	padding: 7px;
+	background: var(--dora-soft);
+	border: 1px solid var(--dora-line);
+	border-radius: 10px;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+.dora-transfer span {
+	display: flex;
+	gap: 3px;
+	align-items: center;
+	font-size: 10px;
+	color: var(--dora-muted);
+}
+.dora-transfer b {
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+}
+.dora-transfer small {
+	font-size: 9px;
+	color: var(--dora-muted);
+}
+.dora-connections {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 10px;
+	color: var(--dora-muted);
+	flex-wrap: wrap;
+}
+.dora-billing {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+	align-items: center;
+	padding-top: 8px;
+	border-top: 1px dashed var(--dora-line);
+}
+.dora-card-bottom {
+	margin-top: auto;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 5px;
+	font-size: 10px;
+}
+.dora-card-bottom > span {
+	color: #71530b;
+	background: #fff6c9;
+	border: 1px solid #f0dfa4;
+	padding: 2px 7px;
+	border-radius: 20px;
+}
+.dora-card-bottom small {
+	color: var(--dora-muted);
+	font-size: 9px;
+}
+.dora-offline {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 8px;
+	gap: 5px;
+	color: var(--dora-muted);
+	font-size: 11px;
+}
+.dora-offline img {
+	height: 100px;
+	filter: grayscale(0.8);
+	opacity: 0.65;
+}
+.dora-offline strong {
+	font-size: 14px;
+}
+.dora-inline-card .dora-card {
+	display: grid;
+	grid-template-columns: 220px 1fr;
+}
+.dora-inline-card .dora-card-head {
+	border-bottom: 0;
+	border-right: 5px solid #e60012;
+}
+.dora-inline-card .dora-card-bell {
+	left: auto;
+	right: -11px;
+	top: calc(50% - 9px);
+}
+.dora-inline-card .dora-card-body {
+	min-height: 0;
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	align-items: center;
+}
+.dora-inline-card .dora-card-meta {
+	grid-column: 1 / -1;
+}
+.dora-inline-card .dora-card-bottom {
+	grid-column: 1 / -1;
+}
+.dora-loading {
+	display: flex;
+	min-height: 55vh;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	color: var(--dora-ink);
+}
+.dora-loading img {
+	width: 110px;
+	animation: dora-float 1.5s ease-in-out infinite alternate;
+}
+.dora-loading strong {
+	font-size: 17px;
+}
+.dora-loading span {
+	color: var(--dora-muted);
+	font-size: 12px;
+}
+.dora-back {
+	display: inline-flex;
+	gap: 7px;
+	align-items: center;
+	background: var(--dora-panel);
+	padding: 8px 15px;
+	border-radius: 18px;
+	margin-bottom: 16px;
+}
+.dora-theme .server-info .bg-card {
+	background: var(--dora-panel);
+	border: 1px solid var(--dora-line);
+	box-shadow: 0 4px 0 #086a9d22;
+	border-radius: 20px;
+}
+.dora-theme .server-info .text-muted-foreground {
+	color: var(--dora-muted);
+}
+.dora-theme .server-empty-state {
+	background: var(--dora-panel);
+	border-radius: 24px;
+	color: var(--dora-muted);
+}
+.dora-footer {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 16px;
+	margin-top: 32px;
+	padding: 16px 5px;
+	font-size: 11px;
+	color: #143d59;
+	text-shadow: 0 1px #fff5;
+}
+.dark .dora-footer {
+	color: #c5e6f7;
+	text-shadow: none;
+}
+.dora-footer > span:last-child {
+	text-align: right;
+}
+.dora-footer a {
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+@keyframes dora-float {
+	from {
+		transform: translateY(-8px) rotate(-2deg);
+	}
+	to {
+		transform: translateY(8px) rotate(2deg);
+	}
+}
+@keyframes dora-twinkle {
+	from {
+		opacity: 0.35;
+	}
+	to {
+		opacity: 0.8;
+	}
+}
+@keyframes dora-pop {
+	from {
+		transform: translateY(20px) scale(0.75);
+		opacity: 0;
+	}
+	to {
+		transform: none;
+		opacity: 1;
+	}
+}
+@media (min-width: 1600px) {
+	.dora-shell {
+		padding-top: 30px;
+	}
+	.dora-stat {
+		min-height: 140px;
+	}
+	.dora-card-body {
+		gap: 14px;
+	}
+	.dora-meter > div:first-child {
+		font-size: 11px;
+	}
+}
+@media (max-width: 1150px) {
+	.dora-shell {
+		padding: 18px 24px;
+	}
+	.dora-theme .server-card-list {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+	.dora-secret-toggle {
+		left: auto;
+		right: 8px;
+		top: -22px;
+		width: 25px;
+	}
+	.dora-stat {
+		padding: 12px 10px;
+	}
+	.dora-stat > span {
+		font-size: 10px;
+	}
+	.dora-stat-icon {
+		width: 16px;
+	}
+	.dora-connection {
+		display: none;
+	}
+}
+@media (max-width: 850px) {
+	.dora-shell {
+		padding: 14px 18px;
+	}
+	.dora-overview {
+		grid-template-columns: 1fr;
+	}
+	.dora-stat {
+		min-height: 100px;
+	}
+	.dora-stat strong {
+		font-size: 24px;
+	}
+	.dora-map {
+		min-height: 235px;
+	}
+	.dora-map > svg {
+		height: 235px;
+		min-height: 235px;
+	}
+	.dora-theme .server-card-list {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	.dora-brand strong {
+		font-size: 16px;
+	}
+	.dora-inline-card .dora-card {
+		grid-template-columns: 165px 1fr;
+	}
+}
+@media (max-width: 580px) {
+	.dora-shell {
+		padding: 12px 12px 20px;
+	}
+	.dora-header {
+		gap: 7px;
+		padding: 7px 9px 10px;
+		border-radius: 22px;
+	}
+	.dora-avatar {
+		width: 38px;
+		height: 38px;
+	}
+	.dora-avatar img {
+		width: 34px;
+		height: 44px;
+	}
+	.dora-brand strong {
+		font-size: 13px;
+	}
+	.dora-brand span {
+		font-size: 9px;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.dora-header-actions {
+		gap: 4px;
+	}
+	.dora-sky-control {
+		padding: 7px 4px;
+	}
+	.dora-sky-control svg {
+		display: none;
+	}
+	.dora-sky-control select {
+		max-width: 74px;
+		font-size: 10px;
+	}
+	.dora-icon-button {
+		padding: 6px;
+	}
+	.dora-header-actions button {
+		padding: 6px;
+		height: 29px;
+	}
+	.dora-header-actions svg {
+		width: 15px;
+	}
+	.dora-stat-grid {
+		gap: 7px;
+	}
+	.dora-stat {
+		min-height: 95px;
+		padding: 10px 8px;
+		border-radius: 15px;
+	}
+	.dora-stat strong {
+		font-size: 18px;
+		letter-spacing: -0.5px;
+	}
+	.dora-stat > span {
+		font-size: 10px;
+		max-width: 90px;
+		padding-right: 8px;
+	}
+	.dora-stat-icon {
+		width: 13px;
+		right: 6px;
+		top: 10px;
+	}
+	.dora-map {
+		border-radius: 18px;
+	}
+	.dora-theme .server-overview-controls {
+		flex-wrap: wrap;
+		margin-top: 12px;
+	}
+	.dora-theme .server-overview-controls > section {
+		width: 100%;
+		order: 2;
+	}
+	.dora-theme .server-overview-controls > div {
+		margin-left: auto;
+	}
+	.dora-theme .server-card-list {
+		grid-template-columns: 1fr;
+		gap: 12px;
+		margin-top: 12px;
+	}
+	.dora-card-head h2 {
+		font-size: 15px;
+	}
+	.dora-card-body {
+		padding: 16px;
+		gap: 12px;
+	}
+	.dora-meter > div:first-child {
+		font-size: 12px;
+	}
+	.dora-meter small {
+		display: inline;
+		font-size: 9px;
+	}
+	.dora-meter b {
+		font-size: 13px;
+	}
+	.dora-meter p {
+		font-size: 10px;
+	}
+	.dora-transfer b {
+		font-size: 14px;
+	}
+	.dora-transfer small {
+		font-size: 10px;
+	}
+	.dora-card-meta {
+		font-size: 11px;
+	}
+	.dora-card-bottom {
+		font-size: 11px;
+	}
+	.dora-footer {
+		flex-direction: column;
+		text-align: center;
+		gap: 8px;
+	}
+	.dora-footer > span:last-child {
+		text-align: center;
+	}
+	.dora-inline-card .dora-card {
+		display: block;
+	}
+	.dora-inline-card .dora-card-head {
+		border-right: 0;
+		border-bottom: 5px solid #e60012;
+	}
+	.dora-inline-card .dora-card-bell {
+		top: auto;
+		right: auto;
+		left: calc(50% - 9px);
+		bottom: -11px;
+	}
+	.dora-inline-card .dora-card-body {
+		display: flex;
+	}
+	.dora-pocket {
+		gap: 10px;
+		padding: 12px;
+	}
+	.dora-pocket > img {
+		width: 38px;
+	}
+	.dora-pocket strong {
+		font-size: 14px;
+	}
+	.dora-pocket p {
+		font-size: 11px;
+	}
+	.dora-gadget-float {
+		display: none;
+	}
+}
+@media (max-width: 360px) {
+	.dora-brand span {
+		display: none;
+	}
+	.dora-sky-control select {
+		max-width: 61px;
+	}
+	.dora-stat strong {
+		font-size: 16px;
+	}
+	.dora-stat > span {
+		font-size: 9px;
+	}
+	.dora-meter small {
+		display: none;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.dora-theme *,
+	.dora-theme *::before,
+	.dora-theme *::after {
+		animation: none !important;
+		transition: none !important;
+		scroll-behavior: auto !important;
+	}
+}
+
+/* Native stretched detail link: supports keyboard, new tabs and link copying.
+   Billing/vendor links remain independent above the stretched click target. */
+.dora-card {
+	position: relative;
+}
+.dora-card-detail {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	border-radius: inherit;
+}
+.dora-card a:not(.dora-card-detail),
+.dora-card button {
+	position: relative;
+	z-index: 2;
+}
+.dora-card:focus-within {
+	outline: 3px solid #f6c440;
+	outline-offset: 3px;
+}
+
+/* Keep operational values readable at desktop density. */
+.dora-meter > div:first-child {
+	font-size: 11px;
+}
+.dora-meter b {
+	font-size: 12px;
+}
+.dora-meter p,
+.dora-transfer small {
+	font-size: 10px;
+}
+.dora-theme .server-overview-controls .bg-accent {
+	background: var(--dora-panel);
+	color: var(--dora-ink);
+}
+@media (max-width: 580px) {
+	.dora-meter > div:first-child {
+		font-size: 12px;
+	}
+	.dora-meter b {
+		font-size: 13px;
+	}
+}
+
+/* Metadata needs its own surface; scenery must never sit behind small labels. */
+.dora-theme .server-detail-overview {
+	background: var(--dora-panel);
+	border: 2px solid var(--dora-line);
+	padding: 20px;
+	border-radius: 20px;
+	box-shadow: 0 5px 0 #00547725;
+}
+@media (max-width: 580px) {
+	.dora-theme .server-detail-overview {
+		padding: 15px;
+	}
+}
+
+/* Compact sky menu: no operating-system select popup. */
+.dora-sky-control {
+	border: 1px solid var(--dora-line);
+	gap: 5px;
+	white-space: nowrap;
+	font-size: 12px;
+	color: var(--dora-ink);
+}
+.dora-sky-control:hover,
+.dora-sky-control[data-state="open"] {
+	background: var(--dora-line);
+}
+.dora-sky-menu {
+	width: 258px;
+	max-width: calc(100vw - 24px);
+	padding: 6px;
+	border: 1px solid var(--dora-line);
+	border-radius: 16px;
+	background: var(--dora-panel);
+	color: var(--dora-ink);
+	box-shadow: 0 12px 35px #00253a35;
+}
+.dora-sky-option {
+	gap: 9px;
+	border-radius: 11px;
+	padding-top: 9px;
+	padding-bottom: 9px;
+	cursor: pointer;
+}
+.dora-sky-option[data-state="checked"],
+.dora-sky-option[data-highlighted] {
+	background: var(--dora-soft);
+	color: var(--dora-ink);
+}
+.dora-sky-option b {
+	display: block;
+	font-size: 12px;
+	font-weight: 600;
+}
+.dora-sky-option small {
+	display: block;
+	font-size: 10px;
+	color: var(--dora-muted);
+	line-height: 1.6;
+}
+.dora-total-traffic {
+	position: relative;
+	z-index: 1;
+	width: 100%;
+	display: grid;
+	gap: 7px;
+	margin-top: 8px;
+}
+.dora-total-traffic > div {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 4px;
+}
+.dora-total-traffic dt {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	color: var(--dora-muted);
+	font-size: 10px;
+	white-space: nowrap;
+}
+.dora-total-traffic dd {
+	font-size: clamp(13px, 1.3vw, 20px);
+	font-weight: 800;
+	letter-spacing: -0.5px;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+.dora-total-traffic > div:first-child dt {
+	color: #c2478d;
+}
+.dora-total-traffic > div:last-child dt {
+	color: #16857b;
+}
+.dark .dora-total-traffic > div:first-child dt {
+	color: #f291c9;
+}
+.dark .dora-total-traffic > div:last-child dt {
+	color: #5edbcc;
+}
+.dora-network,
+.dora-network g {
+	pointer-events: none;
+	cursor: default;
+}
+.dora-network-track {
+	fill: none;
+	stroke: #218bb2;
+	stroke-width: 1.1;
+	opacity: 0.25;
+}
+.dora-network-flow {
+	fill: none;
+	stroke-width: 2.4;
+	stroke-linecap: round;
+	stroke-dasharray: 2 98;
+	animation: dora-data-flow 5s linear infinite;
+	animation-delay: var(--flow-delay);
+}
+.dora-network-flow.upload {
+	stroke: #d14a9f;
+}
+.dora-network-flow.download {
+	stroke: #009fbc;
+	animation-direction: reverse;
+	animation-duration: 7s;
+}
+.dark .dora-network-track {
+	stroke: #4cbdda;
+	opacity: 0.3;
+}
+.dark .dora-network-flow.upload {
+	stroke: #ff91d0;
+}
+.dark .dora-network-flow.download {
+	stroke: #5ef0f5;
+}
+.dora-map-halo.is-offline {
+	animation: none;
+	fill: #7893a344;
+}
+@keyframes dora-data-flow {
+	from {
+		stroke-dashoffset: 0;
+	}
+	to {
+		stroke-dashoffset: -100;
+	}
+}
+
+.dora-companion {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 16px;
+	margin: 32px auto 0;
+	min-height: 118px;
+	width: fit-content;
+	max-width: 100%;
+	pointer-events: none;
+}
+.dora-companion-figure {
+	position: relative;
+	flex: none;
+	width: 100px;
+	height: 118px;
+}
+.dora-companion-figure > img {
+	width: 83px;
+	height: 110px;
+	object-fit: contain;
+	animation: dora-companion-bob 5s ease-in-out infinite;
+}
+.dora-dorayaki {
+	position: absolute;
+	width: 55px;
+	right: 0;
+	bottom: 5px;
+	transform: rotate(-12deg);
+	filter: drop-shadow(0 3px 2px #57351420);
+}
+.dora-companion-spark {
+	position: absolute;
+	right: 2px;
+	top: 10px;
+	color: #ffcb38;
+	font-size: 25px;
+	animation: dora-twinkle 2s ease-in-out infinite alternate;
+}
+.dora-companion-bubble {
+	padding: 12px 16px;
+	border: 2px solid var(--dora-line);
+	border-radius: 18px 18px 18px 3px;
+	background: var(--dora-panel);
+	color: var(--dora-ink);
+	font-size: 13px;
+	box-shadow: 0 4px 0 #006a8c15;
+}
+.dora-companion-bubble small {
+	display: block;
+	color: var(--dora-muted);
+	font-size: 10px;
+	margin-top: 3px;
+}
+.dora-footer {
+	justify-content: center;
+	margin-top: 4px;
+}
+@keyframes dora-companion-bob {
+	0%,
+	100% {
+		transform: rotate(-3deg);
+	}
+	50% {
+		transform: rotate(3deg) translateY(-4px);
+	}
+}
+@media (max-width: 580px) {
+	.dora-sky-control svg {
+		display: block;
+	}
+	.dora-sky-control svg:last-child {
+		display: none;
+	}
+	.dora-sky-control {
+		font-size: 10px;
+		gap: 3px;
+	}
+	.dora-total-traffic {
+		gap: 4px;
+	}
+	.dora-total-traffic > div {
+		flex-wrap: wrap;
+		gap: 0 3px;
+	}
+	.dora-total-traffic dt {
+		font-size: 9px;
+	}
+	.dora-total-traffic dd {
+		font-size: 13px;
+	}
+	.dora-companion {
+		gap: 8px;
+		margin-top: 24px;
+	}
+	.dora-companion-bubble {
+		padding: 9px 10px;
+		font-size: 11px;
+	}
+	.dora-companion-bubble small {
+		font-size: 9px;
+	}
+}
+
+/* Mobile: view toggles and sort share one row; server groups follow only when present. */
+@media (max-width: 580px) {
+	.dora-theme .server-overview-controls {
+		display: grid;
+		grid-template-columns: repeat(3, auto) minmax(0, 1fr);
+		align-items: center;
+		gap: 8px;
+	}
+	.dora-theme .server-overview-controls > section {
+		display: contents;
+	}
+	.dora-theme .server-overview-controls > section > button {
+		grid-row: 1;
+		width: 32px;
+		height: 32px;
+		padding: 8px;
+	}
+	.dora-theme .server-overview-controls > section > div {
+		grid-column: 1 / -1;
+		grid-row: 2;
+		min-width: 0;
+		max-width: 100%;
+	}
+	.dora-theme .server-overview-controls > div {
+		grid-column: 4;
+		grid-row: 1;
+		justify-self: end;
+		max-width: 100%;
+		min-width: 0;
+		margin-left: 0;
+	}
+	.dora-theme .server-overview-controls > div button {
+		min-width: 0;
+		font-size: 11px;
+		gap: 3px;
+		padding-left: 7px;
+		padding-right: 7px;
+	}
+	.dora-theme .server-overview-controls [role="combobox"] {
+		overflow: hidden;
+	}
+	.dora-theme .server-overview-controls [role="combobox"] span {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+}
+
+/* Operational labels lead; whimsical gadget names remain as secondary captions. */
+.dora-meter > div:first-child {
+	font-size: 12px;
+}
+.dora-meter > div:first-child > span {
+	color: var(--dora-ink);
+	font-weight: 650;
+}
+.dora-meter .dora-meter-name {
+	display: block;
+	font-size: 10px;
+	line-height: 1.5;
+	margin-top: 4px;
+	color: var(--dora-muted);
+}
+.dora-meter p {
+	font-size: 11px;
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+.dora-meter b {
+	font-size: 13px;
+}
+.dora-theme .server-info .recharts-cartesian-axis-tick-value {
+	paint-order: stroke;
+	stroke: var(--dora-panel);
+	stroke-width: 3px;
+	stroke-linejoin: round;
+	fill: var(--dora-muted);
+	opacity: 1;
+	font-size: 11px;
+}
+.dark .dora-theme .server-info .recharts-cartesian-axis-tick-value {
+	fill: #b9d4e6;
+}
+.dora-stat .dora-stat-rate {
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+.dora-stat-rate .dora-rate-unit {
+	font-size: 0.65em;
+	letter-spacing: 0;
+	font-weight: 650;
+}
+
+/* A visible dot stays small while its finger target is 44 CSS pixels. */
+.dora-map-canvas {
+	height: 100%;
+}
+.dora-map-canvas > svg {
+	display: block;
+	width: 100%;
+	height: 100%;
+	min-height: 250px;
+	max-height: 300px;
+}
+.dora-map-hit {
+	fill: transparent;
+	pointer-events: all;
+}
+.dora-map-halo,
+.dora-map-dot {
+	pointer-events: none;
+}
+.dora-map-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-shrink: 0;
+}
+.dora-map-title button.dora-map-size {
+	display: none;
+}
+.dora-map-caption {
+	pointer-events: none;
+}
+.dora-map:has(.dora-door-panel) .dora-map-caption,
+.dora-map:has(.dora-door-panel) .dora-map-peek {
+	visibility: hidden;
+}
+.dora-door-panel {
+	padding: 14px;
+	gap: 12px;
+}
+.dora-door-panel > img {
+	width: 45px;
+}
+.dora-door-panel .dora-destinations {
+	max-height: 130px;
+	overscroll-behavior: contain;
+	padding: 3px;
+}
+.dora-door-panel .dora-destinations a,
+.dora-door-panel .dora-region-choice {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	min-height: 44px;
+	margin: 0;
+	padding: 8px 10px;
+	border-radius: 8px;
+	text-align: left;
+	background: var(--dora-soft);
+	color: var(--dora-ink);
+	font-size: 12px;
+	text-decoration: none;
+}
+.dora-door-panel .dora-door-close {
+	min-height: 36px;
+	margin-top: 4px;
+}
+.dora-door-panel strong {
+	font-size: 13px;
+}
+
+/* Pause CSS animations only. Telemetry and navigation never depend on this state. */
+.dora-theme [data-dora-motion="paused"],
+.dora-theme [data-dora-motion="paused"] *,
+.dora-theme [data-dora-motion="paused"]::before,
+.dora-theme [data-dora-motion="paused"]::after {
+	animation-play-state: paused !important;
+}
+@media (max-width: 850px) {
+	.dora-map-canvas > svg {
+		height: 235px;
+		min-height: 235px;
+	}
+}
+@media (max-width: 580px) {
+	.dora-stat .dora-stat-rate {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 2px;
+		line-height: 1.2;
+		margin-top: 8px;
+	}
+	.dora-stat-rate .dora-rate-number {
+		font-size: clamp(18px, 5.3vw, 25px);
+		white-space: nowrap;
+	}
+	.dora-stat-rate .dora-rate-unit {
+		font-size: 12px;
+		color: var(--dora-muted);
+	}
+	.dora-map[data-compact="true"] {
+		min-height: 198px;
+	}
+	.dora-map[data-compact="true"] .dora-map-canvas > svg {
+		height: 198px;
+		min-height: 198px;
+	}
+	.dora-map-title {
+		inset: 10px 10px auto;
+	}
+	.dora-map-title strong {
+		font-size: 12px;
+	}
+	.dora-map-title p {
+		font-size: 10px;
+	}
+	.dora-map-actions {
+		gap: 6px;
+	}
+	.dora-map-title button {
+		position: relative;
+		padding: 5px 8px;
+	}
+	.dora-map-title button.dora-map-size {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 30px;
+		height: 32px;
+		padding: 0;
+	}
+	.dora-map-title button::after {
+		content: "";
+		position: absolute;
+		inset: -6px -3px;
+	}
+	.dora-map-caption {
+		right: 10px;
+		bottom: 7px;
+		font-size: 10px;
+	}
+	.dora-map[data-compact="true"] .dora-door-panel > img {
+		display: none;
+	}
+	.dora-map[data-compact="true"] .dora-door-panel .dora-destinations {
+		max-height: 105px;
+	}
+	.dora-theme .server-overview-controls > section > button {
+		position: relative;
+	}
+	.dora-theme .server-overview-controls > section > button::after {
+		content: "";
+		position: absolute;
+		inset: -6px -4px;
+	}
+	.dora-theme .server-overview-controls {
+		row-gap: 12px;
+	}
+	.dora-meter > div:first-child {
+		font-size: 13px;
+	}
+	.dora-meter .dora-meter-name {
+		font-size: 11px;
+	}
+}
+
+/* Keep both cumulative directions aligned even when their units differ. */
+@media (max-width: 580px) {
+	.dora-total-traffic > div {
+		flex-direction: column;
+		align-items: flex-start;
+		flex-wrap: nowrap;
+	}
+}
+
+/* Reserve separate title/caption space so compact map paths never cross labels. */
+@media (max-width: 580px) {
+	.dora-map .dora-map-canvas {
+		height: 235px;
+		padding: 42px 0 24px;
+	}
+	.dora-map[data-compact="true"] .dora-map-canvas {
+		height: 198px;
+	}
+	.dora-map .dora-map-canvas > svg,
+	.dora-map[data-compact="true"] .dora-map-canvas > svg {
+		height: 100%;
+		min-height: 0;
+		max-height: none;
+	}
+}

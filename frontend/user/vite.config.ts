@@ -31,22 +31,64 @@ const getVendorChunkName = (moduleId: string) => {
 };
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
 	base: "/",
 	define: {
 		"import.meta.env.VITE_GIT_HASH": JSON.stringify(getGitHash()),
+		"import.meta.env.VITE_THEME_VARIANT": JSON.stringify(
+			mode === "doraemon" ? "doraemon" : "default",
+		),
 	},
-	plugins: [react()],
+	plugins: [
+		react(),
+		{
+			name: "doraemon-html",
+			generateBundle() {
+				if (mode === "doraemon")
+					this.emitFile({
+						type: "asset",
+						fileName: "doraemon-LICENSE.txt",
+						source: fs.readFileSync(
+							path.resolve(__dirname, "src/themes/doraemon/LICENSE"),
+							"utf8",
+						),
+					});
+			},
+			transformIndexHtml(html) {
+				if (mode !== "doraemon") return html;
+				return html
+					.replace(
+						'const storageKey = "vite-ui-theme"',
+						'const storageKey = "doraemon-ui-theme"',
+					)
+					.replace(
+						'let theme = "system"',
+						'const beijingHour = (new Date().getUTCHours() + 8) % 24; let theme = beijingHour >= 7 && beijingHour < 19 ? "light" : "dark"',
+					)
+					.replace(
+						"const storedTheme = localStorage.getItem(storageKey)",
+						'const skyMode = localStorage.getItem("doraemon-sky"); const storedTheme = skyMode === "light" || skyMode === "dark" ? skyMode : theme; localStorage.setItem(storageKey, storedTheme)',
+					)
+					.replace(
+						"<title>哪吒监控 Nezha Monitoring</title>",
+						"<title>哆啦 A 梦 · 哪吒监控</title>",
+					);
+			},
+		},
+	],
 	resolve: {
 		alias: {
 			"@": path.resolve(__dirname, "./src"),
 		},
 	},
 	server: {
-		https: fs.existsSync("./.cert/key.pem") && fs.existsSync("./.cert/cert.pem") ? {
-			key: fs.readFileSync("./.cert/key.pem"),
-			cert: fs.readFileSync("./.cert/cert.pem"),
-		} : undefined,
+		https:
+			fs.existsSync("./.cert/key.pem") && fs.existsSync("./.cert/cert.pem")
+				? {
+						key: fs.readFileSync("./.cert/key.pem"),
+						cert: fs.readFileSync("./.cert/cert.pem"),
+					}
+				: undefined,
 		proxy: {
 			"/api/v1/ws/server": {
 				target: "ws://localhost:8008",
@@ -97,6 +139,7 @@ export default defineConfig({
 		},
 	},
 	build: {
+		outDir: mode === "doraemon" ? "dist-doraemon" : "dist",
 		// Target older Safari versions (iOS 15/16) explicitly, since Vite's
 		// default "widely-available browsers" target only covers the latest
 		// two major Safari releases and would otherwise emit syntax that
@@ -120,4 +163,4 @@ export default defineConfig({
 		},
 		chunkSizeWarningLimit: 1500,
 	},
-});
+}));

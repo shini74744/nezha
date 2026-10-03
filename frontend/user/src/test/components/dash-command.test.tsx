@@ -89,6 +89,16 @@ describe("DashCommand", () => {
 		expect(screen.queryByText("edge-7")).not.toBeInTheDocument();
 	});
 
+	it("lets independent themes own sky controls without losing server search", () => {
+		seedWebSocketData();
+		render(<DashCommand showThemeShortcuts={false} />);
+		expect(screen.getByText("edge-7")).toBeInTheDocument();
+		expect(screen.getByText("Home")).toBeInTheDocument();
+		expect(screen.queryByText("ToggleDarkMode")).not.toBeInTheDocument();
+		expect(screen.queryByText("ToggleLightMode")).not.toBeInTheDocument();
+		expect(screen.queryByText("ToggleSystemMode")).not.toBeInTheDocument();
+	});
+
 	it("renders server and shortcut commands, handles selection, and listens for keyboard toggle", async () => {
 		const user = userEvent.setup();
 		seedWebSocketData();

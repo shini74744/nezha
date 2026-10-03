@@ -13,6 +13,8 @@
 		"mock:server": "node scripts/mock-nezha-server.js",
 		"typecheck": "tsc -b",
 		"build": "tsc -b && vite build",
+		"build:doraemon": "tsc -b && vite build --mode doraemon",
+		"dev:doraemon": "vite --mode doraemon",
 		"lint": "biome lint",
 		"lint:fix": "biome lint --fix",
 		"format": "biome format --write .",

@@ -1,7 +1,9 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactNode } from "react";
+import { isValidElement, type ReactNode } from "react";
+import { NetworkRateContext } from "@/context/network-rate-context";
+import { formatNetworkRate } from "@/themes/doraemon/format";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ServerDetailChart from "@/components/ServerDetailChart";
 import { createServer, createSettingResponse } from "@/test/fixtures";
@@ -29,7 +31,12 @@ vi.mock("recharts", () => {
 			data?: unknown[];
 			dataKey?: string;
 		}) => (
-			<div data-key={dataKey} data-points={data?.length} data-testid={testId}>
+			<div
+				data-key={dataKey}
+				data-values={data ? JSON.stringify(data) : undefined}
+				data-points={data?.length}
+				data-testid={testId}
+			>
 				{children}
 			</div>
 		);
@@ -58,12 +65,36 @@ vi.mock("recharts", () => {
 		),
 		Sankey: genericChart,
 		ScatterChart: genericChart,
-		Tooltip: ({ content }: { content?: ReactNode }) => (
-			<div data-testid="chart-tooltip">{content}</div>
-		),
+		Tooltip: ({ content }: { content?: ReactNode }) => {
+			const formatter = isValidElement<{
+				formatter?: (value: number, name: string) => ReactNode;
+			}>(content)
+				? content.props.formatter
+				: undefined;
+			const text = (node: ReactNode): string => {
+				if (Array.isArray(node)) return node.map(text).join("");
+				if (isValidElement<{ children?: ReactNode }>(node))
+					return text(node.props.children);
+				return typeof node === "string" || typeof node === "number"
+					? String(node)
+					: "";
+			};
+			return (
+				<div
+					data-testid="chart-tooltip"
+					data-sample={text(formatter?.(3, "upload"))}
+				>
+					{content}
+				</div>
+			);
+		},
 		Treemap: genericChart,
 		XAxis: createElement("x-axis"),
-		YAxis: createElement("y-axis"),
+		YAxis: ({
+			tickFormatter,
+		}: {
+			tickFormatter?: (value: number) => string;
+		}) => <div data-testid="y-axis" data-unit-at-one={tickFormatter?.(1)} />,
 	};
 });
 
@@ -233,6 +264,60 @@ describe("ServerDetailChart", () => {
 		expect(detailChartMocks.fetchServerMetrics).not.toHaveBeenCalled();
 	});
 
+	it("keeps default network units without a theme formatter", async () => {
+		seedWebSocketData();
+		renderWithQuery(<ServerDetailChart server_id="7" />);
+		expect(await screen.findByText("3.00M/s")).toBeInTheDocument();
+		expect(screen.getByText("4.00M/s")).toBeInTheDocument();
+		expect(
+			screen
+				.getAllByTestId("y-axis")
+				.some((el) => el.dataset.unitAtOne === "1M/s"),
+		).toBe(true);
+	});
+	it("uses the same SI formatter for realtime numbers, axes, tooltips and history", async () => {
+		seedWebSocketData();
+		detailChartMocks.fetchServerMetrics.mockImplementation(
+			(_id: number, metric: string) => {
+				const response = metricsResponse(metric);
+				if (metric.startsWith("net_"))
+					response.data.data_points.forEach((p) => {
+						p.value = 125_000_000;
+					});
+				return Promise.resolve(response);
+			},
+		);
+		renderWithQuery(
+			<NetworkRateContext.Provider value={formatNetworkRate}>
+				<ServerDetailChart server_id="7" />
+			</NetworkRateContext.Provider>,
+		);
+		expect((await screen.findAllByText("25.2 Mbps")).length).toBeGreaterThan(0);
+		expect(screen.getByText("33.6 Mbps")).toBeInTheDocument();
+		expect(screen.queryByText("3.00M/s")).not.toBeInTheDocument();
+		expect(
+			screen
+				.getAllByTestId("chart-tooltip")
+				.some((el) => el.dataset.sample?.includes("25.2 Mbps")),
+		).toBe(true);
+		expect(
+			screen
+				.getAllByTestId("y-axis")
+				.some((el) => el.dataset.unitAtOne === "8.4 Mbps"),
+		).toBe(true);
+		await userEvent.click(screen.getByText("serverDetailChart.period1d"));
+		await waitFor(() => {
+			const net = screen
+				.getAllByTestId("line-chart")
+				.find((el) => el.dataset.values?.includes('"upload"'));
+			expect(net).toBeDefined();
+			const samples = JSON.parse(net!.dataset.values!);
+			expect(samples[0].upload).toBe(125_000_000 / 1024 ** 2);
+			expect(formatNetworkRate(samples[0].upload * 1024 ** 2)).toBe(
+				"1.00 Gbps",
+			);
+		});
+	});
 	it("prevents historical periods when TSDB is disabled", async () => {
 		const user = userEvent.setup();
 		seedWebSocketData();
