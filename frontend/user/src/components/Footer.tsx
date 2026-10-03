@@ -18,8 +18,8 @@ const nativeFooter=useFeature('footer');
 		retry: false,
 	});
 
-	if(nativeFooter.enabled)return <NativeFooter/>;
-	return (
+	return <div data-footer-region className="nz-footer-region">
+		{nativeFooter.enabled ? <NativeFooter/> : (
 		<footer className="mx-auto w-full max-w-5xl px-4 lg:px-0 pb-4 server-footer">
 			<section className="flex flex-col">
 				<section className="mt-1 flex items-center sm:flex-row flex-col justify-between gap-2 text-[13px] font-light tracking-tight text-neutral-600/50 dark:text-neutral-300/50 server-footer-name">
@@ -62,7 +62,8 @@ const nativeFooter=useFeature('footer');
 				</section>
 			</section>
 		</footer>
-	);
+		)}
+	</div>;
 };
 
 export default Footer;

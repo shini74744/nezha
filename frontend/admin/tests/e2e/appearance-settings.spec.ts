@@ -357,8 +357,10 @@ for(const width of [390,1366])test("runtime prefix precedes start date "+width,a
 for(const width of [390,1366])test("visitor IP complete editor saves all settings "+width,async({page})=>{
  await page.setViewportSize({width,height:900});const {updates}=await setup(page);await page.getByRole("button",{name:"访客 IP 与网络检测",exact:true}).click();
  await expect(page.getByLabel("检测节点名称 1",{exact:true})).toHaveValue("Google");await expect(page.getByLabel("检测节点名称 2",{exact:true})).toHaveValue("CF");
- await page.getByRole("button",{name:"添加查询接口",exact:true}).click();await page.getByLabel("IP 查询接口 4",{exact:true}).fill("https://custom.test/json");
- await page.getByRole("button",{name:"删除查询接口 2",exact:true}).click();
+ const defaultUrls=baseConfig().features.visitorIP.ipApiUrls as string[];
+ await expect(page.getByRole("textbox",{name:/^IP 查询接口 \d+$/})).toHaveCount(defaultUrls.length);
+ await page.getByRole("button",{name:"添加查询接口",exact:true}).click();await page.getByLabel("IP 查询接口 "+(defaultUrls.length+1),{exact:true}).fill("https://custom.test/json");
+ await page.getByRole("button",{name:"删除查询接口 1",exact:true}).click();
  await page.getByLabel("信息补全接口（留空关闭）",{exact:true}).fill("https://fallback.test/json");
  for(const [label,value] of [["IP 查询超时（毫秒）","900"],["信息补全超时（毫秒）","800"],["首次检测超时（毫秒）","700"],["切换节点超时（毫秒）","600"]])await page.getByLabel(label,{exact:true}).fill(value);
  await page.getByRole("button",{name:"添加检测节点",exact:true}).click();
@@ -367,7 +369,7 @@ for(const width of [390,1366])test("visitor IP complete editor saves all setting
  for(const name of ["显示地区","显示 ASN","显示运营商","显示浏览器估算带宽"])await page.getByRole("switch",{name,exact:true}).click();
  await page.getByRole("button",{name:"保存美化设置",exact:true}).click();await expect.poll(()=>updates.length).toBe(1);
  expect(updates[0].config.features.visitorIP).toMatchObject({queryTimeout:900,fallbackTimeout:800,checkTimeout:700,switchTimeout:600,showRegion:false,showASN:false,showOrganization:false,showDownlink:false,fallbackUrl:"https://fallback.test/json"});
- expect(updates[0].config.features.visitorIP.ipApiUrls).toHaveLength(3);expect(updates[0].config.features.visitorIP.checkNodes.map((n:any)=>n.name)).toEqual(["Google","Custom"]);
+ expect(updates[0].config.features.visitorIP.ipApiUrls).toEqual([...defaultUrls.slice(1),"https://custom.test/json"]);expect(updates[0].config.features.visitorIP.checkNodes.map((n:any)=>n.name)).toEqual(["Google","Custom"]);
  await page.getByRole("button",{name:"重新读取",exact:true}).click();await expect(page.getByLabel("检测节点名称 2",{exact:true})).toHaveValue("Custom");
  await page.getByLabel("检测节点地址 2",{exact:true}).fill("javascript:alert(1)");await expect(page.getByRole("button",{name:"保存美化设置",exact:true})).toBeDisabled();
  await page.getByLabel("检测节点地址 2",{exact:true}).fill("https://custom.test/ping");await page.getByLabel("检测节点名称 2",{exact:true}).fill("Google");await expect(page.getByRole("button",{name:"保存美化设置",exact:true})).toBeDisabled();
@@ -397,7 +399,7 @@ test("independent peak-cut and mutually exclusive mascot settings save and reloa
  await expect(page.getByLabel("Sakana 默认角色",{exact:true})).toHaveCount(0);
 });
 
-test("custom Sakana roles add, save, reload, validate and delete selected",async({page})=>{
+test("custom Sakana roles add, save, reload, validate and delete selected",async({page},testInfo)=>{
  const {updates}=await setup(page);await page.getByRole("button",{name:"看板娘",exact:true}).click();
  await page.getByLabel("看板娘类型",{exact:true}).selectOption("sakana");
  await page.getByRole("button",{name:"添加自定义角色",exact:true}).click();
@@ -414,6 +416,9 @@ test("custom Sakana roles add, save, reload, validate and delete selected",async
  expect(updates[0].config.features.live2d.customCharacters[0].scale).toBe(150);
  expect(updates[0].config.features.live2d.character).toBe(updates[0].config.features.live2d.customCharacters[0].id);
  await page.reload();await page.getByRole("button",{name:"看板娘",exact:true}).click();
+ await expect(page.getByLabel("自定义角色图片 1",{exact:true})).toHaveCount(0);
+ await page.getByRole("group",{name:"自定义角色图片",exact:true}).screenshot({path:testInfo.outputPath("character-fold.png")});
+ await page.getByRole("button",{name:/我的看板娘.*默认角色/}).click();
  await expect(page.getByLabel("自定义角色图片 1",{exact:true})).toHaveValue("https://images.test/role.png");
  await expect(page.getByLabel("自定义角色缩放 1",{exact:true})).toHaveValue("150");
  await page.getByRole("button",{name:"恢复100%",exact:true}).click();await expect(page.getByLabel("自定义角色缩放 1",{exact:true})).toHaveValue("100");
@@ -421,4 +426,22 @@ test("custom Sakana roles add, save, reload, validate and delete selected",async
  await expect(page.getByLabel("Sakana 默认角色",{exact:true})).toHaveValue("chisato");
  await page.getByRole("button",{name:"保存美化设置",exact:true}).click();await expect.poll(()=>updates.length).toBe(2);
  expect(updates[1].config.features.live2d.customCharacters).toEqual([]);
+});
+
+test("theme transparency settings save independently and survive reload",async({page},testInfo)=>{
+ const {updates}=await setup(page);
+ await page.getByRole("button",{name:"背景图片与视频",exact:true}).click();
+ await page.getByLabel("白天模式（亮色）卡片背景不透明度",{exact:true}).fill("0.25");
+ await page.getByLabel("黑夜模式（暗色）卡片背景不透明度",{exact:true}).fill("0.7");
+ await page.getByLabel("白天模式（亮色）卡片模糊（像素）",{exact:true}).fill("2");
+ await page.getByLabel("黑夜模式（暗色）卡片模糊（像素）",{exact:true}).fill("8");
+ await page.getByRole("button",{name:"保存美化设置",exact:true}).click();
+ await expect.poll(()=>updates.length).toBe(1);
+ expect(updates[0].config.features.background).toMatchObject({lightOpacity:0.25,darkOpacity:0.7,lightBlur:2,darkBlur:8,opacity:0.4,blur:4});
+ await page.reload();await page.getByRole("button",{name:"背景图片与视频",exact:true}).click();
+ await expect(page.getByLabel("白天模式（亮色）卡片背景不透明度",{exact:true})).toHaveValue("0.25");
+ await expect(page.getByLabel("黑夜模式（暗色）卡片背景不透明度",{exact:true})).toHaveValue("0.7");
+ await expect(page.getByLabel("白天模式（亮色）卡片模糊（像素）",{exact:true})).toHaveValue("2");
+ await expect(page.getByLabel("黑夜模式（暗色）卡片模糊（像素）",{exact:true})).toHaveValue("8");
+ await page.getByRole("group",{name:"卡片透明效果",exact:true}).screenshot({path:testInfo.outputPath("card-theme-settings.png")});
 });

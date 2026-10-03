@@ -319,7 +319,8 @@ describe("Servers page", () => {
 			lastData: websocketPayload([lowCpu, highCpu]),
 		});
 
-		await user.selectOptions(screen.getByLabelText("Sort metric"), "cpu");
+		await user.click(screen.getByRole("combobox", { name: "Sort metric" }));
+		await user.click(screen.getByRole("option", { name: "sort.types.cpu" }));
 		expect(screen.getAllByTestId("server-card")[0]).toHaveTextContent("beta");
 
 		await user.click(screen.getByLabelText("Toggle sort direction"));
@@ -345,7 +346,8 @@ describe("Servers page", () => {
 
 		expect(screen.getByLabelText("Toggle sort direction")).toBeDisabled();
 
-		await user.selectOptions(screen.getByLabelText("Sort metric"), "name");
+		await user.click(screen.getByRole("combobox", { name: "Sort metric" }));
+		await user.click(screen.getByRole("option", { name: "sort.types.name" }));
 
 		expect(screen.getAllByTestId("server-card")[0]).toHaveTextContent("zeta");
 
@@ -371,7 +373,8 @@ describe("Servers page", () => {
 			lastData: websocketPayload([missingPlatform, linux]),
 		});
 
-		await user.selectOptions(screen.getByLabelText("Sort metric"), "system");
+		await user.click(screen.getByRole("combobox", { name: "Sort metric" }));
+		await user.click(screen.getByRole("option", { name: "sort.types.system" }));
 
 		const cards = screen.getAllByTestId("server-card");
 		expect(cards).toHaveLength(2);

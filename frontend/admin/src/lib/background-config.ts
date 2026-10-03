@@ -16,6 +16,10 @@ export function inferMediaType(src:string):Media["type"] {
 }
 export function upgradeBackground(merged:any, raw:any={}) {
  const value={...merged};
+ // Preserve legacy values, including zero, until a theme has its own setting.
+ for(const [key,legacy] of [["lightBlur","blur"],["darkBlur","blur"],["lightOpacity","opacity"],["darkOpacity","opacity"]]){
+  if(!(key in raw))value[key]=raw[legacy]??merged[legacy];
+ }
  if(!("regionMobileMedia" in raw)&&raw.chinaMedia)value.regionMobileMedia=raw.chinaMedia.map((m:Media)=>({...m}));
  if(!("scheduleRules" in raw)&&["nightEnabled","nightImages","nightStart"].some(key=>key in raw)){
   value.scheduleEnabled=raw.nightEnabled??merged.nightEnabled;

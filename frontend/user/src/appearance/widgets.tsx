@@ -6,6 +6,7 @@ import {
 	type CSSProperties,
 } from "react";
 import { useFeature } from "./context";
+import {FitFooterRow} from "./fit-footer-row";
 import { formatBytes } from "@/lib/format";
 import {greetingMessages, chooseGreeting} from "./greeting-clock";
 import "./rate.css";
@@ -90,7 +91,10 @@ export function NativeName({
 			}
 			style={
 				enabled
-					? { color: online ? "hsl(" + hue.toFixed(0) + ",80%,60%)" : "rgba(255, 0, 0, " + offlineAlpha + ")" }
+					? {
+						color: online ? "hsl(" + hue.toFixed(0) + ",80%,60%)" : "rgba(255, 0, 0, " + offlineAlpha + ")",
+						"--nz-name-light-color": online ? "hsl(" + hue.toFixed(0) + ",72%,28%)" : "rgba(153,27,27," + (0.75 + Number(offlineAlpha) * 0.25).toFixed(3) + ")",
+					} as CSSProperties
 					: undefined
 			}
 		>
@@ -202,7 +206,8 @@ export function NativeFooter() {
 		return () => links.forEach((link) => link.remove());
 	}, [f.enabled]);
 	return (
-		<footer className="mx-auto w-full max-w-5xl px-4 pb-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm">
+		<footer className="mx-auto w-full max-w-5xl px-4 pb-4 text-sm">
+			<FitFooterRow>
 			<a
 				href={f.url}
 				target="_blank"
@@ -227,60 +232,8 @@ export function NativeFooter() {
 			>
 				<i aria-hidden="true" className="fab fa-github" /> {f.poweredText}
 			</a>
+			</FitFooterRow>
 		</footer>
 	);
 }
-export function NativeFooterIP() {
-	const f = useFeature("footerIP"),
-		[visible, setVisible] = useState(false);
-	// Match the original device guard, including narrow desktop windows.
-	const mobile = /Mobi|Android/i.test(navigator.userAgent);
-	useEffect(() => {
-		setVisible(false);
-		if (!f.enabled || mobile) return;
-		let timer = 0,
-			last = window.scrollY;
-		const update = () => {
-			clearTimeout(timer);
-			const down = window.scrollY >= last;
-			last = window.scrollY;
-			if (
-				down &&
-				innerHeight + scrollY >= document.documentElement.scrollHeight - 2
-			)
-				timer = window.setTimeout(() => {
-					if (innerHeight + scrollY >= document.documentElement.scrollHeight - 2)
-						setVisible(true);
-				}, 300);
-			else setVisible(false);
-		};
-		addEventListener("scroll", update, { passive: true });
-		return () => {
-			clearTimeout(timer);
-			removeEventListener("scroll", update);
-		};
-	}, [f.enabled, mobile]);
-	if (!f.enabled) return null;
-	return (
-		<div
-			data-native-footer-ip
-			className="nz-footer-ip"
-			style={{
-				display: mobile ? "none" : undefined,
-				transform: "translateX(-50%) translateY(" + (visible ? 0 : 20) + "px)",
-				opacity: visible ? 1 : 0,
-				pointerEvents: visible ? "auto" : "none",
-				height: f.height,
-			}}
-		>
-			<iframe
-				title="IP 详细信息"
-				src={f.url}
-				loading="lazy"
-				sandbox="allow-scripts allow-same-origin"
-				referrerPolicy="no-referrer"
-				className="h-full w-full rounded-lg border-0"
-			/>
-		</div>
-	);
-}
+export {NativeFooterIP} from "./footer-ip";

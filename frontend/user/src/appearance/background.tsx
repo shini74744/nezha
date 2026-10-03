@@ -55,7 +55,7 @@ export function NativeBackground(){
  },[f.enabled,asVideo,media?.src,muted,sound.enabled,sound.showControl,sound.toggleMuteOnControlClick]);
  if(!f.enabled||!media)return null;
  return <>
-  <style>{".dark .bg-card{background-color:rgba(13,11,9,"+f.opacity+");backdrop-filter:blur("+f.blur+"px);border-color:rgba(13,11,9,.1)}"}</style>
+  <style data-nz-background-cards>{`html:not(.dark) .bg-card{background-color:rgba(255,255,255,${f.lightOpacity});backdrop-filter:blur(${f.lightBlur}px);-webkit-backdrop-filter:blur(${f.lightBlur}px);border-color:rgba(255,255,255,.3)}.dark .bg-card{background-color:rgba(13,11,9,${f.darkOpacity});backdrop-filter:blur(${f.darkBlur}px);border-color:rgba(13,11,9,.1)}`}</style>
   {asVideo?<div className="video-box nz-media" data-background-source={selection?.key.split("[")[0]}>
    <video ref={video} key={media.src} id="myVideo" src={media.src} muted={muted} autoPlay loop playsInline preload="metadata" onError={next}
     onClick={()=>{if(sound.enabled&&sound.unmuteOnVideoClick&&muted)void toggleSound()}}/>

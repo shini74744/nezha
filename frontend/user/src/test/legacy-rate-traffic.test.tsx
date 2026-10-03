@@ -22,7 +22,15 @@ describe("legacy traffic parity",()=>{
   expect(trafficColor(50)).toBe("hsl(60, 65%, 40%)");
   expect(trafficColor(150)).toBe("hsl(0, 65%, 40%)");
  });
- it("keeps quota white and starts with the zero-padded date",()=>{
+ it("offers darker light-mode colors without changing the original palette",()=>{
+  expect(trafficColor(0,true)).toBe("hsl(120, 65%, 25%)");
+  expect(trafficColor(50,true)).toBe("hsl(60, 65%, 25%)");
+  expect(trafficColor(150,true)).toBe("hsl(0, 65%, 25%)");
+  const v=setup();
+  expect((v.container.querySelector(".nz-traffic") as HTMLElement).style.getPropertyValue("--nz-traffic-light-color")).toBe(trafficColor(1007.11/1024*100,true));
+  v.unmount();v.client.clear();
+ });
+ it("keeps quota unstyled inline and starts with the zero-padded date",()=>{
   const v=setup();const values=v.container.querySelector(".nz-traffic-values")!;
   expect(values.children[0].textContent).toBe("1007.11");
   expect(values.children[1].textContent).toBe("GB");

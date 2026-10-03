@@ -116,21 +116,14 @@
 [data-native-speed][data-color="false"] {
 	color: inherit !important;
 }
-.nz-footer-ip {
-	position: fixed;
-	bottom: -20px;
-	left: 50%;
-	transform: translateX(-50%);
-	width: 90%;
-	max-width: 650px;
-	z-index: 9988;
-	transition: opacity 0.5s ease, transform 0.5s ease;
-}
-.nz-footer-ip iframe {
-	background: white;
-	border-radius: 8px;
-	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-}
+.nz-footer-region {width:100%;min-width:0}
+.nz-footer-fit {position:relative;width:100%;min-width:0}
+.nz-footer-side {position:absolute;top:0;width:max-content;white-space:nowrap}
+.nz-footer-side > a {display:inline-block}
+.nz-footer-left {left:0;transform-origin:left center}
+.nz-footer-right {right:0;transform-origin:right center}
+.nz-footer-ip {position:fixed;bottom:-20px;left:50%;transform:translateX(-50%);width:90%;max-width:650px;z-index:9988;transition:opacity .5s ease,transform .5s ease}
+.nz-footer-ip iframe {background:white;border-radius:8px;box-shadow:0 4px 10px rgba(0,0,0,.2)}
 .nz-links a {
 	text-decoration: none !important;
 }

@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useEffect, useState, type CSSProperties} from "react";
 import {useQuery} from "@tanstack/react-query";
 import {useFeature} from "./context";
 import "./traffic.css";
@@ -13,8 +13,8 @@ export function formatTraffic(bytes:number) {
  while(value>=1024&&index<units.length-1){value/=1024;index++;}
  return {value:value.toFixed(index===0?0:2),unit:units[index]};
 }
-export function trafficColor(percent:number) {
- return "hsl("+(120-Math.min(100,Math.max(0,percent))*1.2).toFixed(0)+", 65%, 40%)";
+export function trafficColor(percent:number,light=false) {
+ return "hsl("+(120-Math.min(100,Math.max(0,percent))*1.2).toFixed(0)+", 65%, "+(light?"25%":"40%")+")";
 }
 function dateLabel(value:string) {
  const date=new Date(value);
@@ -39,6 +39,7 @@ function TrafficRow({serverId,stat,interval}:{serverId:number;stat:Traffic;inter
  const direction=stat.direction==="1"?"仅下载（入站）":stat.direction==="3"?"仅上传（出站）":"上传＋下载";
  const note=(stat.partial?"；历史记录不完整，仅统计已保存数据":"")+(stat.estimated?"；包含小时历史或断线间隔估算":"");
  return <div data-native-traffic={serverId} data-quota-type={limited?"limited":stat.quota_type==="unlimited"?"unlimited":"unset"} className="nz-traffic"
+  style={{"--nz-traffic-light-color":limited?trafficColor(percent,true):"#1e3a8a"} as CSSProperties}
   title={stat.name+"；"+direction+note+"；下次重置："+(Number.isNaN(next.getTime())?"":next.toLocaleString("zh-CN",{timeZone:"Asia/Shanghai"}))}>
   <div className="nz-traffic-labels">
    <div className="nz-traffic-values">

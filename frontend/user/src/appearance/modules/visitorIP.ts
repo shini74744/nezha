@@ -304,7 +304,9 @@ const window = scope.window; const document = scope.document;
     const _0x19e73f = _0xec6a48.scrollTop || document.body.scrollTop || 0;
     const _0x251b61 = window.innerHeight || _0xec6a48.clientHeight || 0;
     const _0x2a1767 = _0xec6a48.scrollHeight || document.body.scrollHeight || 0;
-    return _0x2a1767 - (_0x19e73f + _0x251b61) <= _0x4a8876;
+    const footer = document.querySelector("[data-footer-region]")?.getBoundingClientRect();
+    const footerVisible = footer && footer.height > 0 && footer.top <= _0x251b61 + _0x4a8876 && footer.bottom >= 0;
+    return footerVisible || _0x2a1767 - (_0x19e73f + _0x251b61) <= _0x4a8876;
   };
   let _0x397dca = false;
   const _0x174fd4 = () => {
