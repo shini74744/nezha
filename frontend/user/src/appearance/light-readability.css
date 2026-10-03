@@ -1,0 +1,16 @@
+/* Light theme only. Keep configured card alpha and all dark-theme effects intact. */
+html:not(.dark) .nz-media::after {
+ content:""; position:absolute; inset:0; background:rgba(255,255,255,.35); pointer-events:none;
+}
+html:not(.dark):has(.nz-media) .bg-card {color:#0f172a;text-shadow:none}
+html:not(.dark):has(.nz-media) .bg-card .text-muted-foreground {color:#253246}
+html:not(.dark) :is(.nz-name-online,.nz-name-offline) {font-weight:600;text-shadow:none}
+/* Use the live hue/alpha from NativeName; never replace the animation with a fixed color. */
+html:not(.dark) :is(.nz-name-online,.nz-name-offline) {color:var(--nz-name-light-color)!important}
+html:not(.dark) .nz-traffic,
+html:not(.dark) .nz-traffic-info {color:#1e293b;font-weight:500;text-shadow:none}
+html:not(.dark) .nz-traffic-labels {flex-wrap:wrap;gap:2px 8px}
+html:not(.dark) .nz-traffic .nz-traffic-used,
+html:not(.dark) .nz-traffic-info > span {color:var(--nz-traffic-light-color,#1e40af)!important}
+html:not(.dark) [data-native-speed="up"][data-color="true"] {color:#991b1b!important}
+html:not(.dark) [data-native-speed="down"][data-color="true"] {color:#1e3a8a!important}

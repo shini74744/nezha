@@ -4,7 +4,7 @@ import { useAppearance } from "./context";
 import { useTheme } from "@/hooks/use-theme";
 import { FeatureScope } from "./scope";
 import { NativeBackground } from "./background";
-import { NativeFooterIP } from "./widgets";
+import { NativeFooterIP } from "./footer-ip";
 import { visitorIP } from "./modules/visitorIP";
 import { quote } from "./modules/quote";
 import { network } from "./modules/network";
@@ -21,6 +21,7 @@ import { heart } from "./modules/heart";
 import { live2d } from "./modules/live2d";
 import { sakana } from "./modules/sakana";
 import "./appearance.css";
+import "./light-readability.css";
 import type { Feature } from "./config";
 const modules: Record<
 	string,

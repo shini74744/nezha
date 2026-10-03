@@ -222,6 +222,10 @@
       "nightEnabled": true,
       "blur": 4,
       "opacity": 0.4,
+      "lightBlur": 4,
+      "lightOpacity": 0.4,
+      "darkBlur": 4,
+      "darkOpacity": 0.4,
       "nightImages": [
         "https://jkapi.com/api/yo_cup?type=&apiKey=85d2491045c79dc05e67e51574ad38da",
         "https://image.anosu.top/pixiv/direct?r18=1&keyword=touhou",
@@ -375,6 +379,10 @@
       "nightEnabled": "启用凌晨背景",
       "blur": "卡片模糊（像素）",
       "opacity": "卡片背景不透明度",
+      "lightBlur": "白天卡片模糊（像素）",
+      "lightOpacity": "白天卡片背景不透明度",
+      "darkBlur": "黑夜卡片模糊（像素）",
+      "darkOpacity": "黑夜卡片背景不透明度",
       "nightImages": "凌晨图片",
       "chinaMedia": "指定运营商背景",
       "mobileMedia": "移动端背景",
@@ -405,6 +413,10 @@
         0,
         30
       ],
+      "lightBlur": [0, 30],
+      "darkBlur": [0, 30],
+      "lightOpacity": [0, 1],
+      "darkOpacity": [0, 1],
       "opacity": [
         0,
         1

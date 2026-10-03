@@ -57,3 +57,16 @@ it("validates bounds, empty or unsafe URLs and duplicate nodes",()=>{
  }
  const config=defaults();Object.assign(config.features.visitorIP,{networkEnabled:false,checkNodes:[],fallbackUrl:""});expect(validate(config)).toBe("");
 });
+it("hides the floating bar as soon as the footer enters view and restores it away from the footer",async()=>{
+ vi.spyOn(document.documentElement,"scrollHeight","get").mockReturnValue(3000);
+ vi.stubGlobal("innerHeight",800);
+ const footer=document.createElement("div");footer.dataset.footerRegion="";document.body.append(footer);
+ let top=1200;
+ vi.spyOn(footer,"getBoundingClientRect").mockImplementation(()=>({top,bottom:top+200,height:200} as DOMRect));
+ visitorIP(scope,c);await tick();
+ expect(document.querySelector("#ip-bar")).not.toHaveClass("ip-hidden");
+ top=790;window.dispatchEvent(new Event("scroll"));await tick();
+ expect(document.querySelector("#ip-bar")).toHaveClass("ip-hidden");
+ top=1200;window.dispatchEvent(new Event("resize"));await tick();
+ expect(document.querySelector("#ip-bar")).not.toHaveClass("ip-hidden");
+});

@@ -3,6 +3,7 @@ import {render,screen} from "@testing-library/react";
 import {defaults} from "@/appearance/config";
 import {AppearanceProvider} from "@/appearance/context";
 import {NativeSpeed} from "@/appearance/widgets";
+import lightStyles from "@/appearance/light-readability.css?raw";
 function pair(overrides:Record<string,boolean>={},master=true){
  const c=defaults();c.enabled=master;Object.assign(c.features.speed,overrides);
  return render(<AppearanceProvider raw={JSON.stringify(c)}>
@@ -11,6 +12,14 @@ function pair(overrides:Record<string,boolean>={},master=true){
  </AppearanceProvider>);
 }
 describe("independent speed widgets",()=>{
+ it("light readability styles preserve speed effects and only adjust text color",()=>{
+  const rules=lightStyles.split("}").filter(rule=>rule.includes("[data-native-speed"));
+  expect(rules).toHaveLength(2);
+  for(const rule of rules){
+   expect(rule).toContain("html:not(.dark)");
+   expect(rule.split("{")[1]).toMatch(/^color:[^;{}]+;?$/);
+  }
+ });
  it("uses separate units, colors and animations for each location",()=>{
   pair({bits:false,color:false,animation:false});
   expect(screen.getByTestId("card")).toHaveTextContent("original card");

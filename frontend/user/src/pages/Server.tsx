@@ -17,7 +17,7 @@ import ServerCard from "@/components/ServerCard";
 import ServerCardInline from "@/components/ServerCardInline";
 import ServerOverview from "@/components/ServerOverview";
 import { ServiceTracker } from "@/components/ServiceTracker";
-import { SORT_TYPES } from "@/context/sort-context";
+import SortMetricSelect from "@/components/SortMetricSelect";
 import { useSort } from "@/hooks/use-sort";
 import { useStatus } from "@/hooks/use-status";
 import { useWebSocketContext } from "@/hooks/use-websocket-context";
@@ -99,7 +99,7 @@ export default function Servers({
 	backendError?: Error | null;
 }) {
 	const { t } = useTranslation();
-	const { sortType, sortOrder, setSortOrder, setSortType } = useSort();
+	const { sortType, sortOrder, setSortOrder } = useSort();
 	const { data: groupData, error: groupError } = useQuery({
 		queryKey: ["server-group"],
 		queryFn: () => fetchServerGroup(),
@@ -537,7 +537,7 @@ export default function Servers({
 						aria-label="Toggle sort direction"
 						onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
 						disabled={sortType === "default"}
-						className="flex h-full cursor-pointer items-center gap-1.5 px-3 disabled:cursor-not-allowed disabled:opacity-40"
+						className="flex h-full cursor-pointer items-center gap-1.5 pl-3 pr-1.5 disabled:cursor-not-allowed disabled:opacity-40"
 					>
 						<div className="text-stone-900 dark:text-stone-100">
 							{sortOrder === "asc" && sortType !== "default" ? (
@@ -554,30 +554,7 @@ export default function Servers({
 						</span>
 					</button>
 					<span className="text-stone-300 dark:text-stone-600 mb-0.5">|</span>
-					<span className="relative ml-2 mr-3.25 inline-flex items-center">
-						<span
-							className="pointer-events-none select-none opacity-0 text-sm font-medium whitespace-nowrap"
-							aria-hidden
-						>
-							{t(`sort.types.${sortType.replace(/ /g, "_")}`)}
-						</span>
-						<select
-							aria-label="Sort metric"
-							value={sortType}
-							onChange={(e) => {
-								const val = e.target.value as typeof sortType;
-								setSortType(val);
-								if (val === "default") setSortOrder("desc");
-							}}
-							className="absolute inset-0 cursor-pointer appearance-none bg-transparent text-sm font-medium outline-none"
-						>
-							{SORT_TYPES.map((type) => (
-								<option key={type} value={type}>
-									{t(`sort.types.${type.replace(/ /g, "_")}`)}
-								</option>
-							))}
-						</select>
-					</span>
+					<SortMetricSelect />
 				</div>
 			</div>
 			{hasServers && showMap === "1" && (

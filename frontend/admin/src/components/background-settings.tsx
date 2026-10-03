@@ -48,9 +48,18 @@ export function BackgroundSettings({value:f,sound,onChange,onSoundChange}:{value
    <div className="grid gap-4 md:grid-cols-2"><MediaLines label="特殊地区电脑背景" value={f.chinaMedia} onChange={v=>update("chinaMedia",v)}/><MediaLines label="特殊地区手机背景" value={f.regionMobileMedia} onChange={v=>update("regionMobileMedia",v)}/></div>
    <label className="block space-y-1"><span>背景规则优先级</span><select aria-label="背景规则优先级" className="w-full rounded border bg-background p-2" value={f.priority} onChange={e=>update("priority",e.target.value)}><option value="region-first">特殊地区优先，其次分时，最后普通背景</option><option value="schedule-first">分时优先，其次特殊地区，最后普通背景</option></select></label>
   </fieldset>
+  <fieldset className="rounded border p-4 space-y-4"><legend className="px-2 font-semibold">卡片透明效果</legend>
+   <div className="grid gap-4 md:grid-cols-2">
+    {([["light","白天模式（亮色）"],["dark","黑夜模式（暗色）"]] as const).map(([mode,title])=><section key={mode} className="min-w-0 rounded border p-3 space-y-3" aria-label={title}>
+     <h4 className="font-semibold">{title}</h4>
+     <label className="block space-y-1"><span>卡片背景不透明度</span><Input aria-label={title+"卡片背景不透明度"} type="number" min={0} max={1} step={0.05} value={Number.isNaN(f[mode+"Opacity"])?"":f[mode+"Opacity"]} onChange={e=>update(mode+"Opacity",e.target.value===""?NaN:Number(e.target.value))}/></label>
+     <label className="block space-y-1"><span>卡片模糊（像素）</span><Input aria-label={title+"卡片模糊（像素）"} type="number" min={0} max={30} step={1} value={Number.isNaN(f[mode+"Blur"])?"":f[mode+"Blur"]} onChange={e=>update(mode+"Blur",e.target.value===""?NaN:Number(e.target.value))}/></label>
+    </section>)}
+   </div>
+   <p className="text-sm text-muted-foreground">不透明度 0 为完全透明，1 为不透明；模糊 0 为不模糊。随前台亮色／暗色模式切换，不按时间切换；开启背景并有可用背景时生效。旧设置自动沿用到两种模式。</p>
+  </fieldset>
   <fieldset className="rounded border p-4 space-y-4"><legend className="px-2 font-semibold">背景视频与关联设置</legend>
    <div className="grid gap-4 sm:grid-cols-2">
-    {field("blur","卡片模糊（像素）","number")}{field("opacity","卡片背景不透明度","number")}
     {[["enabled","视频声音控制"],["showControl","显示独立声音按钮"],["toggleMuteOnControlClick","允许按钮切换静音"],["unmuteOnVideoClick","点击背景视频开启声音"]].map(([key,label])=><label key={key} className="flex items-center justify-between gap-3"><span>{label}</span><Switch aria-label={label} checked={sound[key]} onCheckedChange={v=>onSoundChange({...sound,[key]:v})}/></label>)}
    </div>
    <p className="text-sm text-muted-foreground">视频默认静音自动播放，开启声音需要点击专用按钮。网络图削峰已移至独立设置，不再受背景规则影响。</p>

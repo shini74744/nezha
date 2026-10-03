@@ -3,6 +3,8 @@ import {render,act,cleanup} from "@testing-library/react";
 import {AppearanceProvider} from "@/appearance/context";
 import {defaults} from "@/appearance/config";
 import {NativeName,NativeFooterIP} from "@/appearance/widgets";
+import {WebSocketContext} from "@/context/websocket-context";
+const loadedSocket={connected:true,lastData:{now:1,servers:[]},messageHistory:[],reconnect:()=>{},needReconnect:false,setNeedReconnect:()=>{}};
 afterEach(()=>{cleanup();vi.useRealTimers();vi.restoreAllMocks();vi.unstubAllGlobals();});
 function config(){const c=defaults();c.enabled=true;return c;}
 describe("other legacy appearance parity",()=>{
@@ -23,28 +25,22 @@ describe("other legacy appearance parity",()=>{
   c.enabled=false;view.rerender(<AppearanceProvider raw={JSON.stringify(c)}><NativeName online={false} detail={detail}>offline</NativeName></AppearanceProvider>);
   expect(node.style.color).toBe("");expect(vi.getTimerCount()).toBe(0);
  });
- it("slides in after 300 ms at bottom even in a narrow desktop window",()=>{
+ it("restores the bottom overlay and signals the copyright fitter",()=>{
   vi.useFakeTimers();vi.spyOn(navigator,"userAgent","get").mockReturnValue("Desktop Chrome");
-  vi.stubGlobal("innerWidth",390);vi.stubGlobal("innerHeight",600);vi.stubGlobal("scrollY",0);
+  vi.stubGlobal("innerHeight",600);vi.stubGlobal("scrollY",400);
   vi.spyOn(document.documentElement,"scrollHeight","get").mockReturnValue(1000);
-  const c=config(),view=render(<AppearanceProvider raw={JSON.stringify(c)}><NativeFooterIP/></AppearanceProvider>);
+  const view=render(<WebSocketContext.Provider value={loadedSocket}><AppearanceProvider raw={JSON.stringify(config())}><NativeFooterIP/></AppearanceProvider></WebSocketContext.Provider>);
   const node=view.container.querySelector<HTMLElement>("[data-native-footer-ip]")!;
-  expect(node.style.transform).toBe("translateX(-50%) translateY(20px)");
-  vi.stubGlobal("scrollY",400);act(()=>window.dispatchEvent(new Event("scroll")));
-  act(()=>vi.advanceTimersByTime(299));expect(node.style.opacity).toBe("0");
-  act(()=>vi.advanceTimersByTime(1));expect(node.style.opacity).toBe("1");
+  act(()=>vi.advanceTimersByTime(300));expect(node.dataset.visible).toBe("true");
   expect(node.style.transform).toBe("translateX(-50%) translateY(0px)");
-  vi.stubGlobal("scrollY",399);act(()=>window.dispatchEvent(new Event("scroll")));
-  expect(node.style.opacity).toBe("0");expect(node.style.transform).toContain("20px");
-  vi.stubGlobal("scrollY",400);act(()=>window.dispatchEvent(new Event("scroll")));
-  vi.stubGlobal("scrollY",0);act(()=>vi.advanceTimersByTime(300));expect(node.style.opacity).toBe("0");
-  view.unmount();expect(vi.getTimerCount()).toBe(0);
+  expect(view.queryByText("独立查看 ↗")).toBeNull();
+  vi.stubGlobal("scrollY",0);act(()=>window.dispatchEvent(new Event("scroll")));
+  expect(node.dataset.visible).toBe("false");
  });
- it("keeps mobile hidden even when its viewport is wide",()=>{
-  vi.useFakeTimers();vi.spyOn(navigator,"userAgent","get").mockReturnValue("Android Mobile");
-  vi.stubGlobal("innerWidth",1920);
-  const view=render(<AppearanceProvider raw={JSON.stringify(config())}><NativeFooterIP/></AppearanceProvider>);
-  expect(view.container.querySelector<HTMLElement>("[data-native-footer-ip]")!.style.display).toBe("none");
-  act(()=>window.dispatchEvent(new Event("scroll")));expect(vi.getTimerCount()).toBe(0);
+ it("preserves the original mobile hide policy",()=>{
+  vi.spyOn(navigator,"userAgent","get").mockReturnValue("iPhone Mobile");
+  const view=render(<WebSocketContext.Provider value={loadedSocket}><AppearanceProvider raw={JSON.stringify(config())}><NativeFooterIP/></AppearanceProvider></WebSocketContext.Provider>);
+  const node=view.container.querySelector<HTMLElement>("[data-native-footer-ip]")!;
+  expect(node.style.display).toBe("none");expect(node.dataset.visible).toBe("false");
  });
 });
