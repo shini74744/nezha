@@ -11,6 +11,7 @@ if [ "$(id -u)" -ne 0 ]; then
   exec sudo env "NZ_SERVER=${NZ_SERVER:-}" "NZ_TLS=${NZ_TLS:-false}" "NZ_CLIENT_SECRET=${NZ_CLIENT_SECRET:-}" sh "$0" "$@"
  fi
 fi
+printf '\033[0;32m%s\033[0m\n' "安装脚本 agent.sh 已就绪"
 case "$(uname -s)" in
  Linux) os=linux ;;
  Darwin) os=darwin ;;
@@ -45,7 +46,9 @@ trap 'rm -f "$tmp/agent.zip" "$tmp/checksum" "$tmp/nezha-agent"; rmdir "$tmp" 2>
 asset="nezha-agent_${os}_${arch}.zip"
 base=https://github.com/shini74744/agent/releases/latest/download
 curl --fail --location --retry 3 --connect-timeout 20 --max-time 300 "$base/$asset.sha256" -o "$tmp/checksum"
+printf '\033[0;32m%s\033[0m\n' "校验文件下载成功"
 curl --fail --location --retry 3 --connect-timeout 20 --max-time 600 "$base/$asset" -o "$tmp/agent.zip"
+printf '\033[0;32m%s\033[0m\n' "Agent 程序下载成功"
 expected=$(tr -d '\r\n' < "$tmp/checksum")
 [ "${#expected}" -eq 64 ] || { echo "Invalid checksum" >&2; exit 1; }
 case "$expected" in *[!0-9a-fA-F]*) echo "Invalid checksum" >&2; exit 1 ;; esac
@@ -55,6 +58,7 @@ case "$hash_tool" in
  sha256) actual=$(sha256 -q "$tmp/agent.zip") ;;
 esac
 [ "$actual" = "$expected" ] || { echo "SHA256 mismatch; existing agent unchanged" >&2; exit 1; }
+printf '\033[0;32m%s\033[0m\n' "Agent 文件 SHA-256 校验成功"
 unzip -p "$tmp/agent.zip" nezha-agent > "$tmp/nezha-agent"
 chmod 755 "$tmp/nezha-agent"
 "$tmp/nezha-agent" -v

@@ -1,4 +1,4 @@
-# shini74744/agent only. Run in an elevated PowerShell window.
+﻿# shini74744/agent only. Run in an elevated PowerShell window.
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -6,6 +6,7 @@ $principal = New-Object Security.Principal.WindowsPrincipal($identity)
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     throw 'Please run PowerShell as Administrator.'
 }
+Write-Host '安装脚本 install.ps1 已就绪' -ForegroundColor Green
 $cpu = $env:PROCESSOR_ARCHITEW6432
 if (-not $cpu) { $cpu = $env:PROCESSOR_ARCHITECTURE }
 switch ($cpu.ToUpperInvariant()) {
@@ -31,11 +32,14 @@ $backup = $null
 $changed = $false
 try {
     Invoke-WebRequest -UseBasicParsing "$base/$asset.sha256" -OutFile $checksum
+    Write-Host '校验文件下载成功' -ForegroundColor Green
     Invoke-WebRequest -UseBasicParsing "$base/$asset" -OutFile $archive
+    Write-Host 'Agent 程序下载成功' -ForegroundColor Green
     $expected = (Get-Content -LiteralPath $checksum -Raw).Trim()
     if ($expected -notmatch '^[a-fA-F0-9]{64}$' -or (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne $expected) {
         throw 'SHA256 mismatch; existing agent unchanged.'
     }
+    Write-Host 'Agent 文件 SHA-256 校验成功' -ForegroundColor Green
     Expand-Archive -LiteralPath $archive -DestinationPath $extracted
     $newBinary = Join-Path $extracted 'nezha-agent.exe'
     & $newBinary -v
