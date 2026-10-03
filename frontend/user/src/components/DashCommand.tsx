@@ -19,7 +19,11 @@ import { useWebSocketContext } from "@/hooks/use-websocket-context";
 import { saveMainPageScrollPosition } from "@/lib/navigation";
 import { formatNezhaInfo } from "@/lib/utils";
 
-export function DashCommand() {
+export function DashCommand({
+	showThemeShortcuts = true,
+}: {
+	showThemeShortcuts?: boolean;
+} = {}) {
 	const { isOpen, closeCommand, toggleCommand } = useCommand();
 	const [search, setSearch] = useState("");
 	const navigate = useNavigate();
@@ -69,11 +73,15 @@ export function DashCommand() {
 					label: t("ToggleSystemMode"),
 					action: () => setTheme("system"),
 				},
-			].map((item) => ({
-				...item,
-				value: `${item.keywords.join(" ")} ${item.label}`,
-			})),
-		[navigate, setTheme, t],
+			]
+				.filter(
+					(item) => showThemeShortcuts || !item.keywords.includes("theme"),
+				)
+				.map((item) => ({
+					...item,
+					value: `${item.keywords.join(" ")} ${item.label}`,
+				})),
+		[navigate, setTheme, t, showThemeShortcuts],
 	);
 
 	const serverCommands = useMemo(() => {

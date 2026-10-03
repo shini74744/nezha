@@ -122,7 +122,7 @@ export default function ServerDetailOverview({
 	return (
 		<div
 			data-offline-summary={recorded ? true : undefined}
-			className={cn({
+			className={cn("server-detail-overview", {
 				"bg-card/70 p-4 rounded-[10px]": customBackgroundImage,
 			})}
 		>

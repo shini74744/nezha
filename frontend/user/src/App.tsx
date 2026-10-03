@@ -19,6 +19,7 @@ import ErrorPage from "./pages/ErrorPage";
 import Server from "./pages/Server";
 import CardPreview from "./pages/CardPreview";
 
+const DoraemonApp = lazy(() => import("./themes/doraemon/App"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const loadServerDetail = () => import("./pages/ServerDetail");
 const ServerDetail = lazy(loadServerDetail);
@@ -156,7 +157,7 @@ const MainApp: React.FC = () => {
 const App: React.FC = () => {
 	return (
 		<Router basename={import.meta.env.BASE_URL}>
-			<RouteChecker />
+			<Suspense fallback={null}>{import.meta.env.VITE_THEME_VARIANT === "doraemon" ? <DoraemonApp /> : <RouteChecker />}</Suspense>
 		</Router>
 	);
 };

@@ -6,6 +6,7 @@ const templates = [
     { path: "nazhua-dist", name: "Nazhua" },
     { path: "aobobo-dist", name: "Aobobo" },
     { path: "nezha-ascii-dist", name: "Nezha-ASCII" },
+    { path: "doraemon-dist", name: "哆啦 A 梦" },
 ].map(t => ({ ...t, author: "fixture", repository: "https://example.com/theme", version: "test" }))
 async function setup(page: Page, loggedIn: boolean, userTemplate = "user-dist") {
     await page.addInitScript(() => localStorage.setItem("language", "zh-CN"))
@@ -23,8 +24,9 @@ async function expectThemes(page: Page) {
     const select = page.getByRole("combobox", { name: "主题", exact: true })
     await expect(select).toContainText("Official")
     await select.click()
-    await expect(page.getByRole("option")).toHaveCount(5)
-    for (const name of ["Official", "Nezha-Pixel", "Nazhua", "Aobobo", "Nezha-ASCII"]) await expect(page.getByRole("option", { name: new RegExp(name) })).toBeVisible()
+    await expect(page.getByRole("option")).toHaveCount(6)
+    await expect(page.getByRole("option").last()).toContainText("哆啦 A 梦")
+    for (const name of ["Official", "Nezha-Pixel", "Nazhua", "Aobobo", "Nezha-ASCII", "哆啦 A 梦"]) await expect(page.getByRole("option", { name: new RegExp(name) })).toBeVisible()
     await page.keyboard.press("Escape")
 }
 test("all bundled themes remain selectable on an authenticated settings page", async ({ page }) => {
@@ -50,4 +52,21 @@ test("missing current template defaults to a real template path, not array index
     await page.goto("/dashboard/settings")
     await expectThemes(page)
     await expect(page.getByText("正在使用社区主题", { exact: true })).toHaveCount(0)
+})
+
+test("Doraemon is the last theme and persists a selectable real path", async ({ page }) => {
+    await setup(page, true)
+    let saved: any
+    await page.route("**/api/v1/setting", async (route, request) => {
+        if (request.method() !== "PATCH") return route.fallback()
+        saved = request.postDataJSON()
+        await route.fulfill({ json: { success: true, data: {} } })
+    })
+    await page.goto("/dashboard/settings")
+    await page.getByRole("combobox", { name: "主题", exact: true }).click()
+    await expect(page.getByRole("option").last()).toContainText("哆啦 A 梦")
+    await page.getByRole("option", { name: /哆啦 A 梦/ }).click()
+    await expect(page.getByRole("combobox", { name: "主题", exact: true })).toContainText("哆啦 A 梦")
+    await page.locator('button[type="submit"]').click()
+    await expect.poll(() => saved?.user_template).toBe("doraemon-dist")
 })

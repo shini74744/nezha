@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { NetworkRateContext } from "@/context/network-rate-context";
 import { useTranslation } from "react-i18next";
 import {
 	Area,
@@ -1557,6 +1558,7 @@ function NetworkChart({
 	period: ChartPeriod;
 }) {
 	const { t } = useTranslation();
+	const rateFormatter = useContext(NetworkRateContext);
 	const [networkChartData, setNetworkChartData] = useState(
 		[] as networkChartData[],
 	);
@@ -1703,7 +1705,9 @@ function NetworkChart({
 		period !== "realtime" &&
 		(isLoadingNetwork || loadedPeriodNetwork !== period);
 
-	let maxDownload = Math.max(...displayData.map((item) => item.download));
+	let maxDownload = rateFormatter
+		? Math.max(1, ...displayData.flatMap(item => [item.upload, item.download]).filter(Number.isFinite))
+		: Math.max(...displayData.map((item) => item.download));
 	maxDownload = Math.ceil(maxDownload);
 	if (maxDownload < 1) {
 		maxDownload = 1;
@@ -1735,7 +1739,7 @@ function NetworkChart({
 								<div className="flex items-center gap-1">
 									<span className="relative inline-flex  size-1.5 rounded-full bg-[hsl(var(--chart-1))]" />
 									<p className="text-xs font-medium">
-										{up >= 1024
+										{rateFormatter ? rateFormatter(data.state.net_out_speed) : up >= 1024
 											? `${(up / 1024).toFixed(2)}G/s`
 											: up >= 1
 												? `${up.toFixed(2)}M/s`
@@ -1750,7 +1754,7 @@ function NetworkChart({
 								<div className="flex items-center gap-1">
 									<span className="relative inline-flex  size-1.5 rounded-full bg-[hsl(var(--chart-4))]" />
 									<p className="text-xs font-medium">
-										{down >= 1024
+										{rateFormatter ? rateFormatter(data.state.net_in_speed) : down >= 1024
 											? `${(down / 1024).toFixed(2)}G/s`
 											: down >= 1
 												? `${down.toFixed(2)}M/s`
@@ -1795,8 +1799,10 @@ function NetworkChart({
 									type="number"
 									minTickGap={50}
 									interval="preserveStartEnd"
-									domain={[1, maxDownload]}
-									tickFormatter={(value) => `${value.toFixed(0)}M/s`}
+									width={rateFormatter ? 100 : undefined}
+                                    tick={rateFormatter ? {fontSize: 11} : undefined}
+                                    domain={rateFormatter ? [0, maxDownload] : [1, maxDownload]}
+									tickFormatter={(value) => rateFormatter ? rateFormatter(Number(value) * 1024 ** 2) : `${value.toFixed(0)}M/s`}
 								/>
 								<ChartTooltip
 									isAnimationActive={false}
@@ -1819,7 +1825,7 @@ function NetworkChart({
 															{label}
 														</span>
 														<span className="ml-2 font-medium text-foreground tabular-nums">
-															{Number(value).toFixed(2)} MB/s
+															{rateFormatter ? rateFormatter(Number(value) * 1024 ** 2) : `${Number(value).toFixed(2)} MB/s`}
 														</span>
 													</div>
 												);

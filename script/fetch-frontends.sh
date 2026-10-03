@@ -34,6 +34,13 @@ for i in $(seq 0 $(("$count"-1))); do
   repository=$(yq -r ".[$i].repository" "$TEMPLATES_FILE")
   version=$(yq -r ".[$i].version" "$TEMPLATES_FILE")
 
+  # This fork owns the Doraemon port; it is built from shared default-theme source.
+  # Never download the unrelated Monitor theme archive as a Nezha frontend.
+  if [[ "$path" == "doraemon-dist" ]]; then
+    bash "$ROOT_DIR/script/build-doraemon.sh"
+    continue
+  fi
+
   if [[ -n $path && -n $repository && -n $version ]]; then
     download_and_extract "$repository" "$version" "$ROOT_DIR/cmd/dashboard/$path"
   fi

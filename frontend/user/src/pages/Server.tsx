@@ -8,7 +8,7 @@ import {
 	ViewColumnsIcon,
 } from "@heroicons/react/20/solid";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type ComponentProps, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import GlobalMap from "@/components/GlobalMap";
 import GroupSwitch from "@/components/GroupSwitch";
@@ -93,11 +93,25 @@ function ServerEmptyState({ filtered = false }: { filtered?: boolean }) {
 	);
 }
 
+export type ServerPresentation = {
+ Card: ComponentType<ComponentProps<typeof ServerCard>>;
+ InlineCard: ComponentType<ComponentProps<typeof ServerCard>>;
+ Overview: ComponentType<ComponentProps<typeof ServerOverview> & {map?:ReactNode}>;
+ Map: ComponentType<ComponentProps<typeof GlobalMap>>;
+ Loading: ComponentType;
+ storagePrefix: string;
+};
 export default function Servers({
-	backendError,
+ backendError, presentation,
 }: {
-	backendError?: Error | null;
+ backendError?: Error | null;
+ presentation?: ServerPresentation;
 }) {
+ const Overview=presentation?.Overview ?? ServerOverview;
+ const CardView=presentation?.Card ?? ServerCard;
+ const InlineCardView=presentation?.InlineCard ?? ServerCardInline;
+ const MapView=presentation?.Map ?? GlobalMap;
+ const preference=(key:string)=>(presentation?.storagePrefix ?? "")+key;
 	const { t } = useTranslation();
 	const { sortType, sortOrder, setSortOrder } = useSort();
 	const { data: groupData, error: groupError } = useQuery({
@@ -120,7 +134,7 @@ export default function Servers({
 	const lastData = inventoryData ?? rawData;
 	const { status, setStatus } = useStatus();
 	const [showServices, setShowServices] = useState<string>("0");
-	const [showMap, setShowMap] = useState<string>("0");
+	const [showMap, setShowMap] = useState<string>(presentation ? "1" : "0");
 	const [inline, setInline] = useState<string>("0");
 	const hasRestoredScroll = useRef(false);
 	const [currentGroup, setCurrentGroup] = useState<string>("All");
@@ -154,12 +168,12 @@ export default function Servers({
 
 	const handleTagChange = (newGroup: string) => {
 		setCurrentGroup(newGroup);
-		sessionStorage.setItem("selectedGroup", newGroup);
+		sessionStorage.setItem(preference("selectedGroup"), newGroup);
 		sessionStorage.setItem("scrollPosition", String(window.scrollY || 0));
 	};
 
 	useEffect(() => {
-		const showServicesState = localStorage.getItem("showServices");
+		const showServicesState = localStorage.getItem(preference("showServices"));
 		if (window.ForceShowServices) {
 			setShowServices("1");
 		} else if (showServicesState !== null) {
@@ -178,7 +192,7 @@ export default function Servers({
 			const isMobile = window.innerWidth < 768;
 
 			if (!isMobile) {
-				const inlineState = localStorage.getItem("inline");
+				const inlineState = localStorage.getItem(preference("inline"));
 				if (window.ForceCardInline) {
 					setInline("1");
 				} else if (inlineState !== null) {
@@ -197,7 +211,7 @@ export default function Servers({
 	}, []);
 
 	useEffect(() => {
-		const showMapState = localStorage.getItem("showMap");
+		const showMapState = localStorage.getItem(preference("showMap"));
 		if (window.ForceShowMap) {
 			setShowMap("1");
 		} else if (showMapState !== null) {
@@ -206,7 +220,7 @@ export default function Servers({
 	}, []);
 
 	useEffect(() => {
-		const savedGroup = sessionStorage.getItem("selectedGroup") || "All";
+		const savedGroup = sessionStorage.getItem(preference("selectedGroup")) || "All";
 		setCurrentGroup(savedGroup);
 	}, []);
 
@@ -413,6 +427,7 @@ export default function Servers({
 	}
 
 	if (!connected && !lastData) {
+        if(presentation) return <presentation.Loading/>;
 		return (
 			<div className="flex flex-col items-center min-h-96 justify-center ">
 				<div className="font-semibold flex items-center gap-2 text-sm">
@@ -435,12 +450,13 @@ export default function Servers({
 
 	return (
 		<div className="mx-auto w-full max-w-5xl px-0">
-			<ServerOverview
+			<Overview
+                map={presentation && hasServers && showMap === "1" ? <MapView now={nezhaWsData.now} serverList={nezhaWsData.servers}/> : undefined}
                 displayHiddenExpanded={!!showDisplayHidden}
                 onToggleDisplayHidden={() => {
                     setShowDisplayHidden?.(!showDisplayHidden);
                     setCurrentGroup("All");
-                    sessionStorage.removeItem("selectedGroup");
+                    sessionStorage.removeItem(preference("selectedGroup"));
                     setStatus("all");
                 }}
 				total={totalServers}
@@ -459,7 +475,7 @@ export default function Servers({
 					<button
 						onClick={() => {
 							setShowMap(showMap === "0" ? "1" : "0");
-							localStorage.setItem("showMap", showMap === "0" ? "1" : "0");
+							localStorage.setItem(preference("showMap"), showMap === "0" ? "1" : "0");
 						}}
 						className={cn(
 							"inset-shadow-2xs inset-shadow-white/20 flex cursor-pointer flex-col items-center gap-0 rounded-[50px] bg-blue-100 p-2.5 text-blue-600 transition-all dark:bg-blue-900 dark:text-blue-100",
@@ -472,14 +488,14 @@ export default function Servers({
 							},
 						)}
 					>
-						<MapIcon className="size-[13px]" />
+						<span className="sr-only">切换地区地图</span><MapIcon className="size-[13px]" />
 					</button>
 					{hasServices && (
 						<button
 							onClick={() => {
 								setShowServices(showServices === "0" ? "1" : "0");
 								localStorage.setItem(
-									"showServices",
+									preference("showServices"),
 									showServices === "0" ? "1" : "0",
 								);
 							}}
@@ -494,13 +510,13 @@ export default function Servers({
 								},
 							)}
 						>
-							<ChartBarSquareIcon className="size-[13px]" />
+							<span className="sr-only">切换服务监控</span><ChartBarSquareIcon className="size-[13px]" />
 						</button>
 					)}
 					<button
 						onClick={() => {
 							setInline(inline === "0" ? "1" : "0");
-							localStorage.setItem("inline", inline === "0" ? "1" : "0");
+							localStorage.setItem(preference("inline"), inline === "0" ? "1" : "0");
 						}}
 						className={cn(
 							"inset-shadow-2xs inset-shadow-white/20 flex cursor-pointer flex-col items-center gap-0 rounded-[50px] bg-blue-100 p-2.5 text-blue-600 transition-all dark:bg-blue-900 dark:text-blue-100",
@@ -513,7 +529,7 @@ export default function Servers({
 							},
 						)}
 					>
-						<ViewColumnsIcon className="size-[13px]" />
+						<span className="sr-only">切换卡片列表布局</span><ViewColumnsIcon className="size-[13px]" />
 					</button>
 					<GroupSwitch
 						tabs={groupTabs}
@@ -557,7 +573,7 @@ export default function Servers({
 					<SortMetricSelect />
 				</div>
 			</div>
-			{hasServers && showMap === "1" && (
+			{!presentation && hasServers && showMap === "1" && (
 				<GlobalMap now={nezhaWsData.now} serverList={nezhaWsData.servers} />
 			)}
 			{hasServers && showServices === "1" && (
@@ -569,7 +585,7 @@ export default function Servers({
 				inline === "1" ? (
 					<section className="flex flex-col gap-2 overflow-x-scroll p-px scrollbar-hidden mt-6 server-inline-list">
 						{filteredServers.map((serverInfo) => (
-							<ServerCardInline
+							<InlineCardView
 								key={serverInfo.id}
 								now={nezhaWsData.now}
 								serverInfo={serverInfo}
@@ -579,7 +595,7 @@ export default function Servers({
 				) : (
 					<section className="grid grid-cols-1 gap-2 md:grid-cols-2 mt-6 server-card-list">
 						{filteredServers.map((serverInfo) => (
-							<ServerCard
+							<CardView
 								key={serverInfo.id}
 								now={nezhaWsData.now}
 								serverInfo={serverInfo}
