@@ -1,4 +1,6 @@
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { AppearanceProvider } from "@/appearance/context";
+import { defaults } from "@/appearance/config";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
@@ -50,6 +52,7 @@ function settingResponse(siteName = "Nezha") {
 			config: {
 				...createSettingResponse().data.config,
 				site_name: siteName,
+				appearance_config: "",
 			},
 		},
 	};
@@ -73,13 +76,18 @@ function LocationProbe() {
 	return <p>{location.pathname}</p>;
 }
 
+function ConfiguredHeader() {
+ const {data}=useQuery({queryKey:["setting"],queryFn:headerMocks.fetchSetting,retry:false});
+ return <AppearanceProvider raw={data?.data?.config?.appearance_config}><Header /></AppearanceProvider>;
+}
+
 function renderHeader(route = "/server/1") {
 	return render(
 		<QueryClientProvider client={createTestQueryClient()}>
 			<MemoryRouter initialEntries={[route]}>
 				<ThemeProvider storageKey="header-theme-test">
 					<CommandProvider>
-						<Header />
+						<ConfiguredHeader />
 						<LocationProbe />
 					</CommandProvider>
 				</ThemeProvider>
@@ -116,6 +124,43 @@ describe("Header", () => {
 		headerMocks.fetchSetting.mockResolvedValue(settingResponse());
 		headerMocks.fetchLoginUser.mockRejectedValue(new Error("anonymous"));
 	});
+
+ it.each(["hidden","default","master-off","feature-off","search-only"])("does not flash controls while loading %s settings", async (mode) => {
+  let resolve!: (value:ReturnType<typeof settingResponse>)=>void;
+  headerMocks.fetchSetting.mockReturnValue(new Promise(r=>{resolve=r}));
+  const {container}=renderHeader();
+  const names=["Search","Change language","Toggle theme"];
+  for(const name of names)expect(screen.queryByRole("button",{name})).not.toBeInTheDocument();
+  // Observe every DOM mutation, not just the final settled render.
+  const appeared=new Set<string>();
+  const observer=new MutationObserver(()=>{
+   for(const name of names)if(screen.queryByRole("button",{name}))appeared.add(name);
+  });
+  observer.observe(container,{childList:true,subtree:true});
+  const response=settingResponse();
+  if(mode!=="default"){
+   const c=defaults();c.enabled=mode!=="master-off";
+   c.features.hideControls={enabled:mode!=="feature-off",search:true,language:mode!=="search-only",theme:mode!=="search-only"};
+   response.data.config.appearance_config=JSON.stringify(c);
+  }
+  resolve(response);
+  await screen.findByText("Nezha");
+  for(const [index,name] of names.entries()){
+   const hidden=mode==="hidden"||(mode==="search-only"&&index===0);
+   expect(!!screen.queryByRole("button",{name})).toBe(!hidden);
+   if(hidden)expect(appeared.has(name)).toBe(false);
+  }
+  observer.disconnect();
+ });
+
+ it("keeps controls absent if initial settings fail",async()=>{
+  headerMocks.fetchSetting.mockRejectedValue(new Error("settings unavailable"));
+  renderHeader();
+  await waitFor(()=>expect(headerMocks.fetchSetting).toHaveBeenCalled());
+  await screen.findAllByText("login");
+  for(const name of ["Search","Change language","Toggle theme"])
+   expect(screen.queryByRole("button",{name})).not.toBeInTheDocument();
+ });
 
 	it("renders configured site identity, custom links, online count, and dashboard state", async () => {
 		const user = userEvent.setup();

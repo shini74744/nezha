@@ -35,6 +35,11 @@ func validateAppearanceFields(features map[string]map[string]any) error {
 		if err := validateGreetingClockFields(definition.Key, feature); err != nil {
 			return err
 		}
+		if definition.Key == "dark" {
+			if mode, exists := feature["mode"]; exists && mode != "system" && mode != "light" && mode != "dark" {
+				return fmt.Errorf("dark.mode must be system, light or dark")
+			}
+		}
 		if definition.Key == "live2d" {
 			if err := validateMascotFields(feature); err != nil {
 				return err

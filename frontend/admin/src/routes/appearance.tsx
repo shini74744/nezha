@@ -58,6 +58,7 @@ export default function AppearancePage(){
  }
  const renderField=(group:string,key:string,value:any)=>{
   const d=definitions.find(d=>d.key===group)!,label=d.labels[key]||key
+  if(group==="dark"&&key==="mode")return <label key={key} className="block space-y-2"><span>{label}</span><select aria-label={label} className="w-full rounded border bg-background p-2" value={value} onChange={e=>update(group,key,e.target.value)}><option value="system">自动（跟随设备系统）</option><option value="light">白天（浅色）</option><option value="dark">黑夜（深色）</option></select><span className="block text-sm text-muted-foreground">自动模式随设备的明暗设置实时切换。关闭此功能后不干预前台原有主题选择。</span></label>;
   if(group==="live2d"&&key==="customCharacters")return <SakanaCharacters key={key} value={config.features.live2d} onChange={v=>patch("live2d",v)}/>;
   if(group==="live2d"&&(key==="provider"||key==="character"))return <label key={key} className="block space-y-1"><span>{label}</span><select aria-label={label} className="w-full rounded border bg-background p-2" value={value} onChange={e=>update(group,key,e.target.value)}>{(key==="provider"?[["live2d","原 Live2D"],["sakana","Sakana Widget（石蒜模拟器）"]]:[["chisato","千束 Chisato"],["takina","泷奈 Takina"],...config.features.live2d.customCharacters.map((r:any)=>[r.id,r.name||"未命名角色"])]).map(([v,text])=><option key={v} value={v}>{text}</option>)}</select></label>
   if(typeof value==="boolean")return <label key={key} className="flex items-center justify-between gap-3"><span>{label}</span><Switch checked={value} onCheckedChange={v=>update(group,key,v)}/></label>

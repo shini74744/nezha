@@ -70,6 +70,9 @@ const brand=useFeature('branding'), hidden=useFeature('hideControls');
 	const onlineCount = connected ? (lastData ? lastData.online || 0 : 0) : "...";
 
 	const siteName = settingData?.data?.config?.site_name;
+	// Never show configurable controls before their visibility settings arrive.
+	// Keep the last settings during background refetches, including failures.
+	const controlsReady = !!settingData?.data?.config;
 
 	// @ts-expect-error CustomLogo is a global variable
 	const customLogo = brand.enabled ? brand.logo : window.CustomLogo || "/apple-touch-icon.png";
@@ -155,9 +158,9 @@ const brand=useFeature('branding'), hidden=useFeature('hideControls');
 						<Links />
 						<DashboardLink />
 					</div>
-					{!(hidden.enabled&&hidden.search)&&<SearchButton />}
-					{!(hidden.enabled&&hidden.language)&&<LanguageSwitcher />}
-					{!(hidden.enabled&&hidden.theme)&&<ModeToggle />}
+					{controlsReady && !(hidden.enabled&&hidden.search)&&<SearchButton />}
+					{controlsReady && !(hidden.enabled&&hidden.language)&&<LanguageSwitcher />}
+					{controlsReady && !(hidden.enabled&&hidden.theme)&&<ModeToggle />}
 					{(customBackgroundImage ||
 						sessionStorage.getItem("savedBackgroundImage")) && (
 						<Button

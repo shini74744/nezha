@@ -31,12 +31,15 @@
   },
   {
     "key": "dark",
-    "title": "默认深色",
-    "description": "进入默认主题时切换到深色，不限制用户手动切换",
+    "title": "默认显示模式",
+    "description": "进入默认主题时使用所选模式；自动跟随设备系统，不限制用户手动切换",
     "defaults": {
-      "enabled": true
+      "enabled": true,
+      "mode": "dark"
     },
-    "labels": {},
+    "labels": {
+      "mode": "进入前台时的模式"
+    },
     "constraints": {}
   },
   {

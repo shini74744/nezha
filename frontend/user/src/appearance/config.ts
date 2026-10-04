@@ -136,6 +136,7 @@ export function validate(config: AppearanceConfig): string {
 				.some((n: string) => Number(n) > 255)
 		)
 			throw Error("连线颜色须为 RGB 数值，例如 255,255,255");
+		if (!["system", "light", "dark"].includes(config.features.dark.mode)) throw Error("默认显示模式必须为自动、白天或黑夜");
 		validateMascot(config.features.live2d);
   validateVisitorIP(config.features.visitorIP);
   validateBackground(config.features.background);
