@@ -19,6 +19,7 @@ import { formatNezhaInfo, parsePublicNote } from "@/lib/utils";
 import type { NezhaServer } from "@/types/nezha-api";
 import { art } from "./assets";
 import { formatNetworkRate } from "./format";
+import { DoraemonTraffic } from "./Traffic";
 
 type Props = { now: number; serverInfo: NezhaServer };
 const gadgets = [
@@ -189,26 +190,33 @@ function Card({ now, serverInfo: s }: Props) {
 								}
 							/>
 						</div>
-						<div className="dora-transfer">
-							<div>
-								<span>
-									<ArrowUp size={12} />
-									上传
-								</span>
-								<b>{formatNetworkRate(st.net_out_speed)}</b>
-								<small>
-									累计 {formatBytes(positive(st.net_out_transfer), 1)}
-								</small>
-							</div>
-							<div>
-								<span>
-									<ArrowDown size={12} />
-									下载
-								</span>
-								<b>{formatNetworkRate(st.net_in_speed)}</b>
-								<small>
-									累计 {formatBytes(positive(st.net_in_transfer), 1)}
-								</small>
+						<div className="dora-network">
+							<DoraemonTraffic serverId={s.id} />
+							<div className="dora-transfer">
+								<div>
+									<div className="dora-transfer-heading">
+										<span>
+											<ArrowUp size={12} />
+											上传
+										</span>
+										<b>{formatNetworkRate(st.net_out_speed)}</b>
+									</div>
+									<small>
+										累计 {formatBytes(positive(st.net_out_transfer), 1)}
+									</small>
+								</div>
+								<div>
+									<div className="dora-transfer-heading">
+										<span>
+											<ArrowDown size={12} />
+											下载
+										</span>
+										<b>{formatNetworkRate(st.net_in_speed)}</b>
+									</div>
+									<small>
+										累计 {formatBytes(positive(st.net_in_transfer), 1)}
+									</small>
+								</div>
 							</div>
 						</div>
 						<div className="dora-connections">
@@ -220,6 +228,7 @@ function Card({ now, serverInfo: s }: Props) {
 					</>
 				) : (
 					<div className="dora-offline">
+						<DoraemonTraffic serverId={s.id} />
 						<img src={art.doraemon} alt="" />
 						<strong>道具暂时休息中</strong>
 						<span>点击查看离线详情与历史记录</span>

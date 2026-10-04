@@ -231,6 +231,37 @@ const httpServer = http.createServer((request, response) => {
 		case "/api/v1/server-group":
 			jsonResponse(response, { success: true, data: serverGroups });
 			return;
+		case "/api/v1/server-traffic":
+			jsonResponse(response, {
+				success: true,
+				data: Object.fromEntries(
+					servers.map((server) => {
+						const kind = server.id % 5;
+						const max = kind === 3 || kind === 4 ? 0 : 1024 ** 4;
+						return [
+							server.id,
+							{
+								quota_type: max
+									? "limited"
+									: kind === 3
+										? "unlimited"
+										: "unset",
+								name: "套餐月流量",
+								max,
+								used: max
+									? max * (kind === 1 ? 0.65 : kind === 2 ? 1.12 : 0.94)
+									: 300 * 1024 ** 3,
+								from: "2026-09-15T00:00:00+08:00",
+								to: "2026-10-15T00:00:00+08:00",
+								direction: String((server.id % 3) + 1),
+								partial: server.id % 7 === 0,
+								estimated: server.id % 11 === 0,
+							},
+						];
+					}),
+				),
+			});
+			return;
 		case "/api/v1/service":
 			jsonResponse(response, {
 				success: true,

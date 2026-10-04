@@ -6,7 +6,7 @@ import { StatusProvider } from "@/context/status-provider";
 import type { WebSocketContextType } from "@/context/websocket-context";
 import { WebSocketContext } from "@/context/websocket-context";
 import { useStatus } from "@/hooks/use-status";
-import Servers from "@/pages/Server";
+import Servers, { type ServerPresentation } from "@/pages/Server";
 import { createServer } from "@/test/fixtures";
 import { renderWithProviders } from "@/test/utils";
 import type { NezhaServer } from "@/types/nezha-api";
@@ -94,7 +94,8 @@ function renderServerPage(
 	{
 		backendError = null,
 		withStatusControl = false,
-	}: { backendError?: Error | null; withStatusControl?: boolean } = {},
+		presentation,
+	}: { backendError?: Error | null; withStatusControl?: boolean; presentation?: ServerPresentation } = {},
 ) {
 	const defaultWebsocketValue: WebSocketContextType = {
 		lastData: null,
@@ -112,7 +113,7 @@ function renderServerPage(
 					value={{ ...defaultWebsocketValue, ...websocketValue }}
 				>
 					{withStatusControl && <StatusControl />}
-					<Servers backendError={backendError} />
+					<Servers backendError={backendError} presentation={presentation} />
 				</WebSocketContext.Provider>
 			</StatusProvider>
 		</SortProvider>,
@@ -125,6 +126,15 @@ function websocketPayload(servers: NezhaServer[]) {
 		servers,
 	};
 }
+
+const doraemonPresentation: ServerPresentation = {
+	Card: () => <article data-testid="doraemon-card" />,
+	InlineCard: () => <article />,
+	Overview: ({ map }) => <section>{map}</section>,
+	Map: () => <div data-testid="doraemon-map" />,
+	Loading: () => <div>Loading</div>,
+	storagePrefix: "doraemon:",
+};
 
 describe("Servers page", () => {
 	beforeEach(() => {
@@ -494,6 +504,33 @@ describe("Servers page", () => {
 		await user.click(controls[1]);
 		expect(screen.getByTestId("service-tracker")).toHaveTextContent("2");
 		expect(localStorage.getItem("showServices")).toBe("1");
+	});
+
+	it.each([false, true])("keeps the Doraemon map closed until clicked, including saved/forced state %s", async (forced) => {
+		window.ForceShowMap = forced;
+		localStorage.setItem("doraemon:showMap", "1");
+		localStorage.setItem("showMap", "1");
+		const user = userEvent.setup();
+		const value = { connected: true, lastData: websocketPayload([createServer({ id: 1 })]) };
+		const first = renderServerPage(value, { presentation: doraemonPresentation });
+		expect(screen.queryByTestId("doraemon-map")).not.toBeInTheDocument();
+		const toggle = screen.getByRole("button", { name: "切换地区地图" });
+		await user.click(toggle);
+		expect(screen.getByTestId("doraemon-map")).toBeInTheDocument();
+		await user.click(toggle);
+		expect(screen.queryByTestId("doraemon-map")).not.toBeInTheDocument();
+		await user.click(toggle);
+		first.unmount();
+		renderServerPage(value, { presentation: doraemonPresentation });
+		expect(screen.queryByTestId("doraemon-map")).not.toBeInTheDocument();
+		expect(localStorage.getItem("showMap")).toBe("1");
+	});
+
+	it.each(["saved", "forced"])("preserves the default theme's %s map preference", (mode) => {
+		if (mode === "saved") localStorage.setItem("showMap", "1");
+		window.ForceShowMap = mode === "forced";
+		renderServerPage({ connected: true, lastData: websocketPayload([createServer({ id: 1 })]) });
+		expect(screen.getByTestId("global-map")).toBeInTheDocument();
 	});
 
 	it("does not enable inline cards from storage on mobile widths", () => {

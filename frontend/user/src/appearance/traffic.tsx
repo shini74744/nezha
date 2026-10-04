@@ -20,7 +20,7 @@ function dateLabel(value:string) {
  const date=new Date(value);
  return Number.isNaN(date.getTime())?"":date.toLocaleDateString("zh-CN",{year:"numeric",month:"2-digit",day:"2-digit",timeZone:"Asia/Shanghai"});
 }
-function TrafficRow({serverId,stat,interval}:{serverId:number;stat:Traffic;interval:number}) {
+export function TrafficRow({serverId,stat,interval}:{serverId:number;stat:Traffic;interval:number}) {
  const [phase,setPhase]=useState(0),[fading,setFading]=useState(false);
  useEffect(()=>{
   setPhase(0);setFading(false);

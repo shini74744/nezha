@@ -323,14 +323,18 @@ html.dark[data-probe-theme="doraemon"] {
 	justify-content: space-between;
 	align-items: flex-start;
 	text-align: left;
-	min-height: 123px;
+	min-height: 100px;
 	border: 2px solid var(--dora-line);
 	border-top: 5px solid var(--stat-color);
 	border-radius: 19px;
 	background: var(--dora-panel);
-	padding: 15px 14px;
+	padding: 10px 14px;
 	color: var(--dora-ink);
 	box-shadow: 0 5px 0 #006a8c15;
+}
+.dora-stat.dora-stat-count {
+	min-height: 84px;
+	padding-block: 8px;
 }
 .dora-stat > span {
 	font-size: 11px;
@@ -352,9 +356,10 @@ html.dark[data-probe-theme="doraemon"] {
 	color: var(--stat-color);
 	opacity: 0.8;
 }
+/* Reserve the top-right icon lane, including the watermark's rotation. */
 .dora-stat-watermark {
 	position: absolute;
-	right: -5px;
+	right: 44px;
 	bottom: 8px;
 	width: 64px;
 	height: 64px;
@@ -608,9 +613,9 @@ html.dark[data-probe-theme="doraemon"] {
 .dora-card-body {
 	display: flex;
 	flex-direction: column;
-	gap: 11px;
-	padding: 15px 12px 12px;
-	min-height: 255px;
+	gap: 5px;
+	padding: 8px 12px;
+	min-height: 0;
 }
 .dora-card-meta {
 	display: flex;
@@ -627,7 +632,7 @@ html.dark[data-probe-theme="doraemon"] {
 .dora-meters {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: 10px 12px;
+	gap: 4px 12px;
 }
 .dora-meter {
 	min-width: 0;
@@ -662,7 +667,7 @@ html.dark[data-probe-theme="doraemon"] {
 .dora-meter p {
 	font-size: 9px;
 	color: var(--dora-muted);
-	margin-top: 3px;
+	margin-top: 2px;
 	white-space: nowrap;
 }
 .dora-meter-track {
@@ -670,7 +675,7 @@ html.dark[data-probe-theme="doraemon"] {
 	border-radius: 4px;
 	overflow: hidden;
 	background: var(--dora-soft);
-	margin-top: 4px;
+	margin-top: 3px;
 }
 .dora-meter-track i {
 	display: block;
@@ -679,19 +684,75 @@ html.dark[data-probe-theme="doraemon"] {
 	border-radius: 4px;
 	transition: width 0.4s;
 }
+/* Compact cycle quota: scoped to Doraemon, independent of default-theme effects. */
+.dora-network {
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+.dora-traffic {
+	min-width: 0;
+	width: 100%;
+}
+.dora-traffic .nz-traffic {
+	margin-top: 0;
+}
+.dora-traffic .nz-traffic-labels {
+	flex-wrap: wrap;
+	gap: 2px 8px;
+}
+.dora-traffic .nz-traffic-values {
+	flex-wrap: wrap;
+}
+.dora-traffic .nz-traffic-info {
+	white-space: nowrap;
+}
+/* Match the original light-mode contrast without loading other beautification effects. */
+html:not(.dark) .dora-traffic .nz-traffic,
+html:not(.dark) .dora-traffic .nz-traffic-info {
+	color: #1e293b;
+	font-weight: 500;
+	text-shadow: none;
+}
+html:not(.dark) .dora-traffic .nz-traffic-used,
+html:not(.dark) .dora-traffic .nz-traffic-info > span {
+	color: var(--nz-traffic-light-color, #1e40af) !important;
+}
+.dora-traffic-message {
+	min-height: 20px;
+	display: flex;
+	align-items: center;
+	font-size: 10px;
+	color: var(--dora-muted);
+}
+
 .dora-transfer {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
 	gap: 6px;
 }
 .dora-transfer > div {
-	padding: 7px;
+	container: dora-transfer-cell / inline-size;
+	padding: 5px 7px;
 	background: var(--dora-soft);
 	border: 1px solid var(--dora-line);
 	border-radius: 10px;
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
+}
+.dora-transfer-heading {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	min-width: 0;
+}
+.dora-transfer-heading > span,
+.dora-transfer-heading > b {
+	white-space: nowrap;
+	flex-shrink: 0;
+	line-height: 1.2;
 }
 .dora-transfer span {
 	display: flex;
@@ -707,6 +768,25 @@ html.dark[data-probe-theme="doraemon"] {
 .dora-transfer small {
 	font-size: 9px;
 	color: var(--dora-muted);
+}
+/* Adapt to the card's actual width, including desktop column breakpoints. */
+@container dora-transfer-cell (max-width: 120px) {
+	.dora-transfer-heading > span > svg {
+		display: none;
+	}
+}
+@container dora-transfer-cell (max-width: 100px) {
+	.dora-transfer-heading > b {
+		font-size: 11px;
+	}
+}
+@supports not (container-type: inline-size) {
+	.dora-transfer-heading > span > svg {
+		display: none;
+	}
+	.dora-transfer-heading > b {
+		font-size: 11px;
+	}
 }
 .dora-connections {
 	display: flex;
@@ -881,10 +961,13 @@ html.dark[data-probe-theme="doraemon"] {
 		padding-top: 30px;
 	}
 	.dora-stat {
-		min-height: 140px;
+		min-height: 108px;
+	}
+	.dora-stat.dora-stat-count {
+		min-height: 88px;
 	}
 	.dora-card-body {
-		gap: 14px;
+		gap: 6px;
 	}
 	.dora-meter > div:first-child {
 		font-size: 11px;
@@ -904,7 +987,7 @@ html.dark[data-probe-theme="doraemon"] {
 		width: 25px;
 	}
 	.dora-stat {
-		padding: 12px 10px;
+		padding: 10px;
 	}
 	.dora-stat > span {
 		font-size: 10px;
@@ -924,7 +1007,7 @@ html.dark[data-probe-theme="doraemon"] {
 		grid-template-columns: 1fr;
 	}
 	.dora-stat {
-		min-height: 100px;
+		min-height: 92px;
 	}
 	.dora-stat strong {
 		font-size: 24px;
@@ -944,6 +1027,9 @@ html.dark[data-probe-theme="doraemon"] {
 	}
 	.dora-inline-card .dora-card {
 		grid-template-columns: 165px 1fr;
+	}
+	.dora-inline-card .dora-card-body {
+		grid-template-columns: minmax(0, 1fr);
 	}
 }
 @media (max-width: 580px) {
@@ -999,9 +1085,12 @@ html.dark[data-probe-theme="doraemon"] {
 		gap: 7px;
 	}
 	.dora-stat {
-		min-height: 95px;
-		padding: 10px 8px;
+		min-height: 86px;
+		padding: 8px;
 		border-radius: 15px;
+	}
+	.dora-stat.dora-stat-count {
+		min-height: 76px;
 	}
 	.dora-stat strong {
 		font-size: 18px;
@@ -1016,6 +1105,12 @@ html.dark[data-probe-theme="doraemon"] {
 		width: 13px;
 		right: 6px;
 		top: 10px;
+	}
+	.dora-stat-watermark {
+		width: 44px;
+		height: 44px;
+		right: 30px;
+		bottom: 6px;
 	}
 	.dora-map {
 		border-radius: 18px;
@@ -1040,8 +1135,8 @@ html.dark[data-probe-theme="doraemon"] {
 		font-size: 15px;
 	}
 	.dora-card-body {
-		padding: 16px;
-		gap: 12px;
+		padding: 8px 12px;
+		gap: 6px;
 	}
 	.dora-meter > div:first-child {
 		font-size: 12px;
@@ -1091,6 +1186,7 @@ html.dark[data-probe-theme="doraemon"] {
 	}
 	.dora-inline-card .dora-card-body {
 		display: flex;
+		align-items: stretch;
 	}
 	.dora-pocket {
 		gap: 10px;
@@ -1245,8 +1341,8 @@ html.dark[data-probe-theme="doraemon"] {
 	z-index: 1;
 	width: 100%;
 	display: grid;
-	gap: 7px;
-	margin-top: 8px;
+	gap: 5px;
+	margin-top: 4px;
 }
 .dora-total-traffic > div {
 	display: flex;
@@ -1264,6 +1360,7 @@ html.dark[data-probe-theme="doraemon"] {
 }
 .dora-total-traffic dd {
 	font-size: clamp(13px, 1.3vw, 20px);
+	line-height: 1.25;
 	font-weight: 800;
 	letter-spacing: -0.5px;
 	white-space: nowrap;
@@ -1494,8 +1591,8 @@ html.dark[data-probe-theme="doraemon"] {
 .dora-meter .dora-meter-name {
 	display: block;
 	font-size: 10px;
-	line-height: 1.5;
-	margin-top: 4px;
+	line-height: 1.4;
+	margin-top: 2px;
 	color: var(--dora-muted);
 }
 .dora-meter p {
@@ -1519,13 +1616,21 @@ html.dark[data-probe-theme="doraemon"] {
 	fill: #b9d4e6;
 }
 .dora-stat .dora-stat-rate {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 2px;
+	line-height: 1.15;
+	margin-top: 6px;
 	white-space: nowrap;
 	font-variant-numeric: tabular-nums;
 }
 .dora-stat-rate .dora-rate-unit {
-	font-size: 0.65em;
+	font-size: 12px;
+	line-height: 1.2;
 	letter-spacing: 0;
 	font-weight: 650;
+	color: var(--dora-muted);
 }
 
 /* A visible dot stays small while its finger target is 44 CSS pixels. */
@@ -1612,21 +1717,9 @@ html.dark[data-probe-theme="doraemon"] {
 	}
 }
 @media (max-width: 580px) {
-	.dora-stat .dora-stat-rate {
-		display: flex;
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 2px;
-		line-height: 1.2;
-		margin-top: 8px;
-	}
 	.dora-stat-rate .dora-rate-number {
 		font-size: clamp(18px, 5.3vw, 25px);
 		white-space: nowrap;
-	}
-	.dora-stat-rate .dora-rate-unit {
-		font-size: 12px;
-		color: var(--dora-muted);
 	}
 	.dora-map[data-compact="true"] {
 		min-height: 198px;
@@ -1694,12 +1787,17 @@ html.dark[data-probe-theme="doraemon"] {
 	}
 }
 
-/* Keep both cumulative directions aligned even when their units differ. */
+/* Compact totals keep the two directions on two rows instead of stretching all cards. */
 @media (max-width: 580px) {
 	.dora-total-traffic > div {
-		flex-direction: column;
-		align-items: flex-start;
 		flex-wrap: nowrap;
+		align-items: baseline;
+	}
+	.dora-total-traffic dt svg {
+		display: none;
+	}
+	.dora-total-traffic dd {
+		font-size: clamp(11px, 3.3vw, 13px);
 	}
 }
 

@@ -13,6 +13,7 @@ import { fetchSetting } from "@/lib/nezha-api";
 import Servers, { type ServerPresentation } from "@/pages/Server";
 import { art } from "./assets";
 import { DoraemonCard, DoraemonInlineCard } from "./Card";
+import { DoraemonTrafficProvider } from "./Traffic";
 import { DoraemonMap, DoraemonOverview } from "./Overview";
 import { DoraemonLoading, DoraemonScene } from "./Scene";
 import "./theme.css";
@@ -164,12 +165,16 @@ export default function DoraemonApp() {
 								<Route
 									path="/"
 									element={
-										<Servers
-											presentation={presentation}
-											backendError={
-												!data && error ? new Error(String(error)) : null
-											}
-										/>
+										<DoraemonTrafficProvider
+											appearance={data?.data?.config?.appearance_config}
+										>
+											<Servers
+												presentation={presentation}
+												backendError={
+													!data && error ? new Error(String(error)) : null
+												}
+											/>
+										</DoraemonTrafficProvider>
 									}
 								/>
 								<Route

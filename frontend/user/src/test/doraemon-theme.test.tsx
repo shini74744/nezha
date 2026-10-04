@@ -7,7 +7,7 @@ import { StatusProvider } from "@/context/status-provider";
 import { useStatus } from "@/hooks/use-status";
 import { createServer } from "@/test/fixtures";
 import { renderWithProviders } from "@/test/utils";
-import { DoraemonCard, percent, positive } from "@/themes/doraemon/Card";
+import { DoraemonCard, DoraemonInlineCard, percent, positive } from "@/themes/doraemon/Card";
 import { DoraemonMap, DoraemonOverview } from "@/themes/doraemon/Overview";
 import { beijingSky } from "@/themes/doraemon/sky";
 import {
@@ -41,7 +41,7 @@ describe("Doraemon port", () => {
 		expect(networkRateParts(bytes)).toEqual({ value, unit });
 		expect(formatNetworkRate(bytes)).toBe(value + " " + unit);
 	});
-	it("separates the overview number and unit for a stable mobile two-line layout", () => {
+	it("separates the overview number and unit for a stable two-line layout at all sizes", () => {
 		renderWithProviders(
 			<StatusProvider>
 				<DoraemonOverview
@@ -55,6 +55,8 @@ describe("Doraemon port", () => {
 				/>
 			</StatusProvider>,
 		);
+		expect(document.querySelectorAll(".dora-stat-count")).toHaveLength(3);
+		expect(document.querySelectorAll(".dora-stat")).toHaveLength(6);
 		const number = screen.getByText("1.50");
 		expect(number).toHaveClass("dora-rate-number");
 		expect(within(number.parentElement!).getByText("Gbps")).toHaveClass(
@@ -223,6 +225,25 @@ describe("Doraemon port", () => {
 		await user.keyboard("{Enter}");
 		expect(screen.getByText("/server/42")).toBeInTheDocument();
 	});
+	it.each([DoraemonCard, DoraemonInlineCard])("keeps each rate beside its direction and totals on a separate line", (CardView) => {
+		const server = createServer({ id: 42, last_active: new Date(now).toISOString() });
+		server.state.net_out_speed = 1_000_000;
+		server.state.net_in_speed = 187_500_000;
+		const view = renderWithProviders(
+			<AppearanceProvider><CardView now={now} serverInfo={server} /></AppearanceProvider>,
+		);
+		const headings = view.container.querySelectorAll(".dora-transfer-heading");
+		expect(headings).toHaveLength(2);
+		expect(within(headings[0] as HTMLElement).getByText("上传")).toBeInTheDocument();
+		expect(within(headings[0] as HTMLElement).getByText("8.0 Mbps")).toBeInTheDocument();
+		expect(within(headings[1] as HTMLElement).getByText("下载")).toBeInTheDocument();
+		expect(within(headings[1] as HTMLElement).getByText("1.50 Gbps")).toBeInTheDocument();
+		for (const heading of headings) {
+			expect(heading.querySelector("small")).toBeNull();
+			expect(heading.parentElement?.querySelector("small")).toHaveTextContent("累计");
+		}
+	});
+
 	it("does not present stale offline metrics as live readings", () => {
 		const server = createServer({
 			id: 43,

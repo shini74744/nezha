@@ -134,7 +134,7 @@ export default function Servers({
 	const lastData = inventoryData ?? rawData;
 	const { status, setStatus } = useStatus();
 	const [showServices, setShowServices] = useState<string>("0");
-	const [showMap, setShowMap] = useState<string>(presentation ? "1" : "0");
+	const [showMap, setShowMap] = useState<string>("0");
 	const [inline, setInline] = useState<string>("0");
 	const hasRestoredScroll = useRef(false);
 	const [currentGroup, setCurrentGroup] = useState<string>("All");
@@ -211,6 +211,8 @@ export default function Servers({
 	}, []);
 
 	useEffect(() => {
+		// The Doraemon map is opt-in on each visit; old saved/forced state must not open it.
+		if (presentation) return;
 		const showMapState = localStorage.getItem(preference("showMap"));
 		if (window.ForceShowMap) {
 			setShowMap("1");
@@ -475,7 +477,7 @@ export default function Servers({
 					<button
 						onClick={() => {
 							setShowMap(showMap === "0" ? "1" : "0");
-							localStorage.setItem(preference("showMap"), showMap === "0" ? "1" : "0");
+							if (!presentation) localStorage.setItem(preference("showMap"), showMap === "0" ? "1" : "0");
 						}}
 						className={cn(
 							"inset-shadow-2xs inset-shadow-white/20 flex cursor-pointer flex-col items-center gap-0 rounded-[50px] bg-blue-100 p-2.5 text-blue-600 transition-all dark:bg-blue-900 dark:text-blue-100",
