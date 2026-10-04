@@ -20,22 +20,12 @@ import type { NezhaServer } from "@/types/nezha-api";
 import { art } from "./assets";
 import { formatNetworkRate } from "./format";
 import { DoraemonTraffic } from "./Traffic";
+import {CardGadget} from "./Gadgets";
+import { useDoraRateColor } from "./speed-color";
+import { useDoraRateEffect } from "./speed-effect";
+import { useDoraMotion } from "./use-motion";
 
 type Props = { now: number; serverInfo: NezhaServer };
-const gadgets = [
-	"竹蜻蜓",
-	"任意门",
-	"时光机",
-	"记忆面包",
-	"缩小灯",
-	"翻译魔芋",
-	"空气炮",
-	"如果电话亭",
-	"放大灯",
-	"穿透环",
-	"桃太郎饭团",
-	"寻人手杖",
-];
 export const positive = (n: number) =>
 	Number.isFinite(n) ? Math.max(0, n) : 0;
 export const percent = (used: number, total: number) =>
@@ -90,12 +80,16 @@ function Meter({
 	);
 }
 function Card({ now, serverInfo: s }: Props) {
+	const rateColor = useDoraRateColor();
+	const rateEffect = useDoraRateEffect();
+	const motion = useDoraMotion<HTMLElement>();
 	const info = formatNezhaInfo(now, s),
 		note = parsePublicNote(info.public_note);
 	const st = s.state,
 		host = s.host;
 	return (
 		<article
+			{...motion}
 			className={"dora-card " + (!info.online ? "is-offline" : "")}
 			data-dora-card
 			data-server-id={s.id}
@@ -199,7 +193,7 @@ function Card({ now, serverInfo: s }: Props) {
 											<ArrowUp size={12} />
 											上传
 										</span>
-										<b>{formatNetworkRate(st.net_out_speed)}</b>
+										<b {...rateColor(st.net_out_speed, "up")} {...rateEffect(st.net_out_speed, "up")}>{formatNetworkRate(st.net_out_speed)}</b>
 									</div>
 									<small>
 										累计 {formatBytes(positive(st.net_out_transfer), 1)}
@@ -211,7 +205,7 @@ function Card({ now, serverInfo: s }: Props) {
 											<ArrowDown size={12} />
 											下载
 										</span>
-										<b>{formatNetworkRate(st.net_in_speed)}</b>
+										<b {...rateColor(st.net_in_speed, "down")} {...rateEffect(st.net_in_speed, "down")}>{formatNetworkRate(st.net_in_speed)}</b>
 									</div>
 									<small>
 										累计 {formatBytes(positive(st.net_in_transfer), 1)}
@@ -242,7 +236,7 @@ function Card({ now, serverInfo: s }: Props) {
 				{note?.planDataMod && <PlanInfo parsedData={note} />}
 				<ServerLinkTags tags={note?.planDataMod?.linkTags} />
 				<div className="dora-card-bottom">
-					<span>🔔 {gadgets[Math.abs(s.id) % gadgets.length]}</span>
+					<CardGadget serverId={s.id}/>
 					<small>#{s.id} · 查看详情 →</small>
 				</div>
 			</div>

@@ -12,7 +12,6 @@ import {
 } from "@/themes/doraemon/Traffic";
 
 import { TrafficRow, trafficColor } from "@/appearance/traffic";
-import { defaults } from "@/appearance/config";
 
 const GiB = 1024 ** 3;
 const base: DoraemonTrafficStat = {
@@ -149,7 +148,8 @@ describe("Doraemon original traffic parity", () => {
 	});
 	it("honors the saved rotation interval without enabling other beautification", async () => {
 		vi.useFakeTimers();
-		const config = defaults();
+		const config = {version:1,enabled:true,features:{traffic:{enabled:true,toggleInterval:5000}}};
+		config.enabled = true;
 		config.features.traffic.toggleInterval = 8000;
 		vi.stubGlobal(
 			"fetch",

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Settings } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
-import { Link, Route, Routes } from "react-router-dom";
+import { Link, Route, Routes, useMatch } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { AppearanceProvider } from "@/appearance/context";
 import { DashCommand } from "@/components/DashCommand";
@@ -33,6 +33,9 @@ const presentation: ServerPresentation = {
 };
 import { SkyControl, type SkyMode } from "./SkyControl";
 import { DoraemonCompanion } from "./Companion";
+import {DoraemonAppearanceProvider} from "./Appearance";
+import {FriendsBanner} from "./Friends";
+import {PocketGadgets,GadgetBackToTop} from "./Gadgets";
 import { NetworkRateContext } from "@/context/network-rate-context";
 import { formatNetworkRate } from "./format";
 export default function DoraemonApp() {
@@ -61,6 +64,15 @@ export default function DoraemonApp() {
 	});
 	const [pocket, setPocket] = useState(false);
 	const site = data?.data?.config?.site_name || "哆啦 A 梦 · 道具监控站";
+    const isServerList = useMatch({path:"/",end:true});
+    const pageBottom = <>
+        <DoraemonCompanion/>
+        <GadgetBackToTop/>
+        <footer className="dora-footer">
+            <span>🔔 {site} · 哪吒监控</span>
+            {/* Attribution and MIT notice are preserved in the bundled LICENSE file. */}
+        </footer>
+    </>;
 	useEffect(() => {
 		const apply = () => setTheme(mode === "auto" ? beijingSky() : mode);
 		apply();
@@ -92,10 +104,12 @@ export default function DoraemonApp() {
 		<ErrorBoundary>
 			<AppearanceProvider>
 				<NetworkRateContext.Provider value={formatNetworkRate}>
+                    <DoraemonAppearanceProvider raw={data?.data?.config?.doraemon_appearance_config} ready={!!data?.data?.config}>
 					<div className="dora-theme" data-doraemon-theme>
 						<DoraemonScene />
 						<main className="dora-shell">
-							<header className="dora-header">
+							<header className="dora-header" id="dora-page-top" tabIndex={-1}>
+                                <div className="dora-header-identity">
 								<button
 									className="dora-avatar"
 									aria-label="打开四次元口袋"
@@ -114,6 +128,9 @@ export default function DoraemonApp() {
 									<strong>{site}</strong>
 									<span>野比家服务器 · 22 世纪道具监控站</span>
 								</Link>
+                                </div>
+                                <FriendsBanner/>
+                                <div className="dora-header-tools">
 								<span
 									className={
 										"dora-connection " + (connected ? "is-online" : "")
@@ -133,6 +150,7 @@ export default function DoraemonApp() {
 										<Settings size={18} />
 									</a>
 								</div>
+                                </div>
 								<button
 									className="dora-header-bell"
 									aria-label="摇响铃铛，打开口袋"
@@ -155,9 +173,7 @@ export default function DoraemonApp() {
 									>
 										×
 									</button>
-									<span className="dora-gadget-float" aria-hidden="true">
-										🚁 🍞 🚪
-									</span>
+									<PocketGadgets/>
 								</section>
 							)}
 							<DashCommand showThemeShortcuts={false} />
@@ -166,10 +182,12 @@ export default function DoraemonApp() {
 									path="/"
 									element={
 										<DoraemonTrafficProvider
-											appearance={data?.data?.config?.appearance_config}
+											appearance={data?.data?.config?.doraemon_appearance_config}
+											ready={!!data?.data?.config}
 										>
 											<Servers
 												presentation={presentation}
+                                                afterContent={pageBottom}
 												backendError={
 													!data && error ? new Error(String(error)) : null
 												}
@@ -208,14 +226,11 @@ export default function DoraemonApp() {
 									}
 								/>
 							</Routes>
-							<DoraemonCompanion />
-							<footer className="dora-footer">
-								<span>🔔 {site} · 哪吒监控</span>
-								{/* Attribution and MIT notice are preserved in the bundled LICENSE file. */}
-							</footer>
+                            {!isServerList && pageBottom}
 						</main>
 					</div>
-				</NetworkRateContext.Provider>
+				</DoraemonAppearanceProvider>
+                </NetworkRateContext.Provider>
 			</AppearanceProvider>
 		</ErrorBoundary>
 	);

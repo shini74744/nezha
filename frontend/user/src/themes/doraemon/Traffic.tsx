@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createContext, useContext, useMemo, type ReactNode } from "react";
-import { normalize } from "@/appearance/config";
+import { doraemonAppearance } from "./appearance";
 import { TrafficRow } from "@/appearance/traffic";
 
 export type DoraemonTrafficStat = {
@@ -26,17 +26,16 @@ const TrafficContext = createContext<TrafficState | null>(null);
 
 // One subscription for the whole list, not one request/timer per card.
 export function DoraemonTrafficProvider({
-	children,
-	appearance,
-}: {
-	children: ReactNode;
-	appearance?: string;
-}) {
-	// Reuse the saved rotation interval without enabling unrelated appearance features.
-	const interval = useMemo(
-		() => normalize(appearance).features.traffic.toggleInterval as number,
-		[appearance],
-	);
+ children, appearance, ready = true,
+}: { children: ReactNode; appearance?: string; ready?: boolean }) {
+ const config = useMemo(() => doraemonAppearance(appearance), [appearance]);
+ // Do not fetch, show loading placeholders, or rotate stale cached rows while disabled.
+ // Unmounting the active subscriber also aborts an in-flight fetch.
+ if (!ready || !config.enabled)
+  return <TrafficContext.Provider value={null}>{children}</TrafficContext.Provider>;
+ return <ActiveTrafficProvider interval={config.interval}>{children}</ActiveTrafficProvider>;
+}
+function ActiveTrafficProvider({children, interval}: {children: ReactNode; interval:number}) {
 	const { data, isPending, isError } = useQuery({
 		queryKey: doraemonTrafficKey,
 		queryFn: async ({ signal }) => {

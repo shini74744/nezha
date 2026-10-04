@@ -10,6 +10,8 @@ import {FitFooterRow} from "./fit-footer-row";
 import { formatBytes } from "@/lib/format";
 import {greetingMessages, chooseGreeting} from "./greeting-clock";
 import "./rate.css";
+import { speedColor } from "./speed-color";
+import { speedEffect } from "./speed-effect";
 export function useTick(period = 1000) {
 	const [now, setNow] = useState(() => Date.now());
 	useEffect(() => {
@@ -133,36 +135,8 @@ export function NativeSpeed({
  const f = overview ? {enabled:shared.enabled && shared.overviewEnabled,bits:shared.overviewBits,color:shared.overviewColor,animation:shared.overviewAnimation}
   : {...shared,enabled:shared.enabled && shared.cardEnabled};
 	if (!f.enabled || (!f.bits && !f.color && !f.animation)) return <>{icon}{fallback ?? formatSpeed(bytes, false)}</>;
-	const strength = overview
-			? Math.min(Math.pow(Math.max(0, bytes) / 104857600, 0.4), 1)
-			: Math.min(Math.log10(Math.max(0, bytes) + 1) / Math.log10(31457281), 1),
-		p = Math.round((1 - strength) * (overview ? 200 : 255));
-	const color =
-		direction === "up"
-			? "rgb(255," + p + "," + p + ")"
-			: "rgb(" + p + "," + p + ",255)";
-	const level = overview
-		? bytes > 104857600
-			? 5
-			: bytes > 62914560
-				? 4
-				: bytes > 41943040
-					? 3
-					: bytes > 20971520
-						? 2
-						: bytes > 0
-							? 1
-							: 0
-		: bytes > 31457280
-			? 3
-			: bytes > 20971520
-				? 2
-				: bytes > 10485760
-					? 1
-					: 0;
-	const effect = overview
-		? "nz-overview-speed-" + level + (direction === "down" ? "-dl" : "")
-		: "nz-" + (direction === "up" ? "upload" : "download") + "-boost-" + level;
+	const color = speedColor(bytes, direction, overview);
+	const {level, className: effect} = speedEffect(bytes, direction, overview);
 	return (
 		<span
 			data-native-speed={direction}

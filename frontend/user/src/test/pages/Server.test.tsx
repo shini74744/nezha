@@ -1,4 +1,5 @@
 import { screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SortProvider } from "@/context/sort-provider";
@@ -95,7 +96,8 @@ function renderServerPage(
 		backendError = null,
 		withStatusControl = false,
 		presentation,
-	}: { backendError?: Error | null; withStatusControl?: boolean; presentation?: ServerPresentation } = {},
+        afterContent,
+	}: { backendError?: Error | null; withStatusControl?: boolean; presentation?: ServerPresentation; afterContent?:ReactNode } = {},
 ) {
 	const defaultWebsocketValue: WebSocketContextType = {
 		lastData: null,
@@ -113,7 +115,7 @@ function renderServerPage(
 					value={{ ...defaultWebsocketValue, ...websocketValue }}
 				>
 					{withStatusControl && <StatusControl />}
-					<Servers backendError={backendError} presentation={presentation} />
+					<Servers backendError={backendError} presentation={presentation} afterContent={afterContent} />
 				</WebSocketContext.Provider>
 			</StatusProvider>
 		</SortProvider>,
@@ -161,6 +163,28 @@ describe("Servers page", () => {
 		});
 	});
 
+ it.each([false,true])("keeps themed bottom hidden before the first payload (connected=%s)", connected => {
+  renderServerPage({connected,lastData:null},{presentation:doraemonPresentation,afterContent:<aside>Ready bottom</aside>});
+  expect(screen.getByText("Loading")).toBeInTheDocument();
+  expect(screen.queryByText("info.processing")).not.toBeInTheDocument();
+  expect(screen.queryByText("Ready bottom")).not.toBeInTheDocument();
+ });
+ it("keeps themed bottom hidden on initial backend failure", () => {
+  renderServerPage({connected:true,lastData:null},{presentation:doraemonPresentation,backendError:new Error("failed"),afterContent:<aside>Ready bottom</aside>});
+  expect(screen.getByText("error.backendUnavailableTitle")).toBeInTheDocument();
+  expect(screen.queryByText("Ready bottom")).not.toBeInTheDocument();
+ });
+ it.each([true,false])("renders bottom after loaded cards even during reconnect (connected=%s)", connected => {
+  renderServerPage({connected,lastData:websocketPayload([createServer()])},{presentation:doraemonPresentation,afterContent:<aside>Ready bottom</aside>});
+  const card=screen.getByTestId("doraemon-card"),bottom=screen.getByText("Ready bottom");
+  expect(card.compareDocumentPosition(bottom)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(screen.queryByText("Loading")).not.toBeInTheDocument();
+ });
+ it("treats a valid empty payload as ready, not as initial loading", () => {
+  renderServerPage({connected:true,lastData:websocketPayload([])},{presentation:doraemonPresentation,afterContent:<aside>Ready bottom</aside>});
+  expect(screen.getByText("info.noServers")).toBeInTheDocument();
+  expect(screen.getByText("Ready bottom")).toBeInTheDocument();
+ });
 	it("renders websocket loading and processing states", () => {
 		const { rerender } = renderServerPage({
 			connected: false,

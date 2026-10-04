@@ -102,10 +102,11 @@ export type ServerPresentation = {
  storagePrefix: string;
 };
 export default function Servers({
- backendError, presentation,
+ backendError, presentation, afterContent,
 }: {
  backendError?: Error | null;
  presentation?: ServerPresentation;
+ afterContent?: ReactNode;
 }) {
  const Overview=presentation?.Overview ?? ServerOverview;
  const CardView=presentation?.Card ?? ServerCard;
@@ -441,6 +442,7 @@ export default function Servers({
 	}
 
 	if (!nezhaWsData) {
+        if (presentation) return <presentation.Loading/>;
 		return (
 			<div className="flex flex-col items-center justify-center ">
 				<p className="font-semibold text-sm">{t("info.processing")}</p>
@@ -451,6 +453,7 @@ export default function Servers({
 	const hasServers = nezhaWsData.servers.length > 0;
 
 	return (
+        <>
 		<div className="mx-auto w-full max-w-5xl px-0">
 			<Overview
                 map={presentation && hasServers && showMap === "1" ? <MapView now={nezhaWsData.now} serverList={nezhaWsData.servers}/> : undefined}
@@ -609,5 +612,7 @@ export default function Servers({
 				<ServerEmptyState filtered />
 			)}
 		</div>
+        {afterContent}
+        </>
 	);
 }

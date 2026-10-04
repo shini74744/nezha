@@ -1,4 +1,6 @@
 import { art } from "./assets";
+import {useDoraFeature} from "./Appearance";
+import {GadgetIcon} from "./Gadgets";
 import { useDoraMotion } from "./use-motion";
 export function DoraemonScene() {
 	const motion = useDoraMotion<HTMLDivElement>();
@@ -53,9 +55,11 @@ export function DoraemonScene() {
 	);
 }
 export function DoraemonLoading() {
+    const decorate=useDoraFeature("gadgetDecorations");
+    const motion=useDoraMotion<HTMLDivElement>();
 	return (
-		<div className="dora-loading" role="status">
-			<img src={art.flying} alt="" />
+		<div className="dora-loading" role="status" {...motion}>
+            {decorate?<div className="dora-loading-portal" aria-hidden="true"><img className="dora-loading-door" src={art.door} alt=""/><img className="dora-loading-flyer" src={art.flying} alt=""/><GadgetIcon id="copter"/></div>:<span className="dora-connecting-dot" aria-hidden="true"/>}
 			<strong>竹蜻蜓正在连接道具监控站…</strong>
 			<span>正在读取服务器实时状态</span>
 		</div>

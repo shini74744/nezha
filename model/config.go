@@ -35,6 +35,7 @@ const (
 )
 
 type ConfigForGuests struct {
+	DoraemonAppearanceConfig  string `koanf:"doraemon_appearance_config" json:"doraemon_appearance_config,omitempty"`
 	DashboardAppearanceConfig string `koanf:"dashboard_appearance_config" json:"dashboard_appearance_config,omitempty"`
 	AppearanceConfig          string `koanf:"appearance_config" json:"appearance_config,omitempty"`
 	Language                  string `koanf:"language" json:"language"` // 系统语言，默认 zh_CN
