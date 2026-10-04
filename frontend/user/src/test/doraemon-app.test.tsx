@@ -39,6 +39,15 @@ const setting = {
 	},
 };
 function mount() {
+	vi.stubGlobal(
+		"fetch",
+		vi
+			.fn()
+			.mockResolvedValue({
+				ok: true,
+				json: async () => ({ success: true, data: {} }),
+			}),
+	);
 	vi.mocked(fetchSetting).mockResolvedValue(
 		setting as Awaited<ReturnType<typeof fetchSetting>>,
 	);

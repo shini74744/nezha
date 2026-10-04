@@ -67,7 +67,7 @@ export function DoraemonOverview(
 				{tiles.map((tile) => (
 					<button
 						key={tile.title}
-						className="dora-stat"
+						className={"dora-stat" + (tile.status ? " dora-stat-count" : "")}
 						style={{ "--stat-color": tile.color } as React.CSSProperties}
 						aria-pressed={tile.status ? status === tile.status : undefined}
 						disabled={!tile.status}
