@@ -111,6 +111,7 @@
 		"Network": "網路"
 	},
 	"monitor": {
+		"loadError": "網路監控載入失敗。",
 		"noData": "沒有服務監控數據，請在管理後台服務新增監控任務",
 		"status": "狀態",
 		"avgDelay": "延遲",
@@ -165,6 +166,7 @@
 		"all": "全部"
 	},
 	"statistics": {
+    "toggle": "顯示或收起統計",
 		"closeDay": "收起當天詳情",
 		"choose": "選擇統計檢視",
 		"traffic": "流量統計",

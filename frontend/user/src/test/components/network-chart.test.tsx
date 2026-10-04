@@ -175,6 +175,22 @@ describe("NetworkChart", () => {
 		expect(await screen.findByText("monitor.noData")).toBeInTheDocument();
 	});
 
+	it.each([{data:[]}, {data:[{...monitorData[0],created_at:[],avg_delay:[]}]}])("handles empty monitor histories without crashing", async ({data}) => {
+		apiMocks.fetchMonitor.mockResolvedValue({success:true,data});
+		const {container}=renderWithQuery(<NetworkChart server_id={7} show />);
+		expect(await screen.findByText("monitor.noData")).toBeInTheDocument();
+		expect(container.querySelector("[data-chart]")).not.toBeInTheDocument();
+	});
+
+	it("shows an error and can retry without leaving a permanent skeleton", async () => {
+		apiMocks.fetchMonitor.mockResolvedValue({success:false});
+		renderWithQuery(<NetworkChart server_id={7} show />);
+		expect(await screen.findByRole("alert")).toHaveTextContent("monitor.loadError");
+		apiMocks.fetchMonitor.mockResolvedValue({success:true,data:monitorData});
+		await userEvent.setup().click(screen.getByRole("button",{name:"statistics.retry"}));
+		expect(await screen.findByText("edge-chart")).toBeInTheDocument();
+	});
+
 	it("fetches monitor data, transforms chart series, and allows logged-in period changes", async () => {
 		const user = userEvent.setup();
 		Object.defineProperty(document, "cookie", {

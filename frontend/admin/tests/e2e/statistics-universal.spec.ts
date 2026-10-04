@@ -3,7 +3,7 @@ import fs from "node:fs";
 import {createServer} from "../../../user/src/test/fixtures";
 test.use({ignoreHTTPSErrors:true,hasTouch:true});
 const js=fs.readFileSync(new URL("../../../../cmd/dashboard/controller/frontend-statistics.js",import.meta.url),"utf8");
-for(const [index,theme] of ["nazhua","aobobo","nezha-pixel","nezha-ascii"].entries())for(const width of [390,1366])test(theme+" shared statistics "+width,async({page})=>{
+for(const [index,theme] of ["nazhua","aobobo","nezha-pixel","nezha-ascii"].entries())for(const width of [390,1366])for(const split of [true,false])test(theme+" shared statistics "+width+" split "+split,async({page})=>{
  // Aobobo's WebGL globe is software-rendered on the headless build host.
  test.setTimeout(theme === "aobobo" ? 90000 : 45000);
  const origin="https://127.0.0.1:"+(5191+index),now=Date.now(),servers=[createServer({id:1,name:"测试服务器",last_active:new Date(now).toISOString()})];
@@ -25,15 +25,38 @@ for(const [index,theme] of ["nazhua","aobobo","nezha-pixel","nezha-ascii"].entri
  }
  if(r.request().isNavigationRequest()&&path==="/"){
   const response=await r.fetch();
-  return r.fulfill({response,body:(await response.text()).replace("</head>",'<script defer src="/__nezha/statistics.js" data-theme="'+theme+'-dist"></script></head>')});
+  return r.fulfill({response,body:(await response.text()).replace("</head>",'<script defer src="/__nezha/statistics.js" data-theme="'+theme+'-dist" data-statistics-split="'+split+'"></script></head>')});
  }
  if(u.origin!==origin)return r.abort();
  return r.continue();
  });
  await page.goto(origin,{waitUntil:"domcontentloaded"});
- const host=page.locator("#nezha-statistics"),trigger=host.getByRole("button",{name:"选择统计视图",exact:true}),menu=host.getByRole("menu");
+ const host=page.locator("#nezha-statistics"),trigger=host.getByRole("button",{name:split?"选择统计视图":"显示或收起统计",exact:true}),menu=host.getByRole("menu");
+
+ // Tap the visible close control directly. Aobobo's scrolling layer can stall
+ // Chromium's automatic scroll-into-view even though this fixed control is in view.
+ const tapClose = async () => {
+  const close=host.getByRole("button",{name:"收起统计",exact:true});
+  await expect(close).toBeInViewport();
+  const box=await close.boundingBox();expect(box).not.toBeNull();
+  await page.touchscreen.tap(box!.x+box!.width/2,box!.y+box!.height/2);
+ };
  await expect(trigger).toBeVisible();
  if(width===390)await page.evaluate(()=>document.documentElement.classList.add("dark"));
+ if(!split){
+  await trigger.tap();
+  const dialog=host.getByRole("dialog");await expect(dialog).toBeVisible();
+  await expect(menu).not.toBeVisible();
+  await expect(host.locator('[data-statistics-card="traffic"]')).toHaveCount(1);
+  await expect(host.locator('[data-statistics-card="uptime"]')).toHaveCount(1);
+  await expect(dialog.locator(".tabs")).not.toBeVisible();
+  expect(await dialog.evaluate(e=>e.scrollWidth<=e.clientWidth+1)).toBe(true);
+  await page.screenshot({path:"test-results/universal-combined-"+theme+"-"+width+".png",timeout:10000});
+  await page.keyboard.press("Escape");await expect(dialog).not.toBeVisible();
+  await trigger.tap();await expect(dialog).toBeVisible();
+  await tapClose();await expect(dialog).not.toBeVisible();
+  return;
+ }
  await trigger.tap();await expect(menu).toBeVisible();
  const mb=await menu.boundingBox();expect(mb!.width).toBeLessThanOrEqual(140);expect(mb!.height).toBeLessThanOrEqual(110);await expect(menu.getByRole("menuitemradio")).toHaveCount(2);await expect(menu.getByRole("menuitemradio",{name:"收起统计",exact:true})).toHaveCount(0);await expect(menu.locator(".menu-title")).toHaveCount(0);expect(mb!.x).toBeGreaterThanOrEqual(0);expect(mb!.x+mb!.width).toBeLessThanOrEqual(width);
  await page.screenshot({path:"test-results/universal-menu-"+theme+"-"+width+".png",timeout:10000});
@@ -59,7 +82,7 @@ for(const [index,theme] of ["nazhua","aobobo","nezha-pixel","nezha-ascii"].entri
  await expect(dialog).not.toBeVisible();await expect(trigger).toBeFocused();
  await trigger.tap();await host.getByRole("menuitemradio",{name:"在线率",exact:true}).tap();
  await expect(dialog).toBeVisible();
- await dialog.getByRole("button",{name:"收起统计",exact:true}).click();
+ await tapClose();
  await expect(dialog).not.toBeVisible();await expect(trigger).toBeFocused();
  expect(await page.evaluate(key=>localStorage.getItem(key),theme+"-dist:statisticsView")).toBe("uptime");
  failing=true;await trigger.click();await host.getByRole("menuitemradio",{name:"流量统计",exact:true}).click();

@@ -107,3 +107,13 @@ test("SettingsPage toasts Success when updateSettings resolves", async () => {
     expect(toastCalls).toContain("Success")
     expect(toastCalls).not.toContain("Error")
 })
+
+test("SettingsPage leaves the global appearance switch untouched", async () => {
+    updateSettings.mockResolvedValue(undefined)
+    const { default: SettingsPage } = await import("@/routes/settings")
+    render(<MemoryRouter><SettingsPage /></MemoryRouter>)
+    expect(screen.queryByRole("switch", {name:"ShowNetworkInDetail"})).toBeNull()
+    fireEvent.click(screen.getByRole("button", {name:/Confirm|Submit|Save/i}))
+    await waitFor(() => expect(updateSettings).toHaveBeenCalled())
+    expect(updateSettings.mock.calls[0][0]).not.toHaveProperty("show_network_in_detail")
+})

@@ -2,6 +2,7 @@ import {fetcher, FetcherMethod} from "@/api/api"
 import {SettingsTab} from "@/components/settings-tab"
 import {BackgroundSettings} from "@/components/background-settings"
 import {AppearanceSection} from "@/components/appearance-section"
+import {GlobalDisplaySettings} from "@/components/global-display-settings"
 import {VisitorIPSettings} from "@/components/visitor-ip-settings"
 import {SakanaCharacters} from "@/components/sakana-characters"
 import {SpeedSettings} from "@/components/speed-settings"
@@ -40,6 +41,7 @@ export default function AppearancePage(){
     </select>
    </label>
   </div>
+  <GlobalDisplaySettings/>
   <ThemeAppearanceEditor key={theme} theme={theme} onDirtyChange={setDirty} onBusyChange={setBusy}/>
  </div>
 }

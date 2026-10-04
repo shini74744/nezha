@@ -15,6 +15,7 @@ describe("default display mode editor",()=>{
   stored.config.enabled=true;stored.config.features.dark.mode=mode==="dark"?"light":"dark";
   const before=JSON.stringify(stored.config.features.traffic);
   vi.mocked(fetcher).mockImplementation(async(method,_url,payload:any)=>{
+   if(_url==="/api/v1/setting/display")return {statistics_split:true,detail_network_split:true} as any;
    if(method===FetcherMethod.PATCH)stored={...stored,config:payload.config,revision:"r2"};
    return structuredClone(stored) as any;
   });

@@ -219,6 +219,8 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	auth.PATCH("/setting", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateConfig))
 	auth.GET("/setting/dashboard-appearance", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getDashboardAppearance))
 	auth.PATCH("/setting/dashboard-appearance", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateDashboardAppearance))
+	auth.GET("/setting/display", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getDisplaySettings))
+	auth.PATCH("/setting/display", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateDisplaySettings))
 	auth.GET("/setting/appearance", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getAppearance))
 	auth.PATCH("/setting/appearance", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateAppearance))
 	auth.POST("/maintenance", restScopeMiddleware(model.ScopeAdminAll), adminHandler(runMaintenance))

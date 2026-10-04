@@ -115,6 +115,7 @@
 		"Network": "Network"
 	},
 	"monitor": {
+		"loadError": "Could not load network monitoring.",
 		"noData": "No server monitor data, please add a service monitor first",
 		"avgDelay": "Latency",
 		"monitorCount": "Services",
@@ -169,6 +170,7 @@
 		"all": "All"
 	},
 	"statistics": {
+    "toggle": "Show or hide statistics",
 		"closeDay": "Close day details",
 		"choose": "Choose statistics view",
 		"traffic": "Traffic usage",

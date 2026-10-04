@@ -1,5 +1,7 @@
 {
     "nezha": "Nezha Monitoring",
+    "ShowNetworkInDetail": "Show network in server details",
+    "ShowNetworkInDetailDescription": "When enabled, network monitoring appears below the server detail charts. When disabled, use the separate Network view.",
     "UUIDActions": "UUID actions",
     "CopyUUID": "Copy UUID",
     "CopyUUIDInstallCommand": "Copy install command with UUID",

@@ -116,6 +116,7 @@
 		"Network": "网络"
 	},
 	"monitor": {
+		"loadError": "网络监控加载失败。",
 		"noData": "没有服务监控数据，请在管理后台服务页添加监控任务",
 		"avgDelay": "延迟",
 		"monitorCount": "个监控服务",
@@ -170,6 +171,7 @@
 		"all": "全部"
 	},
 	"statistics": {
+    "toggle": "显示或收起统计",
 		"closeDay": "收起当天详情",
 		"choose": "选择统计视图",
 		"traffic": "流量统计",

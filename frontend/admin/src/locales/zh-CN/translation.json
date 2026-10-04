@@ -1,5 +1,7 @@
 {
     "nezha": "哪吒监控",
+    "ShowNetworkInDetail": "详细页同时显示网络监控",
+    "ShowNetworkInDetailDescription": "开启后，网络监控显示在服务器详细图表下方；关闭后仍可通过“网络”页单独查看。",
     "UUIDActions": "UUID 操作",
     "CopyUUID": "复制 UUID",
     "CopyUUIDInstallCommand": "复制带此 UUID 的安装命令",

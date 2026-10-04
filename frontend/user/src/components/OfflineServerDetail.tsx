@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import { useState } from "react";
 import dayjs from "dayjs";
 import { useQuery } from "@tanstack/react-query";
 import { Area, AreaChart, XAxis, YAxis, CartesianGrid } from "recharts";
@@ -9,13 +9,12 @@ import { Separator } from "@/components/ui/separator";
 import ServerDetailOverview from "@/components/ServerDetailOverview";
 import { PeriodSelector } from "@/components/ServerDetailChart";
 import TabSwitch from "@/components/TabSwitch";
-import NetworkChartLoading from "@/components/NetworkChartLoading";
+import ServerNetworkSection from "@/components/ServerNetworkSection";
 import { fetchLoginUser, fetchServerMetrics } from "@/lib/nezha-api";
 import { formatBytes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { snapshotInterval } from "@/lib/snapshot-interval";
 import type { MetricDataPoint, MetricPeriod, MetricType, NezhaServer } from "@/types/nezha-api";
-const NetworkChart=lazy(()=>import("@/components/NetworkChart").then(m=>({default:m.NetworkChart})));
 export interface LastReport {
  snapshot?: {at:number;host?:Partial<NezhaServer["host"]>;state:Partial<NezhaServer["state"]>;country_code?:string}; snapshot_seconds?:number;
  server_id:number; tsdb_enabled:boolean; history_days:number; last_report_at?:number;
@@ -70,14 +69,14 @@ export function OfflineServerDetail({server,now}:{server:NezhaServer;now:number}
   <section className="flex items-center my-2 w-full">
    <Separator className="flex-1"/><div className="flex justify-center w-full max-w-50"><TabSwitch tabs={["Detail","Network"]} currentTab={tab} setCurrentTab={setTab}/></div><Separator className="flex-1"/>
   </section>
-  {tab==="Network"?<Suspense fallback={<NetworkChartLoading/>}><NetworkChart server_id={server.id} show/></Suspense>:
-   (report?.tsdb_enabled||saved)?<section>
+  {tab==="Detail" && (report?.tsdb_enabled||saved)?<section>
     <PeriodSelector selectedPeriod={activePeriod==="last"?"realtime":activePeriod} onPeriodChange={p=>setPeriod(p==="realtime"?"last":p)} isLogin={!!viewer} isTsdbEnabled={!!report?.tsdb_enabled} offline/>
     <p className="text-xs text-muted-foreground mb-3">{saved?"离线前最后 1 分钟的完整记录；已冻结保存，非实时数据。":"旧历史记录未保存完整主机信息和总容量；该机器重新上线后会自动补齐快照。"}</p>
     <div className="grid md:grid-cols-2 lg:grid-cols-3 grid-cols-1 gap-3 server-charts">
      {chartGroups.map(group=><OfflineMetricCard key={group.title} group={group} report={report!} period={activePeriod}/>)}
     </div>
    </section>:null}
+  <ServerNetworkSection server_id={server.id} standalone={tab==="Network"}/>
  </div>;
 }
 function MetricHeader({group,report}:{group:typeof groups[number];report:LastReport}) {

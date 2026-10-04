@@ -5,6 +5,7 @@
   "use strict";
   const script = document.currentScript;
   const theme = script?.dataset.theme || "other";
+  const split = script?.dataset.statisticsSplit !== "false";
   if (document.getElementById("nezha-statistics") || location.pathname.startsWith("/dashboard")) return;
   const boot = () => {
     const host = document.createElement("div");
@@ -63,8 +64,8 @@
     const button = (label, className, fn) => {
       const b = el("button", className, label); b.type = "button"; b.addEventListener("click", fn); return b;
     };
-    const trigger = button("▥  统计  ⌄", "", () => menu.hidden ? openMenu() : closeMenu());
-    trigger.id = "trigger"; trigger.setAttribute("aria-label", "选择统计视图"); trigger.setAttribute("aria-haspopup", "menu"); trigger.setAttribute("aria-expanded", "false");
+    const trigger = button(split ? "▥  统计  ⌄" : "▥  统计", "", () => split ? (menu.hidden ? openMenu() : closeMenu()) : (dialog.open ? closePanel() : openPanel(view)));
+    trigger.id = "trigger"; trigger.setAttribute("aria-label", split ? "选择统计视图" : "显示或收起统计"); if(split)trigger.setAttribute("aria-haspopup", "menu"); trigger.setAttribute("aria-expanded", "false");
     const menu = el("div"); menu.id = "menu"; menu.hidden = true; menu.setAttribute("role", "menu"); menu.setAttribute("aria-label", "选择统计视图");
     const dialog = el("dialog"); dialog.setAttribute("aria-label", "统计详情");
     const frame = el("div", "frame"), head = el("div", "head"), tabs = el("div", "tabs"), body = el("div", "body");
@@ -81,7 +82,9 @@
       item.append(el("span","check",""),el("span","",label)); menu.append(item); menuItems.push(item);
       const tab = button(label,"",()=>selectView(key)); tab.dataset.view=key; tabs.append(tab);
     }
+    tabs.hidden = !split;
     function syncSelection() {
+      if(!split)trigger.setAttribute("aria-expanded",String(dialog.open));
       for(const item of menuItems) {
         const selected = dialog.open && item.dataset.view === view;
         item.setAttribute("aria-checked",String(selected)); item.firstChild.textContent = selected ? "✓" : "";
@@ -152,6 +155,9 @@
     const num = value => Number.isFinite(Number(value)) ? Math.max(0,Number(value)) : 0;
     const perServer = (value,id) => value && typeof value === "object" ? value[id] : value;
     function render() {
+      body.replaceChildren(...(split ? [view] : ["traffic","uptime"]).map(renderView));
+    }
+    function renderView(view) {
       const hint=el("p","hint",view==="traffic"?"流量周期与用量 · 所有可见服务器":"服务监控 · 最近 30 天 · 点击色块查看当天数据");
       const grid=el("div","grid "+view); grid.dataset.statisticsView=view;
       if(view==="traffic") {
@@ -186,8 +192,10 @@
           card.append(title,days,footer,detail);grid.append(card);
         }
       }
-      body.replaceChildren(hint,grid);
+      const section=el("section"); section.style.marginBottom="16px";
+      section.append(el("h3","",view==="traffic"?"流量统计":"在线率"),hint,grid);
       if(!grid.childElementCount)grid.append(el("p","empty",view==="traffic"?"暂无流量统计，请先配置周期流量规则。":"暂无在线率数据，请先配置服务监控。"));
+      return section;
     }
     function syncTheme() {
       const html=document.documentElement,body=document.body;

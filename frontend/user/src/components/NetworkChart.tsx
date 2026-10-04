@@ -150,7 +150,7 @@ export function NetworkChart({
 		}
 	}, [isLogin, period]);
 
-	const { data: monitorData, isPlaceholderData } = useQuery({
+	const { data: monitorData, isPlaceholderData, isError, isFetching, refetch } = useQuery({
 		queryKey: ["monitor", server_id, period],
 		queryFn: () => fetchMonitor(server_id, period),
 		enabled: show,
@@ -158,30 +158,28 @@ export function NetworkChart({
 		refetchOnMount: true,
 		refetchOnWindowFocus: true,
 		refetchInterval: 10000,
+		retry: 1,
 	});
 
-	if (!monitorData) return <NetworkChartLoading />;
-
-	if (monitorData?.success && !monitorData.data) {
-		return (
-			<>
-				<div className="flex flex-col items-center justify-center">
-					<p className="text-sm font-medium opacity-40"></p>
-					<p className="text-sm font-medium opacity-40 mb-4">
-						{t("monitor.noData")}
-					</p>
-				</div>
-				<NetworkChartLoading />
-			</>
-		);
+	if ((!monitorData && isError) || monitorData?.success === false) {
+		return <div role="alert" className="rounded-lg border p-4 text-sm text-muted-foreground">
+			{t("monitor.loadError")}
+			<button type="button" className="ml-2 underline" disabled={isFetching} onClick={() => refetch()}>
+				{t("statistics.retry")}
+			</button>
+		</div>;
 	}
-
-	const transformedData = transformData(monitorData.data);
-
-	const formattedData = formatData(monitorData.data);
-
+	if (!monitorData) return <NetworkChartLoading />;
+	const monitors = Array.isArray(monitorData.data)
+		? monitorData.data.filter((item) => item.created_at?.length && item.avg_delay?.length)
+		: [];
+	if (!monitors.length) {
+		return <div role="status" className="rounded-lg border p-4 text-sm text-muted-foreground">{t("monitor.noData")}</div>;
+	}
+	const transformedData = transformData(monitors);
+	const formattedData = formatData(monitors);
 	const monitorInfoByName = new Map(
-		monitorData.data.map((item) => [
+		monitors.map((item) => [
 			item.monitor_name,
 			{ id: item.monitor_id, displayIndex: item.display_index },
 		]),
@@ -216,7 +214,7 @@ export function NetworkChart({
 			chartDataKey={chartDataKey}
 			chartConfig={initChartConfig}
 			chartData={transformedData}
-			serverName={monitorData.data[0].server_name}
+			serverName={monitors[0].server_name}
 			formattedData={formattedData}
 			isPeriodLoading={isPlaceholderData}
 			period={period}
@@ -691,7 +689,7 @@ export const NetworkChartClient = React.memo(function NetworkChart({
 						<ChartContainer
 							config={chartConfig}
 							className={cn(
-								"aspect-auto h-62.5 w-full transition-opacity",
+								"aspect-auto h-105 sm:h-62.5 w-full transition-opacity",
 								showPeriodLoading && "opacity-60",
 							)}
 						>

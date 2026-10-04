@@ -710,6 +710,7 @@ export interface ModelServiceResponseItem {
 }
 
 export interface ModelSetting {
+    show_network_in_detail?: boolean
     dashboard_appearance_config?: string
     admin_template: string
     /** Agent真实IP */
@@ -746,6 +747,7 @@ export interface ModelSetting {
 }
 
 export interface ModelSettingForm {
+    show_network_in_detail?: boolean
     /** Agent真实IP */
     agent_real_ip_header?: string
     cover: number

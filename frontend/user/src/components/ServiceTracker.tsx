@@ -36,7 +36,7 @@ function processServiceData(serviceData: ServiceData) {
 
 
 export function ServiceTracker({ serverList, view = "uptime", onClose }: {
-	serverList: NezhaServer[]; view?: "traffic" | "uptime"; onClose?: () => void;
+	serverList: NezhaServer[]; view?: "traffic" | "uptime" | "both"; onClose?: () => void;
 }) {
 	const { t } = useTranslation();
 	const { data: serviceData, isLoading, isError, refetch, isFetching } = useQuery({
@@ -49,17 +49,18 @@ export function ServiceTracker({ serverList, view = "uptime", onClose }: {
 		})), [serviceData?.data?.services]);
 	const cycleStats = serviceData?.data?.cycle_transfer_stats ?? {};
 	const hasTraffic = getCycleTransferRows(serverList, cycleStats).length > 0;
-	const empty = view === "traffic" ? !hasTraffic : serviceSummaries.length === 0;
-
-	return (
-		<section className="mt-4 w-full min-w-0" data-statistics-view={view}
-			aria-label={t("statistics." + view)}>
+	const views = view === "both" ? ["traffic", "uptime"] as const : [view];
+	return <>{views.map((sectionView, index) => {
+		const empty = sectionView === "traffic" ? !hasTraffic : serviceSummaries.length === 0;
+		return (
+		<section key={sectionView} className="mt-4 w-full min-w-0" data-statistics-view={sectionView}
+			aria-label={t("statistics." + sectionView)}>
 			<div className="mb-3 flex items-center justify-between gap-3">
 				<div className="min-w-0">
-					<h2 className="text-sm font-semibold">{t("statistics." + view)}</h2>
-					<p className="mt-0.5 text-xs text-muted-foreground">{t("statistics." + view + "Hint")}</p>
+					<h2 className="text-sm font-semibold">{t("statistics." + sectionView)}</h2>
+					<p className="mt-0.5 text-xs text-muted-foreground">{t("statistics." + sectionView + "Hint")}</p>
 				</div>
-				{onClose && <button type="button" onClick={onClose} aria-label={t("statistics.close")}
+				{onClose && index === 0 && <button type="button" onClick={onClose} aria-label={t("statistics.close")}
 					className="flex size-9 shrink-0 items-center justify-center rounded-full border bg-card text-card-foreground hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2">
 					<XMarkIcon className="size-4" aria-hidden="true" />
 				</button>}
@@ -77,9 +78,9 @@ export function ServiceTracker({ serverList, view = "uptime", onClose }: {
 				</div>
 			) : empty ? (
 				<p role="status" className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">
-					{t(view === "traffic" ? "statistics.emptyTraffic" : "statistics.emptyUptime")}
+					{t(sectionView === "traffic" ? "statistics.emptyTraffic" : "statistics.emptyUptime")}
 				</p>
-			) : view === "traffic" ? (
+			) : sectionView === "traffic" ? (
 				<CycleTransferStatsCard serverList={serverList} cycleStats={cycleStats} />
 			) : (
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -88,5 +89,6 @@ export function ServiceTracker({ serverList, view = "uptime", onClose }: {
 			)}
 		</section>
 	);
+	})}</>;
 }
 export default ServiceTracker;
