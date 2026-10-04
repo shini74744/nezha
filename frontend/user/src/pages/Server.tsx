@@ -2,7 +2,6 @@ import {
 	ArrowDownIcon,
 	ArrowsUpDownIcon,
 	ArrowUpIcon,
-	ChartBarSquareIcon,
 	MapIcon,
 	ServerStackIcon,
 	ViewColumnsIcon,
@@ -17,6 +16,8 @@ import ServerCard from "@/components/ServerCard";
 import ServerCardInline from "@/components/ServerCardInline";
 import ServerOverview from "@/components/ServerOverview";
 import { ServiceTracker } from "@/components/ServiceTracker";
+import StatisticsMenu from "@/components/StatisticsMenu";
+import { useStatisticsView } from "@/hooks/use-statistics-view";
 import SortMetricSelect from "@/components/SortMetricSelect";
 import { useSort } from "@/hooks/use-sort";
 import { useStatus } from "@/hooks/use-status";
@@ -128,13 +129,14 @@ export default function Servers({
 		refetchInterval: 10000,
 		retry: false,
 	});
-	const hasServices =
-		!!serviceData?.data?.services &&
-		Object.keys(serviceData.data.services).length > 0;
+	const [statisticsView, selectStatisticsView] = useStatisticsView(
+		presentation?.storagePrefix ?? "",
+		!!serviceData,
+		Object.keys(serviceData?.data?.cycle_transfer_stats ?? {}).length > 0,
+	);
 	const { lastData: rawData, inventoryData, connected, showDisplayHidden, setShowDisplayHidden } = useWebSocketContext();
 	const lastData = inventoryData ?? rawData;
 	const { status, setStatus } = useStatus();
-	const [showServices, setShowServices] = useState<string>("0");
 	const [showMap, setShowMap] = useState<string>("0");
 	const [inline, setInline] = useState<string>("0");
 	const hasRestoredScroll = useRef(false);
@@ -173,20 +175,6 @@ export default function Servers({
 		sessionStorage.setItem("scrollPosition", String(window.scrollY || 0));
 	};
 
-	useEffect(() => {
-		const showServicesState = localStorage.getItem(preference("showServices"));
-		if (window.ForceShowServices) {
-			setShowServices("1");
-		} else if (showServicesState !== null) {
-			setShowServices(showServicesState);
-		}
-	}, []);
-
-	useEffect(() => {
-		if (!hasServices) {
-			setShowServices("0");
-		}
-	}, [hasServices]);
 
 	useEffect(() => {
 		const checkInlineSettings = () => {
@@ -495,29 +483,7 @@ export default function Servers({
 					>
 						<span className="sr-only">切换地区地图</span><MapIcon className="size-[13px]" />
 					</button>
-					{hasServices && (
-						<button
-							onClick={() => {
-								setShowServices(showServices === "0" ? "1" : "0");
-								localStorage.setItem(
-									preference("showServices"),
-									showServices === "0" ? "1" : "0",
-								);
-							}}
-							className={cn(
-								"inset-shadow-2xs inset-shadow-white/20 flex cursor-pointer flex-col items-center gap-0 rounded-[50px] bg-blue-100 p-2.5 text-blue-600 transition-all dark:bg-blue-900 dark:text-blue-100",
-								{
-									"inset-shadow-black/20 bg-blue-600 text-white dark:bg-blue-100 dark:text-blue-600":
-										showServices === "1",
-								},
-								{
-									"bg-opacity-70 dark:bg-opacity-70": customBackgroundImage,
-								},
-							)}
-						>
-							<span className="sr-only">切换服务监控</span><ChartBarSquareIcon className="size-[13px]" />
-						</button>
-					)}
+					<StatisticsMenu value={statisticsView} onChange={selectStatisticsView} />
 					<button
 						onClick={() => {
 							setInline(inline === "0" ? "1" : "0");
@@ -581,8 +547,8 @@ export default function Servers({
 			{!presentation && hasServers && showMap === "1" && (
 				<GlobalMap now={nezhaWsData.now} serverList={nezhaWsData.servers} />
 			)}
-			{hasServers && showServices === "1" && (
-				<ServiceTracker serverList={filteredServers} />
+			{hasServers && statisticsView !== "closed" && (
+				<ServiceTracker serverList={filteredServers} view={statisticsView} onClose={() => selectStatisticsView("closed")} />
 			)}
 			{!hasServers ? (
 				<ServerEmptyState />

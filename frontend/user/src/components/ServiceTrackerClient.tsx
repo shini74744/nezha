@@ -1,4 +1,4 @@
-import type React from "react";
+import { useState, type FC } from "react";
 import { useTranslation } from "react-i18next";
 import {
 	Tooltip,
@@ -23,7 +23,7 @@ interface ServiceTrackerProps {
 	avgDelay?: number;
 }
 
-export const ServiceTrackerClient: React.FC<ServiceTrackerProps> = ({
+export const ServiceTrackerClient: FC<ServiceTrackerProps> = ({
 	days,
 	className,
 	title,
@@ -31,6 +31,8 @@ export const ServiceTrackerClient: React.FC<ServiceTrackerProps> = ({
 	avgDelay = 0,
 }) => {
 	const { t } = useTranslation();
+	const [selectedDay, setSelectedDay] = useState<number | null>(null);
+	const detail = selectedDay === null ? undefined : days[selectedDay];
 	const customBackgroundImage =
 		(window.CustomBackgroundImage as string) !== ""
 			? window.CustomBackgroundImage
@@ -56,25 +58,26 @@ export const ServiceTrackerClient: React.FC<ServiceTrackerProps> = ({
 
 	return (
 		<div
+			data-statistics-card="uptime"
 			className={cn(
-				"w-full space-y-3 bg-white px-4 py-4  rounded-lg border bg-card text-card-foreground shadow-lg shadow-neutral-200/40 dark:shadow-none",
+				"min-w-0 w-full space-y-3 bg-white px-4 py-4  rounded-lg border bg-card text-card-foreground shadow-lg shadow-neutral-200/40 dark:shadow-none",
 				className,
 				{
 					"bg-card/70": customBackgroundImage,
 				},
 			)}
 		>
-			<div className="flex justify-between items-center">
-				<div className="flex items-center gap-2">
+			<div className="flex flex-wrap justify-between items-start gap-x-4 gap-y-2">
+				<div className="flex min-w-0 items-start gap-2">
 					<div
 						className={cn(
-							"w-2.5 h-2.5 rounded-full transition-colors",
+							"w-2.5 h-2.5 shrink-0 mt-1 rounded-full transition-colors",
 							getStatusColor(uptime),
 						)}
 					/>
-					<span className="font-medium text-sm">{title}</span>
+					<span className="min-w-0 break-words [overflow-wrap:anywhere] font-medium text-sm">{title}</span>
 				</div>
-				<div className="flex items-center gap-3">
+				<div className="ml-auto flex shrink-0 items-center gap-3 whitespace-nowrap">
 					<span
 						className={cn(
 							"font-medium text-sm transition-colors",
@@ -100,9 +103,10 @@ export const ServiceTrackerClient: React.FC<ServiceTrackerProps> = ({
 					<TooltipProvider delayDuration={50} key={index}>
 						<Tooltip>
 							<TooltipTrigger asChild>
-								<div
+								<button type="button" onClick={() => setSelectedDay(index)}
+									aria-label={`${day.date?.toLocaleDateString() ?? ""} ${t("serviceTracker.uptime")} ${day.uptime.toFixed(1)}%, ${day.delay.toFixed(0)}ms`}
 									className={cn(
-										"relative flex-1 h-7 rounded-[8px] transition-all duration-200 cursor-help",
+										"relative min-w-0 flex-1 h-7 p-0 border-0 rounded-[8px] transition-all duration-200 cursor-help focus-visible:outline-2 focus-visible:outline-offset-2",
 										"before:absolute before:inset-0 before:rounded-[4px] before:opacity-0 hover:before:opacity-100 before:bg-white/10 before:transition-opacity",
 										"after:absolute after:inset-0 after:rounded-[4px] after:shadow-[inset_0_1px_--theme(--color-white/10%)]",
 										day.completed
@@ -155,6 +159,13 @@ export const ServiceTrackerClient: React.FC<ServiceTrackerProps> = ({
 				))}
 			</div>
 
+			{detail && (
+				<div className="flex items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2 text-xs" data-day-detail>
+					<p role="status">{detail.date?.toLocaleDateString()} · {t("serviceTracker.uptime")} {detail.uptime.toFixed(1)}% · {detail.delay.toFixed(0)}ms</p>
+					<button type="button" className="size-8 shrink-0 rounded-full hover:bg-accent"
+						aria-label={t("statistics.closeDay")} onClick={() => setSelectedDay(null)}>×</button>
+				</div>
+			)}
 			<div className="flex justify-between text-xs text-stone-500 dark:text-stone-400">
 				<span>30 {t("serviceTracker.daysAgo")}</span>
 				<span>{t("serviceTracker.today")}</span>

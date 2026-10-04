@@ -1,12 +1,10 @@
-import { ExclamationTriangleIcon } from "@heroicons/react/20/solid";
+import { ExclamationTriangleIcon, XMarkIcon } from "@heroicons/react/20/solid";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import {useFeature} from "@/appearance/context";
 import { useTranslation } from "react-i18next";
 import { fetchService } from "@/lib/nezha-api";
 import type { NezhaServer, ServiceData } from "@/types/nezha-api";
-
-import { CycleTransferStatsCard } from "./CycleTransferStats";
+import { CycleTransferStatsCard, getCycleTransferRows } from "./CycleTransferStats";
 import { Loader } from "./loading/Loader";
 import ServiceTrackerClient from "./ServiceTrackerClient";
 
@@ -36,74 +34,59 @@ function processServiceData(serviceData: ServiceData) {
 	return { days, uptime, avgDelay };
 }
 
-export function ServiceTracker({ serverList }: { serverList: NezhaServer[] }) {
- const nativeTraffic=useFeature("traffic");
+
+export function ServiceTracker({ serverList, view = "uptime", onClose }: {
+	serverList: NezhaServer[]; view?: "traffic" | "uptime"; onClose?: () => void;
+}) {
 	const { t } = useTranslation();
-	const { data: serviceData, isLoading } = useQuery({
-		queryKey: ["service"],
-		queryFn: () => fetchService(),
-		refetchOnMount: true,
-		refetchOnWindowFocus: true,
-		refetchInterval: 10000,
-		retry: false,
+	const { data: serviceData, isLoading, isError, refetch, isFetching } = useQuery({
+		queryKey: ["service"], queryFn: fetchService,
+		refetchOnMount: true, refetchOnWindowFocus: true, refetchInterval: 10000, retry: false,
 	});
-
-	const serviceSummaries = useMemo(() => {
-		return Object.entries(serviceData?.data?.services ?? {}).map(
-			([name, data]) => ({
-				...processServiceData(data),
-				name,
-				title: data.service_name,
-			}),
-		);
-	}, [serviceData?.data?.services]);
-
-	if (isLoading) {
-		return (
-			<div className="mt-4 text-sm font-medium flex items-center gap-1">
-				<Loader visible={true} />
-				{t("serviceTracker.loading")}
-			</div>
-		);
-	}
-
-	if (
-		!serviceData?.data?.services &&
-		!serviceData?.data?.cycle_transfer_stats
-	) {
-		return (
-			<div className="mt-4 text-sm font-medium flex items-center gap-1">
-				<ExclamationTriangleIcon className="w-4 h-4" />
-				{t("serviceTracker.noService")}
-			</div>
-		);
-	}
+	const serviceSummaries = useMemo(() =>
+		Object.entries(serviceData?.data?.services ?? {}).map(([name, data]) => ({
+			...processServiceData(data), name, title: data.service_name,
+		})), [serviceData?.data?.services]);
+	const cycleStats = serviceData?.data?.cycle_transfer_stats ?? {};
+	const hasTraffic = getCycleTransferRows(serverList, cycleStats).length > 0;
+	const empty = view === "traffic" ? !hasTraffic : serviceSummaries.length === 0;
 
 	return (
-		<div className="mt-4 w-full mx-auto ">
-			{!nativeTraffic.enabled && serviceData.data.cycle_transfer_stats && (
-				<div>
-					<CycleTransferStatsCard
-						serverList={serverList}
-						cycleStats={serviceData.data.cycle_transfer_stats}
-					/>
+		<section className="mt-4 w-full min-w-0" data-statistics-view={view}
+			aria-label={t("statistics." + view)}>
+			<div className="mb-3 flex items-center justify-between gap-3">
+				<div className="min-w-0">
+					<h2 className="text-sm font-semibold">{t("statistics." + view)}</h2>
+					<p className="mt-0.5 text-xs text-muted-foreground">{t("statistics." + view + "Hint")}</p>
+				</div>
+				{onClose && <button type="button" onClick={onClose} aria-label={t("statistics.close")}
+					className="flex size-9 shrink-0 items-center justify-center rounded-full border bg-card text-card-foreground hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2">
+					<XMarkIcon className="size-4" aria-hidden="true" />
+				</button>}
+			</div>
+			{isLoading ? (
+				<div role="status" className="rounded-xl border bg-card p-5 text-sm flex items-center gap-2">
+					<Loader visible />{t("serviceTracker.loading")}
+				</div>
+			) : isError && !serviceData ? (
+				<div role="status" className="rounded-xl border bg-card p-5 text-sm flex flex-wrap items-center gap-3">
+					<ExclamationTriangleIcon className="size-4 shrink-0" />
+					<span>{t("statistics.error")}</span>
+					<button type="button" disabled={isFetching} onClick={() => void refetch()}
+						className="min-h-10 rounded-lg border px-3 hover:bg-accent">{t("statistics.retry")}</button>
+				</div>
+			) : empty ? (
+				<p role="status" className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">
+					{t(view === "traffic" ? "statistics.emptyTraffic" : "statistics.emptyUptime")}
+				</p>
+			) : view === "traffic" ? (
+				<CycleTransferStatsCard serverList={serverList} cycleStats={cycleStats} />
+			) : (
+				<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+					{serviceSummaries.map(({name, ...summary}) => <ServiceTrackerClient key={name} {...summary} />)}
 				</div>
 			)}
-			{serviceSummaries.length > 0 && (
-				<section className="grid grid-cols-1 md:grid-cols-2 mt-4 gap-2 md:gap-4">
-					{serviceSummaries.map(({ avgDelay, days, name, title, uptime }) => (
-						<ServiceTrackerClient
-							key={name}
-							days={days}
-							title={title}
-							uptime={uptime}
-							avgDelay={avgDelay}
-						/>
-					))}
-				</section>
-			)}
-		</div>
+		</section>
 	);
 }
-
 export default ServiceTracker;
