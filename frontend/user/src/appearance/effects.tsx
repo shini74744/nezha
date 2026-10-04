@@ -111,15 +111,17 @@ export function NativeEffects({preview=false}:{preview?:boolean}={}) {
 	const config = useAppearance(),
 		{ setTheme } = useTheme(),
 		{ pathname } = useLocation();
-	const darkApplied = useRef(false);
+	// Apply the configured entry mode once, without overriding later manual choices.
+	const mode = config.features.dark.mode;
+	const modeApplied = useRef<string | null>(null);
 	useEffect(() => {
 		if (config.enabled && config.features.dark.enabled) {
-			if (!darkApplied.current) {
-				darkApplied.current = true;
-				setTheme("dark");
+			if (modeApplied.current !== mode) {
+				modeApplied.current = mode;
+				setTheme(mode);
 			}
-		} else darkApplied.current = false;
-	}, [config.enabled, config.features.dark.enabled, setTheme]);
+		} else modeApplied.current = null;
+	}, [config.enabled, config.features.dark.enabled, mode, setTheme]);
 	useEffect(() => {
 		if (preview || !config.enabled || !config.features.sponsor.enabled) return;
 		const scope = new FeatureScope("sponsor");

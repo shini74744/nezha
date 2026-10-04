@@ -35,6 +35,7 @@ export function validate(config:AppearanceConfig):string{
   if(!/^G-[A-Z0-9]+$/.test(config.features.analytics.measurementId))throw Error("Google Analytics ID 无效");
   if(!/^-?\d+(\.\d+)?(px|vh|rem|%)$/.test(config.features.sponsor.desktopTop))throw Error("赞助条位置须带 px/vh/rem/% 单位");
   if(!/^\d{1,3},\d{1,3},\d{1,3}$/.test(config.features.network.color)||config.features.network.color.split(",").some((n:string)=>Number(n)>255))throw Error("连线颜色须为 RGB 数值，例如 255,255,255");
+  if(!["system","light","dark"].includes(config.features.dark.mode))throw Error("默认显示模式必须为自动、白天或黑夜");
   validateMascot(config.features.live2d);
   validateVisitorIP(config.features.visitorIP);
   validateBackground(config.features.background);
