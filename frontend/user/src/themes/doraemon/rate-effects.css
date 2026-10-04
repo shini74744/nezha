@@ -1,0 +1,67 @@
+/* The shared legacy effects provide the card flashes. Adapt only this theme's
+   geometry, direction-aware overview glows and readable foreground colors. */
+.dora-theme [data-dora-rate-effect] {
+ --dora-effect-rgb:255,0,0;
+ transform:none !important;
+ padding:0 !important;
+ border:0 !important;
+ z-index:1 !important;
+}
+.dora-theme [data-dora-rate-effect="down"] { --dora-effect-rgb:0,120,255; }
+.dora-theme [data-dora-rate-effect]:not([data-dora-rate-color]) { color:var(--dora-ink) !important; }
+.dora-theme [data-dora-rate-effect][data-dora-rate-color="up"] {
+ color:#991b1b !important;
+ color:color-mix(in srgb,var(--dora-rate-color) 25%,#7f1d1d) !important;
+}
+.dora-theme [data-dora-rate-effect][data-dora-rate-color="down"] {
+ color:#1e3a8a !important;
+ color:color-mix(in srgb,var(--dora-rate-color) 25%,#1e3a8a) !important;
+}
+.dark .dora-theme [data-dora-rate-effect][data-dora-rate-color="up"] {
+ color:#fca5a5 !important;
+ color:color-mix(in srgb,var(--dora-rate-color) 40%,white) !important;
+}
+.dark .dora-theme [data-dora-rate-effect][data-dora-rate-color="down"] {
+ color:#a5b4fc !important;
+ color:color-mix(in srgb,var(--dora-rate-color) 40%,white) !important;
+}
+@keyframes dora-rate-border-glow {
+ 0%,100% { box-shadow:0 0 6px 0 rgba(var(--dora-effect-rgb),.6); }
+ 50% { box-shadow:0 0 20px 4px rgba(var(--dora-effect-rgb),1); }
+}
+@keyframes dora-rate-background-pulse {
+ 0%,100% { background-color:rgba(var(--dora-effect-rgb),.15); }
+ 50% { background-color:rgba(var(--dora-effect-rgb),.3); }
+}
+@keyframes dora-rate-text-glow {
+ 0%,100% { text-shadow:0 0 6px rgba(var(--dora-effect-rgb),.6); }
+ 50% { text-shadow:0 0 18px rgba(var(--dora-effect-rgb),1); }
+}
+.dora-theme .dora-stat-rate[data-dora-rate-level="2"] {
+ animation:nz-legacy-subtle-glow 2s infinite ease-in-out !important;
+ text-shadow:0 0 6px rgba(var(--dora-effect-rgb),.6) !important;
+}
+.dora-theme .dora-stat-rate[data-dora-rate-level="3"] {
+ animation:dora-rate-border-glow 1.5s infinite ease-in-out !important;
+}
+.dora-theme .dora-stat-rate[data-dora-rate-level="4"] {
+ animation:dora-rate-border-glow 1.5s infinite ease-in-out,dora-rate-background-pulse 1.8s infinite ease-in-out,nz-legacy-subtle-glow 2s infinite ease-in-out !important;
+ background-color:rgba(var(--dora-effect-rgb),.2) !important;
+}
+.dora-theme .dora-stat-rate[data-dora-rate-level="5"] {
+ animation:dora-rate-text-glow 1.5s infinite ease-in-out,dora-rate-background-pulse 1.5s infinite ease-in-out,dora-rate-border-glow 1.2s infinite ease-in-out !important;
+ background-color:rgba(var(--dora-effect-rgb),.25) !important;
+ text-shadow:0 0 18px rgba(var(--dora-effect-rgb),1) !important;
+ border-radius:4px;
+}
+.dora-theme [data-dora-motion="paused"] [data-dora-rate-effect] { animation-play-state:paused !important; }
+@media (prefers-reduced-motion:reduce) {
+ .dora-theme [data-dora-rate-effect][data-dora-rate-level] {
+  animation:none !important;
+  transform:none !important;
+  opacity:1 !important;
+  text-shadow:none !important;
+  box-shadow:none !important;
+  background:transparent !important;
+ }
+}

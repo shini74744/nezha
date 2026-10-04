@@ -11,26 +11,63 @@ import {Input} from "@/components/ui/input"
 import {Switch} from "@/components/ui/switch"
 import {Textarea} from "@/components/ui/textarea"
 import {useAuth} from "@/hooks/useAuth"
-import {useEffect,useState} from "react"
+import {useEffect,useRef,useState} from "react"
+import {appearanceEndpoint,appearancePayload,appearanceThemeNames,normalizeThemeAppearance,doraDefinitions,validateThemeConfig,type AppearanceTheme} from "@/lib/theme-appearance"
 import {Navigate} from "react-router-dom"
 import {toast} from "sonner"
-import {definitions,normalize,validate,AppearanceConfig,Feature,FeatureDefinition} from "@/lib/appearance-config"
+import {definitions,normalize,AppearanceConfig,Feature,FeatureDefinition} from "@/lib/appearance-config"
 import {readAppearance} from "@/lib/appearance"
 import {legacyFingerprint} from "@/lib/appearance-migration"
 const effectKeys = new Set(["network","snow","fragments","heart","sakura","stars"])
 type State={config:AppearanceConfig;custom_code:string;revision:string;current_template:string}
 export default function AppearancePage(){
  const {profile,loading}=useAuth()
+ const [theme,setTheme]=useState<AppearanceTheme>("user-dist")
+ const [dirty,setDirty]=useState(false),[busy,setBusy]=useState(false)
+ if(loading)return null
+ if(profile?.role!==0)return <Navigate to="/dashboard/settings/api-tokens" replace/>
+ return <div className="space-y-6"><SettingsTab/>
+  <div className="flex flex-wrap items-center justify-between gap-3">
+   <h1 className="text-2xl font-semibold">美化设置</h1>
+   <label className="flex items-center gap-2 text-sm">设置主题
+    <select aria-label="设置主题" className="rounded border bg-background px-3 py-2" value={theme} disabled={busy} onChange={e=>{
+     const next=e.target.value as AppearanceTheme;
+     if(next===theme)return;
+     if(dirty&&!window.confirm("当前主题有未保存修改，放弃修改并切换设置主题？"))return;
+     setDirty(false);setBusy(true);setTheme(next);
+    }}>
+     <option value="user-dist">默认主题</option><option value="doraemon-dist">哆啦 A 梦</option>
+    </select>
+   </label>
+  </div>
+  <ThemeAppearanceEditor key={theme} theme={theme} onDirtyChange={setDirty} onBusyChange={setBusy}/>
+ </div>
+}
+function ThemeAppearanceEditor({theme,onDirtyChange,onBusyChange}:{theme:AppearanceTheme;onDirtyChange:(value:boolean)=>void;onBusyChange:(value:boolean)=>void}){
+ const {profile,loading}=useAuth()
+ const isDefault=theme==="user-dist"
+ const endpoint=appearanceEndpoint(theme)
+ const themeName=appearanceThemeNames[theme]
  const [saved,setSaved]=useState<State>()
- const [config,setConfig]=useState<AppearanceConfig>(normalize())
+ const [config,setConfig]=useState<AppearanceConfig>(()=>normalizeThemeAppearance(theme))
  const [migrate,setMigrate]=useState(false)
  const [busy,setBusy]=useState(false)
  const [error,setError]=useState("")
- const adopt=(value:State)=>{setSaved(value);setConfig(normalize(value.config));setMigrate(false);setError("")}
- const load=()=>fetcher<State>(FetcherMethod.GET,"/api/v1/setting/appearance").then(adopt).catch(e=>setError(String(e)))
- useEffect(()=>{if(profile?.role===0)void load()},[profile?.role])
- const dirty=!!saved&&(migrate||JSON.stringify(config)!==JSON.stringify(normalize(saved.config)))
- const validation=validate(config)
+ const [reading,setReading]=useState(true)
+ const requestId=useRef(0)
+ const adopt=(value:State)=>{setSaved(value);setConfig(normalizeThemeAppearance(theme,value.config));setMigrate(false);setError("")}
+ const load=async()=>{
+  const id=++requestId.current;setReading(true);
+  try{const value=await fetcher<State>(FetcherMethod.GET,endpoint);if(id===requestId.current)adopt(value)}
+  catch(e){if(id===requestId.current)setError(String(e))}
+  finally{if(id===requestId.current)setReading(false)}
+ }
+ useEffect(()=>{if(profile?.role===0)void load();return()=>{requestId.current++}},[profile?.role,theme])
+ const dirty=!!saved&&(migrate||JSON.stringify(appearancePayload(theme,config))!==JSON.stringify(appearancePayload(theme,normalizeThemeAppearance(theme,saved.config))))
+ const validation=validateThemeConfig(theme,config)
+ const activeDefinitions=isDefault?definitions:doraDefinitions
+ useEffect(()=>onDirtyChange(dirty),[dirty,onDirtyChange])
+ useEffect(()=>onBusyChange(busy||reading),[busy,reading,onBusyChange])
  useEffect(()=>{if(!dirty)return;const warn=(e:BeforeUnloadEvent)=>{e.preventDefault();e.returnValue=""};window.addEventListener("beforeunload",warn);return()=>window.removeEventListener("beforeunload",warn)},[dirty])
  if(loading)return null
  if(profile?.role!==0)return <Navigate to="/dashboard/settings/api-tokens" replace/>
@@ -48,16 +85,16 @@ export default function AppearancePage(){
  }
  const save=async()=>{
   if(!saved||validation)return
-  if(config.enabled&&saved.custom_code&&!migrate&&!window.confirm("现有自定义代码仍会执行，可能与内置功能重复。确认继续保存？"))return
+  if(isDefault&&config.enabled&&saved.custom_code&&!migrate&&!window.confirm("现有自定义代码仍会执行，可能与内置功能重复。确认继续保存？"))return
   setBusy(true)
   try{
-   const value=await fetcher<State>(FetcherMethod.PATCH,"/api/v1/setting/appearance",{revision:saved.revision,config,...(migrate?{expected_custom_code:saved.custom_code,remaining_custom_code:""}:{})})
-   adopt(value);toast.success("美化设置已保存，请刷新默认主题前台查看")
+   const value=await fetcher<State>(FetcherMethod.PATCH,endpoint,{revision:saved.revision,config:appearancePayload(theme,config),...(migrate?{expected_custom_code:saved.custom_code,remaining_custom_code:""}:{})})
+   adopt(value);toast.success(themeName+"美化设置已保存，仅影响该主题")
   }catch(e){toast.error(String(e).includes("changed")?"配置已被其他页面修改，请重新读取后再保存。":"保存失败："+String(e))}
   finally{setBusy(false)}
  }
  const renderField=(group:string,key:string,value:any)=>{
-  const d=definitions.find(d=>d.key===group)!,label=d.labels[key]||key
+  const d=activeDefinitions.find(d=>d.key===group)!,label=d.labels[key]||key
   if(group==="dark"&&key==="mode")return <label key={key} className="block space-y-2"><span>{label}</span><select aria-label={label} className="w-full rounded border bg-background p-2" value={value} onChange={e=>update(group,key,e.target.value)}><option value="system">自动（跟随设备系统）</option><option value="light">白天（浅色）</option><option value="dark">黑夜（深色）</option></select><span className="block text-sm text-muted-foreground">自动模式随设备的明暗设置实时切换。关闭此功能后不干预前台原有主题选择。</span></label>;
   if(group==="live2d"&&key==="customCharacters")return <SakanaCharacters key={key} value={config.features.live2d} onChange={v=>patch("live2d",v)}/>;
   if(group==="live2d"&&(key==="provider"||key==="character"))return <label key={key} className="block space-y-1"><span>{label}</span><select aria-label={label} className="w-full rounded border bg-background p-2" value={value} onChange={e=>update(group,key,e.target.value)}>{(key==="provider"?[["live2d","原 Live2D"],["sakana","Sakana Widget（石蒜模拟器）"]]:[["chisato","千束 Chisato"],["takina","泷奈 Takina"],...config.features.live2d.customCharacters.map((r:any)=>[r.id,r.name||"未命名角色"])]).map(([v,text])=><option key={v} value={v}>{text}</option>)}</select></label>
@@ -83,19 +120,21 @@ export default function AppearancePage(){
  d.key==="background"?<BackgroundSettings value={config.features.background} sound={config.features.video} onChange={value=>patch("background",value)} onSoundChange={value=>patch("video",value)}/>:
  Object.keys(d.defaults).length>1?<div className="grid gap-4 sm:grid-cols-2">{(d.key==="runtime"?["prefix","startDate"]:Object.keys(d.defaults)).filter(key=>key!=="enabled" && !(d.key==="sponsor" && key==="desktopTop") && (d.key!=="live2d" || key==="provider" || (config.features.live2d.provider==="sakana"?["character","customCharacters","size","controls","autoMotion"]:["cdnPath","tools"]).includes(key))).map(key=>renderField(d.key,key,config.features[d.key][key]??d.defaults[key]))}</div>:<p className="text-sm text-muted-foreground">此功能暂无额外参数，使用右侧开关启用或关闭。</p>}
  </AppearanceSection>
- return <div className="space-y-6"><SettingsTab/><h1 className="text-2xl font-semibold">美化设置</h1>
- <div className="rounded-lg border p-4 space-y-3"><p>仅默认主题生效。切换其他主题不会加载这些功能，配置会保留；切回默认主题恢复生效。</p>
+ return <div className="space-y-6">
+ <div className="rounded-lg border p-4 space-y-3"><p>正在设置：{themeName}。配置独立保存，不影响其他主题；这里不会切换前台正在使用的主题。</p>
+ {!isDefault&&<p className="text-sm text-muted-foreground">流量进度条、伙伴与道具功能可分别设置。手机保留全部伙伴，通过尺寸和排布适配；关闭装饰不影响服务器数据。</p>}
  <p className="text-sm text-muted-foreground">功能代码随面板内置，不依赖 jm/xjs 外链，也没有域名授权限制。图片、视频、字体及统计/IP 服务仍可能需要联网。</p>
- {saved?.current_template&&saved.current_template!=="user-dist"&&<p className="text-amber-600">当前不是默认主题，保存配置不会影响当前前台。</p>}
- <label className="flex items-center gap-3"><Switch aria-label="启用内置美化" checked={config.enabled} onCheckedChange={enabled=>setConfig(c=>({...c,enabled}))}/>启用内置美化</label>
- {saved?.custom_code&&<div className="flex flex-wrap gap-2"><Button variant="outline" onClick={importLegacy}>迁移已核对的原有美化</Button><Button variant="outline" onClick={exportCode}>导出原始代码备份</Button></div>}
+ {saved?.current_template&&saved.current_template!==theme&&<p className="text-amber-600">当前前台未使用{themeName}，保存后在切换到该主题时生效。</p>}
+ <label className="flex items-center gap-3"><Switch aria-label="启用内置美化" disabled={!saved||reading||busy} checked={config.enabled} onCheckedChange={enabled=>setConfig(c=>({...c,enabled}))}/>启用内置美化</label>
+ {isDefault&&saved?.custom_code&&<div className="flex flex-wrap gap-2"><Button variant="outline" onClick={importLegacy}>迁移已核对的原有美化</Button><Button variant="outline" onClick={exportCode}>导出原始代码备份</Button></div>}
  {migrate&&<p className="text-amber-600">本次保存将归档原始美化代码并停止旧脚本执行，避免与内置功能重复。</p>}
  </div>
+ {reading&&<p role="status">正在读取{themeName}设置…</p>}
  {error&&<p role="alert" className="text-red-500">{error}</p>}
- {saved&&definitions.filter(d=>d.key!=="video").map(d=>d.key==="network"?
+ {saved&&!reading&&activeDefinitions.filter(d=>d.key!=="video").map(d=>d.key==="network"?
  <AppearanceSection key="effects" title="页面特效" description="鼠标连线、雪花、点击碎片、点击爱心、页面樱花、鼠标星星；展开后分别设置，开关互不影响。">
   <div className="space-y-4">{definitions.filter(item=>effectKeys.has(item.key)).map(renderFeature)}</div>
  </AppearanceSection>:effectKeys.has(d.key)?null:renderFeature(d))}
- <div className="sticky bottom-0 bg-background border-t py-3 flex flex-wrap items-center gap-3"><Button disabled={!saved||busy||!dirty||!!validation} onClick={save}>{busy?"保存中…":"保存美化设置"}</Button><Button variant="outline" disabled={busy} onClick={()=>{if(!dirty||window.confirm("放弃未保存修改并重新读取？"))void load()}}>重新读取</Button>{validation&&<p role="alert" className="text-sm text-red-500">{validation}</p>}</div>
+ <div className="sticky bottom-0 bg-background border-t py-3 flex flex-wrap items-center gap-3"><Button disabled={!saved||busy||reading||!dirty||!!validation} onClick={save}>{busy?"保存中…":"保存美化设置"}</Button><Button variant="outline" disabled={busy||reading} onClick={()=>{if(!dirty||window.confirm("放弃未保存修改并重新读取？"))void load()}}>重新读取</Button>{validation&&<p role="alert" className="text-sm text-red-500">{validation}</p>}</div>
  </div>
 }

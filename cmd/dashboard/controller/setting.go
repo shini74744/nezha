@@ -40,6 +40,14 @@ func listConfig(c *gin.Context) (*model.SettingResponse, error) {
 		configForTheme.AppearanceConfig = ""
 	}
 
+	if config.UserTemplate == "doraemon-dist" {
+		if configForTheme.DoraemonAppearanceConfig == "" {
+			configForTheme.DoraemonAppearanceConfig = defaultDoraemonAppearance
+		}
+	} else {
+		configForTheme.DoraemonAppearanceConfig = ""
+	}
+
 	conf := model.SettingResponse{
 		Config: model.Setting{
 			ConfigForGuests:                configForTheme,

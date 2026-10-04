@@ -147,6 +147,7 @@ export interface CycleTransferData {
 
 type SettingConfig = {
 	appearance_config?: string;
+	doraemon_appearance_config?: string;
 	debug: boolean;
 	language: string;
 	site_name: string;

@@ -13,12 +13,18 @@ import { createFiveTapGate } from "@/lib/five-tap";
 import { formatBytes } from "@/lib/format";
 import { art } from "./assets";
 import { networkRateParts } from "./format";
+import { useDoraRateColor } from "./speed-color";
+import { useDoraRateEffect } from "./speed-effect";
+import { useDoraMotion } from "./use-motion";
 
 export function DoraemonOverview(
 	p: ComponentProps<typeof ServerOverview> & { map?: ReactNode },
 ) {
 	const { status, setStatus } = useStatus(),
 		gate = useRef(createFiveTapGate());
+	const rateColor = useDoraRateColor();
+	const rateEffect = useDoraRateEffect();
+	const motion = useDoraMotion<HTMLElement>();
 	const tiles = [
 		{
 			title: "全部道具 · 服务器",
@@ -44,12 +50,16 @@ export function DoraemonOverview(
 		{
 			title: "任意门 · 上传",
 			rate: networkRateParts(p.upSpeed),
+			rateColor: rateColor(p.upSpeed, "up", true),
+			rateEffect: rateEffect(p.upSpeed, "up", true),
 			icon: ArrowUp,
 			color: "#dc67a1",
 		},
 		{
 			title: "任意门 · 下载",
 			rate: networkRateParts(p.downSpeed),
+			rateColor: rateColor(p.downSpeed, "down", true),
+			rateEffect: rateEffect(p.downSpeed, "down", true),
 			icon: ArrowDown,
 			color: "#209e91",
 		},
@@ -62,7 +72,7 @@ export function DoraemonOverview(
 		},
 	];
 	return (
-		<section className={"dora-overview " + (!p.map ? "without-map" : "")}>
+		<section {...motion} className={"dora-overview " + (!p.map ? "without-map" : "")}>
 			<div className="dora-stat-grid">
 				{tiles.map((tile) => (
 					<button
@@ -79,7 +89,7 @@ export function DoraemonOverview(
 						<span>{tile.title}</span>
 						<tile.icon className="dora-stat-icon" size={22} />
 						{tile.rate ? (
-							<strong className="dora-stat-rate">
+							<strong {...tile.rateColor} {...tile.rateEffect} className={["dora-stat-rate", tile.rateEffect?.className].filter(Boolean).join(" ")}>
 								<span className="dora-rate-number">{tile.rate.value}</span>{" "}
 								<span className="dora-rate-unit">{tile.rate.unit}</span>
 							</strong>

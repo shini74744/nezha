@@ -1,7 +1,13 @@
 import { art } from "./assets";
+import {useDoraFeature} from "./Appearance";
+import {FriendsInteraction} from "./Friends";
 import { useDoraMotion } from "./use-motion";
 // In normal document flow, so the illustration never covers a card or toolbar.
 export function DoraemonCompanion() {
+    const enabled=useDoraFeature('friendsInteraction');
+    return enabled?<FriendsInteraction/>:<ClassicCompanion/>;
+}
+function ClassicCompanion() {
 	const motion = useDoraMotion<HTMLElement>();
 	return (
 		<section

@@ -35,6 +35,17 @@ func appearanceRevision(config, code string) string {
 	return hex.EncodeToString(sum[:])
 }
 func appearanceState() map[string]any {
+	return themeAppearanceState("user-dist")
+}
+func themeAppearanceState(theme string) map[string]any {
+	if theme == "doraemon-dist" {
+		stored := singleton.Conf.DoraemonAppearanceConfig
+		config := stored
+		if config == "" {
+			config = defaultDoraemonAppearance
+		}
+		return map[string]any{"theme": theme, "config": json.RawMessage(config), "custom_code": "", "current_template": singleton.Conf.UserTemplate, "revision": appearanceRevision(stored, "")}
+	}
 	config := singleton.Conf.AppearanceConfig
 	if config == "" {
 		config = `{"version":1,"enabled":false,"features":{}}`
@@ -47,9 +58,13 @@ func appearanceState() map[string]any {
 	}
 }
 func getAppearance(c *gin.Context) (any, error) {
+	theme, err := appearanceTheme(c.Query("theme"))
+	if err != nil {
+		return nil, err
+	}
 	settingsMutationMu.Lock()
 	defer settingsMutationMu.Unlock()
-	return appearanceState(), nil
+	return themeAppearanceState(theme), nil
 }
 func validateAppearance(raw []byte) (string, error) {
 	if len(raw) == 0 || len(raw) > 128<<10 {
@@ -97,12 +112,16 @@ func validateAppearance(raw []byte) (string, error) {
 	return string(normalized), err
 }
 func updateAppearance(c *gin.Context) (any, error) {
+	theme, err := appearanceTheme(c.Query("theme"))
+	if err != nil {
+		return nil, err
+	}
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 2<<20)
 	var form appearanceForm
 	if err := c.ShouldBindJSON(&form); err != nil {
 		return nil, err
 	}
-	next, err := validateAppearance(form.Config)
+	next, err := validateThemeAppearance(theme, form.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -111,10 +130,10 @@ func updateAppearance(c *gin.Context) (any, error) {
 	}
 	settingsMutationMu.Lock()
 	defer settingsMutationMu.Unlock()
-	if err := saveNativeAppearance(&singleton.Conf.AppearanceConfig, &singleton.Conf.CustomCode, &singleton.Conf.AppearanceLegacyCode, form, next, singleton.Conf.Save); err != nil {
+	if err := saveThemeAppearance(singleton.Conf.Config, theme, form, next, singleton.Conf.Save); err != nil {
 		return nil, err
 	}
-	return appearanceState(), nil
+	return themeAppearanceState(theme), nil
 }
 func saveNativeAppearance(config, code, archive *string, form appearanceForm, next string, save func() error) error {
 	if form.Revision != appearanceRevision(*config, *code) {
