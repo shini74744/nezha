@@ -191,6 +191,7 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	auth.POST("/batch-delete/alert-rule", restScopeMiddleware(model.ScopeAlertRuleDelete), commonHandler(batchDeleteAlertRule))
 
 	auth.GET("/cron", restScopeMiddleware(model.ScopeCronRead), listHandler(listCron))
+	auth.POST("/cron/preview", restScopeMiddleware(model.ScopeCronRead), commonHandler(previewCron))
 	auth.POST("/cron", restScopeMiddleware(model.ScopeCronWrite), commonHandler(createCron))
 	auth.PATCH("/cron/:id", restScopeMiddleware(model.ScopeCronWrite), commonHandler(updateCron))
 	auth.POST("/cron/:id/manual", restScopeMiddleware(model.ScopeCronExec), commonHandler(manualTriggerCron))
@@ -388,7 +389,7 @@ func getUid(c *gin.Context) uint64 {
 }
 
 func fallbackToFrontend(frontendDist fs.FS) func(*gin.Context) {
-	serveFile := func(c *gin.Context, name string, file fs.File, customStatusCode int) bool {
+	serveFile := func(c *gin.Context, templateRoot, name string, file fs.File, customStatusCode int) bool {
 		defer file.Close()
 		fileStat, err := file.Stat()
 		if err != nil {
@@ -401,6 +402,9 @@ func fallbackToFrontend(frontendDist fs.FS) func(*gin.Context) {
 		if !ok {
 			return false
 		}
+		if serveStatisticsHTML(c, templateRoot, name, readSeeker, customStatusCode) {
+			return true
+		}
 		http.ServeContent(utils.NewGinCustomWriter(c, customStatusCode), c.Request, name, fileStat.ModTime(), readSeeker)
 		return true
 	}
@@ -411,7 +415,7 @@ func fallbackToFrontend(frontendDist fs.FS) func(*gin.Context) {
 			if err == nil {
 				defer localRoot.Close()
 				// URL paths must stay inside the selected template root; never join them against the process cwd.
-				if file, err := localRoot.Open(filePath); err == nil && serveFile(c, filePath, file, customStatusCode) {
+				if file, err := localRoot.Open(filePath); err == nil && serveFile(c, templateRoot, filePath, file, customStatusCode) {
 					return true
 				}
 			}
@@ -428,7 +432,7 @@ func fallbackToFrontend(frontendDist fs.FS) func(*gin.Context) {
 		if err != nil {
 			return false
 		}
-		if serveFile(c, filePath, file, customStatusCode) {
+		if serveFile(c, templateRoot, filePath, file, customStatusCode) {
 			return true
 		}
 		return false
@@ -499,6 +503,9 @@ func fallbackToFrontend(frontendDist fs.FS) func(*gin.Context) {
 		}
 		if frontendPasswordRequired() && !validFrontendPasswordCookie(c) {
 			serveFrontendPasswordPage(c, c.Request.URL.RequestURI(), "", http.StatusOK)
+			return
+		}
+		if serveStatisticsScript(c) {
 			return
 		}
 		stripPath := strings.TrimPrefix(c.Request.URL.Path, "/")

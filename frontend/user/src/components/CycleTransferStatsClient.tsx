@@ -27,8 +27,9 @@ export const CycleTransferStatsClient: React.FC<
 			: undefined;
 	return (
 		<div
+			data-statistics-card="traffic"
 			className={cn(
-				"w-full bg-white px-4 py-3.5 rounded-lg border bg-card text-card-foreground hover:shadow-xs transition-all duration-200 dark:shadow-none",
+				"min-w-0 w-full bg-white px-4 py-3.5 rounded-lg border bg-card text-card-foreground hover:shadow-xs transition-all duration-200 dark:shadow-none",
 				className,
 				{
 					"bg-card/70": customBackgroundImage,
@@ -36,24 +37,24 @@ export const CycleTransferStatsClient: React.FC<
 			)}
 		>
 			{serverStats.map(({ serverId, serverName, transfer, nextUpdate }) => {
-				const progress = (transfer / max) * 100;
+				const progress = Number.isFinite(transfer) && max > 0 ? Math.max(0, (transfer / max) * 100) : 0;
 
 				return (
 					<div key={serverId} className="space-y-3">
 						{/* Header */}
-						<div className="flex items-center justify-between">
-							<span className="text-sm font-medium text-neutral-800 dark:text-neutral-200">
+						<div className="flex items-start justify-between gap-2">
+							<span className="min-w-0 break-words [overflow-wrap:anywhere] text-sm font-medium text-neutral-800 dark:text-neutral-200">
 								{serverName}
 							</span>
-							<div className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded text-xs font-medium">
+							<div className="shrink-0 max-w-[40%] break-words bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded text-xs font-medium">
 								{name}
 							</div>
 						</div>
 
 						{/* Progress Section */}
 						<div className="space-y-1.5">
-							<div className="flex items-center justify-between">
-								<div className="flex items-baseline gap-1">
+							<div className="flex flex-wrap items-center justify-between gap-1">
+								<div className="flex flex-wrap items-baseline gap-1">
 									<span className="text-sm font-medium text-neutral-800 dark:text-neutral-200">
 										{formatBytes(transfer)}
 									</span>
@@ -66,7 +67,7 @@ export const CycleTransferStatsClient: React.FC<
 								</span>
 							</div>
 
-							<div className="relative h-1.5">
+							<div className="relative h-1.5" role="progressbar" aria-label={serverName} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(progress, 100)} aria-valuetext={`${progress.toFixed(1)}%`}>
 								<div className="absolute inset-0 bg-neutral-100 dark:bg-neutral-800 rounded-full" />
 								<div
 									className="absolute inset-0 bg-emerald-500 rounded-full transition-all duration-300"
@@ -76,14 +77,14 @@ export const CycleTransferStatsClient: React.FC<
 						</div>
 
 						{/* Footer */}
-						<div className="flex items-center justify-between text-[11px] text-neutral-500 dark:text-neutral-400">
+						<div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1 text-[11px] text-neutral-500 dark:text-neutral-400">
 							<span>
 								{new Date(from).toLocaleDateString()} -{" "}
 								{new Date(to).toLocaleDateString()}
 							</span>
 							<span>
 								{t("cycleTransfer.nextUpdate")}:{" "}
-								{new Date(nextUpdate).toLocaleString()}
+								{nextUpdate && Number.isFinite(Date.parse(nextUpdate)) ? new Date(nextUpdate).toLocaleString() : "—"}
 							</span>
 						</div>
 					</div>

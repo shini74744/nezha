@@ -75,8 +75,8 @@ vi.mock("@/components/ServerCardInline", () => ({
 }));
 
 vi.mock("@/components/ServiceTracker", () => ({
-	ServiceTracker: ({ serverList }: { serverList: NezhaServer[] }) => (
-		<div data-testid="service-tracker">{serverList.length}</div>
+	ServiceTracker: ({ serverList, view }: { serverList: NezhaServer[]; view: string }) => (
+		<div data-testid="service-tracker" data-view={view}>{serverList.length}</div>
 	),
 }));
 
@@ -526,8 +526,42 @@ describe("Servers page", () => {
 		expect(localStorage.getItem("showMap")).toBe("1");
 
 		await user.click(controls[1]);
+		expect(screen.queryByTestId("service-tracker")).not.toBeInTheDocument();
+		await user.click(screen.getByRole("menuitemradio", { name: "statistics.uptime" }));
 		expect(screen.getByTestId("service-tracker")).toHaveTextContent("2");
-		expect(localStorage.getItem("showServices")).toBe("1");
+		expect(screen.getByTestId("service-tracker")).toHaveAttribute("data-view", "uptime");
+		expect(localStorage.getItem("statisticsView")).toBe("uptime");
+		await user.click(controls[1]);
+		expect(screen.getAllByRole("menuitemradio")).toHaveLength(2);
+		expect(screen.queryByRole("menuitemradio", { name: "statistics.close" })).not.toBeInTheDocument();
+		await user.click(screen.getByRole("menuitemradio", { name: "statistics.uptime" }));
+		expect(screen.queryByTestId("service-tracker")).not.toBeInTheDocument();
+		expect(localStorage.getItem("statisticsView")).toBe("closed");
+	});
+
+
+	it.each([undefined, doraemonPresentation])("offers traffic-only statistics in each theme", async (presentation) => {
+		apiMocks.fetchService.mockResolvedValue({success:true, data:{services:{},cycle_transfer_stats:{monthly:{}}}});
+		const user = userEvent.setup();
+		renderServerPage({connected:true,lastData:websocketPayload([createServer()])},{presentation});
+		const button = await screen.findByRole("button",{name:"statistics.choose"});
+		await user.click(button);
+		await user.click(screen.getByRole("menuitemradio",{name:"statistics.traffic"}));
+		expect(screen.getByTestId("service-tracker")).toHaveAttribute("data-view","traffic");
+		expect(localStorage.getItem((presentation?.storagePrefix ?? "")+"statisticsView")).toBe("traffic");
+		await user.click(button);
+		expect(screen.getByRole("menuitemradio",{name:"statistics.traffic"})).toHaveAttribute("aria-checked","true");
+		await user.click(screen.getByRole("menuitemradio",{name:"statistics.traffic"}));
+		expect(screen.queryByTestId("service-tracker")).not.toBeInTheDocument();
+		expect(localStorage.getItem((presentation?.storagePrefix ?? "")+"statisticsView")).toBe("closed");
+		await user.click(button);
+		expect(screen.getByRole("menuitemradio",{name:"statistics.traffic"})).toHaveAttribute("aria-checked","false");
+		await user.click(screen.getByRole("menuitemradio",{name:"statistics.traffic"}));
+		expect(screen.getByTestId("service-tracker")).toHaveAttribute("data-view","traffic");
+		await user.click(button);
+		await user.keyboard("{Escape}");
+		expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+		expect(button).toHaveFocus();
 	});
 
 	it.each([false, true])("keeps the Doraemon map closed until clicked, including saved/forced state %s", async (forced) => {

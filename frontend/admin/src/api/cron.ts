@@ -17,3 +17,10 @@ export const deleteCron = async (id: number[]): Promise<void> => {
 export const runCron = async (id: number): Promise<void> => {
     return fetcher<void>(FetcherMethod.POST, `/api/v1/cron/${id}/manual`, null)
 }
+
+export interface CronPreview {
+    timezone: string
+    next: string[]
+}
+export const previewCron = (scheduler: string): Promise<CronPreview> =>
+    fetcher<CronPreview>(FetcherMethod.POST, "/api/v1/cron/preview", { scheduler })

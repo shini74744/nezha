@@ -163,5 +163,18 @@
 	},
 	"group": {
 		"all": "全部"
+	},
+	"statistics": {
+		"closeDay": "收起當天詳情",
+		"choose": "選擇統計檢視",
+		"traffic": "流量統計",
+		"uptime": "在線率",
+		"close": "收起統計",
+		"trafficHint": "依目前伺服器篩選顯示流量週期與用量",
+		"uptimeHint": "服務監控 · 最近 30 天",
+		"emptyTraffic": "目前篩選下暫無流量統計，請先設定對應伺服器的週期流量規則。",
+		"emptyUptime": "暫無在線率資料，請先設定服務監控。",
+		"error": "統計資料載入失敗，請重試。",
+		"retry": "重新載入"
 	}
 }

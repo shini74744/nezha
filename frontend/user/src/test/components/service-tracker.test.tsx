@@ -1,5 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { CycleTransferStatsCard } from "@/components/CycleTransferStats";
 import CycleTransferStatsClient from "@/components/CycleTransferStatsClient";
@@ -40,11 +40,11 @@ describe("ServiceTracker", () => {
 		renderWithQuery(<ServiceTracker serverList={[createServer()]} />);
 
 		expect(
-			await screen.findByText("serviceTracker.noService"),
+			await screen.findByText("statistics.emptyUptime"),
 		).toBeInTheDocument();
 	});
 
-	it("renders processed service uptime, delay, and matching cycle transfer stats", async () => {
+	it("renders exactly the selected category even when both categories have data", async () => {
 		apiMocks.fetchService.mockResolvedValue({
 			success: true,
 			data: {
@@ -84,14 +84,34 @@ describe("ServiceTracker", () => {
 			},
 		});
 
-		renderWithQuery(<ServiceTracker serverList={[createServer({ id: 1 })]} />);
+		const uptimeView = renderWithQuery(<ServiceTracker view="uptime" serverList={[createServer({ id: 1 })]} />);
 
 		expect(await screen.findByText("HTTP Ping")).toBeInTheDocument();
 		expect(screen.getByText("217ms")).toBeInTheDocument();
 		expect(screen.getByText("62.5% serviceTracker.uptime")).toBeInTheDocument();
-		expect(screen.getByText("edge-1")).toBeInTheDocument();
+		expect(screen.queryByText("edge-1")).not.toBeInTheDocument();
+		uptimeView.unmount();
+		renderWithQuery(<ServiceTracker view="traffic" serverList={[createServer({ id: 1 })]} />);
+		expect(await screen.findByText("edge-1")).toBeInTheDocument();
+		expect(screen.queryByText("HTTP Ping")).not.toBeInTheDocument();
 		expect(screen.getByText("Monthly")).toBeInTheDocument();
 		expect(screen.queryByText("hidden-server")).not.toBeInTheDocument();
+	});
+
+
+	it("shows traffic-specific empty state with no matching servers", async () => {
+		apiMocks.fetchService.mockResolvedValue({success:true,data:{services:{},cycle_transfer_stats:{}}});
+		renderWithQuery(<ServiceTracker view="traffic" serverList={[]} />);
+		expect(await screen.findByText("statistics.emptyTraffic")).toBeInTheDocument();
+		expect(screen.queryByText("statistics.emptyUptime")).not.toBeInTheDocument();
+	});
+	it("retries a failed statistics request without losing the selected category", async () => {
+		apiMocks.fetchService.mockRejectedValueOnce(new Error("offline"))
+			.mockResolvedValue({success:true,data:{services:{},cycle_transfer_stats:{}}});
+		renderWithQuery(<ServiceTracker view="traffic" serverList={[]} />);
+		expect(await screen.findByText("statistics.error")).toBeInTheDocument();
+		fireEvent.click(screen.getByRole("button",{name:"statistics.retry"}));
+		expect(await screen.findByText("statistics.emptyTraffic")).toBeInTheDocument();
 	});
 
 	it("falls back to zero uptime when a service has no checks", async () => {

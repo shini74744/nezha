@@ -167,5 +167,18 @@
 	},
 	"group": {
 		"all": "All"
+	},
+	"statistics": {
+		"closeDay": "Close day details",
+		"choose": "Choose statistics view",
+		"traffic": "Traffic usage",
+		"uptime": "Uptime",
+		"close": "Hide statistics",
+		"trafficHint": "Usage and billing cycles for the current server filter",
+		"uptimeHint": "Service monitoring · Last 30 days",
+		"emptyTraffic": "No traffic statistics match this filter. Configure a cycle traffic rule for these servers first.",
+		"emptyUptime": "No uptime data yet. Configure service monitoring first.",
+		"error": "Could not load statistics. Please try again.",
+		"retry": "Retry"
 	}
 }

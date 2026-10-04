@@ -168,5 +168,18 @@
 	},
 	"group": {
 		"all": "全部"
+	},
+	"statistics": {
+		"closeDay": "收起当天详情",
+		"choose": "选择统计视图",
+		"traffic": "流量统计",
+		"uptime": "在线率",
+		"close": "收起统计",
+		"trafficHint": "按当前服务器筛选显示流量周期与用量",
+		"uptimeHint": "服务监控 · 最近 30 天",
+		"emptyTraffic": "当前筛选下暂无流量统计，请先配置对应服务器的周期流量规则。",
+		"emptyUptime": "暂无在线率数据，请先配置服务监控。",
+		"error": "统计数据加载失败，请重试。",
+		"retry": "重新加载"
 	}
 }
