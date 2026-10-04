@@ -14,6 +14,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nezhahq/nezha/pkg/utils"
+	"github.com/nezhahq/nezha/service/singleton"
 )
 
 //go:embed frontend-statistics.js
@@ -40,8 +41,14 @@ func serveStatisticsHTML(c *gin.Context, templateRoot, name string, file io.Read
 		_, _ = file.Seek(0, io.SeekStart)
 		return false
 	}
+	statisticsSplit := true
+	settingsMutationMu.Lock()
+	if singleton.Conf != nil {
+		statisticsSplit = resolveOptionalBool(singleton.Conf.StatisticsSplit, true)
+	}
+	settingsMutationMu.Unlock()
 	tag := []byte(`<script id="nezha-statistics-loader" defer src="` + frontendStatisticsPath +
-		"?v=" + frontendStatisticsVersion + `" data-theme="` + html.EscapeString(templateRoot) + `"></script>`)
+		"?v=" + frontendStatisticsVersion + `" data-theme="` + html.EscapeString(templateRoot) + `" data-statistics-split="` + fmt.Sprint(statisticsSplit) + `"></script>`)
 	if !bytes.Contains(body, []byte(`id="nezha-statistics-loader"`)) {
 		lower := bytes.ToLower(body)
 		if at := bytes.Index(lower, []byte("</head>")); at >= 0 {

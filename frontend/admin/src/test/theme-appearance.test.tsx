@@ -19,6 +19,7 @@ beforeEach(()=>{
  };
  vi.mocked(fetcher).mockImplementation(async(method,url,payload:any)=>{
   const key=String(url);
+  if(key==="/api/v1/setting/display")return {statistics_split:true,detail_network_split:true};
   if(!states[key])throw Error("unexpected endpoint "+key);
   if(method===FetcherMethod.PATCH){
    expect(payload.revision).toBe(states[key].revision);
@@ -47,7 +48,7 @@ describe("independent theme appearance editor",()=>{
   const input=screen.getByRole("spinbutton");
   expect((input as HTMLInputElement).value).toBe("5000");
   fireEvent.change(input,{target:{value:"7000"}});
-  const featureSwitch=screen.getAllByRole("switch").find(e=>e.getAttribute("aria-label")!=="启用内置美化")!;
+  const featureSwitch=screen.getByRole("switch",{name:"流量进度条"})!;
   fireEvent.click(featureSwitch);
   fireEvent.click(screen.getByRole("button",{name:"保存美化设置"}));
   await waitFor(()=>expect(states[dora].config.features.traffic.enabled).toBe(false));
@@ -63,7 +64,7 @@ describe("independent theme appearance editor",()=>{
   await selectDora();
   fireEvent.click(screen.getByRole("button",{name:"流量进度条"}));
   expect((screen.getByRole("spinbutton") as HTMLInputElement).value).toBe("7000");
-  expect(screen.getAllByRole("switch").find(e=>e.getAttribute("aria-label")!=="启用内置美化")?.getAttribute("aria-checked")).toBe("false");
+  expect(screen.getByRole("switch",{name:"流量进度条"})?.getAttribute("aria-checked")).toBe("false");
  });
  it("warns before discarding a dirty theme and does not send a patch when switching",async()=>{
   show();await screen.findByRole("button",{name:"站点品牌"});

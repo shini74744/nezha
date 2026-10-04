@@ -91,11 +91,15 @@ describe("ServiceTracker", () => {
 		expect(screen.getByText("62.5% serviceTracker.uptime")).toBeInTheDocument();
 		expect(screen.queryByText("edge-1")).not.toBeInTheDocument();
 		uptimeView.unmount();
-		renderWithQuery(<ServiceTracker view="traffic" serverList={[createServer({ id: 1 })]} />);
+		const trafficView = renderWithQuery(<ServiceTracker view="traffic" serverList={[createServer({ id: 1 })]} />);
 		expect(await screen.findByText("edge-1")).toBeInTheDocument();
 		expect(screen.queryByText("HTTP Ping")).not.toBeInTheDocument();
 		expect(screen.getByText("Monthly")).toBeInTheDocument();
 		expect(screen.queryByText("hidden-server")).not.toBeInTheDocument();
+		trafficView.unmount();
+		renderWithQuery(<ServiceTracker view="both" serverList={[createServer({id:1})]} />);
+		expect(await screen.findByText("edge-1")).toBeInTheDocument();
+		expect(screen.getByText("HTTP Ping")).toBeInTheDocument();
 	});
 
 

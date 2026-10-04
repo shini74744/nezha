@@ -2,7 +2,16 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { createTestQueryClient } from "@/test/utils";
+import type { ReactElement } from "react";
 import ErrorPage from "@/pages/ErrorPage";
+
+const apiMocks = vi.hoisted(() => ({ fetchSetting: vi.fn() }));
+vi.mock("@/lib/nezha-api", () => apiMocks);
+function renderDetail(ui: ReactElement) {
+	return render(<QueryClientProvider client={createTestQueryClient()}>{ui}</QueryClientProvider>);
+}
 import NotFound from "@/pages/NotFound";
 import ServerDetail from "@/pages/ServerDetail";
 
@@ -95,11 +104,12 @@ describe("simple pages", () => {
 describe("ServerDetail", () => {
 	beforeEach(() => {
 		vi.stubGlobal("scrollTo", vi.fn());
+		apiMocks.fetchSetting.mockResolvedValue({success:true,data:{config:{show_network_in_detail:false}}});
 	});
 
 	it("renders detail tab by default and can switch to network tab", async () => {
 		const user = userEvent.setup();
-		render(
+		renderDetail(
 			<MemoryRouter initialEntries={["/server/7"]}>
 				<Routes>
 					<Route path="/server/:id" element={<ServerDetail />} />
@@ -116,6 +126,32 @@ describe("ServerDetail", () => {
 			"7:true",
 		);
 		expect(screen.queryByTestId("detail-chart")).not.toBeInTheDocument();
+	});
+
+	it("shows one network chart below details when enabled and keeps it across tabs", async () => {
+		apiMocks.fetchSetting.mockResolvedValue({success:true,data:{config:{show_network_in_detail:true}}});
+		const user = userEvent.setup();
+		renderDetail(<MemoryRouter initialEntries={["/server/7"]}><Routes>
+			<Route path="/server/:id" element={<ServerDetail />} />
+		</Routes></MemoryRouter>);
+		const network = await screen.findByTestId("network-chart");
+		expect(screen.getByTestId("detail-chart").compareDocumentPosition(network) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		await user.click(screen.getByRole("button", {name:"Network"}));
+		expect(screen.getByTestId("network-chart")).toBe(network);
+		expect(screen.queryByTestId("detail-chart")).not.toBeInTheDocument();
+		await user.click(screen.getByRole("button", {name:"Detail"}));
+		expect(screen.getAllByTestId("network-chart")).toHaveLength(1);
+		expect(screen.getByTestId("network-chart")).toBe(network);
+		expect(screen.getByTestId("detail-chart")).toBeInTheDocument();
+	});
+
+	it("does not flash network while settings are unresolved", async () => {
+		apiMocks.fetchSetting.mockReturnValue(new Promise(() => {}));
+		renderDetail(<MemoryRouter initialEntries={["/server/7"]}><Routes>
+			<Route path="/server/:id" element={<ServerDetail />} />
+		</Routes></MemoryRouter>);
+		expect(screen.getByTestId("detail-chart")).toBeInTheDocument();
+		expect(screen.queryByTestId("network-chart")).not.toBeInTheDocument();
 	});
 
 	it("redirects when route params are missing", async () => {

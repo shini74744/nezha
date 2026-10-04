@@ -144,6 +144,8 @@ func updateConfig(c *gin.Context) (any, error) {
 	singleton.Conf.AgentRealIPHeader = sf.AgentRealIPHeader
 	singleton.Conf.AgentTLS = sf.AgentTLS
 	singleton.Conf.UserTemplate = sf.UserTemplate
+	previousShowNetworkInDetail := singleton.Conf.ShowNetworkInDetail
+	singleton.Conf.ShowNetworkInDetail = resolveOptionalBool(sf.ShowNetworkInDetail, previousShowNetworkInDetail)
 	mcpWasEnabled := singleton.Conf.MCPEnabled()
 	mcpNext := resolveSettingEnableMCP(sf.EnableMCP, mcpWasEnabled)
 
@@ -154,6 +156,7 @@ func updateConfig(c *gin.Context) (any, error) {
 		fireMCPKillSwitch,
 	); err != nil {
 		singleton.Conf.FrontendPasswordHash = previousFrontendPasswordHash
+		singleton.Conf.ShowNetworkInDetail = previousShowNetworkInDetail
 		return nil, newGormError("%v", err)
 	}
 

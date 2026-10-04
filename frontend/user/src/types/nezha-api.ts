@@ -146,6 +146,8 @@ export interface CycleTransferData {
 }
 
 type SettingConfig = {
+	show_network_in_detail?: boolean;
+	statistics_split?: boolean;
 	appearance_config?: string;
 	doraemon_appearance_config?: string;
 	debug: boolean;

@@ -1,6 +1,7 @@
 package model
 
 type SettingForm struct {
+	ShowNetworkInDetail         *bool   `json:"show_network_in_detail,omitempty" validate:"optional"`
 	DNSServers                  string  `json:"dns_servers,omitempty" validate:"optional"`
 	IgnoredIPNotification       string  `json:"ignored_ip_notification,omitempty" validate:"optional"`
 	IPChangeNotificationGroupID uint64  `json:"ip_change_notification_group_id,omitempty"` // IP变更提醒的通知组

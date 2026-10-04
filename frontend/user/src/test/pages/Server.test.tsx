@@ -15,6 +15,7 @@ import type { NezhaServer } from "@/types/nezha-api";
 const apiMocks = vi.hoisted(() => ({
 	fetchServerGroup: vi.fn(),
 	fetchService: vi.fn(),
+	fetchSetting: vi.fn(),
 }));
 
 vi.mock("@/lib/nezha-api", () => apiMocks);
@@ -140,6 +141,7 @@ const doraemonPresentation: ServerPresentation = {
 
 describe("Servers page", () => {
 	beforeEach(() => {
+		apiMocks.fetchSetting.mockResolvedValue({success:true,data:{config:{statistics_split:true}}});
 		apiMocks.fetchServerGroup.mockResolvedValue({
 			success: true,
 			data: [
@@ -640,4 +642,16 @@ describe("Servers page", () => {
 		expect(screen.getByText("alpha")).toBeInTheDocument();
 		expect(screen.queryByText("beta")).not.toBeInTheDocument();
 	});
+});
+it("combines statistics without a menu when global split is disabled",async()=>{
+ apiMocks.fetchServerGroup.mockResolvedValue({success:true,data:[]});
+ apiMocks.fetchService.mockResolvedValue({success:true,data:{services:{},cycle_transfer_stats:{}}});
+ apiMocks.fetchSetting.mockResolvedValue({success:true,data:{config:{statistics_split:false}}});
+ renderServerPage({lastData:websocketPayload([createServer()])});
+ const trigger=await screen.findByRole("button",{name:"statistics.toggle"});
+ await userEvent.click(trigger);
+ expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+ expect(screen.getByTestId("service-tracker")).toHaveAttribute("data-view","both");
+ await userEvent.click(trigger);
+ expect(screen.queryByTestId("service-tracker")).not.toBeInTheDocument();
 });

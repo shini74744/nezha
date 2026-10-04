@@ -72,3 +72,21 @@ func TestStatisticsScriptRespectsFrontendPassword(t *testing.T) {
 		t.Fatal("statistics script must not bypass frontend password gate")
 	}
 }
+
+func TestStatisticsLauncherHonorsGlobalSplit(t *testing.T) {
+	t.Chdir(t.TempDir())
+	router := newFrontendFallbackTestRouter(t)
+	singleton.Conf.UserTemplate = "nazhua-dist"
+	writeFrontendFallbackTestFile(t, "nazhua-dist/index.html", "<html><head></head><body>Theme</body></html>")
+	for _, split := range []bool{false, true} {
+		singleton.Conf.StatisticsSplit = &split
+		response := performFrontendFallbackRequest(t, router, "/")
+		want := `data-statistics-split="false"`
+		if split {
+			want = `data-statistics-split="true"`
+		}
+		if !strings.Contains(response.Body.String(), want) {
+			t.Fatalf("missing split flag %s", want)
+		}
+	}
+}

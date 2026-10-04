@@ -22,7 +22,7 @@ import SortMetricSelect from "@/components/SortMetricSelect";
 import { useSort } from "@/hooks/use-sort";
 import { useStatus } from "@/hooks/use-status";
 import { useWebSocketContext } from "@/hooks/use-websocket-context";
-import { fetchServerGroup, fetchService } from "@/lib/nezha-api";
+import { fetchServerGroup, fetchService, fetchSetting } from "@/lib/nezha-api";
 import { cn } from "@/lib/utils";
 import type { NezhaServer, ServerGroup } from "@/types/nezha-api";
 
@@ -129,6 +129,10 @@ export default function Servers({
 		refetchInterval: 10000,
 		retry: false,
 	});
+	const { data: displaySettings, isPending: displaySettingsLoading } = useQuery({
+		queryKey: ["setting"], queryFn: fetchSetting, refetchOnWindowFocus: true, refetchInterval: 30000,
+	});
+	const statisticsSplit = displaySettings?.data?.config?.statistics_split !== false;
 	const [statisticsView, selectStatisticsView] = useStatisticsView(
 		presentation?.storagePrefix ?? "",
 		!!serviceData,
@@ -483,7 +487,7 @@ export default function Servers({
 					>
 						<span className="sr-only">切换地区地图</span><MapIcon className="size-[13px]" />
 					</button>
-					<StatisticsMenu value={statisticsView} onChange={selectStatisticsView} />
+					<StatisticsMenu value={statisticsView} onChange={selectStatisticsView} split={statisticsSplit} disabled={displaySettingsLoading} />
 					<button
 						onClick={() => {
 							setInline(inline === "0" ? "1" : "0");
@@ -547,8 +551,8 @@ export default function Servers({
 			{!presentation && hasServers && showMap === "1" && (
 				<GlobalMap now={nezhaWsData.now} serverList={nezhaWsData.servers} />
 			)}
-			{hasServers && statisticsView !== "closed" && (
-				<ServiceTracker serverList={filteredServers} view={statisticsView} onClose={() => selectStatisticsView("closed")} />
+			{hasServers && !displaySettingsLoading && statisticsView !== "closed" && (
+				<ServiceTracker serverList={filteredServers} view={statisticsSplit ? statisticsView : "both"} onClose={() => selectStatisticsView("closed")} />
 			)}
 			{!hasServers ? (
 				<ServerEmptyState />

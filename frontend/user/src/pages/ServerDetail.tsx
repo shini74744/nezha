@@ -1,6 +1,6 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
-import NetworkChartLoading from "@/components/NetworkChartLoading";
+import ServerNetworkSection from "@/components/ServerNetworkSection";
 import ServerDetailChart from "@/components/ServerDetailChart";
 import ServerDetailOverview from "@/components/ServerDetailOverview";
 import TabSwitch from "@/components/TabSwitch";
@@ -8,12 +8,6 @@ import { Separator } from "@/components/ui/separator";
 import { useWebSocketContext } from "@/hooks/use-websocket-context";
 import { formatNezhaInfo } from "@/lib/utils";
 import { OfflineServerDetail } from "@/components/OfflineServerDetail";
-
-const NetworkChart = lazy(() =>
-	import("@/components/NetworkChart").then((module) => ({
-		default: module.NetworkChart,
-	})),
-);
 
 export default function ServerDetail() {
 	useEffect(() => {
@@ -54,11 +48,7 @@ export default function ServerDetail() {
 			</section> */}
 
 			{currentTab === tabs[0] && <ServerDetailChart server_id={server_id} />}
-			{currentTab === tabs[1] && (
-				<Suspense fallback={<NetworkChartLoading />}>
-					<NetworkChart server_id={Number(server_id)} show={true} />
-				</Suspense>
-			)}
+			<ServerNetworkSection server_id={Number(server_id)} standalone={currentTab === tabs[1]} />
 		</div>
 	);
 }
