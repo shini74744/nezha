@@ -123,9 +123,9 @@ body,
 .terminal-shell {
     --terminal-available-height: 70vh;
     display: flex;
-    height: min(70vh, var(--terminal-available-height));
-    min-height: 360px;
-    flex-direction: column;
+    height: var(--terminal-available-height);
+    min-height: 0;
+    flex-direction: row;
     overflow: hidden;
     border: 1px solid hsl(var(--border));
     border-radius: var(--radius);
@@ -137,6 +137,8 @@ body,
     flex: 1 1 auto;
     padding: 6px 3px 2px 6px;
     touch-action: pan-y;
+    text-shadow: none;
+    font-variant: normal;
 }
 
 .terminal-screen .xterm {
@@ -203,18 +205,13 @@ body,
 
 .terminal-shell:fullscreen {
     width: 100%;
-    height: 100%;
+    height: var(--terminal-available-height);
     min-height: 0;
     border: 0;
     border-radius: 0;
 }
 
 @media (max-width: 640px) {
-    .terminal-shell {
-        height: var(--terminal-available-height);
-        min-height: 220px;
-    }
-
     .terminal-keyboard {
         gap: 2px;
         padding-inline: 4px;

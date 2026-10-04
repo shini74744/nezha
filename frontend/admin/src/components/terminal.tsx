@@ -12,7 +12,9 @@ import { type TerminalKey, controlSequenceForInput, terminalKeySequence } from "
 import { FitAddon } from "@xterm/addon-fit"
 import { Terminal } from "@xterm/xterm"
 import "@xterm/xterm/css/xterm.css"
-import { Terminal as TerminalIcon } from "lucide-react"
+import { PanelRight, Terminal as TerminalIcon } from "lucide-react"
+import { TerminalCommandsPanel } from "./terminal-commands"
+import { terminalCommandError } from "@/lib/terminal-commands"
 import {
     JSX,
     forwardRef,
@@ -33,6 +35,8 @@ import { IconButton } from "./xui/icon-button"
 interface XtermProps {
     wsUrl: string
     setClose: React.Dispatch<React.SetStateAction<boolean>>
+    commandsOpen?: boolean
+    onCommandsOpenChange?: (open: boolean) => void
 }
 
 type ConnectionState = "connecting" | "connected" | "disconnected"
@@ -53,7 +57,7 @@ const terminalKeys: Array<{ key: TerminalKey; label: string; ariaLabel: string }
 const maxClipboardBytes = 512 * 1024
 
 export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.IntrinsicElements["div"]>(
-    ({ wsUrl, setClose, className = "", ...props }, ref) => {
+    ({ wsUrl, setClose, commandsOpen: controlledCommandsOpen, onCommandsOpenChange, className = "", ...props }, ref) => {
         const shellRef = useRef<HTMLDivElement>(null)
         const screenRef = useRef<HTMLDivElement>(null)
         const terminalRef = useRef<Terminal | null>(null)
@@ -64,6 +68,12 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
         const controlActiveRef = useRef(false)
         const pasteInProgressRef = useRef(false)
         const pasteRequestRef = useRef(0)
+        const [localCommandsOpen, setLocalCommandsOpen] = useState(() => window.innerWidth >= 1024)
+        const commandsOpen = controlledCommandsOpen ?? localCommandsOpen
+        const setCommandsOpen = (next: boolean) => {
+            if (controlledCommandsOpen === undefined) setLocalCommandsOpen(next)
+            onCommandsOpenChange?.(next)
+        }
         const [controlActive, setControlActive] = useState(false)
         const [pasteBusy, setPasteBusy] = useState(false)
         const [connectionState, setConnectionState] = useState<ConnectionState>("connecting")
@@ -115,6 +125,8 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
             let active = true
             const terminal = new Terminal({
                 cursorBlink: true,
+                // Keep xterm measurement and rendering independent of dashboard fonts.
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
                 fontSize: window.innerWidth <= 640 ? 13 : 16,
                 scrollback: 10000,
                 scrollOnUserInput: true,
@@ -191,9 +203,10 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
                 const viewportTop = viewport?.offsetTop ?? 0
                 const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight)
                 const shellTop = Math.max(shell.getBoundingClientRect().top, viewportTop)
+                const bottomGap = document.fullscreenElement === shell ? 0 : 8
                 shell.style.setProperty(
                     "--terminal-available-height",
-                    `${Math.max(220, Math.floor(viewportBottom - shellTop - 8))}px`,
+                    `${Math.max(0, Math.floor(viewportBottom - shellTop - bottomGap))}px`,
                 )
                 fit()
             }
@@ -201,9 +214,12 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
             observer.observe(screen)
             window.addEventListener("resize", updateViewport)
             window.addEventListener("orientationchange", updateViewport)
+            document.addEventListener("fullscreenchange", updateViewport)
             window.visualViewport?.addEventListener("resize", updateViewport)
             window.visualViewport?.addEventListener("scroll", updateViewport)
             updateViewport()
+            // A late-loading dashboard font can move the heading without a window resize.
+            document.fonts?.ready.then(() => { if (active) updateViewport() })
 
             return () => {
                 active = false
@@ -212,6 +228,7 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
                 observer.disconnect()
                 window.removeEventListener("resize", updateViewport)
                 window.removeEventListener("orientationchange", updateViewport)
+                document.removeEventListener("fullscreenchange", updateViewport)
                 window.visualViewport?.removeEventListener("resize", updateViewport)
                 window.visualViewport?.removeEventListener("scroll", updateViewport)
                 dataSubscription.dispose()
@@ -273,6 +290,22 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
             }
         }
 
+        const executeCommand = (command: string) => {
+            const ws = wsRef.current
+            const terminal = terminalRef.current
+            if (!ws || ws.readyState !== WebSocket.OPEN || !terminal || terminalCommandError(command)) return false
+            updateControl(false)
+            pasteInProgressRef.current = true
+            try {
+                terminal.paste(command.trim())
+                ws.send("\r")
+            } finally {
+                pasteInProgressRef.current = false
+            }
+            terminal.focus()
+            return true
+        }
+
         const sendKey = (key: TerminalKey) => {
             const ws = wsRef.current
             if (!ws || ws.readyState !== WebSocket.OPEN) return
@@ -289,8 +322,14 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
                 data-connection-state={connectionState}
                 {...props}
             >
+                <div className="terminal-main">
                 <div ref={screenRef} className="terminal-screen" />
                 <div className="terminal-keyboard" role="toolbar" aria-label="Terminal controls">
+                    <button type="button" className="terminal-key terminal-key-commands"
+                        aria-label="快捷命令" aria-expanded={commandsOpen} aria-controls="terminal-command-panel"
+                        onClick={() => setCommandsOpen(!commandsOpen)}>
+                        <PanelRight size={16} aria-hidden />快捷命令
+                    </button>
                     <button
                         type="button"
                         className="terminal-key terminal-key-paste"
@@ -326,6 +365,8 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
                         </button>
                     ))}
                 </div>
+                </div>
+                <TerminalCommandsPanel open={commandsOpen} connected={connectionState === "connected"} onClose={() => setCommandsOpen(false)} onExecute={executeCommand} />
             </div>
         )
     },
@@ -334,13 +375,29 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
 export const TerminalPage = () => {
     const { id } = useParams<{ id: string }>()
     const [open, setOpen] = useState(false)
+    const [commandsOpen, setCommandsOpen] = useState(() => window.innerWidth >= 1024)
     const terminal = useTerminal(id ? parseInt(id) : undefined)
     const terminalIdRef = useRef<HTMLDivElement>(null)
     return (
         <div className="terminal-page px-3 sm:px-8">
             <div className="flex mt-3 sm:mt-6 mb-3 sm:mb-4 items-center gap-2">
-                <h1 className="flex-1 text-xl sm:text-3xl font-bold tracking-tight">{`Terminal (${id})`}</h1>
+                <h1 className="min-w-0 flex-1 truncate text-xl sm:text-3xl font-bold tracking-tight" title={`Terminal (${id})`}>{`Terminal (${id})`}</h1>
                 <div className="flex ml-auto gap-2 shrink-0">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="h-10 gap-1.5 px-2 sm:px-3"
+                        aria-label="快捷命令"
+                        aria-controls="terminal-command-panel"
+                        aria-expanded={commandsOpen}
+                        title={commandsOpen ? "收起快捷命令" : "打开快捷命令"}
+                        disabled={!terminal?.session_id}
+                        onClick={() => setCommandsOpen(value => !value)}
+                    >
+                        <PanelRight className="h-4 w-4" aria-hidden />
+                        <span className="hidden sm:inline">快捷命令</span>
+                        <span className="sm:hidden">命令</span>
+                    </Button>
                     <IconButton
                         icon="expand"
                         onClick={async () => {
@@ -356,6 +413,8 @@ export const TerminalPage = () => {
                     className="mb-3 sm:mb-5"
                     wsUrl={`/api/v1/ws/terminal/${terminal.session_id}`}
                     setClose={setOpen}
+                    commandsOpen={commandsOpen}
+                    onCommandsOpenChange={setCommandsOpen}
                 />
             ) : (
                 <p>The server does not exist, or have not been connected yet.</p>

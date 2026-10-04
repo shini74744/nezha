@@ -13,7 +13,7 @@ func setupOnUserDeleteFixture(t *testing.T) (*ServerTransferClass, func()) {
 	t.Helper()
 	c, transferCleanup := setupTransferFixture(t)
 
-	require.NoError(t, DB.AutoMigrate(&model.Cron{}, &model.Transfer{}, &model.ServerGroupServer{}))
+	require.NoError(t, DB.AutoMigrate(&model.Cron{}, &model.Transfer{}, &model.ServerGroupServer{}, &model.TerminalCommand{}))
 	originalCronShared := CronShared
 	CronShared = &CronClass{
 		class: class[uint64, *model.Cron]{list: map[uint64]*model.Cron{}},
@@ -63,9 +63,16 @@ func TestOnUserDeleteCancelsPendingTransfersAwayFromDeletedUser(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, toUser, srv.GetUserID(), "precondition: pending transfer flipped owner to ToUserID")
 
+	require.NoError(t, DB.Create(&model.TerminalCommand{Common: model.Common{UserID: fromUser}, Name: "mine", Ciphertext: "encrypted", Version: 1}).Error)
+	require.NoError(t, DB.Create(&model.TerminalCommand{Common: model.Common{UserID: toUser}, Name: "other", Ciphertext: "encrypted", Version: 1}).Error)
 	require.NoError(t, OnUserDelete([]uint64{fromUser}, func(format string, args ...any) error {
 		return nil
 	}))
+
+	var commands []model.TerminalCommand
+	require.NoError(t, DB.Find(&commands).Error)
+	require.Len(t, commands, 1)
+	require.Equal(t, toUser, commands[0].UserID)
 
 	if c.HasPending(serverID) {
 		t.Fatal("OnUserDelete on the transfer FromUserID must terminate the pending transfer so a later Cancel/Fail/Timeout cannot revert ownership to the deleted user")

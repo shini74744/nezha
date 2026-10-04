@@ -100,8 +100,12 @@ func InitDBFromPath(path string) error {
 		model.NAT{}, model.DDNSProfile{}, model.NotificationGroupNotification{},
 		model.WAF{}, model.Oauth2Bind{}, model.ServerTransfer{}, model.JWTSession{},
 		model.APIToken{}, model.MCPAuditLog{}, model.ServerDeletionTombstone{}, model.ServerSnapshot{},
-		model.PlanTrafficCheckpoint{}, model.PlanTrafficDay{}, model.LogoLibraryEntry{}, model.LogoLibraryGroup{})
+		model.PlanTrafficCheckpoint{}, model.PlanTrafficDay{}, model.LogoLibraryEntry{}, model.LogoLibraryGroup{}, model.TerminalCommand{})
 	if err != nil {
+		return err
+	}
+
+	if err := initTerminalCommandCipher(path); err != nil {
 		return err
 	}
 
