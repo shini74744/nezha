@@ -133,6 +133,9 @@ func OnUserDelete(id []uint64, errorFunc func(string, ...any) error) error {
 				return err
 			}
 
+			if err := tx.Where("user_id = ?", uid).Delete(&model.TerminalCommand{}).Error; err != nil {
+				return err
+			}
 			if err := tx.Where("id = ?", uid).Delete(&model.User{}).Error; err != nil {
 				return err
 			}

@@ -118,6 +118,12 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	auth.POST("/api-tokens", patForbidden, commonHandler(createAPIToken))
 	auth.DELETE("/api-tokens/:id", patForbidden, commonHandler(deleteAPIToken))
 
+	// Personal saved text, not remote execution; browser session only, owner isolated.
+	auth.GET("/terminal-commands", patForbidden, commonHandler(listTerminalCommands))
+	auth.POST("/terminal-commands", patForbidden, commonHandler(createTerminalCommand))
+	auth.PUT("/terminal-commands/:id", patForbidden, commonHandler(updateTerminalCommand))
+	auth.DELETE("/terminal-commands/:id", patForbidden, commonHandler(deleteTerminalCommand))
+
 	// 资源族划分：
 	//   - nezha:inventory:* —— 对“服务器台账”的枚举与删除（列出 server / server-group、
 	//     删除 server / server-group）。这是管理后台清单管理动作。
