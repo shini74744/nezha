@@ -96,7 +96,13 @@ func CreateServerWithLowestAvailableID(userID uint64, uuid, name string) (*model
 			UUID:   uuid,
 			Name:   name,
 		}
-		return tx.Create(&server).Error
+		if err := tx.Create(&server).Error; err != nil {
+			return err
+		}
+		if err := model.RecordServerOperation(tx, model.ServerOperationActor{Name: "Agent 自动注册", Source: "agent"}, "create", nil, &server); err != nil {
+			return err
+		}
+		return tx.Delete(&model.UnknownAgentReport{}, "uuid = ?", uuid).Error
 	})
 	if err != nil {
 		return nil, err
@@ -162,7 +168,7 @@ func PermanentlyDeleteServers(ids []uint64) error {
 
 // Expected identities prevent a delayed uninstall request deleting a replacement
 // node that reused an ID, or a node whose ownership changed while awaiting ACK.
-func PermanentlyDeleteServersMatching(ids []uint64, expected map[uint64]ServerDeleteIdentity) error {
+func PermanentlyDeleteServersMatching(ids []uint64, expected map[uint64]ServerDeleteIdentity, actors ...model.ServerOperationActor) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -218,10 +224,21 @@ func PermanentlyDeleteServersMatching(ids []uint64, expected map[uint64]ServerDe
 		}
 	}()
 
+	actor := model.ServerOperationActor{Name: "系统", Source: "system"}
+	if len(actors) > 0 {
+		actor = actors[0]
+	}
 	err := DB.Transaction(func(tx *gorm.DB) error {
 		tombstones := make([]model.ServerDeletionTombstone, 0, len(uuids))
-		for _, server := range servers {
-			tombstones = append(tombstones, model.ServerDeletionTombstone{UUID: server.UUID, Name: server.Name})
+		for i := range servers {
+			server := &servers[i]
+			if err := model.RecordServerOperation(tx, actor, "delete", server, nil); err != nil {
+				return err
+			}
+			tombstones = append(tombstones, model.ServerDeletionTombstone{
+				UUID: server.UUID, Name: server.Name, OriginalID: server.ID,
+				DeletedByID: actor.ID, DeletedByName: actor.Name,
+			})
 		}
 		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&tombstones).Error; err != nil {
 			return err

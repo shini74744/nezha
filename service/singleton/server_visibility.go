@@ -33,7 +33,7 @@ func (c *ServerClass) UpdateVisibility(ctx *gin.Context, form model.BatchServerV
 	c.lockLifecycleWrite()
 	defer c.unlockLifecycleWrite()
 	var servers []model.Server
-	err := DB.Transaction(func(tx *gorm.DB) error {
+	err := model.WithServerOperation(DB, model.ServerOperationActorFromContext(ctx), "visibility", ids, func(tx *gorm.DB) error {
 		if err := tx.Where("id IN ?", ids).Find(&servers).Error; err != nil {
 			return err
 		}

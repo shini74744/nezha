@@ -34,7 +34,7 @@ func setupServerGroupVisibilityFixture(t *testing.T) {
 	require.NoError(t, err)
 	sqlDB, err := db.DB()
 	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&model.Server{}, &model.ServerGroup{}, &model.ServerGroupServer{}, &model.User{}))
+	require.NoError(t, db.AutoMigrate(&model.ServerOperationLog{}, &model.Server{}, &model.ServerGroup{}, &model.ServerGroupServer{}, &model.User{}))
 
 	singleton.DB = db
 	singleton.Loc = time.UTC

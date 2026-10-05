@@ -62,7 +62,7 @@ func deleteServersAndUninstall(c *gin.Context, ids []uint64) (*ServerDeleteResul
 	// Once accepted, browser navigation must not leave already-started cleanup
 	// workers unaccompanied by the persistent deletion/UUID block.
 	result := prepareServerRemoval(context.WithoutCancel(c.Request.Context()), servers, rpc.LaunchAgentUninstall)
-	if err := singleton.PermanentlyDeleteServersMatching(ids, identities); err != nil {
+	if err := singleton.PermanentlyDeleteServersMatching(ids, identities, model.ServerOperationActorFromContext(c)); err != nil {
 		return nil, fmt.Errorf("远端清理可能已启动，但面板删除未完成：%w", err)
 	}
 	result.Deleted = ids

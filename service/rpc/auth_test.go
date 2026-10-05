@@ -68,7 +68,7 @@ func setupAuthHandshakeFixture(t *testing.T) func() {
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
-	if err := db.AutoMigrate(&model.Server{}, &model.ServerTransfer{}, &model.WAF{}); err != nil {
+	if err := db.AutoMigrate(&model.Server{}, &model.ServerTransfer{}, &model.WAF{}, &model.ServerOperationLog{}, &model.UnknownAgentReport{}); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 	if err := db.Create(&model.Server{
@@ -164,7 +164,7 @@ func setupAuthAgentFixture(t *testing.T) func() {
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
-	if err := db.AutoMigrate(&model.Server{}, &model.ServerTransfer{}); err != nil {
+	if err := db.AutoMigrate(&model.Server{}, &model.ServerTransfer{}, &model.ServerOperationLog{}); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 	if err := db.Create(&model.Server{

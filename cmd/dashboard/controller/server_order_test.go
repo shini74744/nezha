@@ -17,6 +17,7 @@ func newServerRekeyTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared&_foreign_keys=on"), &gorm.Config{})
 	require.NoError(t, err)
 	require.NoError(t, db.AutoMigrate(
+		&model.ServerOperationLog{},
 		&model.Server{}, &model.ServerGroupServer{}, &model.Transfer{},
 		&model.NAT{}, &model.ServerTransfer{}, &model.MCPAuditLog{},
 		&model.ServiceHistory{}, &model.Cron{}, &model.Service{},

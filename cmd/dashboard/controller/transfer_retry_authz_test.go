@@ -148,7 +148,7 @@ func setupRetryServerTransferFixture(t *testing.T) func() {
 
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	assert.NoError(t, err)
-	assert.NoError(t, db.AutoMigrate(&model.Server{}, &model.ServerTransfer{}))
+	assert.NoError(t, db.AutoMigrate(&model.Server{}, &model.ServerTransfer{}, &model.ServerOperationLog{}))
 	singleton.DB = db
 	singleton.ServerShared = singleton.NewServerClass()
 	singleton.UserInfoMap = map[uint64]model.UserInfo{

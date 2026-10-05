@@ -14,6 +14,10 @@ import useSWR from "swr"
 
 interface UnknownReport {
     uuid: string
+    kind: "deleted" | "unregistered" | "registered" | "conflict"
+    previous_ip?: string
+    previous_peer?: string
+    last_peer?: string
     name: string
     last_ip: string
     created_at: string
@@ -27,6 +31,45 @@ interface UnknownReportPage {
 }
 const date = (value: number | string) =>
     value ? new Date(typeof value === "number" ? value * 1000 : value).toLocaleString() : "—"
+
+const labels = {
+    deleted: "已删除节点重连",
+    unregistered: "未登记 UUID 认证失败",
+    registered: "已有 UUID 认证失败",
+    conflict: "疑似 UUID 冲突",
+}
+const reportName = (row: UnknownReport) =>
+    row.name ||
+    (row.kind === "unregistered"
+        ? "未登记节点"
+        : row.kind === "deleted"
+          ? "已删除节点"
+          : "已有节点")
+const reportStatus = (row: UnknownReport) =>
+    row.kind === "conflict"
+        ? "待核查 · 未自动封禁"
+        : row.kind === "deleted"
+          ? "UUID 已拉黑"
+          : "认证已拒绝"
+function ReportSource({ row }: { row: UnknownReport }) {
+    return (
+        <div className="min-w-0 break-all font-mono text-xs">
+            {row.kind === "conflict" ? (
+                <>
+                    <p>旧连接：{row.previous_ip || "未知"}</p>
+                    <p>新连接：{row.last_ip || "未知"}</p>
+                    <details className="mt-1 text-muted-foreground">
+                        <summary className="cursor-pointer font-sans">连接端点</summary>
+                        <p>{row.previous_peer || "—"}</p>
+                        <p>{row.last_peer || "—"}</p>
+                    </details>
+                </>
+            ) : (
+                row.last_ip || "未知"
+            )}
+        </div>
+    )
+}
 
 export function UnknownAgentReports() {
     const [page, setPage] = useState(0)
@@ -42,8 +85,9 @@ export function UnknownAgentReports() {
         <section className="min-w-0 space-y-3">
             <div className="flex items-start justify-between gap-3">
                 <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-                    已删除节点恢复上线、继续上报时，会在这里记录并按 UUID
-                    拦截。面板重启后仍有效，不会封禁同 IP 的其他正常节点。
+                    区分已有/未登记 UUID 认证失败、已删除节点重连和疑似 UUID 冲突。 新 UUID
+                    携带有效密钥正常注册，不计入异常。 冲突表示同一 UUID
+                    的不同连接重叠上报，可能来自重复安装或短时重连，请核查；不会自动封禁正常节点。
                 </p>
                 <Button
                     variant="outline"
@@ -67,7 +111,7 @@ export function UnknownAgentReports() {
                 <div className="rounded-md border py-10 text-center text-sm text-muted-foreground">
                     <ShieldBan className="mx-auto mb-2 size-6" />
                     暂无未知上报
-                    <p className="mt-1 text-xs">已删除但尚未重连的节点不会出现在这里。</p>
+                    <p className="mt-1 text-xs">已删除但尚未重连的节点，请查看“已删除服务器”。</p>
                 </div>
             ) : (
                 <>
@@ -77,6 +121,7 @@ export function UnknownAgentReports() {
                                 <TableRow>
                                     {[
                                         "节点 / UUID",
+                                        "类型",
                                         "来源 IP",
                                         "上报次数",
                                         "首次上报",
@@ -89,15 +134,23 @@ export function UnknownAgentReports() {
                             </TableHeader>
                             <TableBody>
                                 {rows.map((row) => (
-                                    <TableRow key={row.uuid}>
+                                    <TableRow
+                                        key={row.kind + ":" + row.uuid}
+                                        className={
+                                            row.kind === "conflict" ? "bg-amber-500/10" : undefined
+                                        }
+                                    >
                                         <TableCell>
-                                            <p>{row.name || "已删除节点"}</p>
+                                            <p>{reportName(row)}</p>
                                             <p className="mt-1 font-mono text-xs text-muted-foreground">
                                                 {row.uuid}
                                             </p>
                                         </TableCell>
+                                        <TableCell className="max-w-40 text-xs">
+                                            {labels[row.kind]}
+                                        </TableCell>
                                         <TableCell className="font-mono text-xs">
-                                            {row.last_ip || "未知"}
+                                            <ReportSource row={row} />
                                         </TableCell>
                                         <TableCell>{row.report_count}</TableCell>
                                         <TableCell className="text-xs">
@@ -108,7 +161,7 @@ export function UnknownAgentReports() {
                                         </TableCell>
                                         <TableCell>
                                             <span className="whitespace-nowrap rounded border px-2 py-1 text-xs">
-                                                已拦截
+                                                {reportStatus(row)}
                                             </span>
                                         </TableCell>
                                     </TableRow>
@@ -119,15 +172,18 @@ export function UnknownAgentReports() {
                     <div className="space-y-2 md:hidden">
                         {rows.map((row) => (
                             <article
-                                key={row.uuid}
-                                className="min-w-0 rounded-md border p-3 text-sm"
+                                key={row.kind + ":" + row.uuid}
+                                className={
+                                    "min-w-0 rounded-md border p-3 text-sm " +
+                                    (row.kind === "conflict"
+                                        ? "border-amber-500/60 bg-amber-500/10"
+                                        : "")
+                                }
                             >
-                                <div className="flex items-center justify-between gap-2">
-                                    <strong className="break-all">
-                                        {row.name || "已删除节点"}
-                                    </strong>
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <strong className="break-all">{reportName(row)}</strong>
                                     <span className="shrink-0 text-xs text-muted-foreground">
-                                        已拦截 · {row.report_count} 次
+                                        {labels[row.kind]} · {row.report_count} 次
                                     </span>
                                 </div>
                                 <p className="my-2 break-all font-mono text-xs text-muted-foreground">
@@ -136,7 +192,9 @@ export function UnknownAgentReports() {
                                 <dl className="space-y-1 text-xs">
                                     <div className="flex justify-between gap-3">
                                         <dt className="shrink-0">来源 IP</dt>
-                                        <dd className="break-all">{row.last_ip || "未知"}</dd>
+                                        <dd className="min-w-0">
+                                            <ReportSource row={row} />
+                                        </dd>
                                     </div>
                                     <div className="flex justify-between gap-3">
                                         <dt className="shrink-0">首次上报</dt>
@@ -147,13 +205,16 @@ export function UnknownAgentReports() {
                                         <dd>{date(row.last_report_at)}</dd>
                                     </div>
                                 </dl>
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                    {reportStatus(row)}
+                                </p>
                             </article>
                         ))}
                     </div>
                 </>
             )}
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                <span>共 {total} 个节点 · 仅记录上报，不自动解除拉黑</span>
+                <span>共 {total} 条分类记录 · 认证失败不代表该节点身份已验证</span>
                 <div className="flex items-center gap-2">
                     <Button
                         size="sm"

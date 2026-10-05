@@ -279,7 +279,16 @@ func (s *NezhaHandler) ReportSystemState(stream pb.NezhaService_ReportSystemStat
 			return nil
 		})
 		if !accepted {
+			if current, overlap := lease.ActiveReplacementContext(); overlap {
+				recordUUIDConflict(server.UUID, stream.Context(), current)
+			}
 			return errors.New("state stream superseded")
+		}
+
+		if stateCount == 1 {
+			if previous, overlap := lease.RecentPredecessorContext(); overlap {
+				recordUUIDConflict(server.UUID, previous, stream.Context())
+			}
 		}
 
 		if err := notifyStateReceived(clientID, server.UUID, lease.Generation(), stateCount); err != nil {

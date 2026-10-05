@@ -313,7 +313,7 @@ func setupApplyConfigAuthzFixture(t *testing.T, servers []*model.Server, users m
 	singleton.DB = db
 	singleton.Conf = &singleton.ConfigClass{Config: &model.Config{}}
 	singleton.Loc = time.UTC
-	if err := singleton.DB.AutoMigrate(model.Server{}, model.ServerTransfer{}); err != nil {
+	if err := singleton.DB.AutoMigrate(model.Server{}, model.ServerTransfer{}, model.ServerOperationLog{}); err != nil {
 		t.Fatal(err)
 	}
 	for _, server := range servers {
