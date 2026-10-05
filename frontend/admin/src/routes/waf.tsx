@@ -2,7 +2,6 @@ import { swrFetcher } from "@/api/api"
 import { deleteWAF } from "@/api/waf"
 import { ActionButtonGroup } from "@/components/action-button-group"
 import { HeaderButtonGroup } from "@/components/header-button-group"
-import { SettingsTab } from "@/components/settings-tab"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
     Pagination,
@@ -44,12 +43,11 @@ export default function WAFPage() {
     const selected = params.get("tab")
     const tab = selected === "unknown" || selected === "deleted" ? selected : "web"
     return (
-        <div className="min-w-0 px-3">
-            <SettingsTab className="mt-6 w-full" />
+        <div className="min-w-0">
             <Tabs
                 value={tab}
                 onValueChange={(value) => setParams({ tab: value })}
-                className="mt-4 min-w-0"
+                className="min-w-0"
             >
                 <TabsList
                     className="grid w-full grid-cols-3 sm:inline-flex sm:w-auto"

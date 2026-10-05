@@ -4,7 +4,6 @@ import useSetting from "@/hooks/useSetting";
 import {toast} from "sonner";
 import {fetcher,FetcherMethod} from "@/api/api";
 import {useAuth} from "@/hooks/useAuth";
-import {SettingsTab} from "@/components/settings-tab";
 import {AppearanceSection} from "@/components/appearance-section";
 import {Input} from "@/components/ui/input";
 import {Textarea} from "@/components/ui/textarea";
@@ -33,7 +32,7 @@ export default function DashboardAppearancePage(){
    adopt(next);await mutate();toast.success("后台美化设置已保存");
   }catch(e){toast.error(String(e).includes("changed")?"配置已变化，请重新读取后再保存。":"保存失败："+String(e))}finally{setBusy(false)}
  };
- return <div className="space-y-6 p-4"><SettingsTab/><h1 className="text-2xl font-semibold">后台美化设置</h1>
+ return <div className="space-y-6"><h1 className="text-2xl font-semibold">后台美化设置</h1>
   <div className="rounded-lg border bg-card p-4 space-y-3"><p>仅作用于后台，与前台美化独立保存。字体、背景、品牌、点击特效、Ping/TCPing/Ping0 和时间转换均由面板内置。</p>
    <label className="flex items-center gap-3"><Switch aria-label="启用后台美化" checked={config.enabled} onCheckedChange={enabled=>setConfig(c=>({...c,enabled}))}/>启用后台美化</label>
    <details><summary className="cursor-pointer">读取以前的仪表板自定义代码</summary><div className="space-y-3 pt-3">

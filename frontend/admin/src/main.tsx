@@ -28,6 +28,7 @@ import ServerExpiryPage from "./routes/server-expiry"
 import OnlineUserPage from "./routes/online-user"
 import ProfilePage from "./routes/profile"
 import SettingsPage from "./routes/settings"
+import SettingsLayout from "./routes/settings-layout"
 import IconSettings from "./routes/icon-settings"
 import AppearancePage from "./routes/appearance"
 import DashboardAppearancePage from "./routes/dashboard-appearance"
@@ -138,39 +139,24 @@ const router = createBrowserRouter([
             },
             {
                 path: "/dashboard/settings",
-                element: (
-                    <NotificationProvider withNotifierGroup>
-                        <SettingsPage />
-                    </NotificationProvider>
-                ),
-            },
-            {
-                path: "/dashboard/settings/icons",
-                element: <IconSettings />,
-            },
-            {
-                path: "/dashboard/settings/dashboard-appearance",
-                element: <DashboardAppearancePage />,
-            },
-            {
-                path: "/dashboard/settings/appearance",
-                element: <AppearancePage />,
-            },
-            {
-                path: "/dashboard/settings/user",
-                element: <UserPage />,
-            },
-            {
-                path: "/dashboard/settings/waf",
-                element: <WAFPage />,
-            },
-            {
-                path: "/dashboard/settings/online-user",
-                element: <OnlineUserPage />,
-            },
-            {
-                path: "/dashboard/settings/api-tokens",
-                element: <ApiTokensPage />,
+                element: <SettingsLayout />,
+                children: [
+                    {
+                        index: true,
+                        element: (
+                            <NotificationProvider withNotifierGroup>
+                                <SettingsPage />
+                            </NotificationProvider>
+                        ),
+                    },
+                    { path: "icons", element: <IconSettings /> },
+                    { path: "dashboard-appearance", element: <DashboardAppearancePage /> },
+                    { path: "appearance", element: <AppearancePage /> },
+                    { path: "user", element: <UserPage /> },
+                    { path: "waf", element: <WAFPage /> },
+                    { path: "online-user", element: <OnlineUserPage /> },
+                    { path: "api-tokens", element: <ApiTokensPage /> },
+                ],
             },
             {
                 path: "/dashboard/transfer",

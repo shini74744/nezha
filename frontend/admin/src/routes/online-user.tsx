@@ -2,7 +2,6 @@ import { swrFetcher } from "@/api/api"
 import { blockUser } from "@/api/online-user"
 import { BlockButtonGroup } from "@/components/action-button-group"
 import { HeaderBlockButtonGroup } from "@/components/header-button-group"
-import { SettingsTab } from "@/components/settings-tab"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
     Pagination,
@@ -238,9 +237,8 @@ export default function OnlineUserPage() {
     }
 
     return (
-        <div className="px-3">
-            <SettingsTab className="mt-6 w-full" />
-            <div className="flex mt-4 mb-4">
+        <div className="min-w-0">
+            <div className="flex mb-4">
                 {isAdmin && (
                     <HeaderBlockButtonGroup
                         className="flex-2 flex gap-2 ml-auto"

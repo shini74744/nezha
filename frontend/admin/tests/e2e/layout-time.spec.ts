@@ -121,7 +121,7 @@ test("compact buttons preserve dialogs, selection, and sorting", async ({ page }
     for (const row of await rows.all()) await expect(row.getByRole("checkbox")).toBeChecked()
     await rows.first().locator("td").last().locator("button").last().click()
     await expect(page.getByRole("alertdialog")).toBeVisible()
-    await page.getByRole("alertdialog").getByRole("button", { name: "关闭", exact: true }).click()
+    await page.getByRole("alertdialog").getByRole("button", { name: "取消", exact: true }).click()
     await expect(rows).toHaveCount(2)
     await page.getByRole("button", { name: "服务器排序", exact: true }).click()
     await expect(page.getByRole("dialog")).toBeVisible()
@@ -192,7 +192,7 @@ for (const [width, beautify] of [
             await expect(page.getByRole("alertdialog")).toBeVisible()
             await page
                 .getByRole("alertdialog")
-                .getByRole("button", { name: "关闭", exact: true })
+                .getByRole("button", { name: "取消", exact: true })
                 .click()
             await expect(rows).toHaveCount(12)
             await page.screenshot({
@@ -214,10 +214,10 @@ for (const width of [1366, 1920]) {
             await page.goto("/dashboard" + route, { waitUntil: "domcontentloaded" })
             const shell = page.locator(".dashboard-content")
             await expect(shell).toBeVisible()
-            await expect(shell.locator(":scope > div").first()).toBeVisible()
+            await expect(shell.locator(":scope > *").first()).toBeVisible()
             const content = (await shell.boundingBox())!
             const nav = (await page.locator("header > nav").boundingBox())!
-            const child = (await shell.locator(":scope > div").first().boundingBox())!
+            const child = (await shell.locator(":scope > *").first().boundingBox())!
             expect(Math.abs(content.x - nav.x), route).toBeLessThan(1)
             expect(Math.abs(content.width - nav.width), route).toBeLessThan(1)
             expect(Math.abs(child.width - content.width), route).toBeLessThan(1)

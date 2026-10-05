@@ -134,7 +134,10 @@ export function NativeSpeed({
 	const shared = useFeature("speed");
  const f = overview ? {enabled:shared.enabled && shared.overviewEnabled,bits:shared.overviewBits,color:shared.overviewColor,animation:shared.overviewAnimation}
   : {...shared,enabled:shared.enabled && shared.cardEnabled};
-	if (!f.enabled || (!f.bits && !f.color && !f.animation)) return <>{icon}{fallback ?? formatSpeed(bytes, false)}</>;
+	if (!f.enabled || (!f.bits && !f.color && !f.animation)) {
+		const value = fallback ?? formatSpeed(bytes, false);
+		return overview ? <span className="nz-network-speed">{icon}<span className="nz-rate-value">{value}</span></span> : <>{icon}{value}</>;
+	}
 	const color = speedColor(bytes, direction, overview);
 	const {level, className: effect} = speedEffect(bytes, direction, overview);
 	return (
@@ -142,7 +145,7 @@ export function NativeSpeed({
 			data-native-speed={direction}
 			data-color={f.color}
 			className={[
-        overview && (f.bits || f.color || f.animation) ? "nz-overview-rate" : "",
+        overview ? "nz-network-speed nz-overview-rate" : "",
         f.animation && level > 0 ? (overview ? "" : "nz-speed nz-card-rate ") + effect : "",
       ].filter(Boolean).join(" ") || undefined}
 			style={f.color ? { color } : undefined}

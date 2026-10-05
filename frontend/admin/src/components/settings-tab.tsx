@@ -1,18 +1,19 @@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/hooks/useAuth"
 import { useTranslation } from "react-i18next"
-import { Link } from "react-router-dom"
+import { Link, useLocation } from "react-router-dom"
 
 export const SettingsTab = ({ className }: { className?: string }) => {
     const { t } = useTranslation()
     const { profile } = useAuth()
+    const { pathname } = useLocation()
 
     const isAdmin = profile?.role === 0
     const colsClass = isAdmin ? "grid-cols-2 sm:grid-cols-5" : "grid-cols-1"
 
     return (
-        <Tabs defaultValue={window.location.pathname} className={className}>
-            <TabsList className={`grid h-auto gap-1 w-full ${colsClass}`}>
+        <Tabs value={pathname.replace(/\/$/, "")} activationMode="manual" className={className}>
+            <TabsList aria-label={t("Settings")} className={`grid h-auto gap-1 w-full ${colsClass}`}>
                 {isAdmin && (
                     <>
                         <TabsTrigger value="/dashboard/settings" asChild>

@@ -1,5 +1,4 @@
 import { updateSettings } from "@/api/settings"
-import { SettingsTab } from "@/components/settings-tab"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -139,8 +138,7 @@ export default function SettingsPage() {
     }
 
     return (
-        <div className="px-3">
-            <SettingsTab className="mt-6 mb-4 w-full" />
+        <div className="min-w-0">
             <div>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2 my-2">
