@@ -86,28 +86,6 @@ export function DeletedServers() {
                                     {row.released_at ? "已删除 · 已放行" : "已删除"}
                                 </span>
                             </div>
-                            {row.report_count > 0 && !row.released_at && (
-                                <div className="mt-2 flex items-start gap-1.5 rounded-md bg-amber-500/10 px-2 py-1.5 text-xs text-amber-800 dark:text-amber-200">
-                                    <ShieldAlert className="mt-0.5 size-3.5 shrink-0" />
-                                    <span>
-                                        <strong>
-                                            {row.last_report_at >= Date.now() / 1000 - 120
-                                                ? "仍在上报"
-                                                : "删除后曾再次上报"}
-                                        </strong>
-                                        <span className="ml-1">· 连接已拦截</span>
-                                        <span className="mt-0.5 block opacity-80">
-                                            最近上报：
-                                            {row.last_report_at
-                                                ? new Date(
-                                                      row.last_report_at * 1000,
-                                                  ).toLocaleString()
-                                                : "未记录"}{" "}
-                                            · 累计 {row.report_count} 次
-                                        </span>
-                                    </span>
-                                </div>
-                            )}
                             <p className="my-2 break-all font-mono text-xs text-muted-foreground">
                                 UUID: {row.uuid}
                             </p>
@@ -152,6 +130,28 @@ export function DeletedServers() {
                                     releasedAt={row.released_at}
                                 />
                             </div>
+                            {row.report_count > 0 && !row.released_at && (
+                                <div className="mt-2 flex items-start gap-1.5 rounded-md bg-amber-500/10 px-2 py-1.5 text-xs text-amber-800 dark:text-amber-200">
+                                    <ShieldAlert className="mt-0.5 size-3.5 shrink-0" />
+                                    <span>
+                                        <strong>
+                                            {row.last_report_at >= Date.now() / 1000 - 120
+                                                ? "仍在上报"
+                                                : "删除后曾再次上报"}
+                                        </strong>
+                                        <span className="ml-1">· 连接已拦截</span>
+                                        <span className="mt-0.5 block opacity-80">
+                                            最近上报：
+                                            {row.last_report_at
+                                                ? new Date(
+                                                      row.last_report_at * 1000,
+                                                  ).toLocaleString()
+                                                : "未记录"}{" "}
+                                            · 累计 {row.report_count} 次
+                                        </span>
+                                    </span>
+                                </div>
+                            )}
                             <DeletedAgentCleanup row={row} />
                         </article>
                     ))}
