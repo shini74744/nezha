@@ -1570,10 +1570,10 @@ html:not(.dark) .dora-traffic .nz-traffic-info > span {
 		padding-left: 7px;
 		padding-right: 7px;
 	}
-	.dora-theme .server-overview-controls [role="combobox"] {
+	.dora-theme .server-overview-controls [data-sort-trigger] {
 		overflow: hidden;
 	}
-	.dora-theme .server-overview-controls [role="combobox"] span {
+	.dora-theme .server-overview-controls [data-sort-trigger] span {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;

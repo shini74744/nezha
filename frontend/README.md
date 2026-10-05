@@ -35,3 +35,33 @@ The independently selectable `doraemon-dist` theme shares the default frontend's
 - `script/fetch-frontends.sh` builds this local theme instead of downloading a Monitor archive. `script/build-custom.sh` includes it alongside the existing frontends.
 - Implementation, visual source and license: `frontend/user/src/themes/doraemon/README.md`.
 - Standalone frontend output is `frontend/user/dist-doraemon`; it and embedded `cmd/dashboard/doraemon-dist` are generated and ignored by Git.
+
+
+## Statistics and sorting regressions
+
+Feature and compatibility notes: [STATISTICS_VIEWS.md](../STATISTICS_VIEWS.md) and
+[APPEARANCE.md](../APPEARANCE.md#全站显示设置2026-10-05).
+
+Targeted unit checks from `frontend/user` (after installing its locked dependencies):
+
+```sh
+corepack pnpm exec vitest run src/test/components/sort-metric-select.test.tsx src/test/pages/Server.test.tsx
+corepack pnpm run typecheck
+```
+
+For the native menu browser regressions, first build both `frontend/user` variants
+(`build` and `build:doraemon`) and serve their output as local HTTPS previews on
+`https://127.0.0.1:5189` (default) and `https://127.0.0.1:5190` (Doraemon).
+Use development certificates only; the specs ignore local certificate errors,
+mock APIs/WebSockets and do not require production credentials. Then run from
+`frontend/admin`:
+
+```sh
+E2E_SKIP_WEBSERVER=1 npx playwright test tests/e2e/statistics-views.spec.ts --grep 'sort menu scroll stability|statistics menu scroll stability' --workers=1
+```
+
+These tests enable classic Chromium scrollbars to detect page-width changes that
+headless overlay scrollbars would conceal. They cover repeated opening/closing,
+keyboard selection, outside clicks/scrolling and mobile touch targets. The sort
+regressions use per-test screenshot output directories and must leave the page's
+scrollbar, body overflow, pointer events and compensation margins unchanged.

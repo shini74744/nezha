@@ -418,3 +418,149 @@ for (const theme of ["default", "doraemon"])
             await expect(trigger).toBeVisible()
             await expect(page.locator("[data-statistics-view]")).toHaveCount(0)
         })
+
+test.describe("sort menu scroll stability", () => {
+    for (const theme of ["default", "doraemon"])
+        for (const width of [390, 1366])
+            test(
+                theme + " sort keeps scrollbars and layout stable " + width,
+                async ({ page }, info) => {
+                    await page.setViewportSize({ width, height: 850 })
+                    await mock(page, theme, true, false, 30)
+                    await expect(page.locator("[data-native-traffic]")).toHaveCount(30)
+                    const trigger = page.getByLabel("Sort metric", { exact: true })
+                    const menu = page.locator(".server-sort-menu")
+                    await trigger.scrollIntoViewIfNeeded()
+                    const geometry = () =>
+                        trigger.evaluate((e) => {
+                            const style = getComputedStyle(document.body),
+                                rect = e.getBoundingClientRect()
+                            return {
+                                left: rect.left,
+                                top: rect.top,
+                                bodyWidth: document.body.getBoundingClientRect().width,
+                                viewport: document.documentElement.clientWidth,
+                                scrollY,
+                                overflow: style.overflow,
+                                paddingRight: style.paddingRight,
+                                marginRight: style.marginRight,
+                                pointerEvents: style.pointerEvents,
+                                scrollLock: document.body.getAttribute("data-scroll-locked"),
+                            }
+                        })
+                    const before = await geometry()
+                    expect(before.viewport).toBeLessThan(width)
+                    expect(before.scrollLock).toBeNull()
+                    for (let i = 0; i < 3; i++) {
+                        await trigger.click()
+                        await expect(menu).toBeVisible()
+                        await expect(menu).toHaveCSS("opacity", "1")
+                        const opened = await geometry()
+                        console.log(JSON.stringify({ theme, width, before, opened }))
+                        expect(opened).toEqual(before)
+                        if (i === 0)
+                            await page.screenshot({ path: info.outputPath("sort-open.png") })
+                        await page.keyboard.press("Escape")
+                        await expect(menu).toHaveCount(0)
+                        await expect(trigger).toBeFocused()
+                        expect(await geometry()).toEqual(before)
+                    }
+                    await trigger.click()
+                    await expect(menu).toBeVisible()
+                    await trigger.click()
+                    await expect(menu).toHaveCount(0)
+                    expect(await geometry()).toEqual(before)
+                    await trigger.focus()
+                    await page.keyboard.press("ArrowDown")
+                    await expect(menu).toBeVisible()
+                    await expect(menu.getByRole("menuitemradio").first()).toBeFocused()
+                    await page.keyboard.press("End")
+                    await expect(menu.getByRole("menuitemradio").last()).toBeFocused()
+                    await page.keyboard.press("Enter")
+                    await expect(menu).toHaveCount(0)
+                    await expect(trigger).toHaveText("下载总量")
+                    const { left: _left, ...afterSelection } = await geometry()
+                    const { left: _beforeLeft, ...beforeSelection } = before
+                    expect(afterSelection).toEqual(beforeSelection)
+                    await trigger.click()
+                    await menu.getByRole("menuitemradio", { name: "默认", exact: true }).click()
+                    await expect(trigger).toHaveText("默认")
+                    await trigger.click()
+                    await expect(menu).toBeVisible()
+                    await page.mouse.move(width - 30, 800)
+                    await page.mouse.wheel(0, 180)
+                    await expect
+                        .poll(() => page.evaluate(() => scrollY))
+                        .toBeGreaterThan(before.scrollY)
+                    await page.keyboard.press("Escape")
+                    await trigger.scrollIntoViewIfNeeded()
+                    await trigger.click()
+                    await expect(menu).toBeVisible()
+                    await page.mouse.click(4, 100)
+                    await expect(menu).toHaveCount(0)
+                    expect(await page.locator("body").getAttribute("data-scroll-locked")).toBeNull()
+                    expect(
+                        await page.evaluate(
+                            () => document.documentElement.scrollWidth <= innerWidth,
+                        ),
+                    ).toBe(true)
+                },
+            )
+    for (const theme of ["default", "doraemon"])
+        for (const width of [320, 390])
+            test(theme + " sort touch menu " + width, async ({ browser }, info) => {
+                const context = await browser.newContext({
+                    viewport: { width, height: 740 },
+                    hasTouch: true,
+                    ignoreHTTPSErrors: true,
+                })
+                try {
+                    const page = await context.newPage()
+                    await mock(page, theme, true, false, 30)
+                    await expect(page.locator("[data-native-traffic]")).toHaveCount(30)
+                    const trigger = page.getByLabel("Sort metric", { exact: true })
+                    await trigger.scrollIntoViewIfNeeded()
+                    const before = await page.evaluate(() => ({
+                        width: document.documentElement.clientWidth,
+                        scrollY,
+                    }))
+                    const menu = page.locator(".server-sort-menu")
+                    await trigger.tap()
+                    await expect(menu).toBeVisible()
+                    await expect(menu.getByRole("menuitemradio")).toHaveCount(11)
+                    const box = await menu.boundingBox()
+                    expect(box!.x).toBeGreaterThanOrEqual(0)
+                    expect(box!.x + box!.width).toBeLessThanOrEqual(width)
+                    expect(box!.height).toBeLessThanOrEqual(512)
+                    await expect(menu.getByRole("menuitemradio").first()).toHaveCSS(
+                        "min-height",
+                        "44px",
+                    )
+                    expect(await page.locator("body").getAttribute("data-scroll-locked")).toBeNull()
+                    expect(
+                        await page.evaluate(() => ({
+                            width: document.documentElement.clientWidth,
+                            scrollY,
+                        })),
+                    ).toEqual(before)
+                    await page.screenshot({ path: info.outputPath("sort-touch.png") })
+                    await menu.getByRole("menuitemradio", { name: "CPU", exact: true }).tap()
+                    await expect(menu).toHaveCount(0)
+                    await expect(trigger).toHaveText("CPU")
+                    await trigger.tap()
+                    await expect(
+                        menu.getByRole("menuitemradio", { name: "CPU", exact: true }),
+                    ).toHaveAttribute("aria-checked", "true")
+                    await trigger.tap()
+                    await expect(menu).toHaveCount(0)
+                    expect(await page.locator("body").getAttribute("data-scroll-locked")).toBeNull()
+                    expect(
+                        await page.evaluate(
+                            () => document.documentElement.scrollWidth <= innerWidth,
+                        ),
+                    ).toBe(true)
+                } finally {
+                    await context.close()
+                }
+            })
+})
