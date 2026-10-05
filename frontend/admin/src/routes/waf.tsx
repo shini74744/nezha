@@ -56,7 +56,7 @@ export default function WAFPage() {
                     aria-label="防火墙分类"
                 >
                     <TabsTrigger value="web">Web 防火墙</TabsTrigger>
-                    <TabsTrigger value="unknown">未知上报</TabsTrigger>
+                    <TabsTrigger value="unknown">认证防火墙</TabsTrigger>
                     <TabsTrigger value="deleted">已删除服务器</TabsTrigger>
                 </TabsList>
                 <TabsContent value="web">

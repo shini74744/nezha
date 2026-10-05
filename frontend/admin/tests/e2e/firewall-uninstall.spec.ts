@@ -80,8 +80,8 @@ for (const width of [360, 1366])
                 path: "test-results/firewall-reasons-" + width + "-" + dark + ".png",
                 fullPage: true,
             })
-            await page.getByRole("tab", { name: "未知上报", exact: true }).click()
-            const panel = page.getByRole("tabpanel", { name: "未知上报", exact: true })
+            await page.getByRole("tab", { name: "认证防火墙", exact: true }).click()
+            const panel = page.getByRole("tabpanel", { name: "认证防火墙", exact: true })
             await expect(panel).toContainText("离线后删除的节点")
             await expect(panel).toContainText("不会自动封禁正常节点")
             await expect(panel).toContainText("UUID 已拉黑")
