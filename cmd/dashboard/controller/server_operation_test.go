@@ -61,7 +61,7 @@ func TestServerOperationSearchPaginationAndGuards(t *testing.T) {
 func TestUnknownAndDeletedServerListsAreDistinct(t *testing.T) {
 	_, cleanup := setupServerOwnershipFixture(t)
 	defer cleanup()
-	require.NoError(t, singleton.DB.AutoMigrate(&model.ServerDeletionTombstone{}, &model.UnknownAgentReport{}, &model.AgentUUIDConflict{}))
+	require.NoError(t, singleton.DB.AutoMigrate(&model.ServerDeletionTombstone{}, &model.UnknownAgentReport{}, &model.AgentUUIDConflict{}, &model.AgentIdentityRejection{}))
 	require.NoError(t, singleton.DB.Model(&model.Server{}).Where("id = 1").Update("uuid", "registered").Error)
 	require.NoError(t, singleton.DB.Create(&[]model.ServerDeletionTombstone{
 		{UUID: "deleted-idle", Name: "offline deletion", OriginalID: 47, DeletedByName: "admin"},

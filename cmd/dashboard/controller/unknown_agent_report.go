@@ -23,14 +23,18 @@ func listUnknownAgentReports(c *gin.Context) (*model.Value[[]model.UnknownAgentR
         SELECT c.uuid, s.name, 'conflict', c.last_ip, c.previous_ip, c.previous_peer, c.last_peer,
         c.first_report_at, c.last_report_at, c.report_count
         FROM agent_uuid_conflicts AS c JOIN servers AS s ON s.uuid = c.uuid
-        WHERE NOT EXISTS (SELECT 1 FROM server_deletion_tombstones AS d WHERE d.uuid = c.uuid)`
+        WHERE NOT EXISTS (SELECT 1 FROM server_deletion_tombstones AS d WHERE d.uuid = c.uuid)
+        UNION ALL
+        SELECT '', '未识别节点', r.reason, r.ip, '', '', '',
+        r.first_report_at, r.last_report_at, r.report_count
+        FROM agent_identity_rejections AS r`
 	query := singleton.DB.Table("(" + union + ") AS reports")
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
 		return nil, err
 	}
 	rows := make([]model.UnknownAgentReportView, 0)
-	if err := query.Order("last_report_at DESC, uuid ASC, kind ASC").Limit(limit).Offset(offset).Scan(&rows).Error; err != nil {
+	if err := query.Order("last_report_at DESC, uuid ASC, kind ASC, last_ip ASC").Limit(limit).Offset(offset).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 	return &model.Value[[]model.UnknownAgentReportView]{Value: rows, Pagination: model.Pagination{Total: total, Offset: offset, Limit: limit}}, nil

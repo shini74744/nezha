@@ -14,7 +14,7 @@ import useSWR from "swr"
 
 interface UnknownReport {
     uuid: string
-    kind: "deleted" | "unregistered" | "registered" | "conflict"
+    kind: "deleted" | "unregistered" | "registered" | "conflict" | "uuid_missing" | "uuid_invalid"
     previous_ip?: string
     previous_peer?: string
     last_peer?: string
@@ -37,14 +37,22 @@ const labels = {
     unregistered: "未登记 UUID 认证失败",
     registered: "已有 UUID 认证失败",
     conflict: "疑似 UUID 冲突",
+    uuid_missing: "UUID 缺失",
+    uuid_invalid: "UUID 格式不合法",
 }
+const reportKey = (row: UnknownReport) =>
+    JSON.stringify([row.kind, row.uuid, row.uuid ? "" : row.last_ip])
+const reportUUID = (row: UnknownReport) =>
+    row.uuid || (row.kind === "uuid_missing" ? "UUID：未提供" : "UUID：格式不合法（原文不保存）")
 const reportName = (row: UnknownReport) =>
     row.name ||
-    (row.kind === "unregistered"
-        ? "未登记节点"
-        : row.kind === "deleted"
-          ? "已删除节点"
-          : "已有节点")
+    (row.kind === "uuid_missing" || row.kind === "uuid_invalid"
+        ? "未识别节点"
+        : row.kind === "unregistered"
+          ? "未登记节点"
+          : row.kind === "deleted"
+            ? "已删除节点"
+            : "已有节点")
 const reportStatus = (row: UnknownReport) =>
     row.kind === "conflict"
         ? "待核查 · 未自动封禁"
@@ -85,8 +93,8 @@ export function UnknownAgentReports() {
         <section className="min-w-0 space-y-3">
             <div className="flex items-start justify-between gap-3">
                 <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-                    区分已有/未登记 UUID 认证失败、已删除节点重连和疑似 UUID 冲突。 新 UUID
-                    携带有效密钥正常注册，不计入异常。 冲突表示同一 UUID
+                    记录已有/未登记 UUID 认证失败、UUID 缺失或格式不合法、已删除节点重连和疑似 UUID
+                    冲突。 新 UUID 携带有效密钥正常注册，不计入异常。 冲突表示同一 UUID
                     的不同连接重叠上报，可能来自重复安装或短时重连，请核查；不会自动封禁正常节点。
                 </p>
                 <Button
@@ -135,7 +143,7 @@ export function UnknownAgentReports() {
                             <TableBody>
                                 {rows.map((row) => (
                                     <TableRow
-                                        key={row.kind + ":" + row.uuid}
+                                        key={reportKey(row)}
                                         className={
                                             row.kind === "conflict" ? "bg-amber-500/10" : undefined
                                         }
@@ -143,7 +151,7 @@ export function UnknownAgentReports() {
                                         <TableCell>
                                             <p>{reportName(row)}</p>
                                             <p className="mt-1 font-mono text-xs text-muted-foreground">
-                                                {row.uuid}
+                                                {reportUUID(row)}
                                             </p>
                                         </TableCell>
                                         <TableCell className="max-w-40 text-xs">
@@ -172,7 +180,7 @@ export function UnknownAgentReports() {
                     <div className="space-y-2 md:hidden">
                         {rows.map((row) => (
                             <article
-                                key={row.kind + ":" + row.uuid}
+                                key={reportKey(row)}
                                 className={
                                     "min-w-0 rounded-md border p-3 text-sm " +
                                     (row.kind === "conflict"
@@ -187,7 +195,7 @@ export function UnknownAgentReports() {
                                     </span>
                                 </div>
                                 <p className="my-2 break-all font-mono text-xs text-muted-foreground">
-                                    {row.uuid}
+                                    {reportUUID(row)}
                                 </p>
                                 <dl className="space-y-1 text-xs">
                                     <div className="flex justify-between gap-3">
