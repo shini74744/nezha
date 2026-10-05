@@ -160,7 +160,7 @@ for (const [width, beautify] of [
             beauty.features.brand.avatar = ""
             beauty.features.background.image = ""
             beauty.features.effects.clickEffect = false
-            await page.addInitScript(() => localStorage.setItem("vite-ui-theme", "dark"))
+            await page.addInitScript(() => localStorage.setItem("nezha-dashboard-theme", "dark"))
             await mockDashboard(page, beautify ? beauty : undefined, 12)
             await page.goto("/dashboard")
             const rows = page.locator("table tbody tr")

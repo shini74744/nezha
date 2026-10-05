@@ -29,7 +29,7 @@ export async function mockSettings(page: Page, beauty = false, role = 0) {
     dashboard.features.background.image = ""
     dashboard.features.effects.enabled = false
     const writes: string[] = []
-    await page.addInitScript(() => localStorage.setItem("vite-ui-theme", "dark"))
+    await page.addInitScript(() => localStorage.setItem("nezha-dashboard-theme", "dark"))
     await page.route("**/api/v1/**", async (route) => {
         const path = new URL(route.request().url()).pathname
         if (route.request().method() !== "GET") writes.push(path)
@@ -79,6 +79,23 @@ for (const width of [320, 390, 768, 1872])
                 await page.goto(base + "/appearance")
                 const nav = page.locator(".settings-navigation")
                 await expect(nav.getByRole("tab")).toHaveCount(8)
+                if (width < 640) {
+                    const boxes = await nav.getByRole("tab").evaluateAll(elements =>
+                        elements.map(el => {
+                            const {x,y,width,height} = el.getBoundingClientRect()
+                            return {x,y,width,height}
+                        }),
+                    )
+                    // Eight tabs fill four contiguous rows, with no desktop row-start gap.
+                    expect(new Set(boxes.map(b => b.y)).size).toBe(4)
+                    for (let i=0; i<8; i+=2) {
+                        expect(boxes[i].y).toBe(boxes[i+1].y)
+                        expect(boxes[i].height).toBeGreaterThanOrEqual(44)
+                        expect(boxes[i].x).toBe(boxes[0].x)
+                        expect(boxes[i+1].x).toBeGreaterThan(boxes[i].x)
+                    }
+                    expect((await nav.boundingBox())!.height).toBeLessThanOrEqual(204)
+                }
                 const original = await nav.elementHandle()
                 const documentY = await nav.evaluate(
                     (el) => el.getBoundingClientRect().top + scrollY,

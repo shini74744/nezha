@@ -24,9 +24,9 @@ test("background gets light-only contrast floors without changing saved settings
     const view = styles(c)
     const css = view.container.querySelector("style")!.textContent!
     expect(css).toContain(light + "{")
-    expect(css).toContain("background-color:rgb(255 255 255 / 0.88)")
+    expect(css).toContain("background-color:rgb(255 255 255 / 0.64)")
     expect(css).toContain("--popover:0 0% 100% / 0.96")
-    expect(css).toContain("--muted-foreground:215 20% 32%")
+    expect(css).toContain("--muted-foreground:215 20% 22%")
     expect(css).toContain("html[data-nz-dashboard].dark{--background:0 0% 5% / 0.58")
     expect(JSON.stringify(c)).toBe(before)
 })
@@ -48,7 +48,7 @@ test("higher opacity is respected; disabling appearance keeps a readable solid s
     const css = view.container.querySelector("style")!.textContent!
     expect(css).toContain("--background:0 0% 100% / 1")
     expect(css).toContain("background-color:rgb(255 255 255 / 1)")
-    expect(css).toContain("backdrop-filter:blur(0px)")
+    expect(css).toContain("backdrop-filter:none")
 })
 test("disabling beauty removes the safety layer and dashboard marker", () => {
     const c = config(), view = styles(c)
@@ -57,4 +57,11 @@ test("disabling beauty removes the safety layer and dashboard marker", () => {
     view.rerender(<DashboardAppearanceProvider raw={JSON.stringify(c)}><div /></DashboardAppearanceProvider>)
     expect(view.container.querySelector("style")).toBeNull()
     expect(document.documentElement.hasAttribute("data-nz-dashboard")).toBe(false)
+})
+test("mobile fixed wallpaper has its own viewport layer; scroll backgrounds are preserved", () => {
+    const c = config(), view = styles(c)
+    expect(view.container.querySelector("style")!.textContent).toContain('body::before')
+    c.features.background.attachment = "scroll"
+    view.rerender(<DashboardAppearanceProvider raw={JSON.stringify(c)}><div /></DashboardAppearanceProvider>)
+    expect(view.container.querySelector("style")!.textContent).not.toContain('body::before')
 })

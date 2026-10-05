@@ -42,7 +42,7 @@ export default function Root() {
     }
 
     return (
-        <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+        <ThemeProvider defaultTheme="system">
             <DashboardAppearanceProvider raw={settingData?.config?.dashboard_appearance_config}>
             <DashboardUTCText/>
             <section className="text-sm mx-auto h-full flex flex-col justify-between">

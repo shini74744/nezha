@@ -6,7 +6,7 @@ for (const dark of [false, true]) for (const enabled of [false, true]) for (cons
     test("task UI follows dashboard " + [dark, enabled, width].join("-"), async ({ page }) => {
         await page.setViewportSize({ width, height: 850 })
         await page.addInitScript(dark => {
-            localStorage.setItem("vite-ui-theme", dark ? "dark" : "light")
+            localStorage.setItem("nezha-dashboard-theme", dark ? "dark" : "light")
             localStorage.setItem("i18nextLng", "zh-CN")
         }, dark)
         const config = { version: 1, enabled, features: Object.fromEntries(manifest.map((d: any) => [d.key, {

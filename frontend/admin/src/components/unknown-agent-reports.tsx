@@ -96,12 +96,7 @@ export function UnknownAgentReports() {
     const total = data?.pagination.total ?? 0
     return (
         <section className="min-w-0 space-y-3">
-            <div className="flex items-start justify-between gap-3">
-                <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-                    记录已有/未登记 UUID 认证失败、UUID 缺失或格式不合法、已删除节点重连和疑似 UUID
-                    冲突。 新 UUID 携带有效密钥正常注册，不计入异常。 冲突表示同一 UUID
-                    的不同连接重叠上报，可能来自重复安装或短时重连，请核查；不会自动封禁正常节点。
-                </p>
+            <div className="flex justify-end">
                 <Button
                     variant="outline"
                     size="sm"

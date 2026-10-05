@@ -6,7 +6,7 @@ const imageURL = "https://fixture.invalid/dashboard-background.jpg"
 // Opaque black is the worst case for the white safety surface. A real wallpaper may
 // be supplied for screenshots; neither case contacts production or external APIs.
 const blackPNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64")
-async function setup(page: Page, mode = "light", variant = "normal") {
+async function setup(page: Page, mode: string | null = "light", variant = "normal") {
     const config = { version: 1, enabled: variant !== "disabled", features: Object.fromEntries(manifest.map((d: any) => [d.key, { ...d.defaults }])) }
     config.features.background.image = variant === "empty-image" ? "" : imageURL
     config.features.background.enabled = variant !== "background-off"
@@ -19,7 +19,7 @@ async function setup(page: Page, mode = "light", variant = "normal") {
     const writes: string[] = [], errors: string[] = []
     page.on("pageerror", e => errors.push(e.message))
     await page.addInitScript(mode => {
-        localStorage.setItem("vite-ui-theme", mode)
+        if (mode) localStorage.setItem("nezha-dashboard-theme", mode)
         localStorage.setItem("language", "zh-CN")
     }, mode)
     await page.route("https://**/*", route => {
@@ -44,6 +44,7 @@ async function setup(page: Page, mode = "light", variant = "normal") {
         if (path === "/api/v1/ddns") data = [{ id: 7, name: "家庭服务器", provider: "cloudflare", domains: ["home.example.com"], enable_ipv4: true, enable_ipv6: true, max_retries: 3, notification_group_id: 0 }]
         if (path === "/api/v1/ddns/providers") data = ["cloudflare", "he", "dummy", "webhook", "tencentcloud"]
         if (path === "/api/v1/setting/dashboard-appearance") data = { config, custom_code: "", archived_code: "", revision: "fixture" }
+        if (path === "/api/v1/waf/unknown-reports") data = { pagination: { total: 0 }, value: [] }
         if (path === "/api/v1/waf") data = { count: 1, value: [{ ip: "192.0.2.9", count: 2, block_reason: 1, block_identifier: "grpc", block_timestamp: 1791200000 }] }
         if (path === "/api/v1/waf/deleted-servers") data = { pagination: { total: 1 }, value: [{
             uuid: "00000000-0000-4000-8000-000000000001", name: "测试删除节点", original_id: 9,
@@ -56,7 +57,7 @@ async function setup(page: Page, mode = "light", variant = "normal") {
 }
 // Composite ancestor backgrounds on an assumed wallpaper color, then compare
 // the browser's actual text/border color. This tests colors, not screenshot OCR.
-async function contrast(locator: Locator, prop = "color", wallpaper = 0) {
+export async function contrast(locator: Locator, prop = "color", wallpaper = 0) {
     return locator.evaluate((el, { prop, wallpaper }) => {
         const parse = (s: string) => {
             const canvas = document.createElement("canvas")
@@ -90,7 +91,7 @@ for (const width of [390, 1920]) test("readable light server list, DDNS and sett
     await page.goto("/dashboard")
     const rows = page.locator("table tbody tr")
     await expect(rows).toHaveCount(8)
-    await expect(page.locator(".dashboard-page-surface")).toHaveCSS("background-color", "rgba(255, 255, 255, 0.88)")
+    await expect(page.locator(".dashboard-page-surface")).toHaveCSS("background-color", "rgba(255, 255, 255, 0.64)")
     for (const target of [page.getByRole("heading", { name: "服务器", exact: true }), rows.first().locator('[data-column="name"]'), page.locator('thead [data-column="name"]')])
         expect(await contrast(target)).toBeGreaterThanOrEqual(4.5)
     expect(await contrast(rows.first().getByRole("checkbox"), "border-top-color")).toBeGreaterThanOrEqual(3)
@@ -138,7 +139,7 @@ test("switching light dark and system preserves geometry and dark opacity", asyn
     await page.emulateMedia({ colorScheme: "light" })
     await page.getByRole("button", { name: "Toggle theme" }).click()
     await page.getByRole("menuitem", { name: "跟随系统", exact: true }).click()
-    await expect(page.locator(".dashboard-page-surface")).toHaveCSS("background-color", "rgba(255, 255, 255, 0.88)")
+    await expect(page.locator(".dashboard-page-surface")).toHaveCSS("background-color", "rgba(255, 255, 255, 0.64)")
     expect(await region.boundingBox()).toEqual(before)
 })
 for (const variant of ["disabled", "background-off", "empty-image", "low-opacity", "appearance-off"])
@@ -148,6 +149,161 @@ test("light contrast guard " + variant, async ({ page }) => {
     await expect(page.locator("tbody tr")).toHaveCount(8)
     const surface = page.locator(".dashboard-page-surface")
     const active = variant === "low-opacity" || variant === "appearance-off"
-    await expect(surface).toHaveCSS("background-color", !active ? "rgba(0, 0, 0, 0)" : variant === "appearance-off" ? "rgb(255, 255, 255)" : "rgba(255, 255, 255, 0.88)")
+    await expect(surface).toHaveCSS("background-color", !active ? "rgba(0, 0, 0, 0)" : variant === "appearance-off" ? "rgb(255, 255, 255)" : "rgba(255, 255, 255, 0.64)")
     if (active) expect(await contrast(page.locator('thead [data-column="name"]'))).toBeGreaterThanOrEqual(4.5)
+})
+
+for (const width of [320, 390, 454]) test("mobile settings compact grid and visible wallpaper " + width, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 850 })
+    const state = await setup(page)
+    await page.goto("/dashboard/settings")
+    const nav = page.locator(".settings-navigation")
+    const tabs = nav.getByRole("tab")
+    await expect(tabs).toHaveCount(8)
+    const boxes = await tabs.evaluateAll(els => els.map(el => {
+        const { x, y, width, height } = el.getBoundingClientRect()
+        return { x, y, width, height }
+    }))
+    expect(new Set(boxes.map(b => b.y)).size).toBe(4)
+    for (let i = 0; i < 8; i += 2) {
+        expect(boxes[i].y).toBe(boxes[i+1].y)
+        expect(boxes[i].height).toBeGreaterThanOrEqual(44)
+    }
+    await expect(page.locator(".dashboard-page-surface")).toHaveCSS("backdrop-filter", "none")
+    await expect(page.locator(".dashboard-page-surface")).toHaveCSS("background-color", "rgba(255, 255, 255, 0.64)")
+    const background = await page.locator("body").evaluate(el => {
+        const s = getComputedStyle(el, "::before")
+        return { position: s.position, image: s.backgroundImage, height: parseFloat(s.height), scrollHeight: el.scrollHeight }
+    })
+    expect(background.position).toBe("fixed")
+    expect(background.image).toContain(imageURL)
+    expect(background.height).toBe(850)
+    expect(background.scrollHeight).toBeGreaterThan(background.height)
+    for (const tab of await tabs.all()) expect(await contrast(tab)).toBeGreaterThanOrEqual(4.5)
+    expect(await contrast(page.locator('form label').first())).toBeGreaterThanOrEqual(4.5)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+    await page.screenshot({ path: info.outputPath("settings-mobile.png") })
+    await page.evaluate(() => scrollTo(0, 600))
+    expect(await page.locator("body").evaluate(el => getComputedStyle(el,"::before").height)).toBe("850px")
+    expect(state.writes).toEqual([])
+    expect(state.errors).toEqual([])
+})
+
+test("dashboard and public theme storage are independent across reloads", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "light" })
+    await setup(page, null, "disabled")
+    await page.addInitScript(() => {
+        if (!localStorage.getItem("vite-ui-theme")) localStorage.setItem("vite-ui-theme", "dark")
+        if (!localStorage.getItem("doraemon-ui-theme")) localStorage.setItem("doraemon-ui-theme", "dark")
+    })
+    await page.goto("/dashboard")
+    await expect(page.locator("tbody tr")).toHaveCount(8)
+    await expect(page.locator("html")).toHaveClass("light")
+    async function choose(label: string) {
+        await page.getByRole("button", { name: "Toggle theme" }).click()
+        await page.getByRole("menuitem", { name: label, exact: true }).click()
+    }
+    await choose("暗色")
+    await expect(page.locator("html")).toHaveClass("dark")
+    await choose("亮色")
+    await expect(page.locator("html")).toHaveClass("light")
+    expect(await page.evaluate(() => [localStorage.getItem("vite-ui-theme"), localStorage.getItem("doraemon-ui-theme")])).toEqual(["dark","dark"])
+    await page.reload()
+    await expect(page.locator("tbody tr")).toHaveCount(8)
+    await expect(page.locator("html")).toHaveClass("light")
+    await choose("暗色")
+    await page.evaluate(() => localStorage.setItem("vite-ui-theme", "light"))
+    await page.reload()
+    await expect(page.locator("tbody tr")).toHaveCount(8)
+    await expect(page.locator("html")).toHaveClass("dark")
+    expect(await page.evaluate(() => localStorage.getItem("vite-ui-theme"))).toBe("light")
+    await choose("跟随系统")
+    await expect(page.locator("html")).toHaveClass("light")
+    await page.emulateMedia({ colorScheme: "dark" })
+    await expect(page.locator("html")).toHaveClass("dark")
+    expect(await page.evaluate(() => localStorage.getItem("vite-ui-theme"))).toBe("light")
+})
+
+
+for (const width of [320, 390, 1920]) test("firewall contextual help follows tabs " + width, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 850 })
+    const state = await setup(page)
+    await page.goto("/dashboard/settings/waf?tab=unknown")
+    await expect(page.getByText("暂无认证异常记录", { exact: false })).toBeVisible()
+    const title = "认证防火墙说明"
+    const help = page.getByRole("button", { name: title, exact: true })
+    const tabs = page.getByRole("tablist", { name: "防火墙分类" })
+    const a = (await tabs.boundingBox())!, b = (await help.boundingBox())!
+    expect(b.x).toBeGreaterThanOrEqual(a.x + a.width)
+    expect(b.x + b.width).toBeLessThanOrEqual(width)
+    await expect(page.getByText(/记录已有\/未登记 UUID 认证失败/)).toHaveCount(0)
+    if (width === 1920) {
+        await help.hover()
+        await expect(page.getByRole("dialog", { name: title })).toBeVisible()
+        await page.mouse.move(0, 0)
+        await expect(page.getByRole("dialog", { name: title })).toHaveCount(0)
+    }
+    await help.click()
+    let popup = page.getByRole("dialog", { name: title })
+    await expect(popup).toBeVisible()
+    await expect(popup).toContainText("新 UUID 携带有效密钥正常注册，不计入异常")
+    await expect(popup).not.toContainText("不要求再次上报")
+    const box = (await popup.boundingBox())!
+    expect(box.x).toBeGreaterThanOrEqual(0)
+    expect(box.x + box.width).toBeLessThanOrEqual(width)
+    expect(await contrast(popup.locator("p").last())).toBeGreaterThanOrEqual(4.5)
+    await expect(popup).toHaveCSS("opacity", "1")
+    await page.screenshot({ path: info.outputPath("auth-help.png") })
+    await page.keyboard.press("Escape")
+    await expect(popup).toHaveCount(0)
+    await help.focus()
+    await page.keyboard.press("Enter")
+    await expect(popup).toBeVisible()
+    await page.keyboard.press("Escape")
+    await page.getByRole("tab", { name: "已删除服务器", exact: true }).click()
+    await expect(page.getByRole("button", { name: title })).toHaveCount(0)
+    const deletedHelp = page.getByRole("button", { name: "已删除服务器说明", exact: true })
+    await deletedHelp.click()
+    popup = page.getByRole("dialog", { name: "已删除服务器说明" })
+    await expect(popup).toBeVisible()
+    await expect(popup).toContainText("不要求再次上报")
+    await expect(popup).not.toContainText("新 UUID 携带")
+    await expect(popup).toHaveCSS("opacity", "1")
+    await page.screenshot({ path: info.outputPath("deleted-help.png") })
+    await page.getByRole("tab", { name: "Web 防火墙", exact: true }).click()
+    await expect(page.getByRole("dialog")).toHaveCount(0)
+    await expect(page.getByRole("button", { name: /防火墙说明|已删除服务器说明/ })).toHaveCount(0)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+    expect(state.writes).toEqual([])
+    expect(state.errors).toEqual([])
+})
+
+
+test("touch help toggles and outside dismissal preserve the page width", async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 390, height: 850 }, hasTouch: true, isMobile: true })
+    const page = await context.newPage()
+    try {
+        const state = await setup(page)
+        await page.goto((test.info().project.use.baseURL || "http://localhost:5173") + "/dashboard/settings/waf?tab=unknown")
+        const help = page.getByRole("button", { name: "认证防火墙说明" })
+        await expect(help).toBeVisible()
+        const width = await page.evaluate(() => document.documentElement.clientWidth)
+        await help.tap()
+        const popup = page.getByRole("dialog", { name: "认证防火墙说明" })
+        await expect(popup).toBeVisible()
+        expect(await page.evaluate(() => document.documentElement.clientWidth)).toBe(width)
+        await help.tap()
+        await expect(popup).toHaveCount(0)
+        await help.tap()
+        await expect(popup).toBeVisible()
+        await page.getByRole("tab", { name: "已删除服务器", exact: true }).tap()
+        await expect(popup).toHaveCount(0)
+        await page.getByRole("button", { name: "已删除服务器说明" }).tap()
+        await expect(page.getByRole("dialog")).toContainText("不要求再次上报")
+        expect(await page.evaluate(() => document.documentElement.clientWidth)).toBe(width)
+        expect(state.writes).toEqual([])
+        expect(state.errors).toEqual([])
+    } finally {
+        await context.close()
+    }
 })

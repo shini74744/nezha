@@ -52,7 +52,7 @@ async function setup(page: Page, beauty = false, theme = "dark") {
     config.features.background.image = ""
     config.features.effects.enabled = false
     page.on("pageerror", (e) => errors.push(e.message))
-    await page.addInitScript(value => localStorage.setItem("vite-ui-theme", value), theme)
+    await page.addInitScript(value => localStorage.setItem("nezha-dashboard-theme", value), theme)
     await page.route("**/api/v1/**", async (route) => {
         const path = new URL(route.request().url()).pathname,
             method = route.request().method()

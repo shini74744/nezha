@@ -31,12 +31,7 @@ export function DeletedServers() {
         total = data?.pagination.total ?? 0
     return (
         <section className="min-w-0 space-y-3">
-            <div className="flex items-start justify-between gap-3">
-                <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-                    后台删除后立即保留在这里，不要求再次上报。UUID
-                    默认持续拉黑，管理员可手动放行；如再次连接，也会出现在“认证防火墙”。 原 ID
-                    只作历史标识，可能被其他节点重新使用。
-                </p>
+            <div className="flex justify-end">
                 <Button
                     size="sm"
                     variant="outline"

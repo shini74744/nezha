@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react"
 
 export type Theme = "dark" | "light" | "system"
+export const DASHBOARD_THEME_STORAGE_KEY = "nezha-dashboard-theme"
 
 type ThemeProviderProps = {
     children: React.ReactNode
@@ -19,39 +20,48 @@ const initialState: ThemeProviderState = {
 }
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
+const isTheme = (value: unknown): value is Theme =>
+    value === "light" || value === "dark" || value === "system"
 
 export function ThemeProvider({
     children,
     defaultTheme = "system",
-    storageKey = "vite-ui-theme",
+    storageKey = DASHBOARD_THEME_STORAGE_KEY,
     ...props
 }: ThemeProviderProps) {
-    const [theme, setTheme] = useState<Theme>(
-        () => (localStorage.getItem(storageKey) as Theme) || defaultTheme,
-    )
+    // Never read or migrate the public site's key: the old shared value cannot
+    // tell us which site the user intended to configure.
+    const [theme, setTheme] = useState<Theme>(() => {
+        try {
+            const saved = localStorage.getItem(storageKey)
+            return isTheme(saved) ? saved : defaultTheme
+        } catch {
+            return defaultTheme
+        }
+    })
 
     useEffect(() => {
-        const root = window.document.documentElement
-
-        root.classList.remove("light", "dark")
-
-        if (theme === "system") {
-            const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
-                ? "dark"
-                : "light"
-
-            root.classList.add(systemTheme)
-            return
+        const root = document.documentElement
+        const media = window.matchMedia("(prefers-color-scheme: dark)")
+        const apply = () => {
+            root.classList.remove("light", "dark")
+            root.classList.add(theme === "system" ? media.matches ? "dark" : "light" : theme)
         }
-
-        root.classList.add(theme)
+        apply()
+        if (theme !== "system") return
+        media.addEventListener("change", apply)
+        return () => media.removeEventListener("change", apply)
     }, [theme])
 
     const value = {
         theme,
-        setTheme: (theme: Theme) => {
-            localStorage.setItem(storageKey, theme)
-            setTheme(theme)
+        setTheme: (next: Theme) => {
+            try {
+                localStorage.setItem(storageKey, next)
+            } catch {
+                // The current page still works when browser storage is unavailable.
+            }
+            setTheme(next)
         },
     }
 
@@ -64,8 +74,6 @@ export function ThemeProvider({
 
 export const useTheme = () => {
     const context = useContext(ThemeProviderContext)
-
     if (context === undefined) throw new Error("useTheme must be used within a ThemeProvider")
-
     return context
 }

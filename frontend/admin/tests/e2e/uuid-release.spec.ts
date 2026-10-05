@@ -8,7 +8,7 @@ for (const width of [360, 1366])
                 await page.setViewportSize({ width, height: 850 })
                 await page.addInitScript((dark) => {
                     localStorage.setItem("language", "zh-CN")
-                    localStorage.setItem("vite-ui-theme", dark ? "dark" : "light")
+                    localStorage.setItem("nezha-dashboard-theme", dark ? "dark" : "light")
                 }, dark)
                 const uuid = "aa555555-1111-4111-8111-111111111111"
                 let released = 0,
