@@ -59,6 +59,7 @@ func (a *authHandler) check(ctx context.Context) (uint64, error) {
 		return 0, status.Error(codes.Unauthenticated, "客户端 UUID 不合法")
 	}
 	if singleton.IsDeletedServerUUID(clientUUID) {
+		singleton.RecordDeletedAgentReport(clientUUID, ip)
 		return 0, status.Error(codes.Unauthenticated, "客户端认证失败")
 	}
 

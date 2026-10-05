@@ -147,7 +147,7 @@
     "Owner": "所屬使用者",
     "GlobalAgent": "全域 Agent",
     "UnknownUser": "未知使用者 (#{{id}})",
-    "WAF": "Web應用防火牆",
+    "WAF": "防火牆",
     "SiteName": "網站名稱",
     "Language": "語言",
     "CustomCodes": "自訂程式碼（樣式和腳本）",

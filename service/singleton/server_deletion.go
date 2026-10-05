@@ -151,7 +151,18 @@ func removeIDsFromCSV(raw string, deleted map[uint64]struct{}) (string, bool) {
 // PermanentlyDeleteServers removes server rows, every direct server_id row,
 // every persisted ID reference that could be inherited after ID reuse, and all
 // TSDB series. The deleted UUID is kept only as a permanent registration block.
+type ServerDeleteIdentity struct {
+	UUID   string
+	UserID uint64
+}
+
 func PermanentlyDeleteServers(ids []uint64) error {
+	return PermanentlyDeleteServersMatching(ids, nil)
+}
+
+// Expected identities prevent a delayed uninstall request deleting a replacement
+// node that reused an ID, or a node whose ownership changed while awaiting ACK.
+func PermanentlyDeleteServersMatching(ids []uint64, expected map[uint64]ServerDeleteIdentity) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -163,6 +174,14 @@ func PermanentlyDeleteServers(ids []uint64) error {
 	var servers []model.Server
 	if err := DB.Where("id IN ?", ids).Find(&servers).Error; err != nil {
 		return err
+	}
+	if expected != nil {
+		for _, server := range servers {
+			identity, ok := expected[server.ID]
+			if !ok || identity.UUID != server.UUID || identity.UserID != server.UserID {
+				return fmt.Errorf("server identity or ownership changed; refresh and retry")
+			}
+		}
 	}
 	if len(servers) == 0 {
 		return nil
@@ -201,8 +220,8 @@ func PermanentlyDeleteServers(ids []uint64) error {
 
 	err := DB.Transaction(func(tx *gorm.DB) error {
 		tombstones := make([]model.ServerDeletionTombstone, 0, len(uuids))
-		for _, uuid := range uuids {
-			tombstones = append(tombstones, model.ServerDeletionTombstone{UUID: uuid})
+		for _, server := range servers {
+			tombstones = append(tombstones, model.ServerDeletionTombstone{UUID: server.UUID, Name: server.Name})
 		}
 		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&tombstones).Error; err != nil {
 			return err
