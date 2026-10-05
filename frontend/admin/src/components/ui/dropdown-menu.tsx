@@ -3,7 +3,14 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
 import { Check, ChevronRight, Circle } from "lucide-react"
 import { ComponentPropsWithoutRef, ComponentRef, HTMLAttributes, forwardRef } from "react"
 
-const DropdownMenu = DropdownMenuPrimitive.Root
+// Action menus should not lock the entire page or remove its scrollbar.
+// Dialogs opened by menu actions retain their own modal/focus behavior.
+const DropdownMenu = ({
+    modal = false,
+    ...props
+}: ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Root>) => (
+    <DropdownMenuPrimitive.Root modal={modal} {...props} />
+)
 
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger
 
