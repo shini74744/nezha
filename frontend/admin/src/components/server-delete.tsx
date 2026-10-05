@@ -96,7 +96,7 @@ export function ServerDeleteButton({
                         ))}
                         <p className="text-xs text-muted-foreground">
                             “已启动”不是卸载完成回执；停止 Agent
-                            后连接会断开。未知上报可在“防火墙”中查看。
+                            后连接会断开。后续异常上报可在“防火墙 → 认证防火墙”中查看。
                         </p>
                     </div>
                 )}

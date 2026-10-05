@@ -102,7 +102,7 @@ export function UnknownAgentReports() {
             </div>
             {error && (
                 <p role="alert" className="text-sm text-destructive">
-                    加载未知上报失败，请重试。
+                    加载认证记录失败，请重试。
                 </p>
             )}
             {isLoading ? (
@@ -110,7 +110,7 @@ export function UnknownAgentReports() {
             ) : rows.length === 0 ? (
                 <div className="rounded-md border py-10 text-center text-sm text-muted-foreground">
                     <ShieldBan className="mx-auto mb-2 size-6" />
-                    暂无未知上报
+                    暂无认证异常记录
                     <p className="mt-1 text-xs">已删除但尚未重连的节点，请查看“已删除服务器”。</p>
                 </div>
             ) : (
