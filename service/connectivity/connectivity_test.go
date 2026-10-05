@@ -20,7 +20,7 @@ func waitComplete(t *testing.T, m *Manager, key string) Snapshot {
 }
 func TestFixedTargets(t *testing.T) {
 	got := Targets()
-	require.Len(t, got, 48)
+	require.Len(t, got, 72)
 	seen := map[string]bool{}
 	for _, target := range got {
 		u, err := url.Parse(target.URL)
@@ -124,8 +124,9 @@ func TestManagerDeadlineCompletesAndReleasesSlot(t *testing.T) {
 	require.NoError(t, err)
 	result := waitComplete(t, m, "a")
 	for _, r := range result.Results {
-		require.Equal(t, "agent_timeout", r.Status)
-		require.Len(t, r.Samples, 3)
+		require.Contains(t, []string{"agent_timeout", "batch_timeout"}, r.Status)
+		require.Equal(t, "complete", r.Phase)
+		require.LessOrEqual(t, len(r.Samples), 1)
 	}
 	m.mu.Lock()
 	require.Zero(t, m.active)
@@ -147,17 +148,17 @@ func TestExpandedReferenceCatalogAndBudget(t *testing.T) {
 	for _, target := range Targets() {
 		groups[target.Group]++
 	}
-	require.Equal(t, map[string]int{"china": 12, "japan": 4, "usa": 20, "global": 12}, groups)
+	require.Equal(t, map[string]int{"china": 12, "japan": 7, "usa": 36, "global": 17}, groups)
 	for _, id := range []string{"deepseek", "weixin", "sony", "nintendo", "claude", "chatgpt", "gemini", "steam", "tiktok", "mistral", "mercadolibre"} {
 		_, ok := FindTarget(id)
 		require.True(t, ok, id)
 	}
 	m := NewManager()
-	require.Equal(t, 8, m.workers)
-	// Even if every Agent request reaches the 35s upper bound, all 48 sites
+	require.Equal(t, 12, m.workers)
+	// Even if every Agent request reaches the 3s upper bound, all 72 sites
 	// must receive their three real attempts before the overall batch deadline.
 	batches := (len(Targets()) + m.workers - 1) / m.workers
-	require.GreaterOrEqual(t, m.timeout, time.Duration(batches*m.rounds)*35*time.Second)
+	require.GreaterOrEqual(t, m.timeout, time.Duration(batches*m.rounds)*ProbeTimeout)
 }
 func TestExpandedWorkersRemainBounded(t *testing.T) {
 	m := NewManager()
@@ -177,6 +178,145 @@ func TestExpandedWorkersRemainBounded(t *testing.T) {
 	_, err := m.Start("bounded", probe)
 	require.NoError(t, err)
 	waitComplete(t, m, "bounded")
-	require.EqualValues(t, 144, calls.Load())
-	require.LessOrEqual(t, peak.Load(), int32(8))
+	require.EqualValues(t, 216, calls.Load())
+	require.LessOrEqual(t, peak.Load(), int32(12))
+}
+func TestQueueInterleavesRegionsAndRetriesOnlyAfterFirstPass(t *testing.T) {
+	m := NewManager()
+	m.workers = 1 // Make dispatch order deterministic; production remains bounded at 12.
+	var order []string
+	_, err := m.Start("fair", func(_ context.Context, target Target) Sample {
+		order = append(order, target.ID)
+		v := 12.0
+		return Sample{Status: "ok", DelayMS: &v}
+	})
+	require.NoError(t, err)
+	result := waitComplete(t, m, "fair")
+	require.Len(t, order, len(targets)*3)
+	seen := map[string]bool{}
+	for _, id := range order[:len(targets)] {
+		require.False(t, seen[id], "a retry jumped ahead of an unstarted target: %s", id)
+		seen[id] = true
+	}
+	groups := map[string]bool{}
+	for _, id := range order[:4] {
+		target, _ := FindTarget(id)
+		groups[target.Group] = true
+	}
+	require.Len(t, groups, 4)
+	for _, r := range result.Results {
+		require.Equal(t, "complete", r.Phase)
+	}
+}
+func TestSlowFirstTargetDoesNotHoldLaterTargets(t *testing.T) {
+	m := NewManager()
+	m.workers = 2
+	release := make(chan struct{})
+	var once sync.Once
+	defer once.Do(func() { close(release) })
+	first := targets[0].ID
+	var slowCalls atomic.Int32
+	_, err := m.Start("slow", func(ctx context.Context, target Target) Sample {
+		if target.ID == first {
+			slowCalls.Add(1)
+			select {
+			case <-release:
+			case <-ctx.Done():
+			}
+			return Sample{Status: "timeout"}
+		}
+		v := 7.0
+		return Sample{Status: "ok", DelayMS: &v}
+	})
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		s := m.Get("slow")
+		return s.Results[0].Phase == "running" && s.Results[len(s.Results)-1].Phase == "complete"
+	}, time.Second, time.Millisecond)
+	s := m.Get("slow")
+	require.Empty(t, s.Results[0].Samples)
+	require.Equal(t, "pending", s.Results[0].Status) // phase is authoritative while no response exists.
+	for _, r := range s.Results[1:] {
+		require.NotEmpty(t, r.Samples)
+	}
+	require.EqualValues(t, 1, slowCalls.Load())
+	once.Do(func() { close(release) })
+	waitComplete(t, m, "slow")
+}
+func TestTimeoutEndsItemWithoutInventedSamplesOrBlockingNextSites(t *testing.T) {
+	for _, status := range []string{"offline", "query_disabled"} {
+		t.Run(status, func(t *testing.T) {
+			m := NewManager()
+			m.workers = 1
+			var calls atomic.Int32
+			_, err := m.Start("stop", func(context.Context, Target) Sample {
+				calls.Add(1)
+				return Sample{Status: status}
+			})
+			require.NoError(t, err)
+			s := waitComplete(t, m, "stop")
+			require.EqualValues(t, len(targets), calls.Load())
+			for _, r := range s.Results {
+				require.Equal(t, status, r.Status)
+				require.Equal(t, "complete", r.Phase)
+				require.Len(t, r.Samples, 1)
+			}
+		})
+	}
+}
+func TestTargetNeverHasOverlappingSamplesAndPartialResultsArePublished(t *testing.T) {
+	m := NewManager()
+	var mu sync.Mutex
+	inflight := map[string]int{}
+	var overlap atomic.Bool
+	release := make(chan struct{})
+	var once sync.Once
+	defer once.Do(func() { close(release) })
+	_, err := m.Start("partial", func(ctx context.Context, target Target) Sample {
+		mu.Lock()
+		inflight[target.ID]++
+		if inflight[target.ID] > 1 {
+			overlap.Store(true)
+		}
+		mu.Unlock()
+		defer func() { mu.Lock(); inflight[target.ID]--; mu.Unlock() }()
+		if len(m.Get("partial").Results[0].Samples) > 0 {
+			select {
+			case <-release:
+			case <-ctx.Done():
+			}
+		}
+		v := 9.5
+		return Sample{Status: "ok", DelayMS: &v}
+	})
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		s := m.Get("partial")
+		return s.Results[0].DelayMS != nil && s.State == "running"
+	}, time.Second, time.Millisecond)
+	s := m.Get("partial")
+	require.Equal(t, "ok", s.Results[0].Status)
+	require.Equal(t, 9.5, *s.Results[0].DelayMS)
+	once.Do(func() { close(release) })
+	waitComplete(t, m, "partial")
+	require.False(t, overlap.Load())
+}
+
+func TestTimedOutTargetsStillReceiveThreeAttemptsAfterEveryFirstAttempt(t *testing.T) {
+	m := NewManager()
+	m.workers = 1
+	var order []string
+	_, err := m.Start("timeouts", func(context.Context, Target) Sample {
+		// The ordered dispatcher test above validates IDs; here count every timeout.
+		order = append(order, "timeout")
+		return Sample{Status: "timeout"}
+	})
+	require.NoError(t, err)
+	s := waitComplete(t, m, "timeouts")
+	require.Len(t, order, len(targets)*3)
+	for _, r := range s.Results {
+		require.Equal(t, "complete", r.Phase)
+		require.Equal(t, "timeout", r.Status)
+		require.Len(t, r.Samples, 3)
+	}
 }

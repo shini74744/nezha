@@ -113,7 +113,7 @@
 		"title": "節點連通性",
 		"origin": "由目前節點發起 HTTPS 檢測，不使用訪客網路",
 		"helpTitle": "連通性說明",
-		"help": "每個固定網站檢測 3 次，顯示收到回應的耗時中位數（包括 DNS、TLS 和輕量回應讀取），不是 ICMP Ping。HTTP 403/429 等表示網站已回應但拒絕或限制存取，不等於網路中斷。結果不代表登入可用或串流解鎖；出口遵循 Agent 的網路/代理設定。快取最多保留 24 小時，面板重啟會清空。",
+		"help": "各地區交錯排隊，優先首次檢測，再補後續採樣；每個固定網站檢測 3 次，每次等待 Agent 結果最多 3 秒；逾時先釋放檢測位，後續再補足採樣。顯示收到回應的耗時中位數（包括 DNS、TLS 和輕量回應讀取），不是 ICMP Ping。HTTP 403/429 等表示網站已回應但拒絕或限制存取，不等於網路中斷。結果不代表登入可用或串流解鎖；出口遵循 Agent 的網路/代理設定。快取最多保留 24 小時，面板重啟會清空。",
 		"loading": "正在讀取檢測結果…",
 		"readFailed": "檢測結果讀取失敗。",
 		"reload": "重新載入",
@@ -141,13 +141,19 @@
 			"dns_error": "DNS 解析失敗",
 			"tls_error": "TLS / 憑證錯誤",
 			"query_disabled": "Agent 已停用探測",
-			"agent_timeout": "Agent 未按時回應",
+			"agent_timeout": "檢測逾時（3 秒未收到 Agent 回應）",
 			"offline": "節點已離線或連線變更",
 			"error": "檢測失敗",
 			"refused": "連線被拒絕",
 			"unreachable": "網路無法連通",
-			"unstable": "多次結果不一致"
-		}
+			"unstable": "多次結果不一致",
+			"queued": "排隊中",
+			"batch_timeout": "批次逾時，檢測未完成"
+		},
+		"queueProgress": "已有結果 {{sampled}} 項 · 檢測中 {{active}} 項 · 排隊 {{queued}} 項",
+		"sampling": "採樣中",
+		"resampleQueued": "等待下一次採樣",
+		"endedEarly": "已結束"
 	},
 	"tabSwitch": {
 		"Connectivity": "連通性",

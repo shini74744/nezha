@@ -112,6 +112,27 @@
     "url": "https://line.me/favicon.ico"
   },
   {
+    "id": "pixiv",
+    "name": "pixiv",
+    "group": "japan",
+    "host": "www.pixiv.net",
+    "url": "https://www.pixiv.net/favicon.ico"
+  },
+  {
+    "id": "niconico",
+    "name": "ニコニコ",
+    "group": "japan",
+    "host": "www.nicovideo.jp",
+    "url": "https://www.nicovideo.jp/favicon.ico"
+  },
+  {
+    "id": "rakuten",
+    "name": "Rakuten",
+    "group": "japan",
+    "host": "www.rakuten.co.jp",
+    "url": "https://www.rakuten.co.jp/favicon.ico"
+  },
+  {
     "id": "apple",
     "name": "Apple",
     "group": "usa",
@@ -252,6 +273,118 @@
     "url": "https://assets.nflxext.com/us/ffe/siteui/common/icons/nficon2016.ico"
   },
   {
+    "id": "microsoft",
+    "name": "Microsoft",
+    "group": "usa",
+    "host": "learn.microsoft.com",
+    "url": "https://learn.microsoft.com/favicon.ico"
+  },
+  {
+    "id": "discord",
+    "name": "Discord",
+    "group": "usa",
+    "host": "discord.com",
+    "url": "https://discord.com/api/v9/gateway"
+  },
+  {
+    "id": "whatsapp",
+    "name": "WhatsApp",
+    "group": "usa",
+    "host": "www.whatsapp.com",
+    "url": "https://www.whatsapp.com/favicon.ico"
+  },
+  {
+    "id": "slack",
+    "name": "Slack",
+    "group": "usa",
+    "host": "a.slack-edge.com",
+    "url": "https://a.slack-edge.com/9cc0056/img/icons/favicon-32.png"
+  },
+  {
+    "id": "notion",
+    "name": "Notion",
+    "group": "usa",
+    "host": "www.notion.com",
+    "url": "https://www.notion.com/front-static/favicon.ico"
+  },
+  {
+    "id": "dropbox",
+    "name": "Dropbox",
+    "group": "usa",
+    "host": "cfl.dropboxstatic.com",
+    "url": "https://cfl.dropboxstatic.com/static/metaserver/static/images/favicon.ico"
+  },
+  {
+    "id": "pinterest",
+    "name": "Pinterest",
+    "group": "usa",
+    "host": "www.pinterest.com",
+    "url": "https://www.pinterest.com/favicon.ico"
+  },
+  {
+    "id": "paypal",
+    "name": "PayPal",
+    "group": "usa",
+    "host": "www.paypalobjects.com",
+    "url": "https://www.paypalobjects.com/marketing/web/icons/monogram/pp32.png"
+  },
+  {
+    "id": "ebay",
+    "name": "eBay",
+    "group": "usa",
+    "host": "www.ebay.com",
+    "url": "https://www.ebay.com/favicon.ico"
+  },
+  {
+    "id": "disneyplus",
+    "name": "Disney+",
+    "group": "usa",
+    "host": "www.disneyplus.com",
+    "url": "https://www.disneyplus.com/favicon.ico"
+  },
+  {
+    "id": "roblox",
+    "name": "Roblox",
+    "group": "usa",
+    "host": "www.roblox.com",
+    "url": "https://www.roblox.com/favicon.ico"
+  },
+  {
+    "id": "epicgames",
+    "name": "Epic Games",
+    "group": "usa",
+    "host": "store.epicgames.com",
+    "url": "https://store.epicgames.com/favicon.ico"
+  },
+  {
+    "id": "perplexity",
+    "name": "Perplexity",
+    "group": "usa",
+    "host": "www.perplexity.ai",
+    "url": "https://www.perplexity.ai/favicon.ico"
+  },
+  {
+    "id": "vercel",
+    "name": "Vercel",
+    "group": "usa",
+    "host": "vercel.com",
+    "url": "https://vercel.com/favicon.ico"
+  },
+  {
+    "id": "huggingface",
+    "name": "Hugging Face",
+    "group": "usa",
+    "host": "huggingface.co",
+    "url": "https://huggingface.co/front/assets/huggingface_logo-noborder.svg"
+  },
+  {
+    "id": "docker",
+    "name": "Docker Hub",
+    "group": "usa",
+    "host": "hub.docker.com",
+    "url": "https://hub.docker.com/favicon.ico"
+  },
+  {
     "id": "tiktok",
     "name": "TikTok",
     "group": "global",
@@ -334,5 +467,40 @@
     "group": "global",
     "host": "http2.mlstatic.com",
     "url": "https://http2.mlstatic.com/favicon.ico"
+  },
+  {
+    "id": "telegram",
+    "name": "Telegram",
+    "group": "global",
+    "host": "telegram.org",
+    "url": "https://telegram.org/img/favicon-32x32.png"
+  },
+  {
+    "id": "gitlab",
+    "name": "GitLab",
+    "group": "global",
+    "host": "gitlab.com",
+    "url": "https://gitlab.com/favicon.ico"
+  },
+  {
+    "id": "proton",
+    "name": "Proton",
+    "group": "global",
+    "host": "proton.me",
+    "url": "https://proton.me/favicons/favicon-32x32.png"
+  },
+  {
+    "id": "soundcloud",
+    "name": "SoundCloud",
+    "group": "global",
+    "host": "soundcloud.com",
+    "url": "https://soundcloud.com/favicon.ico"
+  },
+  {
+    "id": "deezer",
+    "name": "Deezer",
+    "group": "global",
+    "host": "www.deezer.com",
+    "url": "https://www.deezer.com/favicon.ico"
   }
 ]

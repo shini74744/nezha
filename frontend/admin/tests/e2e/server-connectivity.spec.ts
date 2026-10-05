@@ -9,8 +9,9 @@ async function setup(page:Page,theme:string,light=false,offline=false,owner=true
  const server=createServer({id:7,name:"连通性测试节点",last_active:offline?"0001-01-01T00:00:00Z":new Date(now).toISOString()});
  const state={posts:0,gets:0,external:[] as string[],mode:"idle",readError:false,postError:false};
  const results=()=>catalog.map(({id,name,group,host},i)=>({id,name,group,host,
-  status:state.mode==="idle"?"pending":i===7?"http_error":i===8?"timeout":"ok",delay_ms:state.mode==="idle"||i===8?undefined:35+i*12,
-  samples:state.mode==="idle"?[]:Array.from({length:3},()=>({status:i===7?"http_error":i===8?"timeout":"ok",http_status:i===7?403:undefined,delay_ms:i===8?undefined:35+i*12}))}));
+  phase:state.mode==="idle"?undefined:state.mode==="running"?(i===0?"running":i===1?"complete":"queued"):"complete",
+  status:state.mode==="idle"||(state.mode==="running"&&i!==1)?"pending":i===7?"http_error":i===8?"timeout":i===9?"agent_timeout":"ok",delay_ms:state.mode==="idle"||(state.mode==="running"&&i!==1)||i===8||i===9?undefined:35+i*12,
+  samples:state.mode==="idle"||(state.mode==="running"&&i!==1)?[]:Array.from({length:3},()=>({status:i===7?"http_error":i===8?"timeout":i===9?"agent_timeout":"ok",http_status:i===7?403:undefined,delay_ms:i===8||i===9?undefined:35+i*12}))}));
  const response=()=>({server_id:7,online:!offline,can_run:owner,state:state.mode,rounds:3,started_at:state.mode==="idle"?undefined:now-2000,finished_at:state.mode==="complete"?now:undefined,retry_at:state.mode==="complete"?now+60000:undefined,results:results()});
  await page.addInitScript(({light,language})=>{
   localStorage.setItem("language",language);localStorage.setItem("vite-ui-theme",light?"light":"dark");localStorage.setItem("doraemon-ui-theme",light?"light":"dark");localStorage.setItem("doraemon-sky",light?"light":"dark");
@@ -49,20 +50,25 @@ for(const theme of ["default","doraemon"])for(const light of [false,true])for(co
  test(`connectivity layout ${theme} ${light?"light":"dark"} ${width}`,async({page},info)=>{
   await page.setViewportSize({width,height:900});const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
   const state=await setup(page,theme,light),view=page.locator("[data-server-connectivity]");
-  await expect(view.locator("[data-connectivity-target]")).toHaveCount(48);
+  await expect(view.locator("[data-connectivity-target]")).toHaveCount(72);
   await expect(view.locator("[data-connectivity-group]")).toHaveCount(4);
-  await expect(view.locator("img[data-connectivity-icon]")).toHaveCount(48);
+  await expect(view.locator("img[data-connectivity-icon]")).toHaveCount(72);
   await expect.poll(() => view.locator("img[data-connectivity-icon]").evaluateAll((images) => images.every(img => (img as HTMLImageElement).complete && (img as HTMLImageElement).naturalWidth > 0))).toBe(true);
-  for (const region of [{id:"china",size:12},{id:"japan",size:4},{id:"usa",size:20},{id:"global",size:12}]) {
+  for (const region of [{id:"china",size:12},{id:"japan",size:7},{id:"usa",size:36},{id:"global",size:17}]) {
    await expect(view.locator(`[data-connectivity-group="${region.id}"] [data-connectivity-target]`)).toHaveCount(region.size);
   }
   expect(state.posts).toBe(0);await expect(page.locator("[data-server-network]")).toHaveCount(0);
   await view.getByRole("button",{name:"开始检测",exact:true}).click();
   await expect(view.getByRole("button",{name:"检测中…",exact:true})).toBeDisabled();expect(state.posts).toBe(1);
+  await expect(view.locator('[data-connectivity-phase="running"]')).toHaveCount(1);
+  await expect(view.getByText("正在检测",{exact:true})).toBeVisible();
+  await expect(view.getByText("排队中",{exact:true})).toHaveCount(70);
+  await expect(view.getByText(/已有结果 1 项 · 检测中 1 项 · 排队 70 项/)).toBeVisible();
   state.mode="complete";
   await expect(view.getByRole("button",{name:/秒后可重测/})).toBeDisabled({timeout:10000});
   await expect(view.getByText("(HTTP 403)")).toBeVisible();
   await expect(view.getByText("请求超时",{exact:true})).toBeVisible();
+  await expect(view.getByText("检测超时（3 秒未收到 Agent 回包）",{exact:true})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
   const cards=await view.locator("[data-connectivity-target]").evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return {left:r.left,right:r.right,width:r.width}}));
   expect(cards.every(r=>r.left>=0&&r.right<=width+1&&r.width>0)).toBe(true);
@@ -87,11 +93,11 @@ test("network/detail tabs still work with combined network; help and failure rec
  await expect(view).toHaveCount(0);await page.locator(".server-info-tab").getByText("详情",{exact:true}).click();await expect(page.locator(".server-charts")).toBeVisible();
  state.readError=true;await page.locator(".server-info-tab").getByText("连通性",{exact:true}).click();await expect(view.getByRole("alert")).toHaveText(/检测结果读取失败/);
  await expect(view.locator("[data-connectivity-target]")).toHaveCount(0);state.readError=false;await view.getByRole("button",{name:"重新加载"}).click();
- await expect(view.locator("[data-connectivity-target]")).toHaveCount(48);
+ await expect(view.locator("[data-connectivity-target]")).toHaveCount(72);
   await expect(view.locator("[data-connectivity-group]")).toHaveCount(4);
-  await expect(view.locator("img[data-connectivity-icon]")).toHaveCount(48);
+  await expect(view.locator("img[data-connectivity-icon]")).toHaveCount(72);
   await expect.poll(() => view.locator("img[data-connectivity-icon]").evaluateAll((images) => images.every(img => (img as HTMLImageElement).complete && (img as HTMLImageElement).naturalWidth > 0))).toBe(true);
-  for (const region of [{id:"china",size:12},{id:"japan",size:4},{id:"usa",size:20},{id:"global",size:12}]) {
+  for (const region of [{id:"china",size:12},{id:"japan",size:7},{id:"usa",size:36},{id:"global",size:17}]) {
    await expect(view.locator(`[data-connectivity-group="${region.id}"] [data-connectivity-target]`)).toHaveCount(region.size);
   }
 });

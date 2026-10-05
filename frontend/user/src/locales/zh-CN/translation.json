@@ -120,7 +120,7 @@
 		"title": "节点连通性",
 		"origin": "由当前节点发起 HTTPS 检测，不使用访问者网络",
 		"helpTitle": "连通性说明",
-		"help": "每个固定网站检测 3 次，显示收到响应的耗时中位数（包括 DNS、TLS 和轻量响应读取），不是 ICMP Ping。HTTP 403/429 等表示网站已响应但拒绝或限制访问，不等于网络断开。结果不代表登录可用或流媒体解锁；出口遵循 Agent 的网络/代理配置。缓存最多保留 24 小时，面板重启会清空。",
+		"help": "各地区交错排队，优先首次检测，再补后续采样；每个固定网站检测 3 次，每次等待 Agent 结果最多 3 秒；超时先释放检测位，后续再补足采样。显示收到响应的耗时中位数（包括 DNS、TLS 和轻量响应读取），不是 ICMP Ping。HTTP 403/429 等表示网站已响应但拒绝或限制访问，不等于网络断开。结果不代表登录可用或流媒体解锁；出口遵循 Agent 的网络/代理配置。缓存最多保留 24 小时，面板重启会清空。",
 		"loading": "正在读取检测结果…",
 		"readFailed": "检测结果读取失败。",
 		"reload": "重新加载",
@@ -148,13 +148,19 @@
 			"dns_error": "DNS 解析失败",
 			"tls_error": "TLS / 证书错误",
 			"query_disabled": "Agent 已禁用探测",
-			"agent_timeout": "Agent 未按时返回",
+			"agent_timeout": "检测超时（3 秒未收到 Agent 回包）",
 			"offline": "节点已离线或连接变更",
 			"error": "检测失败",
 			"refused": "连接被拒绝",
 			"unreachable": "网络不可达",
-			"unstable": "多次结果不一致"
-		}
+			"unstable": "多次结果不一致",
+			"queued": "排队中",
+			"batch_timeout": "批次超时，检测未完成"
+		},
+		"queueProgress": "已有结果 {{sampled}} 项 · 检测中 {{active}} 项 · 排队 {{queued}} 项",
+		"sampling": "采样中",
+		"resampleQueued": "等待下一次采样",
+		"endedEarly": "已结束"
 	},
 	"tabSwitch": {
 		"Connectivity": "连通性",

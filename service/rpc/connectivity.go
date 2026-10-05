@@ -20,6 +20,10 @@ import (
 // namespace are ALWAYS consumed, never passed into ServiceSentinel or alerts.
 const connectivityTaskMask uint64 = 1 << 62
 
+// Panel-side deadline for one dispatched attempt. Older Agents may finish their
+// own HTTP request later; their late reply is consumed without changing results.
+const connectivityProbeTimeout = connectivity.ProbeTimeout
+
 var connectivityCounter atomic.Uint64
 var connectivityWaiters sync.Map
 
@@ -49,7 +53,7 @@ func ConnectivityProbe(server *model.Server) connectivity.Probe {
 		if !ok {
 			return connectivity.Sample{Status: "error"}
 		}
-		ctx, cancel := context.WithTimeout(parent, 35*time.Second)
+		ctx, cancel := context.WithTimeout(parent, connectivityProbeTimeout)
 		defer cancel()
 		current, ok := singleton.ServerShared.Get(id)
 		if !ok || current.UUID != uuid || current.GetUserID() != owner || current.GetTaskStream() != stream || !ConnectivityOnline(current) {
@@ -79,6 +83,9 @@ func ConnectivityProbe(server *model.Server) connectivity.Probe {
 		}()
 		select {
 		case err := <-sent:
+			if ctx.Err() != nil {
+				return connectivity.Sample{Status: "agent_timeout"}
+			}
 			if err != nil {
 				return connectivity.Sample{Status: "offline"}
 			}
@@ -87,6 +94,9 @@ func ConnectivityProbe(server *model.Server) connectivity.Probe {
 		}
 		select {
 		case result := <-waiter.result:
+			if ctx.Err() != nil {
+				return connectivity.Sample{Status: "agent_timeout"}
+			}
 			current, ok := singleton.ServerShared.Get(id)
 			if !ok || current.UUID != uuid || current.GetUserID() != owner || current.GetTaskStream() != stream {
 				return connectivity.Sample{Status: "offline"}

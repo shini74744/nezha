@@ -119,7 +119,7 @@
 		"title": "Node connectivity",
 		"origin": "HTTPS probes originate from this node, not your browser",
 		"helpTitle": "About connectivity",
-		"help": "Each fixed website is tested 3 times. The median response duration includes DNS, TLS and a lightweight response body; it is not ICMP ping. HTTP 403/429 means the site responded but denied or limited access, not a broken network. Reachability does not imply login access or streaming unlock. Egress follows the Agent network/proxy configuration. Results are cached for up to 24 hours and cleared on dashboard restart.",
+		"help": "Regions are interleaved, with first checks ahead of repeat samples. Each site receives 3 checks; each attempt waits up to 3 seconds for the Agent result, then frees its slot before later samples are scheduled. The median response duration includes DNS, TLS and a lightweight response body; it is not ICMP ping. HTTP 403/429 means the site responded but denied or limited access, not a broken network. Reachability does not imply login access or streaming unlock. Egress follows the Agent network/proxy configuration. Results are cached for up to 24 hours and cleared on dashboard restart.",
 		"loading": "Loading probe results…",
 		"readFailed": "Unable to load results.",
 		"reload": "Reload",
@@ -135,7 +135,7 @@
 		"finished": "Last test · not continuous monitoring",
 		"empty": "No test results yet",
 		"time": "Test time",
-		"rounds": "{{count}} attempts each",
+		"rounds": "{{count}} checks per site",
 		"global": "Global",
 		"china": "China",
 		"status": {
@@ -147,13 +147,19 @@
 			"dns_error": "DNS resolution failed",
 			"tls_error": "TLS / certificate error",
 			"query_disabled": "Agent probes disabled",
-			"agent_timeout": "No Agent result in time",
+			"agent_timeout": "Timed out (no Agent result within 3s)",
 			"offline": "Node offline or session changed",
 			"error": "Probe failed",
 			"refused": "Connection refused",
 			"unreachable": "Network unreachable",
-			"unstable": "Results differ between attempts"
-		}
+			"unstable": "Results differ between attempts",
+			"queued": "Queued",
+			"batch_timeout": "Batch deadline reached; incomplete"
+		},
+		"queueProgress": "Results for {{sampled}} sites · {{active}} testing · {{queued}} queued",
+		"sampling": "Sampling",
+		"resampleQueued": "Next sample queued",
+		"endedEarly": "Ended"
 	},
 	"tabSwitch": {
 		"Connectivity": "Connectivity",

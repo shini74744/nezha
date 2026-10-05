@@ -104,10 +104,12 @@ func TestConnectivityTimeoutRemovesWaiter(t *testing.T) {
 	var taskID uint64
 	stream.onSend = func(task *pb.Task) { taskID = task.Id }
 	server.SetTaskStream(stream)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
-	defer cancel()
 	target, _ := connectivity.FindTarget("google")
-	require.Equal(t, "agent_timeout", ConnectivityProbe(server)(ctx, target).Status)
+	start := time.Now()
+	require.Equal(t, 3*time.Second, connectivityProbeTimeout)
+	require.Equal(t, "agent_timeout", ConnectivityProbe(server)(context.Background(), target).Status)
+	require.GreaterOrEqual(t, time.Since(start), 2900*time.Millisecond)
+	require.Less(t, time.Since(start), 4500*time.Millisecond)
 	_, ok := connectivityWaiters.Load(taskID)
 	require.False(t, ok)
 	require.True(t, deliverConnectivityResult(&pb.TaskResult{Id: taskID, Type: model.TaskTypeHTTPGet}, 7, stream))
@@ -174,5 +176,45 @@ func TestConnectivityFullAgentTaskChannelDoesNotTouchMonitorHistory(t *testing.T
 			require.Equal(t, "ok", result.Status)
 		}
 		require.Equal(t, 42.0, *result.DelayMS)
+	}
+}
+
+func TestConnectivitySlowAgentReplyDoesNotBlockOtherSitesAndStillSamplesThreeTimes(t *testing.T) {
+	server := requestTaskSecurityServer(7, 200, "fair-timeout-fixture")
+	setupRequestTaskSecurityFixture(t, []*model.Server{server}, nil, nil, nil)
+	server, _ = singleton.ServerShared.Get(7)
+	server.AttachStateStream(stateGenerationStream{}).UpdateState(&model.HostState{}, time.Now())
+	stream := &requestTaskSecurityStream{ctx: context.Background()}
+	slow := connectivity.Targets()[0]
+	var slowCalls atomic.Int32
+	stream.onSend = func(task *pb.Task) {
+		if task.Data == slow.URL {
+			slowCalls.Add(1)
+			return
+		}
+		deliverConnectivityResult(&pb.TaskResult{Id: task.Id, Type: task.Type, Successful: true, Delay: 12}, 7, stream)
+	}
+	server.SetTaskStream(stream)
+	manager := connectivity.NewManager()
+	_, err := manager.Start("fair-3s", ConnectivityProbe(server))
+	require.NoError(t, err)
+	// All later fast sites can finish while the very first Agent request is silent.
+	require.Eventually(t, func() bool {
+		s := manager.Get("fair-3s")
+		for _, row := range s.Results[1:] {
+			if row.Phase != "complete" {
+				return false
+			}
+		}
+		return s.Results[0].Phase == "running"
+	}, 2*time.Second, 5*time.Millisecond)
+	require.Eventually(t, func() bool { return manager.Get("fair-3s").State == "complete" }, 12*time.Second, 10*time.Millisecond)
+	s := manager.Get("fair-3s")
+	require.EqualValues(t, 3, slowCalls.Load())
+	require.Len(t, s.Results[0].Samples, 3)
+	require.Equal(t, "agent_timeout", s.Results[0].Status)
+	for _, row := range s.Results[1:] {
+		require.Equal(t, "ok", row.Status)
+		require.Len(t, row.Samples, 3)
 	}
 }

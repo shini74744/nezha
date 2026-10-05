@@ -241,6 +241,127 @@
       "id": "mercadolibre",
       "file": "mercadolibre.ico",
       "source": "https://ip.net.coffee/favicons/link/mercadolibre.ico?v=4"
+    },
+    {
+      "id": "pixiv",
+      "file": "pixiv.ico",
+      "source": "https://www.pixiv.net/favicon.ico"
+    },
+    {
+      "id": "niconico",
+      "file": "niconico.ico",
+      "source": "https://www.nicovideo.jp/favicon.ico"
+    },
+    {
+      "id": "rakuten",
+      "file": "rakuten.ico",
+      "source": "https://www.rakuten.co.jp/favicon.ico"
+    },
+    {
+      "id": "microsoft",
+      "file": "microsoft.ico",
+      "source": "https://learn.microsoft.com/favicon.ico"
+    },
+    {
+      "id": "discord",
+      "file": "discord.png",
+      "source": "https://cdn.prod.website-files.com/6257adef93867e50d84d30e2/62fddf0fde45a8baedcc7ee5_847541504914fd33810e70a0ea73177e%20(2)-1.png"
+    },
+    {
+      "id": "whatsapp",
+      "file": "whatsapp.webp",
+      "source": "https://www.whatsapp.com/favicon.ico"
+    },
+    {
+      "id": "slack",
+      "file": "slack.png",
+      "source": "https://a.slack-edge.com/9cc0056/img/icons/favicon-32.png"
+    },
+    {
+      "id": "notion",
+      "file": "notion.ico",
+      "source": "https://www.notion.com/front-static/favicon.ico"
+    },
+    {
+      "id": "dropbox",
+      "file": "dropbox.ico",
+      "source": "https://cfl.dropboxstatic.com/static/metaserver/static/images/favicon.ico"
+    },
+    {
+      "id": "pinterest",
+      "file": "pinterest.png",
+      "source": "https://www.pinterest.com/favicon.ico"
+    },
+    {
+      "id": "paypal",
+      "file": "paypal.png",
+      "source": "https://www.paypalobjects.com/marketing/web/icons/monogram/pp32.png"
+    },
+    {
+      "id": "ebay",
+      "file": "ebay.ico",
+      "source": "https://www.ebay.com/favicon.ico"
+    },
+    {
+      "id": "disneyplus",
+      "file": "disneyplus.ico",
+      "source": "https://www.disneyplus.com/favicon.ico"
+    },
+    {
+      "id": "roblox",
+      "file": "roblox.ico",
+      "source": "https://www.roblox.com/favicon.ico"
+    },
+    {
+      "id": "epicgames",
+      "file": "epicgames.svg",
+      "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/epicgames.svg"
+    },
+    {
+      "id": "perplexity",
+      "file": "perplexity.ico",
+      "source": "https://www.perplexity.ai/favicon.ico"
+    },
+    {
+      "id": "vercel",
+      "file": "vercel.ico",
+      "source": "https://vercel.com/favicon.ico"
+    },
+    {
+      "id": "huggingface",
+      "file": "huggingface.svg",
+      "source": "https://huggingface.co/front/assets/huggingface_logo-noborder.svg"
+    },
+    {
+      "id": "docker",
+      "file": "docker.png",
+      "source": "https://hub.docker.com/favicon.ico"
+    },
+    {
+      "id": "telegram",
+      "file": "telegram.png",
+      "source": "https://telegram.org/img/favicon-32x32.png"
+    },
+    {
+      "id": "gitlab",
+      "file": "gitlab.png",
+      "source": "https://gitlab.com/favicon.ico"
+    },
+    {
+      "id": "proton",
+      "file": "proton.png",
+      "source": "https://proton.me/favicons/favicon-32x32.png"
+    },
+    {
+      "id": "soundcloud",
+      "file": "soundcloud.ico",
+      "source": "https://soundcloud.com/favicon.ico"
+    },
+    {
+      "id": "deezer",
+      "file": "deezer.png",
+      "source": "https://www.deezer.com/favicon.ico"
     }
-  ]
+  ],
+  "extensions": "24 additional international apps; official site favicons except Epic Games icon from Simple Icons (CC0). Brand trademarks belong to their respective owners."
 }
