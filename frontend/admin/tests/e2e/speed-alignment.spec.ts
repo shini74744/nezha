@@ -7,9 +7,11 @@ test.use({ ignoreHTTPSErrors: true })
 const definitions = JSON.parse(
     fs.readFileSync(new URL("../../../user/src/appearance/manifest.json", import.meta.url), "utf8"),
 )
+const fontFile = process.env.E2E_SPEED_FONT_FILE
 for (const width of [320, 390, 1366, 1920]) {
     for (const theme of ["light", "dark"]) {
         test("speed icon alignment " + width + " " + theme, async ({ page, baseURL }, testInfo) => {
+            test.setTimeout(60000)
             expect(baseURL).toBe("https://127.0.0.1:18476")
             const config = {
                 version: 1,
@@ -46,6 +48,11 @@ for (const width of [320, 390, 1366, 1920]) {
             )
             await page.route("**/*", async (route) => {
                 const url = new URL(route.request().url())
+                if (fontFile && url.pathname === "/qa-speed-font.ttf")
+                    return route.fulfill({
+                        contentType: "font/ttf",
+                        body: fs.readFileSync(fontFile),
+                    })
                 if (url.pathname === "/api/v1/setting")
                     return route.fulfill({
                         json: {
@@ -71,77 +78,98 @@ for (const width of [320, 390, 1366, 1920]) {
                 if (url.origin !== baseURL) return route.abort()
                 return route.continue()
             })
-            for (const enabled of [true, false]) {
-                config.features.speed.enabled = enabled
+            for (const scenario of [
+                { name: "mbps", enabled: true, up: 705 / 8, down: 712 / 8, expected: "705Mbps" },
+                // The reported case: scaled, bordered Gbps upload versus an unscaled idle download.
+                { name: "gbps", enabled: true, up: 1.04 * 128, down: 0, expected: "1.04Gbps" },
+                {
+                    name: "plain",
+                    enabled: false,
+                    up: 705 / 8,
+                    down: 712 / 8,
+                    expected: "88.13 MiB/s",
+                },
+            ]) {
+                config.features.speed.enabled = scenario.enabled
+                servers[0].state.net_out_speed = scenario.up * 1048576
+                servers[0].state.net_in_speed = scenario.down * 1048576
                 await page.goto("/")
                 const rates = page.locator(".nz-network-speed")
                 await expect(rates).toHaveCount(2)
-                await expect(rates.first()).toHaveText(enabled ? "705Mbps" : "88.13 MiB/s")
+                await expect(rates.first()).toHaveText(scenario.expected)
                 await expect(page.locator("html")).toHaveClass(new RegExp(theme))
+                if (scenario.name === "gbps")
+                    await expect(rates.first()).toHaveClass(/nz-overview-speed-5/)
+                if (fontFile) {
+                    await page.evaluate(async () => {
+                        const face = new FontFace("QA Speed Font", "url(/qa-speed-font.ttf)", {
+                            weight: "700",
+                        })
+                        document.fonts.add(await face.load())
+                    })
+                }
                 await page.evaluate(() => document.fonts.ready)
-                for (const font of ["Inter", "Arial", "Georgia"]) {
-                    await rates.evaluateAll(
-                        (elements, family) =>
-                            elements.forEach(
-                                (el) => ((el as HTMLElement).style.fontFamily = family),
-                            ),
-                        font,
-                    )
+                for (const font of [
+                    "Inter",
+                    "Arial",
+                    "Georgia",
+                    ...(fontFile ? ["QA Speed Font"] : []),
+                ]) {
+                    // Apply to both SVG and text, matching the real global custom-font rule.
+                    await page.addStyleTag({
+                        content:
+                            ".nz-network-speed,.nz-network-speed *{font-family:" +
+                            JSON.stringify(font) +
+                            " !important}",
+                    })
                     for (const rate of await rates.all()) {
-                        await expect(rate).toHaveCSS("align-items", "baseline")
+                        await expect(rate).toHaveCSS("align-items", "center")
                         await expect(rate.locator("svg")).toHaveCSS("margin", "0px")
+                        await expect(rate.locator("svg")).toHaveCSS("top", "auto")
                         const geometry = await rate.evaluate((el) => {
-                            const icon = el.querySelector("svg")!.getBoundingClientRect()
-                            const value = el.querySelector(".nz-rate-value")!
-                            const box = value.getBoundingClientRect(),
-                                style = getComputedStyle(value)
-                            const ctx = document.createElement("canvas").getContext("2d")!
-                            ctx.font = style.font
-                            const digit = ctx.measureText("705")
-                            const baseline =
-                                box.top +
-                                (box.height -
-                                    digit.fontBoundingBoxAscent -
-                                    digit.fontBoundingBoxDescent) /
-                                    2 +
-                                digit.fontBoundingBoxAscent
+                            const badge = el.getBoundingClientRect()
+                            const svg = el.querySelector("svg")!,
+                                value = el.querySelector(".nz-rate-value")!
+                            const icon = svg.getBoundingClientRect(),
+                                text = value.getBoundingClientRect()
+                            const center = (r: DOMRect) => r.top + r.height / 2
                             return {
-                                difference: Math.abs(
-                                    icon.y +
-                                        icon.height / 2 -
-                                        (baseline - digit.actualBoundingBoxAscent / 2),
+                                iconToBadge: Math.abs(center(icon) - center(badge)),
+                                iconToValue: Math.abs(center(icon) - center(text)),
+                                // Check equal top/bottom space even when transform:scale(1.15) is active.
+                                paddingDifference: Math.abs(
+                                    icon.top - badge.top - (badge.bottom - icon.bottom),
                                 ),
-                                iconHeight: icon.height,
-                                fontSize: parseFloat(style.fontSize),
+                                lineHeight: getComputedStyle(value).lineHeight,
+                                svgHeight: getComputedStyle(svg).height,
                             }
                         })
-                        expect(geometry.difference, font + " optical digit alignment").toBeLessThan(
-                            1.1,
+                        expect(geometry.iconToBadge, font + " badge center").toBeLessThan(0.1)
+                        expect(geometry.iconToValue, font + " value center").toBeLessThan(0.1)
+                        expect(geometry.paddingDifference, font + " vertical spacing").toBeLessThan(
+                            0.1,
                         )
-                        expect(geometry.iconHeight).toBeCloseTo(geometry.fontSize, 1)
+                        expect(geometry.svgHeight).toBe(geometry.lineHeight)
                     }
-                    const [up, down] = await rates.all()
-                    const upIcon = (await up.locator("svg").boundingBox())!,
-                        downIcon = (await down.locator("svg").boundingBox())!
-                    if (width >= 640) expect(Math.abs(upIcon.y - downIcon.y)).toBeLessThan(0.1)
+                    if (width >= 640) {
+                        const [up, down] = await rates.all(),
+                            a = (await up.locator("svg").boundingBox())!,
+                            b = (await down.locator("svg").boundingBox())!
+                        expect(Math.abs(a.y + a.height / 2 - b.y - b.height / 2)).toBeLessThan(0.1)
+                    }
                     expect(
                         await page.evaluate(() => document.documentElement.scrollWidth),
                     ).toBeLessThanOrEqual(width)
                 }
-                await rates.evaluateAll((elements) =>
-                    elements.forEach((el) =>
-                        (el as HTMLElement).style.removeProperty("font-family"),
-                    ),
-                )
                 await page.screenshot({
-                    path: testInfo.outputPath(enabled ? "overview.png" : "plain.png"),
+                    path: testInfo.outputPath(scenario.name + ".png"),
                     fullPage: true,
                 })
-                if (enabled && width >= 1366) {
+                if (width >= 1366) {
                     const box = (await rates.first().boundingBox())!
                     await page.screenshot({
-                        path: testInfo.outputPath("rate-detail.png"),
-                        clip: { x: box.x - 10, y: box.y - 7, width: 208, height: 27 },
+                        path: testInfo.outputPath(scenario.name + "-detail.png"),
+                        clip: { x: box.x - 9, y: box.y - 8, width: 110, height: 34 },
                     })
                 }
             }
