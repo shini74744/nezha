@@ -125,12 +125,12 @@ func updateServer(c *gin.Context) (any, error) {
 // @Summary Batch delete server
 // @Security BearerAuth
 // @Schemes
-// @Description Batch delete server
+// @Description Attempt standard Agent uninstall, then permanently delete records and blacklist UUIDs. PAT requires inventory:delete and server:exec.
 // @Tags auth required
 // @Accept json
 // @param request body []uint64 true "id list"
 // @Produce json
-// @Success 200 {object} model.CommonResponse[any]
+// @Success 200 {object} model.CommonResponse[ServerDeleteResult]
 // @Router /batch-delete/server [post]
 func batchDeleteServer(c *gin.Context) (any, error) {
 	var servers []uint64
@@ -145,10 +145,7 @@ func batchDeleteServer(c *gin.Context) (any, error) {
 	if singleton.ServerIDReassignmentInProgress.Load() {
 		return nil, errors.New("server ID reassignment in progress")
 	}
-	if err := singleton.PermanentlyDeleteServers(servers); err != nil {
-		return nil, newGormError("%v", err)
-	}
-	return nil, nil
+	return deleteServersAndUninstall(c, servers)
 }
 
 // Force update Agent

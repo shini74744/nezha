@@ -21,6 +21,8 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { UnknownAgentReports } from "@/components/unknown-agent-reports"
 import { useAuth } from "@/hooks/useAuth"
 import { selectableTableFeatures } from "@/lib/table"
 import {
@@ -37,6 +39,35 @@ import { toast } from "sonner"
 import useSWR from "swr"
 
 export default function WAFPage() {
+    const [params, setParams] = useSearchParams()
+    const tab = params.get("tab") === "unknown" ? "unknown" : "web"
+    return (
+        <div className="min-w-0 px-3">
+            <SettingsTab className="mt-6 w-full" />
+            <Tabs
+                value={tab}
+                onValueChange={(value) => setParams({ tab: value })}
+                className="mt-4 min-w-0"
+            >
+                <TabsList
+                    className="grid w-full grid-cols-2 sm:inline-flex sm:w-auto"
+                    aria-label="防火墙分类"
+                >
+                    <TabsTrigger value="web">Web 防火墙</TabsTrigger>
+                    <TabsTrigger value="unknown">未知上报</TabsTrigger>
+                </TabsList>
+                <TabsContent value="web">
+                    <WebFirewallTable />
+                </TabsContent>
+                <TabsContent value="unknown" className="mt-4">
+                    <UnknownAgentReports />
+                </TabsContent>
+            </Tabs>
+        </div>
+    )
+}
+
+function WebFirewallTable() {
     const { t } = useTranslation()
     const { profile } = useAuth()
     const [searchParams, setSearchParams] = useSearchParams()
@@ -257,8 +288,7 @@ export default function WAFPage() {
     }
 
     return (
-        <div className="px-3">
-            <SettingsTab className="mt-6 w-full" />
+        <div className="min-w-0">
             <div className="flex mt-4 mb-4">
                 {isAdmin && (
                     <HeaderButtonGroup

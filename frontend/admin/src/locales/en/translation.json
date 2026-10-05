@@ -153,7 +153,7 @@
     "Owner": "Owner",
     "GlobalAgent": "Global Agent",
     "UnknownUser": "Unknown user (#{{id}})",
-    "WAF": "Web Application Firewall",
+    "WAF": "Firewall",
     "SiteName": "Site Name",
     "FrontendPassword": "Frontend Password",
     "FrontendPasswordKeepHint": "Leave blank to keep the current password",

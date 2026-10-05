@@ -13,8 +13,17 @@ export const updateServer = async (id: number, data: ModelServerForm): Promise<v
     return fetcher<void>(FetcherMethod.PATCH, `/api/v1/server/${id}`, data)
 }
 
-export const deleteServer = async (id: number[]): Promise<void> => {
-    return fetcher<void>(FetcherMethod.POST, "/api/v1/batch-delete/server", id)
+export interface ServerDeleteResult {
+    deleted: number[]
+    cleanup: {
+        id: number
+        status: "started" | "offline" | "failed" | "unsupported"
+        message: string
+    }[]
+}
+
+export const deleteServer = async (id: number[]): Promise<ServerDeleteResult> => {
+    return fetcher<ServerDeleteResult>(FetcherMethod.POST, "/api/v1/batch-delete/server", id)
 }
 
 export const batchUpdateServerVisibility = async (data: {

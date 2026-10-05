@@ -1,14 +1,12 @@
-import "./server-layout.css"
 import { swrFetcher } from "@/api/api"
-import { deleteServer, forceUpdateServer } from "@/api/server"
-import { ActionButtonGroup } from "@/components/action-button-group"
+import { forceUpdateServer } from "@/api/server"
 import { BatchMoveServerIcon } from "@/components/batch-move-server-icon"
-import { HeaderButtonGroup } from "@/components/header-button-group"
 import { InstallCommandsMenu } from "@/components/install-commands"
 import { NoteMenu } from "@/components/note-menu"
 import { ServerCard } from "@/components/server"
 import { ServerConfigCard } from "@/components/server-config"
 import { ServerConfigCardBatch } from "@/components/server-config-batch"
+import { ServerDeleteButton } from "@/components/server-delete"
 import { ServerSortDialog } from "@/components/server-sort-dialog"
 import { ServerVisibilityBatch } from "@/components/server-visibility-batch"
 import { TerminalButton } from "@/components/terminal"
@@ -32,6 +30,8 @@ import { useEffect, useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import useSWR from "swr"
+
+import "./server-layout.css"
 
 export default function ServerPage() {
     const { t } = useTranslation()
@@ -178,15 +178,13 @@ export default function ServerPage() {
             cell: ({ row }) => {
                 const s = row.original
                 return (
-                    <ActionButtonGroup
-                        className="flex min-w-[272px] flex-nowrap gap-2"
-                        delete={{ fn: deleteServer, id: s.id, mutate: mutate }}
-                    >
+                    <div className="flex min-w-[272px] flex-nowrap gap-2">
                         <ServerCard mutate={mutate} data={s} />
                         <TerminalButton id={s.id} />
                         <ServerConfigCard sid={s.id} variant="outline" />
                         <InstallCommandsMenu uuid={s.uuid} iconOnly variant="outline" />
-                    </ActionButtonGroup>
+                        <ServerDeleteButton ids={[s.id]} onUpdated={() => mutate()} />
+                    </div>
                 )
             },
         },
@@ -208,15 +206,15 @@ export default function ServerPage() {
         <div className="server-page w-full min-w-0 px-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-3 mt-6 mb-4">
                 <h1 className="text-3xl font-bold tracking-tight">{t("Server")}</h1>
-                <HeaderButtonGroup
-                    className="flex gap-2 flex-wrap shrink-0"
-                    delete={{
-                        fn: deleteServer,
-                        id: selectedRows.map((r) => r.original.id),
-                        mutate: mutate,
-                    }}
-                >
-                    <ServerVisibilityBatch servers={selectedRows.map(r => r.original)} onUpdated={() => mutate()} />
+                <div className="flex gap-2 flex-wrap shrink-0">
+                    <ServerDeleteButton
+                        ids={selectedRows.map((r) => r.original.id)}
+                        onUpdated={() => mutate()}
+                    />
+                    <ServerVisibilityBatch
+                        servers={selectedRows.map((r) => r.original)}
+                        onUpdated={() => mutate()}
+                    />
                     {profile?.role === 0 && (
                         <ServerSortDialog servers={dataCache} mutate={mutate} />
                     )}
@@ -262,10 +260,17 @@ export default function ServerPage() {
                         className="shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] bg-yellow-600 text-white hover:bg-yellow-500 dark:hover:bg-yellow-700 rounded-lg"
                     />
                     <InstallCommandsMenu className="shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] bg-blue-700 text-white hover:bg-blue-600 dark:hover:bg-blue-800 rounded-lg" />
-                </HeaderButtonGroup>
+                </div>
             </div>
-            <p className="mb-2 text-xs text-muted-foreground lg:hidden">表格可左右滑动，查看完整信息和操作按钮</p>
-            <div className="server-list-scroll rounded-md border" role="region" aria-label="服务器列表，可左右滑动" tabIndex={0}>
+            <p className="mb-2 text-xs text-muted-foreground lg:hidden">
+                表格可左右滑动，查看完整信息和操作按钮
+            </p>
+            <div
+                className="server-list-scroll rounded-md border"
+                role="region"
+                aria-label="服务器列表，可左右滑动"
+                tabIndex={0}
+            >
                 <Table className="server-list-table w-full table-fixed">
                     <TableHeader className="sticky top-0 bg-background z-10">
                         {table.getHeaderGroups().map((headerGroup) => (

@@ -163,7 +163,7 @@
     "Owner": "所属用户",
     "GlobalAgent": "全局 Agent",
     "UnknownUser": "未知用户 (#{{id}})",
-    "WAF": "Web应用防火墙",
+    "WAF": "防火墙",
     "SiteName": "站点名称",
     "FrontendPassword": "前台密码",
     "FrontendPasswordKeepHint": "留空则保持当前前台密码不变",
