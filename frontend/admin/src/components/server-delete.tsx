@@ -71,8 +71,8 @@ export function ServerDeleteButton({
                     <AlertDialogTitle>{result ? "删除结果" : "卸载并删除节点"}</AlertDialogTitle>
                     <AlertDialogDescription>
                         {result
-                            ? "节点记录已删除，UUID 已永久拉黑，再次上报将被拒绝。"
-                            : `确认删除选中的 ${ids.length} 个节点？会先尝试启动远端 Agent 的停止、卸载和文件清理，再删除面板记录并永久拉黑 UUID。此操作不可撤销。`}
+                            ? "节点记录已删除，UUID 已拉黑，再次上报将被拒绝。"
+                            : `确认删除选中的 ${ids.length} 个节点？会先尝试启动远端 Agent 的停止、卸载和文件清理，再删除面板记录并拉黑 UUID。此操作不可撤销。`}
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 {!result && (

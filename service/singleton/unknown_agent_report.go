@@ -24,7 +24,7 @@ func RecordDeletedAgentReport(uuid, ip string) {
 	now := time.Now().Unix()
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
-	DB.WithContext(ctx).Model(&model.ServerDeletionTombstone{}).Where("uuid = ?", uuid).Updates(map[string]any{
+	DB.WithContext(ctx).Model(&model.ServerDeletionTombstone{}).Where("uuid = ? AND released_at = 0", uuid).Updates(map[string]any{
 		"last_ip":         ip,
 		"last_report_at":  now,
 		"first_report_at": gorm.Expr("CASE WHEN first_report_at = 0 THEN ? ELSE first_report_at END", now),
