@@ -108,6 +108,22 @@ for (const width of [360, 1366])
                 const panel = page.getByRole("tabpanel", { name: "已删除服务器", exact: true })
                 const target = panel.locator("article").filter({ hasText: "目标节点" })
                 const other = panel.locator("article").filter({ hasText: "其他节点" })
+                const reportWarning = target
+                    .getByText("删除后曾再次上报", { exact: true })
+                    .locator("../..")
+                await expect(reportWarning).toBeVisible()
+                // The report warning belongs below UUID actions and above cleanup settings
+                // on both mobile and desktop, not between the heading and UUID details.
+                const releaseBox = await target
+                    .getByRole("button", { name: "放行 UUID", exact: true })
+                    .boundingBox()
+                const warningBox = await reportWarning.boundingBox()
+                const settingsBox = await target
+                    .getByRole("button", { name: "自动卸载设置：目标节点" })
+                    .boundingBox()
+                expect(releaseBox && warningBox && settingsBox).toBeTruthy()
+                expect(warningBox!.y).toBeGreaterThanOrEqual(releaseBox!.y + releaseBox!.height)
+                expect(warningBox!.y + warningBox!.height).toBeLessThanOrEqual(settingsBox!.y)
                 await target.getByRole("button", { name: "自动卸载设置：目标节点" }).click()
                 const dialog = page.getByRole("alertdialog")
                 await expect(dialog).toContainText("这是不可撤销操作")
@@ -196,6 +212,7 @@ for (const width of [360, 1366])
                 await panel.getByRole("button", { name: "刷新", exact: true }).click()
                 await expect(target).not.toHaveClass(/border-red-500/)
                 await expect(target.getByRole("alert")).toHaveCount(0)
+                await expect(reportWarning).toHaveCount(0)
                 await expect(target).toContainText("已停用（UUID 已放行）")
             },
         )
