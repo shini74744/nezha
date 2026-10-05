@@ -108,6 +108,21 @@ body,
     height: 100%;
 }
 
+/* Keep the layout viewport (including fixed overlays/wallpaper) stable while
+   Radix/Vaul temporarily locks body scrolling. Do not disable the scroll lock. */
+html {
+    scrollbar-gutter: stable;
+}
+
+@supports (scrollbar-gutter: stable) {
+    /* The root already reserves this space. react-remove-scroll's additional
+       margin would count the scrollbar twice, including nested Select/Dialog. */
+    html body[data-scroll-locked] {
+        margin-right: 0 !important;
+        --removed-body-scroll-bar-size: 0px !important;
+    }
+}
+
 ::-webkit-scrollbar {
     @apply h-2.5 w-2.5;
 }
