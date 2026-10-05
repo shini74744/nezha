@@ -32,4 +32,12 @@ type ServerDeletionTombstone struct {
 	CleanupLastAttemptAt  int64  `gorm:"not null;default:0" json:"cleanup_last_attempt_at"`
 	CleanupMessage        string `gorm:"not null;default:''" json:"cleanup_message"`
 	CleanupUnavailable    string `gorm:"-" json:"cleanup_unavailable"`
+	// Legacy armed jobs retain their original one-shot budget. Only a new explicit
+	// enable opts in to bounded retries.
+	CleanupMaxAttempts    uint64 `gorm:"not null;default:1" json:"cleanup_max_attempts"`
+	CleanupRoundAttempts  uint64 `gorm:"not null;default:0" json:"cleanup_round_attempts"`
+	CleanupNextAttemptAt  int64  `gorm:"not null;default:0" json:"cleanup_next_attempt_at"`
+	CleanupCheckedAt      int64  `gorm:"not null;default:0" json:"cleanup_checked_at"`
+	CleanupLastVerifiedAt int64  `gorm:"not null;default:0" json:"cleanup_last_verified_at"`
+	CleanupLastResult     string `gorm:"not null;default:''" json:"cleanup_last_result"`
 }

@@ -58,7 +58,7 @@ func waitCleanupState(t *testing.T, state string) model.ServerDeletionTombstone 
 	return row
 }
 
-func TestDeletedCleanupWireFlowIsOneShotAndNeverRegisters(t *testing.T) {
+func TestDeletedCleanupWireFlowIsBoundedAndNeverRegisters(t *testing.T) {
 	client, row := setupCleanupRPC(t)
 	for _, secret := range []string{"", "invalid", "bob-global"} {
 		ctx, cancel := context.WithTimeout(cleanupOutgoing(context.Background(), secret), time.Second)
@@ -95,8 +95,9 @@ func TestDeletedCleanupWireFlowIsOneShotAndNeverRegisters(t *testing.T) {
 	require.Equal(t, "sending", row.CleanupState)
 	require.True(t, row.CleanupEnabled)
 	require.NoError(t, tasks.Send(&pb.TaskResult{Id: task.Id, Type: task.Type, Successful: true, Data: "NZ_UNINSTALL_STARTED"}))
-	saved := waitCleanupState(t, "started")
-	require.False(t, saved.CleanupEnabled)
+	saved := waitCleanupState(t, "retry_wait")
+	require.True(t, saved.CleanupEnabled)
+	require.Equal(t, "started", saved.CleanupLastResult)
 	require.EqualValues(t, 1, saved.CleanupAttempts)
 	require.True(t, singleton.IsDeletedServerUUID(cleanupRPCUUID))
 	var count int64
@@ -107,7 +108,7 @@ func TestDeletedCleanupWireFlowIsOneShotAndNeverRegisters(t *testing.T) {
 	require.NoError(t, singleton.DB.Model(&model.Transfer{}).Where("server_id = ?", 12).Count(&count).Error)
 	require.Zero(t, count)
 	_, err = client.ReportSystemInfo2(ctx, &pb.Host{Platform: "ubuntu"})
-	require.Error(t, err, "no implicit retry")
+	require.Error(t, err, "no early retry")
 }
 
 func TestDeletedCleanupWireFailureAndSpoofedReceipt(t *testing.T) {
@@ -123,7 +124,7 @@ func TestDeletedCleanupWireFailureAndSpoofedReceipt(t *testing.T) {
 			_, err := client.ReportSystemInfo2(ctx, &pb.Host{Platform: platform})
 			if kind == "platform mismatch" {
 				require.Error(t, err)
-				saved := waitCleanupState(t, "failed")
+				saved := waitCleanupState(t, "attention")
 				require.Zero(t, saved.CleanupAttempts)
 				return
 			}
@@ -143,9 +144,10 @@ func TestDeletedCleanupWireFailureAndSpoofedReceipt(t *testing.T) {
 			default:
 				require.NoError(t, tasks.Send(&pb.TaskResult{Id: task.Id, Type: model.TaskTypeCommand, Successful: false, Data: "sensitive untrusted output"}))
 			}
-			saved := waitCleanupState(t, expected)
+			saved := waitCleanupState(t, "retry_wait")
+			require.Equal(t, expected, saved.CleanupLastResult)
 			require.NotContains(t, saved.CleanupMessage, "sensitive")
-			require.False(t, saved.CleanupEnabled)
+			require.True(t, saved.CleanupEnabled)
 		})
 	}
 }
@@ -164,4 +166,43 @@ func TestDeletedCleanupClosedAndReleasedCannotDispatch(t *testing.T) {
 	require.NoError(t, singleton.DB.First(&saved, "uuid = ?", row.UUID).Error)
 	require.Zero(t, saved.CleanupAttempts)
 	require.Equal(t, "cancelled", saved.CleanupState)
+}
+func TestDeletedCleanupWireRetriesOnlyAfterMinuteAndWarns(t *testing.T) {
+	client, row := setupCleanupRPC(t)
+	ctx, cancel := context.WithTimeout(cleanupOutgoing(context.Background(), "alice-global"), 8*time.Second)
+	defer cancel()
+	for attempt := 1; attempt <= 3; attempt++ {
+		_, err := client.ReportSystemInfo2(ctx, &pb.Host{Platform: "ubuntu"})
+		require.NoError(t, err)
+		tasks, err := client.RequestTask(ctx)
+		require.NoError(t, err)
+		task, err := tasks.Recv()
+		require.NoError(t, err)
+		require.Contains(t, task.Data, cleanupRPCUUID)
+		// Fake receipt only. NEVER execute this destructive payload in tests.
+		require.NoError(t, tasks.Send(&pb.TaskResult{Id: task.Id, Type: task.Type, Successful: true, Data: "NZ_UNINSTALL_STARTED"}))
+		saved := waitCleanupState(t, "retry_wait")
+		require.EqualValues(t, attempt, saved.CleanupRoundAttempts)
+		require.GreaterOrEqual(t, saved.CleanupNextAttemptAt, time.Now().Unix()+59)
+		_, err = client.ReportSystemInfo2(ctx, &pb.Host{Platform: "ubuntu"})
+		require.Error(t, err, "cooldown blocks early handshake")
+		early, err := client.RequestTask(ctx)
+		require.NoError(t, err)
+		_, err = early.Recv()
+		require.Error(t, err, "direct task call cannot bypass cooldown")
+		// Advance just the fixture due time; no wall-clock wait or real node.
+		require.NoError(t, singleton.DB.Model(row).Update("cleanup_next_attempt_at", time.Now().Unix()-1).Error)
+	}
+	_, err := client.ReportSystemInfo2(ctx, &pb.Host{Platform: "ubuntu"})
+	require.NoError(t, err)
+	tasks, err := client.RequestTask(ctx)
+	require.NoError(t, err)
+	_, err = tasks.Recv()
+	require.Error(t, err, "fourth command must not be sent")
+	saved := waitCleanupState(t, "attention")
+	require.False(t, saved.CleanupEnabled)
+	require.EqualValues(t, 3, saved.CleanupRoundAttempts)
+	require.True(t, singleton.IsDeletedServerUUID(cleanupRPCUUID))
+	_, present := singleton.ServerShared.UUIDToID(cleanupRPCUUID)
+	require.False(t, present)
 }

@@ -9,7 +9,7 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
-import { Loader2, Settings2 } from "lucide-react"
+import { Loader2, Settings2, TriangleAlert } from "lucide-react"
 import { useRef, useState } from "react"
 import { useSWRConfig } from "swr"
 
@@ -21,6 +21,11 @@ export interface DeletedCleanupRecord {
     cleanup_enabled?: boolean
     cleanup_revision?: number
     cleanup_state?: string
+    cleanup_max_attempts?: number
+    cleanup_round_attempts?: number
+    cleanup_next_attempt_at?: number
+    cleanup_checked_at?: number
+    cleanup_last_result?: string
     cleanup_attempts?: number
     cleanup_last_attempt_at?: number
     cleanup_message?: string
@@ -34,6 +39,9 @@ const stateLabels: Record<string, string> = {
     failed: "清理未启动",
     unknown: "结果未知",
     cancelled: "已关闭",
+    retry_wait: "等待检查 / 重试",
+    quiet: "未再有效上报",
+    attention: "需要人工处理",
 }
 export function DeletedAgentCleanup({ row }: { row: DeletedCleanupRecord }) {
     const { mutate } = useSWRConfig()
@@ -141,7 +149,9 @@ export function DeletedAgentCleanup({ row }: { row: DeletedCleanupRecord }) {
                                             SSH。
                                         </p>
                                         <p>
-                                            每次开启仅尝试一次；失败或结果未知需检查后手动重新开启。“已启动清理”不是卸载完成证明。
+                                            首次有效重连立即尝试；之后每隔 1
+                                            分钟检查，仍能建立命令通道就重试，本轮最多 3
+                                            次。用完次数仍可连接会红框提醒并停止重试；“未再上报”或“已启动清理”均不是卸载完成证明。
                                         </p>
                                     </>
                                 ) : (
@@ -186,9 +196,39 @@ export function DeletedAgentCleanup({ row }: { row: DeletedCleanupRecord }) {
                     </AlertDialogContent>
                 </AlertDialog>
             </div>
+            {row.cleanup_state === "attention" && !row.released_at && (
+                <div
+                    role="alert"
+                    className="mt-2 flex items-start gap-1.5 rounded-md border border-red-500/70 bg-red-500/10 p-2 text-red-700 dark:text-red-300"
+                >
+                    <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+                    <span className="leading-5">
+                        自动卸载已停止，请人工检查。确认原因后可重新开启。
+                    </span>
+                </div>
+            )}
             {!!row.cleanup_message && (
                 <p className="mt-1.5 break-words leading-5 text-muted-foreground">
                     {row.cleanup_message}
+                </p>
+            )}
+            {!!row.cleanup_revision && !!row.cleanup_max_attempts && (
+                <p className="mt-1 text-muted-foreground">
+                    本轮 {row.cleanup_round_attempts ?? 0}/{row.cleanup_max_attempts} 次
+                    {row.cleanup_max_attempts > 1 ? " · 检查间隔 1 分钟" : " · 旧版单次计划"}
+                </p>
+            )}
+            {row.cleanup_enabled && !row.released_at && !!row.cleanup_next_attempt_at && (
+                <p className="mt-1 text-muted-foreground">
+                    {row.cleanup_next_attempt_at * 1000 > Date.now()
+                        ? "下次检查：" +
+                          new Date(row.cleanup_next_attempt_at * 1000).toLocaleString()
+                        : "已到检查时间，等待有效命令通道"}
+                </p>
+            )}
+            {!!row.cleanup_checked_at && (
+                <p className="mt-1 text-muted-foreground">
+                    最近检查：{new Date(row.cleanup_checked_at * 1000).toLocaleString()}
                 </p>
             )}
             {!!row.cleanup_last_attempt_at && (

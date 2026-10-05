@@ -171,6 +171,7 @@ func main() {
 	})
 	go rpc.DispatchTask(serviceSentinelDispatchBus)
 	go singleton.AlertSentinelStart()
+	go singleton.DeletedCleanupCheckerStart()
 
 	grpcHandler := rpc.ServeRPC()
 	httpHandler := controller.ServeWeb(frontendDist)

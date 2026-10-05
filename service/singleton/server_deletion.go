@@ -274,6 +274,8 @@ func PermanentlyDeleteServersMatching(ids []uint64, expected map[uint64]ServerDe
 				"cleanup_credential_hash": gorm.Expr("excluded.cleanup_credential_hash"),
 				"cleanup_enabled":         false, "cleanup_revision": 0, "cleanup_state": "off",
 				"cleanup_attempts": 0, "cleanup_last_attempt_at": 0, "cleanup_message": "",
+				"cleanup_max_attempts": 1, "cleanup_round_attempts": 0, "cleanup_next_attempt_at": 0,
+				"cleanup_checked_at": 0, "cleanup_last_verified_at": 0, "cleanup_last_result": "",
 			}),
 		}).Create(&tombstones).Error; err != nil {
 			return err
