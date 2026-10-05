@@ -343,6 +343,24 @@ func (s *Server) SendTask(task *pb.Task) error {
 	return h.s.Send(task)
 }
 
+// SendTaskOnStream rejects a replaced session rather than probing a new machine
+// under the old batch identity. It uses the same send mutex as all other tasks.
+func (s *Server) SendTaskOnStream(ctx context.Context, task *pb.Task, expected pb.NezhaService_RequestTaskServer) error {
+	h := s.taskStream.Load()
+	if h == nil || h.s != expected {
+		return ErrTaskStreamOffline
+	}
+	h.sendMu.Lock()
+	defer h.sendMu.Unlock()
+	if s.taskStream.Load() != h {
+		return ErrTaskStreamOffline
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return h.s.Send(task)
+}
+
 // AttachStateStream returns the ownership generation used to serialize state
 // writes with reconnect and disconnect cleanup.
 func (s *Server) AttachStateStream(stream pb.NezhaService_ReportSystemStateServer) StateStreamLease {

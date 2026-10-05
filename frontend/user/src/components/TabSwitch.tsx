@@ -47,6 +47,12 @@ export default function TabSwitch({
 					<div
 						key={tab}
 						ref={setItemRef(index)}
+						role="button"
+						tabIndex={0}
+						aria-pressed={currentTab === tab}
+						onKeyDown={(event) => {
+							if (event.key === "Enter" || event.key === " ") { event.preventDefault(); if (currentTab !== tab) enableIndicatorAnimation(); setCurrentTab(tab); }
+						}}
 						onClick={() => {
 							if (currentTab !== tab) {
 								enableIndicatorAnimation();

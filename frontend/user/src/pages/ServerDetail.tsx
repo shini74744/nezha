@@ -4,6 +4,7 @@ import ServerNetworkSection from "@/components/ServerNetworkSection";
 import ServerDetailChart from "@/components/ServerDetailChart";
 import ServerDetailOverview from "@/components/ServerDetailOverview";
 import TabSwitch from "@/components/TabSwitch";
+import ServerConnectivity from "@/components/ServerConnectivity";
 import { Separator } from "@/components/ui/separator";
 import { useWebSocketContext } from "@/hooks/use-websocket-context";
 import { formatNezhaInfo } from "@/lib/utils";
@@ -14,14 +15,14 @@ export default function ServerDetail() {
 		window.scrollTo({ top: 0, left: 0, behavior: "instant" });
 	}, []);
 
-	const tabs = ["Detail", "Network"];
+	const tabs = ["Detail", "Network", "Connectivity"];
 	const [currentTab, setCurrentTab] = useState(tabs[0]);
 
 	const { id: server_id } = useParams();
 	const { lastData } = useWebSocketContext();
 	const server = lastData?.servers.find(s => s.id === Number(server_id));
 	if (server && lastData && !formatNezhaInfo(lastData.now, server).online) {
-		return <OfflineServerDetail key={server.id} server={server} now={lastData.now} />;
+		return <OfflineServerDetail key={server.id} server={server} now={lastData.now} initialTab={currentTab} />;
 	}
 
 	if (!server_id) {
@@ -33,7 +34,7 @@ export default function ServerDetail() {
 			<ServerDetailOverview server_id={server_id} />
 			<section className="flex items-center my-2 w-full">
 				<Separator className="flex-1" />
-				<div className="flex justify-center w-full max-w-50">
+				<div className="flex justify-center w-full max-w-sm">
 					<TabSwitch
 						tabs={tabs}
 						currentTab={currentTab}
@@ -48,7 +49,8 @@ export default function ServerDetail() {
 			</section> */}
 
 			{currentTab === tabs[0] && <ServerDetailChart server_id={server_id} />}
-			<ServerNetworkSection server_id={Number(server_id)} standalone={currentTab === tabs[1]} />
+			{currentTab !== "Connectivity" && <ServerNetworkSection server_id={Number(server_id)} standalone={currentTab === tabs[1]} />}
+			{currentTab === "Connectivity" && <ServerConnectivity key={server_id} serverId={Number(server_id)} />}
 		</div>
 	);
 }
