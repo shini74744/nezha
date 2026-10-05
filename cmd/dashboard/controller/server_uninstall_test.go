@@ -70,7 +70,7 @@ func TestDeleteServersRejectsForeignAndInsufficientPATBeforeDispatch(t *testing.
 func TestUnknownAgentReportsPaginationAndAdminGuard(t *testing.T) {
 	_, reset := setupServerOwnershipFixture(t)
 	defer reset()
-	require.NoError(t, singleton.DB.AutoMigrate(&model.ServerDeletionTombstone{}))
+	require.NoError(t, singleton.DB.AutoMigrate(&model.ServerDeletionTombstone{}, &model.UnknownAgentReport{}, &model.AgentUUIDConflict{}))
 	for _, row := range []model.ServerDeletionTombstone{
 		{UUID: "never-reported", ReportCount: 0},
 		{UUID: "older", ReportCount: 2, LastReportAt: 10},

@@ -23,13 +23,14 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { UnknownAgentReports } from "@/components/unknown-agent-reports"
+import { DeletedServers } from "@/components/deleted-servers"
 import { useAuth } from "@/hooks/useAuth"
 import { selectableTableFeatures } from "@/lib/table"
 import {
     GithubComNezhahqNezhaModelValueArrayModelWAFApiMock,
     ModelWAFApiMock,
-    wafBlockIdentifiers,
-    wafBlockReasons,
+    wafBlockIdentifierKeys,
+    wafBlockReasonKeys,
 } from "@/types"
 import { ColumnDef, flexRender, useTable } from "@tanstack/react-table"
 import { useEffect, useMemo } from "react"
@@ -40,7 +41,8 @@ import useSWR from "swr"
 
 export default function WAFPage() {
     const [params, setParams] = useSearchParams()
-    const tab = params.get("tab") === "unknown" ? "unknown" : "web"
+    const selected = params.get("tab")
+    const tab = selected === "unknown" || selected === "deleted" ? selected : "web"
     return (
         <div className="min-w-0 px-3">
             <SettingsTab className="mt-6 w-full" />
@@ -50,17 +52,21 @@ export default function WAFPage() {
                 className="mt-4 min-w-0"
             >
                 <TabsList
-                    className="grid w-full grid-cols-2 sm:inline-flex sm:w-auto"
+                    className="grid w-full grid-cols-3 sm:inline-flex sm:w-auto"
                     aria-label="防火墙分类"
                 >
                     <TabsTrigger value="web">Web 防火墙</TabsTrigger>
                     <TabsTrigger value="unknown">未知上报</TabsTrigger>
+                    <TabsTrigger value="deleted">已删除服务器</TabsTrigger>
                 </TabsList>
                 <TabsContent value="web">
                     <WebFirewallTable />
                 </TabsContent>
                 <TabsContent value="unknown" className="mt-4">
                     <UnknownAgentReports />
+                </TabsContent>
+                <TabsContent value="deleted" className="mt-4">
+                    <DeletedServers />
                 </TabsContent>
             </Tabs>
         </div>
@@ -129,13 +135,18 @@ function WebFirewallTable() {
             header: t("LastBlockReason"),
             accessorKey: "lastBlockReason",
             accessorFn: (row) => row.block_reason,
-            cell: ({ row }) => <span>{wafBlockReasons[row.original.block_reason] || ""}</span>,
+            cell: ({ row }) => (
+                <span className="inline-block max-w-64 whitespace-normal break-words">
+                    {t(wafBlockReasonKeys[row.original.block_reason] || "WAFReasonUnknown")}
+                </span>
+            ),
         },
         {
             header: t("BlockIdentifier"),
             accessorKey: "BlockIdentifier",
             accessorFn: (row) => {
-                return wafBlockIdentifiers[row.block_identifier] || row.block_identifier
+                const key = wafBlockIdentifierKeys[row.block_identifier]
+                return key ? t(key) : row.block_identifier
             },
         },
         {

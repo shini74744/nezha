@@ -67,7 +67,7 @@ func updateServerOrder(c *gin.Context) (any, error) {
 	if err := c.ShouldBindJSON(&form); err != nil {
 		return nil, err
 	}
-	if err := singleton.DB.Transaction(func(tx *gorm.DB) error {
+	if err := model.WithServerOperation(singleton.DB, model.ServerOperationActorFromContext(c), "order", form.ServerIDs, func(tx *gorm.DB) error {
 		if err := validateCompleteServerOrder(tx, form.ServerIDs); err != nil {
 			return err
 		}
@@ -148,7 +148,7 @@ func reassignServerIDs(c *gin.Context) (*serverIDReassignResult, error) {
 		return nil, err
 	}
 
-	if err := singleton.DB.Transaction(func(tx *gorm.DB) error {
+	if err := model.WithServerOperation(singleton.DB, model.ServerOperationActorFromContext(c), "reassign_ids", nil, func(tx *gorm.DB) error {
 		return reassignServerIDsInDB(tx, form.ServerIDs, mapping)
 	}); err != nil {
 		singleton.Conf.IgnoredIPNotification = oldIgnored

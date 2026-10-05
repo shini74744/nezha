@@ -5,7 +5,7 @@ for (const width of [360, 1366])
         test("firewall tabs and unknown reports " + width + "-" + dark, async ({ page }) => {
             await page.setViewportSize({ width, height: 850 })
             await page.addInitScript((dark) => {
-                localStorage.setItem("i18nextLng", "zh-CN")
+                localStorage.setItem("language", "zh-CN")
                 localStorage.setItem("vite-ui-theme", dark ? "dark" : "light")
             }, dark)
             let fail = false
@@ -23,7 +23,16 @@ for (const width of [360, 1366])
                         version: "fixture",
                     }
                 if (path === "/api/v1/waf")
-                    data = { value: [], pagination: { total: 0, offset: 0, limit: 10 } }
+                    data = {
+                        value: [3, 6, 7, 8, 99].map((reason, i) => ({
+                            ip: "192.0.2." + (i + 1),
+                            count: i + 2,
+                            block_reason: reason,
+                            block_identifier: -127,
+                            block_timestamp: 1791174000,
+                        })),
+                        pagination: { total: 5, offset: 0, limit: 10 },
+                    }
                 if (path === "/api/v1/waf/unknown-reports") {
                     if (fail)
                         return route.fulfill({
@@ -35,6 +44,7 @@ for (const width of [360, 1366])
                             {
                                 uuid: "12345678-1234-1234-1234-123456789abc",
                                 name: offset ? "第二页节点" : "离线后删除的节点",
+                                kind: "deleted",
                                 last_ip: "2001:db8:1234:5678:9abc:def0:1234:5678",
                                 created_at: "2026-10-05T04:00:00Z",
                                 first_report_at: 1791173000,
@@ -52,10 +62,29 @@ for (const width of [360, 1366])
             await expect(
                 page.getByRole("tab", { name: "Web 防火墙", exact: true }),
             ).toHaveAttribute("data-state", "active")
+            const firewall = page.getByRole("tabpanel", { name: "Web 防火墙", exact: true })
+            for (const reason of [
+                "认证失败（历史记录，未区分原因）",
+                "已有节点：连接密钥错误或已失效",
+                "节点 UUID 缺失或格式不合法",
+                "未登记节点：使用无效凭据连接面板",
+                "未知原因",
+            ])
+                await expect(firewall).toContainText(reason)
+            await expect(firewall.getByText("gRPC 认证失败", { exact: true })).toHaveCount(5)
+            await expect(firewall).not.toContainText("暴力攻击代理秘密")
+            expect(
+                await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+            ).toBe(true)
+            await page.screenshot({
+                path: "test-results/firewall-reasons-" + width + "-" + dark + ".png",
+                fullPage: true,
+            })
             await page.getByRole("tab", { name: "未知上报", exact: true }).click()
             const panel = page.getByRole("tabpanel", { name: "未知上报", exact: true })
             await expect(panel).toContainText("离线后删除的节点")
-            await expect(panel).toContainText("不会封禁同 IP")
+            await expect(panel).toContainText("不会自动封禁正常节点")
+            await expect(panel).toContainText("UUID 已拉黑")
             expect(
                 await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
             ).toBe(true)

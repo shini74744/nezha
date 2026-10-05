@@ -8,6 +8,7 @@ import { ServerConfigCard } from "@/components/server-config"
 import { ServerConfigCardBatch } from "@/components/server-config-batch"
 import { ServerDeleteButton } from "@/components/server-delete"
 import { ServerSortDialog } from "@/components/server-sort-dialog"
+import { ServerOperationHistory } from "@/components/server-operation-history"
 import { ServerVisibilityBatch } from "@/components/server-visibility-batch"
 import { TerminalButton } from "@/components/terminal"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -205,7 +206,10 @@ export default function ServerPage() {
     return (
         <div className="server-page w-full min-w-0 px-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-3 mt-6 mb-4">
-                <h1 className="text-3xl font-bold tracking-tight">{t("Server")}</h1>
+                <div className="flex items-center gap-3">
+                    <h1 className="text-3xl font-bold tracking-tight">{t("Server")}</h1>
+                    {profile?.role === 0 && <ServerOperationHistory />}
+                </div>
                 <div className="flex gap-2 flex-wrap shrink-0">
                     <ServerDeleteButton
                         ids={selectedRows.map((r) => r.original.id)}

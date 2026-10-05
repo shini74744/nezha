@@ -28,6 +28,7 @@ func setupPermanentDeleteTest(t *testing.T) {
 	sqlDB, err := DB.DB()
 	require.NoError(t, err)
 	require.NoError(t, DB.AutoMigrate(
+		&model.ServerOperationLog{}, &model.UnknownAgentReport{},
 		&model.Server{},
 		&model.ServerDeletionTombstone{},
 		&model.ServerGroupServer{},

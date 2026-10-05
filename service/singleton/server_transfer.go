@@ -649,6 +649,16 @@ func (c *ServerTransferClass) Initiate(tx *gorm.DB, serverID, fromUserID, toUser
 	if res.RowsAffected != 1 {
 		return nil, fmt.Errorf("server %d: ownership update affected %d rows (want 1) — row likely deleted concurrently", serverID, res.RowsAffected)
 	}
+	var server model.Server
+	if err := tx.First(&server, serverID).Error; err != nil {
+		return nil, err
+	}
+	// Do not acquire UserLock while holding the database write transaction.
+	actorName := fmt.Sprintf("用户 #%d", initiatorID)
+	if err := model.RecordServerOperationChanges(tx, model.ServerOperationActor{ID: initiatorID, Name: actorName, Source: "transfer"},
+		"transfer", &server, server.ID, []model.ServerOperationChange{{Field: "owner", Before: fmt.Sprint(fromUserID), After: fmt.Sprint(toUserID)}}); err != nil {
+		return nil, err
+	}
 	return t, nil
 }
 
@@ -1144,6 +1154,14 @@ func (c *ServerTransferClass) revertTransition(transferID uint64, newStatus mode
 		}
 		if revertRes.RowsAffected != 1 {
 			return fmt.Errorf("server %d: revert ownership update affected %d rows (want 1) — row likely deleted concurrently", t.ServerID, revertRes.RowsAffected)
+		}
+		var server model.Server
+		if err := tx.First(&server, t.ServerID).Error; err != nil {
+			return err
+		}
+		if err := model.RecordServerOperationChanges(tx, model.ServerOperationActor{Name: "系统转移回滚", Source: "system"},
+			"transfer_revert", &server, server.ID, []model.ServerOperationChange{{Field: "owner", Before: fmt.Sprint(t.ToUserID), After: fmt.Sprint(t.FromUserID)}}); err != nil {
+			return err
 		}
 		t.Status = newStatus
 		t.LastError = reason

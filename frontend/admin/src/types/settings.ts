@@ -22,17 +22,22 @@ export const nezhaLang: Record<string, string> = {
     "gl-ES": "Galego",
 }
 
-export const wafBlockReasons: Record<number, string> = {
-    1: i18n.t("LoginFailed"),
-    2: i18n.t("BruteForceAttackingToken"),
-    3: i18n.t("BruteForceAttackingAgentSecret"),
-    4: i18n.t("BlockByUser"),
-    5: i18n.t("WAFBlockReasonTypeBruteForceOauth2"),
+// Translate at render time so asynchronously loaded site language is respected.
+// IDs are persisted by the backend; keep legacy values and only append new ones.
+export const wafBlockReasonKeys: Record<number, string> = {
+    1: "LoginFailed",
+    2: "BruteForceAttackingToken",
+    3: "WAFReasonAgentAuthUnspecified",
+    4: "BlockByUser",
+    5: "WAFBlockReasonTypeBruteForceOauth2",
+    6: "WAFReasonAgentSecretInvalid",
+    7: "WAFReasonAgentUUIDInvalid",
+    8: "WAFReasonAgentUnknownCredential",
 }
 
-export const wafBlockIdentifiers: Record<number, string> = {
-    "-127": i18n.t("GrpcAuthFailed"),
-    "-126": i18n.t("APITokenInvalid"),
-    "-125": i18n.t("UserInvalid"),
-    "-124": i18n.t("BlockByUser"),
+export const wafBlockIdentifierKeys: Record<number, string> = {
+    "-127": "GrpcAuthFailed",
+    "-126": "APITokenInvalid",
+    "-125": "UserInvalid",
+    "-124": "BlockByUser",
 }

@@ -1,37 +1,37 @@
 package controller
 
 import (
-	"strconv"
-
 	"github.com/gin-gonic/gin"
 	"github.com/nezhahq/nezha/model"
 	"github.com/nezhahq/nezha/service/singleton"
 )
 
-// Unknown reports are rejected reconnect attempts of previously deleted UUIDs.
-// Normal new authenticated Agents retain the existing registration path.
-func listUnknownAgentReports(c *gin.Context) (*model.Value[[]model.ServerDeletionTombstone], error) {
-	limit, _ := strconv.Atoi(c.Query("limit"))
-	if limit < 1 {
-		limit = 20
-	}
-	if limit > 100 {
-		limit = 100
-	}
-	offset, _ := strconv.Atoi(c.Query("offset"))
-	if offset < 0 {
-		offset = 0
-	}
-	query := singleton.DB.Model(&model.ServerDeletionTombstone{}).Where("report_count > 0")
+// Deletion history, credential failures and concurrent-stream warnings remain
+// distinct. A warning is not a failed authentication or a verified new machine.
+func listUnknownAgentReports(c *gin.Context) (*model.Value[[]model.UnknownAgentReportView], error) {
+	limit, offset := operationPage(c)
+	union := `SELECT uuid, name, 'deleted' AS kind, last_ip, '' AS previous_ip,
+        '' AS previous_peer, '' AS last_peer, first_report_at, last_report_at, report_count
+        FROM server_deletion_tombstones WHERE report_count > 0
+        UNION ALL
+        SELECT u.uuid, COALESCE(s.name, '') AS name,
+        CASE WHEN s.id IS NULL THEN 'unregistered' ELSE 'registered' END AS kind,
+        u.last_ip, '', '', '', u.first_report_at, u.last_report_at, u.report_count
+        FROM unknown_agent_reports AS u LEFT JOIN servers AS s ON s.uuid = u.uuid
+        WHERE NOT EXISTS (SELECT 1 FROM server_deletion_tombstones AS d WHERE d.uuid = u.uuid)
+        UNION ALL
+        SELECT c.uuid, s.name, 'conflict', c.last_ip, c.previous_ip, c.previous_peer, c.last_peer,
+        c.first_report_at, c.last_report_at, c.report_count
+        FROM agent_uuid_conflicts AS c JOIN servers AS s ON s.uuid = c.uuid
+        WHERE NOT EXISTS (SELECT 1 FROM server_deletion_tombstones AS d WHERE d.uuid = c.uuid)`
+	query := singleton.DB.Table("(" + union + ") AS reports")
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
 		return nil, err
 	}
-	rows := make([]model.ServerDeletionTombstone, 0)
-	if err := query.Order("last_report_at DESC").Limit(limit).Offset(offset).Find(&rows).Error; err != nil {
+	rows := make([]model.UnknownAgentReportView, 0)
+	if err := query.Order("last_report_at DESC, uuid ASC, kind ASC").Limit(limit).Offset(offset).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
-	return &model.Value[[]model.ServerDeletionTombstone]{
-		Value: rows, Pagination: model.Pagination{Total: total, Offset: offset, Limit: limit},
-	}, nil
+	return &model.Value[[]model.UnknownAgentReportView]{Value: rows, Pagination: model.Pagination{Total: total, Offset: offset, Limit: limit}}, nil
 }

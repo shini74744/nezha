@@ -69,7 +69,7 @@ func setupTransferFixture(t *testing.T) (*ServerTransferClass, func()) {
 	if sqlDB, errInner := db.DB(); errInner == nil {
 		sqlDB.SetMaxOpenConns(1)
 	}
-	require.NoError(t, db.AutoMigrate(&model.Server{}, &model.ServerTransfer{}))
+	require.NoError(t, db.AutoMigrate(&model.Server{}, &model.ServerTransfer{}, &model.ServerOperationLog{}))
 	DB = db
 
 	ServerShared = NewServerClass()

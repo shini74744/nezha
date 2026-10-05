@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"errors"
 	"log"
 	"slices"
@@ -74,21 +75,34 @@ type taskStreamHolder struct {
 }
 
 type serverRuntimeHolder struct {
-	mu          sync.Mutex
-	canonical   *Server
-	stream      pb.NezhaService_ReportSystemStateServer
-	generation  uint64
-	state       *HostState
-	host        *Host
-	lastActive  time.Time
-	countryCode string
-	prevIn      uint64
-	prevOut     uint64
+	mu                 sync.Mutex
+	canonical          *Server
+	stream             pb.NezhaService_ReportSystemStateServer
+	generation         uint64
+	reportedGeneration uint64
+	state              *HostState
+	host               *Host
+	lastActive         time.Time
+	countryCode        string
+	prevIn             uint64
+	prevOut            uint64
 }
 
 type StateStreamLease struct {
-	holder     *serverRuntimeHolder
-	generation uint64
+	holder                *serverRuntimeHolder
+	generation            uint64
+	predecessor           context.Context
+	predecessorReportedAt time.Time
+}
+
+// RecentPredecessorContext identifies a live stream that reported just before
+// this stream took over. This is a suspected overlap, not machine attestation.
+func (lease StateStreamLease) RecentPredecessorContext() (context.Context, bool) {
+	if lease.predecessor == nil || lease.predecessor.Err() != nil || lease.predecessorReportedAt.IsZero() {
+		return nil, false
+	}
+	age := time.Since(lease.predecessorReportedAt)
+	return lease.predecessor, age >= 0 && age <= 10*time.Second
 }
 
 func (lease StateStreamLease) Generation() uint64 {
@@ -212,6 +226,7 @@ func (lease StateStreamLease) updateState(receiver *Server, state *HostState, la
 	canonical.LastActive = lastActive
 	lease.holder.state = cloneHostState(state)
 	lease.holder.lastActive = lastActive
+	lease.holder.reportedGeneration = lease.generation
 	if lease.holder.prevIn == 0 || lease.holder.prevOut == 0 {
 		lease.holder.prevIn = state.NetInTransfer
 		lease.holder.prevOut = state.NetOutTransfer
@@ -224,6 +239,22 @@ func (lease StateStreamLease) updateState(receiver *Server, state *HostState, la
 		}
 	}
 	return true
+}
+
+// ActiveReplacementContext is evidence that a newer stream has actually
+// submitted a sample. Merely attaching a replacement during reconnect is not
+// evidence of concurrent reporting. Callers must still verify both contexts.
+func (lease StateStreamLease) ActiveReplacementContext() (context.Context, bool) {
+	if lease.holder == nil {
+		return nil, false
+	}
+	lease.holder.mu.Lock()
+	defer lease.holder.mu.Unlock()
+	h := lease.holder
+	if h.stream == nil || h.generation == lease.generation || h.reportedGeneration != h.generation {
+		return nil, false
+	}
+	return h.stream.Context(), true
 }
 
 func (lease StateStreamLease) Clear() bool {
@@ -331,9 +362,15 @@ func (s *Server) AttachStateStream(stream pb.NezhaService_ReportSystemStateServe
 	}
 	holder.mu.Lock()
 	defer holder.mu.Unlock()
+	lease := StateStreamLease{holder: holder}
+	if holder.stream != nil && holder.reportedGeneration == holder.generation {
+		lease.predecessor = holder.stream.Context()
+		lease.predecessorReportedAt = holder.lastActive
+	}
 	holder.generation++
 	holder.stream = stream
-	return StateStreamLease{holder: holder, generation: holder.generation}
+	lease.generation = holder.generation
+	return lease
 }
 
 func (s *Server) UpdateStateIfCurrent(lease StateStreamLease, state *HostState, lastActive time.Time) bool {

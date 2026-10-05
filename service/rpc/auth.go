@@ -42,6 +42,15 @@ func (a *authHandler) check(ctx context.Context) (uint64, error) {
 	clientSecret := firstMetadataValue(md, "client-secret", "client_secret")
 
 	if clientSecret == "" {
+		clientUUID := firstMetadataValue(md, "client-uuid", "client_uuid")
+		ip, _ := ctx.Value(model.CtxKeyRealIP{}).(string)
+		if _, err := uuid.ParseUUID(clientUUID); err == nil {
+			if singleton.IsDeletedServerUUID(clientUUID) {
+				singleton.RecordDeletedAgentReport(clientUUID, ip)
+			} else {
+				singleton.RecordAgentAuthFailure(clientUUID, ip)
+			}
+		}
 		return 0, status.Error(codes.Unauthenticated, "客户端认证失败")
 	}
 
@@ -50,12 +59,9 @@ func (a *authHandler) check(ctx context.Context) (uint64, error) {
 	clientUUID := firstMetadataValue(md, "client-uuid", "client_uuid")
 
 	if _, err := uuid.ParseUUID(clientUUID); err != nil {
-		// Keep this counter on the same trigger surface as the
-		// unknown-secret path below: an attacker who pairs a bad secret
-		// with a malformed/missing UUID otherwise bypasses
-		// WAFBlockReasonTypeAgentAuthFail entirely and gets unbounded
-		// retries (TestAuthBadSecret*InvalidUUIDStillIncrementsAgentAuthFailWAF).
-		model.BlockIP(singleton.DB, ip, model.WAFBlockReasonTypeAgentAuthFail, model.BlockIDgRPC)
+		// Keep malformed/missing UUID failures on the existing WAF trigger
+		// surface, but retain the actual validation reason for administrators.
+		model.BlockIP(singleton.DB, ip, model.WAFBlockReasonTypeAgentUUIDInvalid, model.BlockIDgRPC)
 		return 0, status.Error(codes.Unauthenticated, "客户端 UUID 不合法")
 	}
 	if singleton.IsDeletedServerUUID(clientUUID) {
@@ -153,7 +159,16 @@ func (a *authHandler) check(ctx context.Context) (uint64, error) {
 	userId, ok := singleton.AgentSecretToUserId[clientSecret]
 	if !ok {
 		singleton.UserLock.RUnlock()
-		model.BlockIP(singleton.DB, ip, model.WAFBlockReasonTypeAgentAuthFail, model.BlockIDgRPC)
+		// Compare the reported UUID with registered nodes; knowing a UUID is
+		// not proof of ownership. Do not expose this distinction to the client.
+		reason := model.WAFBlockReasonTypeAgentUnknownCredential
+		if cid, found := singleton.ServerShared.UUIDToID(clientUUID); found {
+			if server, _ := singleton.ServerShared.Get(cid); server != nil {
+				reason = model.WAFBlockReasonTypeAgentSecretInvalid
+			}
+		}
+		model.BlockIP(singleton.DB, ip, reason, model.BlockIDgRPC)
+		singleton.RecordAgentAuthFailure(clientUUID, ip)
 		return 0, status.Error(codes.Unauthenticated, "客户端认证失败")
 	}
 	singleton.UserLock.RUnlock()
@@ -162,6 +177,7 @@ func (a *authHandler) check(ctx context.Context) (uint64, error) {
 
 	clientID, hasID, err := authorizeAgentForUUID(userId, clientUUID)
 	if err != nil {
+		singleton.RecordAgentAuthFailure(clientUUID, ip)
 		return 0, status.Error(codes.Unauthenticated, err.Error())
 	}
 	if hasID {
@@ -177,6 +193,7 @@ func (a *authHandler) check(ctx context.Context) (uint64, error) {
 	// A concurrent registration may have created this UUID while we waited.
 	clientID, hasID, err = authorizeAgentForUUID(userId, clientUUID)
 	if err != nil {
+		singleton.RecordAgentAuthFailure(clientUUID, ip)
 		return 0, status.Error(codes.Unauthenticated, err.Error())
 	}
 	if hasID {

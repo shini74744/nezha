@@ -46,7 +46,7 @@ func setupServerOwnershipFixture(t *testing.T) (stream *fakeTaskStream, reset fu
 
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	assert.NoError(t, err)
-	assert.NoError(t, db.AutoMigrate(&model.Server{}))
+	assert.NoError(t, db.AutoMigrate(&model.Server{}, &model.ServerOperationLog{}))
 	assert.NoError(t, db.Create(&model.Server{
 		Common: model.Common{ID: 1, UserID: 100},
 		Name:   "alice-online",

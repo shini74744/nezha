@@ -16,6 +16,11 @@ const (
 	WAFBlockReasonTypeAgentAuthFail
 	WAFBlockReasonTypeManual
 	WAFBlockReasonTypeBruteForceOauth2
+	// Append only: reason IDs are persisted in nz_waf. Legacy AgentAuthFail
+	// records did not retain enough information to classify retroactively.
+	WAFBlockReasonTypeAgentSecretInvalid
+	WAFBlockReasonTypeAgentUUIDInvalid
+	WAFBlockReasonTypeAgentUnknownCredential
 )
 
 const (

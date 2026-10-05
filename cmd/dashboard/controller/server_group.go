@@ -114,7 +114,7 @@ func createServerGroup(c *gin.Context) (uint64, error) {
 		return 0, singleton.Localizer.ErrorT("have invalid server id")
 	}
 
-	err := singleton.DB.Transaction(func(tx *gorm.DB) error {
+	err := model.WithServerOperation(singleton.DB, model.ServerOperationActorFromContext(c), "group", nil, func(tx *gorm.DB) error {
 		if err := tx.Create(&sg).Error; err != nil {
 			return err
 		}
@@ -193,7 +193,7 @@ func updateServerGroup(c *gin.Context) (any, error) {
 
 	uid := getUid(c)
 
-	err = singleton.DB.Transaction(func(tx *gorm.DB) error {
+	err = model.WithServerOperation(singleton.DB, model.ServerOperationActorFromContext(c), "group", nil, func(tx *gorm.DB) error {
 		if err := tx.Save(&sgDB).Error; err != nil {
 			return err
 		}
@@ -261,7 +261,7 @@ func batchDeleteServerGroup(c *gin.Context) (any, error) {
 		}
 	}
 
-	err := singleton.DB.Transaction(func(tx *gorm.DB) error {
+	err := model.WithServerOperation(singleton.DB, model.ServerOperationActorFromContext(c), "group", nil, func(tx *gorm.DB) error {
 		if err := tx.Unscoped().Delete(&model.ServerGroup{}, "id in (?)", sgs).Error; err != nil {
 			return err
 		}

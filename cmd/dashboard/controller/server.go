@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/goccy/go-json"
+	"gorm.io/gorm"
 
 	"github.com/nezhahq/nezha/model"
 	"github.com/nezhahq/nezha/pkg/tsdb"
@@ -110,7 +111,19 @@ func updateServer(c *gin.Context) (any, error) {
 	}
 	s.OverrideDDNSDomainsRaw = string(overrideDomainsRaw)
 
-	if err := singleton.DB.Save(&s).Error; err != nil {
+	if err := model.WithServerOperation(singleton.DB, model.ServerOperationActorFromContext(c), "edit", []uint64{id}, func(tx *gorm.DB) error {
+		// Never resurrect a concurrently deleted node or overwrite a new owner.
+		result := tx.Model(&model.Server{}).Where("id = ? AND uuid = ? AND user_id = ?", s.ID, s.UUID, s.UserID).
+			Select("name", "display_index", "note", "public_note", "hide_for_guest", "hide_for_display", "enable_ddns", "ddns_profiles_raw", "override_ddns_domains_raw").
+			Updates(&s)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return errors.New("节点身份或归属已变化，请刷新后重试")
+		}
+		return nil
+	}); err != nil {
 		return nil, newGormError("%v", err)
 	}
 
@@ -165,6 +178,15 @@ func forceUpdateServer(c *gin.Context) (*model.ServerTaskResponse, error) {
 		return nil, err
 	}
 
+	requested := make([]*model.Server, 0, len(forceUpdateServers))
+	for _, id := range forceUpdateServers {
+		if server, ok := singleton.ServerShared.Get(id); ok && server != nil && server.HasPermission(c) && server.GetTaskStream() != nil {
+			requested = append(requested, server)
+		}
+	}
+	if err := recordAgentOperationRequest(c, requested, "agent_update", "update", "请求更新 Agent（不代表已更新成功）"); err != nil {
+		return nil, err
+	}
 	forceUpdateResp := new(model.ServerTaskResponse)
 
 	for _, sid := range forceUpdateServers {
@@ -284,6 +306,9 @@ func setServerConfig(c *gin.Context) (*model.ServerTaskResponse, error) {
 		}
 	}
 
+	if err := recordAgentOperationRequest(c, servers, "agent_config", "config", "请求下发新配置（内容不记录；不代表已应用成功）"); err != nil {
+		return nil, err
+	}
 	var wg sync.WaitGroup
 	var respMu sync.Mutex
 
