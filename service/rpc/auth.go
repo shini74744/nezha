@@ -36,6 +36,8 @@ func (a *authHandler) CheckRequestTask(ctx context.Context) (uint64, error) {
 func (a *authHandler) check(ctx context.Context) (uint64, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
+		ip, _ := ctx.Value(model.CtxKeyRealIP{}).(string)
+		singleton.RecordAgentIdentityRejection("", ip)
 		return 0, status.Errorf(codes.Unauthenticated, "获取 metaData 失败")
 	}
 
@@ -50,6 +52,8 @@ func (a *authHandler) check(ctx context.Context) (uint64, error) {
 			} else {
 				singleton.RecordAgentAuthFailure(clientUUID, ip)
 			}
+		} else {
+			singleton.RecordAgentIdentityRejection(clientUUID, ip)
 		}
 		return 0, status.Error(codes.Unauthenticated, "客户端认证失败")
 	}
@@ -62,6 +66,7 @@ func (a *authHandler) check(ctx context.Context) (uint64, error) {
 		// Keep malformed/missing UUID failures on the existing WAF trigger
 		// surface, but retain the actual validation reason for administrators.
 		model.BlockIP(singleton.DB, ip, model.WAFBlockReasonTypeAgentUUIDInvalid, model.BlockIDgRPC)
+		singleton.RecordAgentIdentityRejection(clientUUID, ip)
 		return 0, status.Error(codes.Unauthenticated, "客户端 UUID 不合法")
 	}
 	if singleton.IsDeletedServerUUID(clientUUID) {

@@ -12,6 +12,11 @@ for (const width of [360, 1366])
                 }, dark)
                 let fail = false
                 const writes: string[] = []
+                const duplicateKeys: string[] = []
+                page.on("console", (message) => {
+                    if (/same key|unique.*key/i.test(message.text()))
+                        duplicateKeys.push(message.text())
+                })
                 await page.route("**/api/v1/**", async (route) => {
                     const url = new URL(route.request().url()),
                         path = url.pathname
@@ -95,6 +100,18 @@ for (const width of [360, 1366])
                                     last_report_at: 1791174100,
                                     report_count: 3,
                                 },
+                                ...[
+                                    { kind: "uuid_missing", last_ip: "192.0.2.21" },
+                                    { kind: "uuid_missing", last_ip: "192.0.2.22" },
+                                    { kind: "uuid_invalid", last_ip: "2001:db8::23" },
+                                ].map((row) => ({
+                                    ...row,
+                                    uuid: "",
+                                    name: "未识别节点",
+                                    first_report_at: 1791174000,
+                                    last_report_at: 1791174100,
+                                    report_count: 5,
+                                })),
                                 {
                                     uuid: "deleted-returning-uuid",
                                     name: "删除后重连的节点",
@@ -105,7 +122,7 @@ for (const width of [360, 1366])
                                     report_count: 2,
                                 },
                             ],
-                            pagination: { total: 4 },
+                            pagination: { total: 7 },
                         }
                     if (path === "/api/v1/waf/deleted-servers")
                         data = {
@@ -172,6 +189,14 @@ for (const width of [360, 1366])
                 await expect(unknown).toContainText("新连接：192.0.2.11")
                 await expect(unknown).toContainText("待核查 · 未自动封禁")
                 await expect(unknown).toContainText("已删除节点重连")
+                await expect(unknown).toContainText("UUID 缺失")
+                await expect(unknown).toContainText("UUID 格式不合法")
+                await expect(unknown).toContainText("UUID：未提供")
+                await expect(unknown).toContainText("UUID：格式不合法（原文不保存）")
+                await expect(unknown).toContainText("192.0.2.21")
+                await expect(unknown).toContainText("192.0.2.22")
+                await expect(unknown).toContainText("2001:db8::23")
+                await expect(unknown).toContainText("共 7 条分类记录")
                 await expect(unknown).not.toContainText("删除后未再上报")
                 expect(
                     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
@@ -201,6 +226,7 @@ for (const width of [360, 1366])
                     fullPage: true,
                 })
                 expect(writes).toEqual([])
+                expect(duplicateKeys).toEqual([])
             },
         )
     }
