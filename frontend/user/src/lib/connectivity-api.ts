@@ -21,7 +21,7 @@ export interface ConnectivitySample {
 export interface ConnectivityResult {
 	id: string;
 	name: string;
-	group: "global" | "china";
+	group: "china" | "japan" | "usa" | "global";
 	host: string;
 	status: ConnectivityStatus;
 	samples: ConnectivitySample[];

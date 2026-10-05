@@ -142,3 +142,57 @@ describe("node connectivity", () => {
 		);
 	});
 });
+
+describe("expanded connectivity catalog", () => {
+	it("renders all four regions, all 48 packaged logos and sample indicators", async () => {
+		const { default: catalog } = await import(
+			"../../../../../service/connectivity/catalog.json"
+		);
+		const { connectivityIcons } = await import("@/lib/connectivity-icons");
+		expect(Object.keys(connectivityIcons).sort()).toEqual(
+			catalog.map((row) => row.id).sort(),
+		);
+		const results = catalog.map(({ id, name, group, host }) => ({
+			id,
+			name,
+			group: group as ConnectivityData["results"][number]["group"],
+			host,
+			status: "pending" as const,
+			samples: [],
+		}));
+		api.fetchConnectivity.mockResolvedValue(data({ results }));
+		const view = mount();
+		await screen.findByText("DeepSeek");
+		expect(
+			view.container.querySelectorAll("[data-connectivity-target]"),
+		).toHaveLength(48);
+		expect(
+			view.container.querySelectorAll("[data-connectivity-group]"),
+		).toHaveLength(4);
+		expect(
+			view.container.querySelectorAll("img[data-connectivity-icon]"),
+		).toHaveLength(48);
+		expect(
+			view.container.querySelectorAll("[data-connectivity-sample]"),
+		).toHaveLength(144);
+		for (const image of view.container.querySelectorAll(
+			"img[data-connectivity-icon]",
+		)) {
+			expect(image.getAttribute("src")).not.toMatch(/^https?:\/\//);
+		}
+		expect(api.startConnectivity).not.toHaveBeenCalled();
+	});
+	it("keeps the site name visible and falls back safely if a logo fails", async () => {
+		api.fetchConnectivity.mockResolvedValue(data());
+		const view = mount();
+		await screen.findByText("Google");
+		const logo = view.container.querySelector("img[data-connectivity-icon]");
+		expect(logo).not.toBeNull();
+		if (!logo) throw new Error("packaged brand icon missing");
+		fireEvent.error(logo);
+		expect(
+			view.container.querySelector("[data-connectivity-icon-fallback]"),
+		).not.toBeNull();
+		expect(screen.getByText("Google")).toBeVisible();
+	});
+});

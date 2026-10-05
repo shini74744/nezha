@@ -1,0 +1,246 @@
+{
+  "reference": "https://ip.net.coffee/link/",
+  "retrieved": "2026-10-06",
+  "icons": [
+    {
+      "id": "deepseek",
+      "file": "deepseek.ico",
+      "source": "https://ip.net.coffee/favicons/link/deepseek.ico?v=4"
+    },
+    {
+      "id": "douyin",
+      "file": "douyin.ico",
+      "source": "https://ip.net.coffee/favicons/link/douyin.ico?v=4"
+    },
+    {
+      "id": "bilibili",
+      "file": "bilibili.ico",
+      "source": "https://ip.net.coffee/favicons/link/bilibili.ico?v=4"
+    },
+    {
+      "id": "jd",
+      "file": "jd.ico",
+      "source": "https://ip.net.coffee/favicons/link/jd.ico?v=4"
+    },
+    {
+      "id": "qq",
+      "file": "qq.webp",
+      "source": "https://ip.net.coffee/favicons/tencent.webp"
+    },
+    {
+      "id": "weixin",
+      "file": "weixin.webp",
+      "source": "https://ip.net.coffee/favicons/weixin.webp"
+    },
+    {
+      "id": "xiaohongshu",
+      "file": "xiaohongshu.ico",
+      "source": "https://ip.net.coffee/favicons/link/xiaohongshu.ico?v=4"
+    },
+    {
+      "id": "weibo",
+      "file": "weibo.ico",
+      "source": "https://ip.net.coffee/favicons/link/weibo.ico?v=4"
+    },
+    {
+      "id": "baidu",
+      "file": "baidu.ico",
+      "source": "https://ip.net.coffee/favicons/link/baidu.ico?v=4"
+    },
+    {
+      "id": "netease",
+      "file": "netease.png",
+      "source": "https://ip.net.coffee/favicons/netease.png"
+    },
+    {
+      "id": "taobao",
+      "file": "taobao.webp",
+      "source": "https://ip.net.coffee/favicons/taobao.webp"
+    },
+    {
+      "id": "mi",
+      "file": "mi.ico",
+      "source": "https://ip.net.coffee/favicons/link/mi.ico?v=4"
+    },
+    {
+      "id": "sony",
+      "file": "sony.ico",
+      "source": "https://ip.net.coffee/favicons/link/sony.ico?v=4"
+    },
+    {
+      "id": "nintendo",
+      "file": "nintendo.ico",
+      "source": "https://ip.net.coffee/favicons/link/nintendo.ico?v=4"
+    },
+    {
+      "id": "yahoojp",
+      "file": "yahoojp.ico",
+      "source": "https://ip.net.coffee/favicons/link/yahoojp.ico?v=4"
+    },
+    {
+      "id": "line",
+      "file": "line.png",
+      "source": "https://ip.net.coffee/favicons/link/line.png?v=4"
+    },
+    {
+      "id": "apple",
+      "file": "apple.ico",
+      "source": "https://ip.net.coffee/favicons/link/apple.ico?v=4"
+    },
+    {
+      "id": "google",
+      "file": "google.ico",
+      "source": "https://ip.net.coffee/favicons/link/google.ico?v=4"
+    },
+    {
+      "id": "youtube",
+      "file": "youtube.webp",
+      "source": "https://ip.net.coffee/favicons/youtube.webp"
+    },
+    {
+      "id": "github",
+      "file": "github.webp",
+      "source": "https://ip.net.coffee/favicons/github.webp"
+    },
+    {
+      "id": "cloudflare",
+      "file": "cloudflare.webp",
+      "source": "https://ip.net.coffee/favicons/cloudflare.webp"
+    },
+    {
+      "id": "claude",
+      "file": "claude.webp",
+      "source": "https://ip.net.coffee/favicons/claude.webp"
+    },
+    {
+      "id": "chatgpt",
+      "file": "chatgpt.webp",
+      "source": "https://ip.net.coffee/favicons/chatgpt.webp"
+    },
+    {
+      "id": "gemini",
+      "file": "gemini.png",
+      "source": "https://ip.net.coffee/favicons/link/gemini.png?v=4"
+    },
+    {
+      "id": "amazon",
+      "file": "amazon.ico",
+      "source": "https://ip.net.coffee/favicons/link/amazon.ico?v=4"
+    },
+    {
+      "id": "bing",
+      "file": "bing.ico",
+      "source": "https://ip.net.coffee/favicons/link/bing.ico?v=4"
+    },
+    {
+      "id": "steam",
+      "file": "steam.ico",
+      "source": "https://ip.net.coffee/favicons/link/steam.ico?v=4"
+    },
+    {
+      "id": "oracle",
+      "file": "oracle.ico",
+      "source": "https://ip.net.coffee/favicons/link/oracle.ico?v=4"
+    },
+    {
+      "id": "zoom",
+      "file": "zoom.webp",
+      "source": "https://ip.net.coffee/favicons/zoom.webp"
+    },
+    {
+      "id": "facebook",
+      "file": "facebook.ico",
+      "source": "https://ip.net.coffee/favicons/link/facebook.ico?v=4"
+    },
+    {
+      "id": "instagram",
+      "file": "instagram.png",
+      "source": "https://ip.net.coffee/favicons/link/instagram.png?v=4"
+    },
+    {
+      "id": "x",
+      "file": "x.webp",
+      "source": "https://ip.net.coffee/favicons/x.webp"
+    },
+    {
+      "id": "reddit",
+      "file": "reddit.png",
+      "source": "https://ip.net.coffee/favicons/link/reddit.png?v=4"
+    },
+    {
+      "id": "linkedin",
+      "file": "linkedin.ico",
+      "source": "https://ip.net.coffee/favicons/link/linkedin.ico?v=4"
+    },
+    {
+      "id": "twitch",
+      "file": "twitch.ico",
+      "source": "https://ip.net.coffee/favicons/link/twitch.ico?v=4"
+    },
+    {
+      "id": "netflix",
+      "file": "netflix.ico",
+      "source": "https://ip.net.coffee/favicons/link/netflix.ico?v=4"
+    },
+    {
+      "id": "tiktok",
+      "file": "tiktok.png",
+      "source": "https://ip.net.coffee/favicons/link/tiktok.png?v=4"
+    },
+    {
+      "id": "spotify",
+      "file": "spotify.ico",
+      "source": "https://ip.net.coffee/favicons/link/spotify.ico?v=4"
+    },
+    {
+      "id": "npm",
+      "file": "npm.png",
+      "source": "https://ip.net.coffee/favicons/link/npm.png?v=4"
+    },
+    {
+      "id": "takealot",
+      "file": "takealot.png",
+      "source": "https://ip.net.coffee/favicons/link/takealot.png?v=4"
+    },
+    {
+      "id": "pixpix",
+      "file": "pixpix.ico",
+      "source": "https://ip.net.coffee/favicons/link/pixpix.ico?v=4"
+    },
+    {
+      "id": "naver",
+      "file": "naver.ico",
+      "source": "https://ip.net.coffee/favicons/link/naver.ico?v=4"
+    },
+    {
+      "id": "noon",
+      "file": "noon.png",
+      "source": "https://ip.net.coffee/favicons/link/noon.png?v=4"
+    },
+    {
+      "id": "wikipedia",
+      "file": "wikipedia.ico",
+      "source": "https://ip.net.coffee/favicons/link/wikipedia.ico?v=4"
+    },
+    {
+      "id": "bbc",
+      "file": "bbc.ico",
+      "source": "https://ip.net.coffee/favicons/link/bbc.ico?v=4"
+    },
+    {
+      "id": "mistral",
+      "file": "mistral.ico",
+      "source": "https://ip.net.coffee/favicons/link/mistral.ico?v=4"
+    },
+    {
+      "id": "yandex",
+      "file": "yandex.ico",
+      "source": "https://ip.net.coffee/favicons/link/yandex.ico?v=4"
+    },
+    {
+      "id": "mercadolibre",
+      "file": "mercadolibre.ico",
+      "source": "https://ip.net.coffee/favicons/link/mercadolibre.ico?v=4"
+    }
+  ]
+}

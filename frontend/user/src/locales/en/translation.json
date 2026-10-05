@@ -111,6 +111,11 @@
 		"backendUnavailableDescription": "The page is still available, but data cannot be loaded right now."
 	},
 	"connectivity": {
+		"sample": "Sample {{index}}",
+		"samples": "{{done}} / {{total}} samples",
+		"reachableCount": "Reachable {{count}} / {{total}}",
+		"usa": "United States",
+		"japan": "Japan",
 		"title": "Node connectivity",
 		"origin": "HTTPS probes originate from this node, not your browser",
 		"helpTitle": "About connectivity",
@@ -131,8 +136,8 @@
 		"empty": "No test results yet",
 		"time": "Test time",
 		"rounds": "{{count}} attempts each",
-		"global": "Global websites",
-		"china": "China websites",
+		"global": "Global",
+		"china": "China",
 		"status": {
 			"pending": "Not tested",
 			"running": "Testing",

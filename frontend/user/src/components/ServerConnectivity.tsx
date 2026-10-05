@@ -19,6 +19,15 @@ import {
 	type ConnectivityResult,
 } from "@/lib/connectivity-api";
 import { cn } from "@/lib/utils";
+import { connectivityIcons } from "@/lib/connectivity-icons";
+import { CN, JP, US } from "country-flag-icons/react/3x2";
+
+const regions = [
+	{ id: "china", Icon: CN },
+	{ id: "japan", Icon: JP },
+	{ id: "usa", Icon: US },
+	{ id: "global", Icon: Globe2 },
+] as const;
 
 export default function ServerConnectivity({ serverId }: { serverId: number }) {
 	const { t, i18n } = useTranslation();
@@ -210,12 +219,31 @@ export default function ServerConnectivity({ serverId }: { serverId: number }) {
 			</Card>
 			{!query.isError &&
 				data &&
-				["global", "china"].map((group) => (
-					<div key={group} className="space-y-2">
-						<h3 className="text-xs font-medium text-muted-foreground">
-							{t("connectivity." + group)}
-						</h3>
-						<div className="grid min-w-0 grid-cols-1 gap-3 min-[360px]:grid-cols-2 lg:grid-cols-3">
+				regions.map(({ id: group, Icon }) => (
+					<div
+						key={group}
+						data-connectivity-group={group}
+						className="space-y-2"
+					>
+						<div className="flex flex-wrap items-center justify-between gap-2">
+							<h3 className="flex items-center gap-2 text-sm font-semibold">
+								<Icon className="h-4 w-6 shrink-0" aria-hidden />
+								{t(`connectivity.${group}`)}
+							</h3>
+							<span className="text-xs text-muted-foreground">
+								{t("connectivity.reachableCount", {
+									count: data.results.filter(
+										(r) =>
+											r.group === group &&
+											r.samples.some(
+												(s) => s.status === "ok" || s.status === "http_error",
+											),
+									).length,
+									total: data.results.filter((r) => r.group === group).length,
+								})}
+							</span>
+						</div>
+						<div className="grid min-w-0 grid-cols-1 gap-3 min-[360px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 							{data.results
 								.filter((result) => result.group === group)
 								.map((result) => (
@@ -239,9 +267,11 @@ function ConnectivityCard({
 	rounds: number;
 }) {
 	const { t } = useTranslation();
+	const [iconFailed, setIconFailed] = useState(false);
+	const icon = connectivityIcons[result.id];
 	const status = result.status;
-	const positive = status === "ok",
-		reached = status === "http_error";
+	const positive = status === "ok";
+	const reached = status === "http_error";
 	const waiting = status === "pending" || status === "running";
 	const Icon = positive
 		? CheckCircle2
@@ -256,31 +286,94 @@ function ConnectivityCard({
 		),
 	];
 	const delay = result.delay_ms;
+	const hasDelay = delay !== undefined && Number.isFinite(delay);
 	return (
 		<Card data-connectivity-target={result.id} className="min-w-0">
-			<CardContent className="space-y-3 p-4">
-				<div className="flex min-w-0 items-start gap-2.5">
-					<span
-						className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold"
-						aria-hidden
-					>
-						{result.name.slice(0, 1)}
+			<CardContent className="space-y-2.5 p-3">
+				<div className="flex min-w-0 items-center gap-2.5">
+					<span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/95 p-1.5">
+						{icon && !iconFailed ? (
+							<img
+								data-connectivity-icon
+								src={icon}
+								alt=""
+								aria-hidden
+								className="size-6 object-contain"
+								onError={() => setIconFailed(true)}
+							/>
+						) : (
+							<Globe2
+								data-connectivity-icon-fallback
+								className="size-5 text-slate-500"
+								aria-hidden
+							/>
+						)}
 					</span>
 					<div className="min-w-0">
 						<h4 className="truncate text-sm font-semibold" title={result.name}>
 							{result.name}
 						</h4>
 						<p
-							className="truncate text-[11px] text-muted-foreground"
+							className="truncate text-[10px] text-muted-foreground"
 							title={result.host}
 						>
 							{result.host}
 						</p>
 					</div>
 				</div>
+				<div className="flex items-center justify-between gap-2">
+					<div
+						className="flex items-center gap-1"
+						role="img"
+						aria-label={t("connectivity.samples", {
+							done: result.samples.length,
+							total: rounds,
+						})}
+					>
+						{Array.from({ length: rounds }, (_, index) => {
+							const sample = result.samples[index];
+							const responded =
+								sample?.status === "ok" || sample?.status === "http_error";
+							return (
+								<span
+									key={index}
+									data-connectivity-sample
+									title={
+										t("connectivity.sample", { index: index + 1 }) +
+										": " +
+										t(`connectivity.status.${sample?.status || "pending"}`)
+									}
+									className={cn(
+										"size-1.5 rounded-full",
+										!sample
+											? "bg-muted-foreground/30"
+											: responded
+												? "bg-emerald-600 dark:bg-emerald-400"
+												: "bg-red-600 dark:bg-red-400",
+									)}
+								/>
+							);
+						})}
+						<span className="ml-1 text-[10px] text-muted-foreground">
+							{result.samples.length}/{rounds}
+						</span>
+					</div>
+					<p className="shrink-0 font-mono text-lg font-semibold tabular-nums">
+						{hasDelay ? (
+							<>
+								{delay.toFixed(delay < 10 ? 1 : 0)}
+								<span className="ml-0.5 text-[10px] font-normal text-muted-foreground">
+									ms
+								</span>
+							</>
+						) : (
+							<span className="text-muted-foreground">—</span>
+						)}
+					</p>
+				</div>
 				<div
 					className={cn(
-						"flex items-start gap-1.5 text-xs leading-5",
+						"flex items-start gap-1 text-[11px] leading-4",
 						positive
 							? "text-emerald-700 dark:text-emerald-300"
 							: reached || status === "unstable"
@@ -290,29 +383,12 @@ function ConnectivityCard({
 									: "text-red-700 dark:text-red-300",
 					)}
 				>
-					<Icon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+					<Icon className="mt-0.5 size-3 shrink-0" aria-hidden />
 					<span>
-						{t("connectivity.status." + status)}
+						{t(`connectivity.status.${status}`)}
 						{codes.length > 0 && (
 							<span className="ml-1">(HTTP {codes.join("/")})</span>
 						)}
-					</span>
-				</div>
-				<div className="flex items-end justify-between gap-2">
-					<p className="font-mono text-xl font-semibold tabular-nums">
-						{delay !== undefined && Number.isFinite(delay) ? (
-							<>
-								{delay.toFixed(delay < 10 ? 1 : 0)}
-								<span className="ml-1 text-xs font-normal text-muted-foreground">
-									ms
-								</span>
-							</>
-						) : (
-							<span className="text-muted-foreground">—</span>
-						)}
-					</p>
-					<span className="text-[11px] text-muted-foreground">
-						{result.samples.length}/{rounds}
 					</span>
 				</div>
 			</CardContent>

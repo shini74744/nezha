@@ -1,0 +1,338 @@
+[
+  {
+    "id": "deepseek",
+    "name": "DeepSeek",
+    "group": "china",
+    "host": "www.deepseek.com",
+    "url": "https://www.deepseek.com/favicon.ico"
+  },
+  {
+    "id": "douyin",
+    "name": "抖音",
+    "group": "china",
+    "host": "lf3-static.bytednsdoc.com",
+    "url": "https://lf3-static.bytednsdoc.com/obj/eden-cn/favicon.ico"
+  },
+  {
+    "id": "bilibili",
+    "name": "哔哩哔哩",
+    "group": "china",
+    "host": "www.bilibili.com",
+    "url": "https://www.bilibili.com/favicon.ico"
+  },
+  {
+    "id": "jd",
+    "name": "京东",
+    "group": "china",
+    "host": "www.jd.com",
+    "url": "https://www.jd.com/favicon.ico"
+  },
+  {
+    "id": "qq",
+    "name": "腾讯QQ",
+    "group": "china",
+    "host": "www.qq.com",
+    "url": "https://www.qq.com/favicon.ico"
+  },
+  {
+    "id": "weixin",
+    "name": "微信",
+    "group": "china",
+    "host": "res.wx.qq.com",
+    "url": "https://res.wx.qq.com/a/wx_fed/assets/res/NTI4MWU5.ico"
+  },
+  {
+    "id": "xiaohongshu",
+    "name": "小红书",
+    "group": "china",
+    "host": "fe-static.xhscdn.com",
+    "url": "https://fe-static.xhscdn.com/favicon.ico"
+  },
+  {
+    "id": "weibo",
+    "name": "新浪微博",
+    "group": "china",
+    "host": "tva1.sinaimg.cn",
+    "url": "https://tva1.sinaimg.cn/favicon.ico"
+  },
+  {
+    "id": "baidu",
+    "name": "百度",
+    "group": "china",
+    "host": "www.baidu.com",
+    "url": "https://www.baidu.com/favicon.ico"
+  },
+  {
+    "id": "netease",
+    "name": "网易",
+    "group": "china",
+    "host": "www.163.com",
+    "url": "https://www.163.com/favicon.ico"
+  },
+  {
+    "id": "taobao",
+    "name": "淘宝",
+    "group": "china",
+    "host": "www.taobao.com",
+    "url": "https://www.taobao.com/favicon.ico"
+  },
+  {
+    "id": "mi",
+    "name": "小米",
+    "group": "china",
+    "host": "www.mi.com",
+    "url": "https://www.mi.com/favicon.ico"
+  },
+  {
+    "id": "sony",
+    "name": "Sony",
+    "group": "japan",
+    "host": "www.sony.jp",
+    "url": "https://www.sony.jp/favicon.ico"
+  },
+  {
+    "id": "nintendo",
+    "name": "任天堂",
+    "group": "japan",
+    "host": "www.nintendo.co.jp",
+    "url": "https://www.nintendo.co.jp/favicon.ico"
+  },
+  {
+    "id": "yahoojp",
+    "name": "Yahoo! JP",
+    "group": "japan",
+    "host": "www.yahoo.co.jp",
+    "url": "https://www.yahoo.co.jp/favicon.ico"
+  },
+  {
+    "id": "line",
+    "name": "LINE",
+    "group": "japan",
+    "host": "line.me",
+    "url": "https://line.me/favicon.ico"
+  },
+  {
+    "id": "apple",
+    "name": "Apple",
+    "group": "usa",
+    "host": "www.apple.com",
+    "url": "https://www.apple.com/favicon.ico"
+  },
+  {
+    "id": "google",
+    "name": "Google",
+    "group": "usa",
+    "host": "www.google.com",
+    "url": "https://www.google.com/generate_204"
+  },
+  {
+    "id": "youtube",
+    "name": "YouTube",
+    "group": "usa",
+    "host": "www.youtube.com",
+    "url": "https://www.youtube.com/generate_204"
+  },
+  {
+    "id": "github",
+    "name": "GitHub",
+    "group": "usa",
+    "host": "github.com",
+    "url": "https://github.com/generate_204"
+  },
+  {
+    "id": "cloudflare",
+    "name": "Cloudflare",
+    "group": "usa",
+    "host": "1.1.1.1",
+    "url": "https://1.1.1.1/cdn-cgi/trace"
+  },
+  {
+    "id": "claude",
+    "name": "Claude",
+    "group": "usa",
+    "host": "api.anthropic.com",
+    "url": "https://api.anthropic.com/favicon.ico"
+  },
+  {
+    "id": "chatgpt",
+    "name": "ChatGPT",
+    "group": "usa",
+    "host": "chatgpt.com",
+    "url": "https://chatgpt.com/cdn-cgi/trace"
+  },
+  {
+    "id": "gemini",
+    "name": "AI Studio",
+    "group": "usa",
+    "host": "generativelanguage.googleapis.com",
+    "url": "https://generativelanguage.googleapis.com/favicon.ico"
+  },
+  {
+    "id": "amazon",
+    "name": "Amazon",
+    "group": "usa",
+    "host": "www.amazon.com",
+    "url": "https://www.amazon.com/favicon.ico"
+  },
+  {
+    "id": "bing",
+    "name": "Bing",
+    "group": "usa",
+    "host": "www.bing.com",
+    "url": "https://www.bing.com/favicon.ico"
+  },
+  {
+    "id": "steam",
+    "name": "Steam",
+    "group": "usa",
+    "host": "store.steampowered.com",
+    "url": "https://store.steampowered.com/favicon.ico"
+  },
+  {
+    "id": "oracle",
+    "name": "Oracle",
+    "group": "usa",
+    "host": "www.oracle.com",
+    "url": "https://www.oracle.com/favicon.ico"
+  },
+  {
+    "id": "zoom",
+    "name": "Zoom",
+    "group": "usa",
+    "host": "st1.zoom.us",
+    "url": "https://st1.zoom.us/favicon.ico"
+  },
+  {
+    "id": "facebook",
+    "name": "Facebook",
+    "group": "usa",
+    "host": "static.xx.fbcdn.net",
+    "url": "https://static.xx.fbcdn.net/rsrc.php/yb/r/hLRJ1GG_y0J.ico"
+  },
+  {
+    "id": "instagram",
+    "name": "Instagram",
+    "group": "usa",
+    "host": "static.cdninstagram.com",
+    "url": "https://static.cdninstagram.com/rsrc.php/yb/r/hLRJ1GG_y0J.ico"
+  },
+  {
+    "id": "x",
+    "name": "X",
+    "group": "usa",
+    "host": "abs.twimg.com",
+    "url": "https://abs.twimg.com/favicons/twitter.3.ico"
+  },
+  {
+    "id": "reddit",
+    "name": "Reddit",
+    "group": "usa",
+    "host": "www.reddit.com",
+    "url": "https://www.reddit.com/favicon.ico"
+  },
+  {
+    "id": "linkedin",
+    "name": "LinkedIn",
+    "group": "usa",
+    "host": "static.licdn.com",
+    "url": "https://static.licdn.com/favicon.ico"
+  },
+  {
+    "id": "twitch",
+    "name": "Twitch",
+    "group": "usa",
+    "host": "static.twitchcdn.net",
+    "url": "https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png"
+  },
+  {
+    "id": "netflix",
+    "name": "Netflix",
+    "group": "usa",
+    "host": "assets.nflxext.com",
+    "url": "https://assets.nflxext.com/us/ffe/siteui/common/icons/nficon2016.ico"
+  },
+  {
+    "id": "tiktok",
+    "name": "TikTok",
+    "group": "global",
+    "host": "www.tiktok.com",
+    "url": "https://www.tiktok.com/favicon.ico"
+  },
+  {
+    "id": "spotify",
+    "name": "Spotify",
+    "group": "global",
+    "host": "open.spotify.com",
+    "url": "https://open.spotify.com/favicon.ico"
+  },
+  {
+    "id": "npm",
+    "name": "npm",
+    "group": "global",
+    "host": "registry.npmjs.org",
+    "url": "https://registry.npmjs.org/"
+  },
+  {
+    "id": "takealot",
+    "name": "Takealot",
+    "group": "global",
+    "host": "static.takealot.com",
+    "url": "https://static.takealot.com/favicon.ico"
+  },
+  {
+    "id": "pixpix",
+    "name": "PixPix",
+    "group": "global",
+    "host": "www.pixpix.com",
+    "url": "https://www.pixpix.com/favicon.ico"
+  },
+  {
+    "id": "naver",
+    "name": "Naver",
+    "group": "global",
+    "host": "www.naver.com",
+    "url": "https://www.naver.com/favicon.ico"
+  },
+  {
+    "id": "noon",
+    "name": "Noon",
+    "group": "global",
+    "host": "www.noon.com",
+    "url": "https://www.noon.com/favicon.ico"
+  },
+  {
+    "id": "wikipedia",
+    "name": "Wikipedia",
+    "group": "global",
+    "host": "www.wikipedia.org",
+    "url": "https://www.wikipedia.org/static/favicon/wikipedia.ico"
+  },
+  {
+    "id": "bbc",
+    "name": "BBC",
+    "group": "global",
+    "host": "www.bbc.com",
+    "url": "https://www.bbc.com/favicon.ico"
+  },
+  {
+    "id": "mistral",
+    "name": "Mistral AI",
+    "group": "global",
+    "host": "mistral.ai",
+    "url": "https://mistral.ai/favicon.ico"
+  },
+  {
+    "id": "yandex",
+    "name": "Yandex",
+    "group": "global",
+    "host": "yastatic.net",
+    "url": "https://yastatic.net/favicon.ico"
+  },
+  {
+    "id": "mercadolibre",
+    "name": "MercadoLibre",
+    "group": "global",
+    "host": "http2.mlstatic.com",
+    "url": "https://http2.mlstatic.com/favicon.ico"
+  }
+]
