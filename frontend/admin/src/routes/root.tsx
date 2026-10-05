@@ -46,7 +46,7 @@ export default function Root() {
             <DashboardAppearanceProvider raw={settingData?.config?.dashboard_appearance_config}>
             <DashboardUTCText/>
             <section className="text-sm mx-auto h-full flex flex-col justify-between">
-                <div>
+                <div className="dashboard-page-surface">
                     <Header />
                     <div className="dashboard-shell dashboard-content">
                         <Outlet />

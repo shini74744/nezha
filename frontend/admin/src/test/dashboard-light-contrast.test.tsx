@@ -1,0 +1,60 @@
+import { cleanup, render } from "@testing-library/react"
+import { afterEach, expect, test } from "vitest"
+import { DashboardAppearanceProvider } from "../components/dashboard-appearance"
+import { dashboardDefaults } from "../lib/dashboard-appearance"
+
+afterEach(cleanup)
+const light = "html[data-nz-dashboard]:not(.dark)"
+function config() {
+    const c = dashboardDefaults()
+    c.enabled = true
+    c.features.font.enabled = false
+    c.features.effects.enabled = false
+    return c
+}
+function styles(c = config()) {
+    return render(
+        <DashboardAppearanceProvider raw={JSON.stringify(c)}>
+            <div className="dashboard-page-surface">服务器</div>
+        </DashboardAppearanceProvider>,
+    )
+}
+test("background gets light-only contrast floors without changing saved settings", () => {
+    const c = config(), before = JSON.stringify(c)
+    const view = styles(c)
+    const css = view.container.querySelector("style")!.textContent!
+    expect(css).toContain(light + "{")
+    expect(css).toContain("background-color:rgb(255 255 255 / 0.88)")
+    expect(css).toContain("--popover:0 0% 100% / 0.96")
+    expect(css).toContain("--muted-foreground:215 20% 32%")
+    expect(css).toContain("html[data-nz-dashboard].dark{--background:0 0% 5% / 0.58")
+    expect(JSON.stringify(c)).toBe(before)
+})
+test.each(["disabled", "background-off", "empty-image"])("%s does not receive the light surface", mode => {
+    const c = config()
+    if (mode === "disabled") c.enabled = false
+    if (mode === "background-off") c.features.background.enabled = false
+    if (mode === "empty-image") c.features.background.image = ""
+    const view = styles(c)
+    expect(view.container.querySelector("style")?.textContent ?? "").not.toContain(light)
+})
+test("higher opacity is respected; disabling appearance keeps a readable solid surface", () => {
+    const c = config()
+    c.features.appearance.lightBackgroundOpacity = .98
+    const view = styles(c)
+    expect(view.container.querySelector("style")!.textContent).toContain("background-color:rgb(255 255 255 / 0.98)")
+    c.features.appearance.enabled = false
+    view.rerender(<DashboardAppearanceProvider raw={JSON.stringify(c)}><div /></DashboardAppearanceProvider>)
+    const css = view.container.querySelector("style")!.textContent!
+    expect(css).toContain("--background:0 0% 100% / 1")
+    expect(css).toContain("background-color:rgb(255 255 255 / 1)")
+    expect(css).toContain("backdrop-filter:blur(0px)")
+})
+test("disabling beauty removes the safety layer and dashboard marker", () => {
+    const c = config(), view = styles(c)
+    expect(document.documentElement.getAttribute("data-nz-dashboard")).toBe("true")
+    c.enabled = false
+    view.rerender(<DashboardAppearanceProvider raw={JSON.stringify(c)}><div /></DashboardAppearanceProvider>)
+    expect(view.container.querySelector("style")).toBeNull()
+    expect(document.documentElement.hasAttribute("data-nz-dashboard")).toBe(false)
+})
