@@ -1,0 +1,24 @@
+.settings-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    min-width: 0;
+    /* Short settings pages must not clamp the scroll position on tab changes. */
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding-bottom: 24px;
+}
+
+@media (max-width: 889px) {
+    .settings-layout {
+        padding-inline: 12px;
+    }
+}
+
+@media (max-width: 639px) {
+    .settings-navigation [role="tab"] {
+        min-height: 40px;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+}

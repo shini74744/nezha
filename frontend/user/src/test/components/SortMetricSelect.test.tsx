@@ -32,45 +32,45 @@ describe("SortMetricSelect", () => {
 	it("lists every existing metric and indicates the selected item", async () => {
 		const user = userEvent.setup();
 		renderMenu();
-		const trigger = screen.getByRole("combobox", { name: "Sort metric" });
+		const trigger = screen.getByRole("button", { name: "Sort metric" });
 		await user.click(trigger);
-		expect(screen.getAllByRole("option")).toHaveLength(SORT_TYPES.length);
+		expect(screen.getAllByRole("menuitemradio")).toHaveLength(SORT_TYPES.length);
 		expect(
-			screen.getByRole("option", { name: "sort.types.default" }),
-		).toHaveAttribute("aria-selected", "true");
+			screen.getByRole("menuitemradio", { name: "sort.types.default" }),
+		).toHaveAttribute("aria-checked", "true");
 		await user.click(
-			screen.getByRole("option", { name: "sort.types.up_total" }),
+			screen.getByRole("menuitemradio", { name: "sort.types.up_total" }),
 		);
-		expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+		expect(screen.queryByRole("menu")).not.toBeInTheDocument();
 		expect(screen.getByTestId("sort-state")).toHaveTextContent("up total:desc");
 		await user.click(trigger);
 		expect(
-			screen.getByRole("option", { name: "sort.types.up_total" }),
-		).toHaveAttribute("aria-selected", "true");
+			screen.getByRole("menuitemradio", { name: "sort.types.up_total" }),
+		).toHaveAttribute("aria-checked", "true");
 	});
 	it("preserves direction for metrics and resets it only for default", async () => {
 		const user = userEvent.setup();
 		renderMenu();
 		await user.click(screen.getByText("ascending"));
-		await user.click(screen.getByRole("combobox"));
-		await user.click(screen.getByRole("option", { name: "sort.types.cpu" }));
+		await user.click(screen.getByRole("button", { name: "Sort metric" }));
+		await user.click(screen.getByRole("menuitemradio", { name: "sort.types.cpu" }));
 		expect(screen.getByTestId("sort-state")).toHaveTextContent("cpu:asc");
-		await user.click(screen.getByRole("combobox"));
+		await user.click(screen.getByRole("button", { name: "Sort metric" }));
 		await user.click(
-			screen.getByRole("option", { name: "sort.types.default" }),
+			screen.getByRole("menuitemradio", { name: "sort.types.default" }),
 		);
 		expect(screen.getByTestId("sort-state")).toHaveTextContent("default:desc");
 	});
 	it("opens with the keyboard and Escape closes without changing selection", async () => {
 		const user = userEvent.setup();
 		renderMenu();
-		const trigger = screen.getByRole("combobox");
+		const trigger = screen.getByRole("button", { name: "Sort metric" });
 		trigger.focus();
 		await user.keyboard("{Enter}");
-		expect(screen.getByRole("listbox")).toBeInTheDocument();
+		expect(screen.getByRole("menu")).toBeInTheDocument();
 		await user.keyboard("{Escape}");
 		await waitFor(() =>
-			expect(screen.queryByRole("listbox")).not.toBeInTheDocument(),
+			expect(screen.queryByRole("menu")).not.toBeInTheDocument(),
 		);
 		expect(screen.getByTestId("sort-state")).toHaveTextContent("default:desc");
 		expect(trigger).toHaveFocus();

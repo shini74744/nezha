@@ -71,14 +71,21 @@
       }
 
 /* Legacy overview styling applies to the whole icon + number, not only text. */
+/* Use the text baseline, not the line-box center: custom fonts have different
+   ascenders/descenders. The shared em offset centers both circular arrows on
+   the digits while keeping their size proportional to the inherited font. */
+.nz-network-speed {
+ display:inline-flex; align-items:baseline; gap:2px; line-height:1; white-space:nowrap;
+}
+.nz-network-speed > svg {
+ display:block; flex:none; width:1em; height:1em; margin:0;
+ position:relative; top:.125em;
+}
+.nz-network-speed > .nz-rate-value {
+ display:inline-block; font-size:inherit; line-height:inherit; white-space:nowrap;
+}
 .nz-overview-rate {
- display:inline-flex; align-items:center; margin-right:8px; line-height:1;
+ gap:4px; margin-right:8px;
  transition:color .5s ease; transform-origin:center center; position:relative; z-index:1;
-}
-.nz-overview-rate > svg {
- flex-shrink:0; width:11px; height:11px; margin-right:4px; margin-bottom:0; vertical-align:middle;
-}
-.nz-overview-rate > .nz-rate-value {
- display:inline-block; font-size:11px; line-height:1; white-space:nowrap;
 }
 .nz-card-rate { display:flex; align-items:center; width:100%; transition:none; }

@@ -89,3 +89,14 @@ GEOIP_DB=/path/to/country.mmdb VERSION=custom-$(git rev-parse --short HEAD) bash
 
 本仓库沿用 [Apache License 2.0](LICENSE)，保留上游版权和许可证声明；管理后台与默认前台的许可证分别见 [frontend/admin/LICENSE](frontend/admin/LICENSE) 和 [frontend/user/LICENSE](frontend/user/LICENSE)。
 上游代码、第三方依赖、社区主题及图片等素材的权利与许可，以各自项目和文件中的声明为准；二次开发不改变原作者的署名与归属。
+
+### DDNS 可视化配置与统一设置导航
+
+- 动态域名解析采用紧凑列表，窄屏自动切换卡片；支持按名称、域名或 ID 搜索、按提供商筛选和批量删除。过滤后清空旧选择，避免误删隐藏项。
+- 编辑器分为基本配置、解析记录、提供商配置、通知与重试。IPv4 / IPv6 对应 A / AAAA，域名支持换行或中英文逗号输入、预览和去重；中文域名由后端转换。沿用现有后端规则，不支持 `*` 泛域名。
+- Cloudflare、腾讯云 DNSPod、HE.net、Webhook、Dummy 显示各自的配置项。密钥及 Webhook 请求头不回显，编辑时留空保留已保存值；保存失败保留当前草稿，关闭取消后重新打开读取当前配置。最大重试次数为 1–10。
+- 保存配置不会立即更新 DNS；需要在服务器编辑中启用 DDNS 并关联配置。协议标识表示启用状态，不代表最近更新成功。删除仅移除面板 DDNS 配置，不主动删除提供商中的 DNS 记录。
+- 八个设置页面复用同一导航布局；保留原背景、字体、主题样式。桌面五列、手机两列，浏览器前进/后退同步选中项，切换长短页面不再因不同边距或页面高度改变导航位置。
+- 回归入口：`frontend/admin/tests/e2e/settings-layout.spec.ts`、`ddns-visual-editor.spec.ts`、`src/test/ddns-editor.test.ts` 及 `cmd/dashboard/controller/ddns_visual_editor_test.go`。浏览器测试使用模拟 API；控制器测试使用隔离数据库，不操作真实 DNS。
+
+- 网络概览上传/下载圆形图标使用统一的文字基线对齐，随字体字号缩放；默认显示及内置美化均生效，保留原单位、颜色、发光分级与手机纵向排列。回归入口：`frontend/admin/tests/e2e/speed-alignment.spec.ts`（隔离前台预览 `https://127.0.0.1:18476`）和 `frontend/user/src/test/speed-alignment.test.tsx`。

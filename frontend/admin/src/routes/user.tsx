@@ -2,7 +2,6 @@ import { swrFetcher } from "@/api/api"
 import { deleteUser } from "@/api/user"
 import { ActionButtonGroup } from "@/components/action-button-group"
 import { HeaderButtonGroup } from "@/components/header-button-group"
-import { SettingsTab } from "@/components/settings-tab"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
     Table,
@@ -114,9 +113,8 @@ export default function UserPage() {
     const selectedRows = table.getSelectedRowModel().rows
 
     return (
-        <div className="px-3">
-            <SettingsTab className="mt-6 w-full" />
-            <div className="flex mt-4 mb-4">
+        <div className="min-w-0">
+            <div className="flex mb-4">
                 <HeaderButtonGroup
                     className="flex-2 flex gap-2 ml-auto"
                     delete={{

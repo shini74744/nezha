@@ -8,7 +8,6 @@ import {
     parseExpiresInDaysInput,
     parseServerIDsInput,
 } from "@/api/api-tokens"
-import { SettingsTab } from "@/components/settings-tab"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -70,10 +69,9 @@ export default function ApiTokensPage() {
     }
 
     return (
-        <div className="px-3">
-            <SettingsTab className="mt-6 w-full" />
+        <div className="min-w-0">
 
-            <div className="flex mt-4 mb-4 items-center justify-between">
+            <div className="flex mb-4 items-center justify-between">
                 <h2 className="text-lg font-semibold">{t("ApiTokens")}</h2>
                 <Button onClick={() => setCreateOpen(true)}>{t("CreateApiToken")}</Button>
             </div>

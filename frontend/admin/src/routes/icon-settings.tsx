@@ -2,7 +2,6 @@ import ProviderGroupFilter from "@/components/ProviderGroupFilter";
 import useLogoGroups from "@/hooks/useLogoGroups";
 import {useMemo,useState} from "react";
 import {Navigate} from "react-router-dom";
-import {SettingsTab} from "@/components/settings-tab";
 import {useAuth} from "@/hooks/useAuth";
 import useLogoLibrary from "@/hooks/useLogoLibrary";
 import {fetcher,FetcherMethod} from "@/api/api";
@@ -25,8 +24,8 @@ export default function IconSettings(){
  const save=async()=>{if(!edit||locked)return;setBusy(true);setFailure("");try{const result=await fetcher<{updated_servers?:number}>(edit.id?FetcherMethod.PUT:FetcherMethod.POST,"/api/v1/logo/library"+(edit.id?"/"+edit.id:""),edit);await mutate();setMessage("已保存"+(result?.updated_servers?"，同步更新 "+result.updated_servers+" 台服务器":""));setEdit(null)}catch(e){setFailure(String(e))}finally{setBusy(false)}};
  const remove=async(e:LogoLibraryEntry)=>{if(locked||!window.confirm("删除“"+e.name+"”？已使用它的服务器会保留最后的图标。"))return;setBusy(true);setFailure("");try{await fetcher(FetcherMethod.DELETE,"/api/v1/logo/library/"+e.id,{version:e.version});await mutate();setMessage("已删除，已有服务器的图标保留");setPage(0)}catch(e){setFailure(String(e))}finally{setBusy(false)}};
  if(loading)return null;if(profile?.role!==0)return <Navigate to="/dashboard/settings/api-tokens" replace/>;
- return <div className="px-3 pb-6"><SettingsTab className="mt-6 mb-4 w-full"/><div className="space-y-4" data-icon-settings>
-  <div className="flex flex-wrap gap-2 items-center"><h1 className="font-semibold">图标设置</h1><SettingHelp label="图标设置">图标由本站保存和提供。修改后同步已关联服务器；删除条目时，已有服务器保留最后使用的图标。已有收录已导入，后续可自行添加、修改名称和图片。</SettingHelp></div>
+ return <div className="min-w-0"><div className="space-y-4" data-icon-settings>
+  <div className="flex flex-wrap gap-2 items-center"><h1 className="text-2xl font-semibold">图标设置</h1><SettingHelp label="图标设置">图标由本站保存和提供。修改后同步已关联服务器；删除条目时，已有服务器保留最后使用的图标。已有收录已导入，后续可自行添加、修改名称和图片。</SettingHelp></div>
   <div className="flex flex-wrap gap-2"><Button variant={kind==="provider"?"default":"outline"} onClick={()=>changeFilter(()=>setKind("provider"))}>服务器厂商</Button><Button variant={kind==="carrier"?"default":"outline"} onClick={()=>changeFilter(()=>setKind("carrier"))}>网络运营商</Button><Button disabled={locked||isLoading||!!error} variant="outline" onClick={()=>{setFailure("");setEdit({...empty(kind),groupId:kind==="provider"&&group!=="_ungrouped"?group:""})}}>添加{kind==="provider"?"厂商":"运营商"}</Button></div>
   {kind==="provider"&&<ProviderGroupFilter value={group} onChange={g=>changeFilter(()=>setGroup(g))} onUpdated={()=>void mutate()}/>}
   <div className="grid gap-2 sm:grid-cols-2"><Input aria-label="搜索图标" placeholder="搜索名称、别名或网址" value={query} onChange={e=>changeFilter(()=>setQuery(e.target.value))}/><Picker value={region} label="筛选国家地区" choices={[{value:"",label:"所有国家/地区"},...carrierRegions.map(r=>({value:r.code,label:r.label,keywords:r.code}))]} onChange={r=>changeFilter(()=>setRegion(r))}/></div>

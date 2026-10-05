@@ -1,5 +1,4 @@
 import {fetcher, FetcherMethod} from "@/api/api"
-import {SettingsTab} from "@/components/settings-tab"
 import {BackgroundSettings} from "@/components/background-settings"
 import {AppearanceSection} from "@/components/appearance-section"
 import {GlobalDisplaySettings} from "@/components/global-display-settings"
@@ -27,7 +26,7 @@ export default function AppearancePage(){
  const [dirty,setDirty]=useState(false),[busy,setBusy]=useState(false)
  if(loading)return null
  if(profile?.role!==0)return <Navigate to="/dashboard/settings/api-tokens" replace/>
- return <div className="space-y-6"><SettingsTab/>
+ return <div className="space-y-6">
   <div className="flex flex-wrap items-center justify-between gap-3">
    <h1 className="text-2xl font-semibold">美化设置</h1>
    <label className="flex items-center gap-2 text-sm">设置主题
