@@ -89,3 +89,21 @@ func TestServerClearTaskStreamIfCurrentClearsOnlyMatchingStream(t *testing.T) {
 		t.Fatalf("expected newer stream to remain published, got %T", got)
 	}
 }
+
+func TestSendTaskOnStreamRejectsReplacedAndCancelledSession(t *testing.T) {
+	s := &Server{}
+	first, second := &raceProbeStream{}, &raceProbeStream{}
+	s.SetTaskStream(first)
+	if err := s.SendTaskOnStream(context.Background(), &pb.Task{}, first); err != nil {
+		t.Fatal(err)
+	}
+	s.SetTaskStream(second)
+	if err := s.SendTaskOnStream(context.Background(), &pb.Task{}, first); err != ErrTaskStreamOffline {
+		t.Fatalf("stale session accepted: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := s.SendTaskOnStream(ctx, &pb.Task{}, second); err != context.Canceled {
+		t.Fatalf("cancelled task accepted: %v", err)
+	}
+}

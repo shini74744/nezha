@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import ServerDetailOverview from "@/components/ServerDetailOverview";
 import { PeriodSelector } from "@/components/ServerDetailChart";
 import TabSwitch from "@/components/TabSwitch";
+import ServerConnectivity from "@/components/ServerConnectivity";
 import ServerNetworkSection from "@/components/ServerNetworkSection";
 import { fetchLoginUser, fetchServerMetrics } from "@/lib/nezha-api";
 import { formatBytes } from "@/lib/format";
@@ -40,8 +41,8 @@ function valueText(value:number|undefined,unit:string) {
  if(unit==="percent")return value.toFixed(2)+"%";
  return Number.isInteger(value)?String(value):value.toFixed(2);
 }
-export function OfflineServerDetail({server,now}:{server:NezhaServer;now:number}) {
- const [tab,setTab]=useState("Detail"),[period,setPeriod]=useState<"last"|MetricPeriod>("last");
+export function OfflineServerDetail({server,now,initialTab="Detail"}:{server:NezhaServer;now:number;initialTab?:string}) {
+ const [tab,setTab]=useState(initialTab),[period,setPeriod]=useState<"last"|MetricPeriod>("last");
  const member=useQuery({queryKey:["login-user"],queryFn:fetchLoginUser,retry:0,staleTime:30000});
  const viewer=member.isError?0:member.data?.data?.id||0;
  const query=useQuery({
@@ -67,7 +68,7 @@ export function OfflineServerDetail({server,now}:{server:NezhaServer;now:number}
     <p>{!report?.tsdb_enabled?"历史存储未启用。":report.history_days===1?"游客仅可查看最近 1 天的历史；登录后可查询最近 30 天。":"最近 30 天内未找到记录，或记录已超过配置的保留期限。"}未保存的数据不能补回。</p>
    </div>:null}
   <section className="flex items-center my-2 w-full">
-   <Separator className="flex-1"/><div className="flex justify-center w-full max-w-50"><TabSwitch tabs={["Detail","Network"]} currentTab={tab} setCurrentTab={setTab}/></div><Separator className="flex-1"/>
+   <Separator className="flex-1"/><div className="flex justify-center w-full max-w-sm"><TabSwitch tabs={["Detail","Network","Connectivity"]} currentTab={tab} setCurrentTab={setTab}/></div><Separator className="flex-1"/>
   </section>
   {tab==="Detail" && (report?.tsdb_enabled||saved)?<section>
     <PeriodSelector selectedPeriod={activePeriod==="last"?"realtime":activePeriod} onPeriodChange={p=>setPeriod(p==="realtime"?"last":p)} isLogin={!!viewer} isTsdbEnabled={!!report?.tsdb_enabled} offline/>
@@ -76,7 +77,8 @@ export function OfflineServerDetail({server,now}:{server:NezhaServer;now:number}
      {chartGroups.map(group=><OfflineMetricCard key={group.title} group={group} report={report!} period={activePeriod}/>)}
     </div>
    </section>:null}
-  <ServerNetworkSection server_id={server.id} standalone={tab==="Network"}/>
+  {tab!=="Connectivity" && <ServerNetworkSection server_id={server.id} standalone={tab==="Network"}/>}
+  {tab==="Connectivity" && <ServerConnectivity key={server.id} serverId={server.id}/>}
  </div>;
 }
 function MetricHeader({group,report}:{group:typeof groups[number];report:LastReport}) {

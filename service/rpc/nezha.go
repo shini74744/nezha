@@ -137,6 +137,9 @@ func (s *NezhaHandler) RequestTask(stream pb.NezhaService_RequestTaskServer) err
 		if err != nil {
 			return err
 		}
+		if deliverConnectivityResult(result, clientID, stream) {
+			continue
+		}
 		switch result.GetType() {
 		case model.TaskTypeCommand:
 			if deliverUninstallCommandResult(result, clientID) {

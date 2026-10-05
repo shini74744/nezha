@@ -102,11 +102,13 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	optionalAuth.GET("/server/:id/service", restScopeMiddleware(model.ScopeServiceRead), commonHandler(listServerServices))
 	optionalAuth.GET("/server/:id/metrics", restScopeMiddleware(model.ScopeServerRead), commonHandler(getServerMetrics))
 	optionalAuth.GET("/server/:id/last-report", restScopeMiddleware(model.ScopeServerRead), commonHandler(getServerLastReport))
+	optionalAuth.GET("/server/:id/connectivity", restScopeMiddleware(model.ScopeServerRead), csrfMiddleware(), commonHandler(getConnectivity))
 
 	// CSRF middleware applies group-wide. Safe methods short-circuit and
 	// PAT bearer requests bypass — so the only callers gated are
 	// cookie-JWT POST/PATCH/PUT/DELETE, which is exactly the H6 surface.
 	auth := api.Group("", authMw, csrfMiddleware())
+	auth.POST("/server/:id/connectivity", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startConnectivity))
 
 	// 「自我管理」类端点 — 显式禁止 PAT 访问（避免 PAT 自我提权链）。
 	patForbidden := restPATForbiddenMiddleware()
