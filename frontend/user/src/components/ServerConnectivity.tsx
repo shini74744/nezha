@@ -62,9 +62,17 @@ export default function ServerConnectivity({ serverId }: { serverId: number }) {
 	const running = data?.state === "running";
 	const cooldown = Math.max(0, Math.ceil(((data?.retry_at || 0) - now) / 1000));
 	const completed =
-		data?.results.filter(
-			(result) => !["pending", "running"].includes(result.status),
+		data?.results.filter((result) =>
+			result.phase
+				? result.phase === "complete"
+				: !["pending", "running"].includes(result.status),
 		).length || 0;
+	const sampled =
+		data?.results.filter((result) => result.samples.length > 0).length || 0;
+	const active =
+		data?.results.filter((result) => result.phase === "running").length || 0;
+	const queued =
+		data?.results.filter((result) => result.phase === "queued").length || 0;
 	const formatDate = (value?: number) =>
 		value ? new Date(value).toLocaleString(i18n.language) : "—";
 	const error =
@@ -180,6 +188,15 @@ export default function ServerConnectivity({ serverId }: { serverId: number }) {
 												? t("connectivity.finished")
 												: t("connectivity.empty")}
 									</span>
+									{running && (
+										<span>
+											{t("connectivity.queueProgress", {
+												sampled,
+												active,
+												queued,
+											})}
+										</span>
+									)}
 									{data.started_at && (
 										<span>
 											{t("connectivity.time")}:{" "}
@@ -269,10 +286,18 @@ function ConnectivityCard({
 	const { t } = useTranslation();
 	const [iconFailed, setIconFailed] = useState(false);
 	const icon = connectivityIcons[result.id];
-	const status = result.status;
+	const status =
+		result.status === "pending" && result.phase
+			? result.phase === "running"
+				? "running"
+				: result.phase === "queued"
+					? "queued"
+					: "batch_timeout"
+			: result.status;
 	const positive = status === "ok";
 	const reached = status === "http_error";
-	const waiting = status === "pending" || status === "running";
+	const waiting =
+		status === "pending" || status === "queued" || status === "running";
 	const Icon = positive
 		? CheckCircle2
 		: reached || status === "unstable"
@@ -288,7 +313,11 @@ function ConnectivityCard({
 	const delay = result.delay_ms;
 	const hasDelay = delay !== undefined && Number.isFinite(delay);
 	return (
-		<Card data-connectivity-target={result.id} className="min-w-0">
+		<Card
+			data-connectivity-target={result.id}
+			data-connectivity-phase={result.phase}
+			className="min-w-0"
+		>
 			<CardContent className="space-y-2.5 p-3">
 				<div className="flex min-w-0 items-center gap-2.5">
 					<span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/95 p-1.5">
@@ -356,6 +385,10 @@ function ConnectivityCard({
 						})}
 						<span className="ml-1 text-[10px] text-muted-foreground">
 							{result.samples.length}/{rounds}
+							{result.phase === "complete" &&
+								result.samples.length < rounds && (
+									<span className="ml-1">{t("connectivity.endedEarly")}</span>
+								)}
 						</span>
 					</div>
 					<p className="shrink-0 font-mono text-lg font-semibold tabular-nums">
@@ -386,6 +419,18 @@ function ConnectivityCard({
 					<Icon className="mt-0.5 size-3 shrink-0" aria-hidden />
 					<span>
 						{t(`connectivity.status.${status}`)}
+						{result.samples.length > 0 &&
+							result.phase &&
+							result.phase !== "complete" && (
+								<span className="ml-1 text-muted-foreground">
+									·{" "}
+									{t(
+										result.phase === "running"
+											? "connectivity.sampling"
+											: "connectivity.resampleQueued",
+									)}
+								</span>
+							)}
 						{codes.length > 0 && (
 							<span className="ml-1">(HTTP {codes.join("/")})</span>
 						)}

@@ -7,6 +7,7 @@ export type ConnectivityStatus =
 	| "dns_error"
 	| "tls_error"
 	| "query_disabled"
+	| "batch_timeout"
 	| "agent_timeout"
 	| "offline"
 	| "error"
@@ -23,6 +24,7 @@ export interface ConnectivityResult {
 	name: string;
 	group: "china" | "japan" | "usa" | "global";
 	host: string;
+	phase?: "queued" | "running" | "complete";
 	status: ConnectivityStatus;
 	samples: ConnectivitySample[];
 	delay_ms?: number;

@@ -10,6 +10,9 @@ import (
 	"time"
 )
 
+// ProbeTimeout bounds the dashboard wait for a single Agent attempt.
+const ProbeTimeout = 3 * time.Second
+
 type Target struct {
 	ID    string `json:"id"`
 	Name  string `json:"name"`
@@ -36,6 +39,7 @@ type Sample struct {
 type Result struct {
 	Target
 	Status  string   `json:"status"`
+	Phase   string   `json:"phase,omitempty"`
 	Samples []Sample `json:"samples"`
 	DelayMS *float64 `json:"delay_ms,omitempty"`
 }
@@ -71,7 +75,7 @@ var ErrBusy = errors.New("connectivity_busy")
 func NewManager() *Manager {
 	return &Manager{entries: map[string]*entry{}, now: time.Now, maxActive: 4,
 		maxEntries: 512, ttl: 24 * time.Hour, cooldown: time.Minute, rounds: 3,
-		workers: 8, timeout: 12 * time.Minute}
+		workers: 12, timeout: 2 * time.Minute}
 }
 func empty(rounds int) Snapshot {
 	snapshot := Snapshot{State: "idle", Rounds: rounds, Results: make([]Result, len(targets))}
@@ -136,6 +140,9 @@ func (m *Manager) Start(key string, probe Probe) (Snapshot, error) {
 	}
 	s := empty(m.rounds)
 	s.State = "running"
+	for i := range s.Results {
+		s.Results[i].Phase = "queued"
+	}
 	s.StartedAt = now.UnixMilli()
 	e := &entry{snapshot: s, touched: now}
 	m.entries[key] = e
@@ -145,37 +152,99 @@ func (m *Manager) Start(key string, probe Probe) (Snapshot, error) {
 	go m.run(e, probe)
 	return snapshot, nil
 }
+
+// Interleave regions so a slow region cannot occupy the entire first wave.
+func initialQueue() []int {
+	groups := []string{}
+	byGroup := map[string][]int{}
+	for i, target := range targets {
+		if _, exists := byGroup[target.Group]; !exists {
+			groups = append(groups, target.Group)
+		}
+		byGroup[target.Group] = append(byGroup[target.Group], i)
+	}
+	queue := make([]int, 0, len(targets))
+	for len(queue) < len(targets) {
+		for _, group := range groups {
+			if len(byGroup[group]) > 0 {
+				queue = append(queue, byGroup[group][0])
+				byGroup[group] = byGroup[group][1:]
+			}
+		}
+	}
+	return queue
+}
+
+func stopSampling(status string) bool {
+	switch status {
+	case "offline", "query_disabled":
+		return true
+	}
+	return false
+}
+
 func (m *Manager) run(e *entry, probe Probe) {
 	ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
 	defer cancel()
-	jobs := make(chan int, len(targets))
-	for i := range targets {
-		jobs <- i
+	type completion struct {
+		index  int
+		sample Sample
 	}
-	close(jobs)
+	jobs := make(chan int)
+	finished := make(chan completion, m.workers)
 	var wg sync.WaitGroup
 	for worker := 0; worker < m.workers; worker++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for i := range jobs {
-				for round := 0; round < m.rounds; round++ {
-					sample := Sample{Status: "agent_timeout"}
-					if ctx.Err() == nil {
-						sample = probe(ctx, targets[i])
-					}
-					m.mu.Lock()
-					r := &e.snapshot.Results[i]
-					r.Samples = append(r.Samples, sample)
-					r.Status = "running"
-					if len(r.Samples) == m.rounds {
-						summarize(r)
-					}
-					m.mu.Unlock()
-				}
+				// Publish the active phase BEFORE waiting for the first response.
+				m.mu.Lock()
+				e.snapshot.Results[i].Phase = "running"
+				m.mu.Unlock()
+				finished <- completion{i, probe(ctx, targets[i])}
 			}
 		}()
 	}
+	queue := initialQueue()
+	active := 0
+	deadline := ctx.Done()
+	for len(queue) > 0 || active > 0 {
+		var dispatch chan<- int
+		var next int
+		if ctx.Err() == nil && len(queue) > 0 && active < m.workers {
+			dispatch, next = jobs, queue[0]
+		}
+		select {
+		case dispatch <- next:
+			queue = queue[1:]
+			active++
+		case done := <-finished:
+			active--
+			m.mu.Lock()
+			r := &e.snapshot.Results[done.index]
+			r.Samples = append(r.Samples, done.sample)
+			summarize(r) // Surface partial responses immediately, not after all rounds.
+			r.Phase = "complete"
+			if ctx.Err() == nil && len(r.Samples) < m.rounds && !stopSampling(done.sample.Status) {
+				r.Phase = "queued"
+				// Retries go behind all unstarted sites; no target has two in-flight probes.
+				queue = append(queue, done.index)
+			}
+			m.mu.Unlock()
+		case <-deadline:
+			m.mu.Lock()
+			for _, i := range queue {
+				r := &e.snapshot.Results[i]
+				r.Phase, r.Status = "complete", "batch_timeout"
+				// Never fabricate samples for probes that were not dispatched.
+			}
+			m.mu.Unlock()
+			queue = nil
+			deadline = nil
+		}
+	}
+	close(jobs)
 	wg.Wait()
 	m.mu.Lock()
 	defer m.mu.Unlock()

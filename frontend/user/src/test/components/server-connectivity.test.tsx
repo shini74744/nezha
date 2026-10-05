@@ -144,7 +144,7 @@ describe("node connectivity", () => {
 });
 
 describe("expanded connectivity catalog", () => {
-	it("renders all four regions, all 48 packaged logos and sample indicators", async () => {
+	it("renders all four regions, all 72 packaged logos and sample indicators", async () => {
 		const { default: catalog } = await import(
 			"../../../../../service/connectivity/catalog.json"
 		);
@@ -165,16 +165,16 @@ describe("expanded connectivity catalog", () => {
 		await screen.findByText("DeepSeek");
 		expect(
 			view.container.querySelectorAll("[data-connectivity-target]"),
-		).toHaveLength(48);
+		).toHaveLength(72);
 		expect(
 			view.container.querySelectorAll("[data-connectivity-group]"),
 		).toHaveLength(4);
 		expect(
 			view.container.querySelectorAll("img[data-connectivity-icon]"),
-		).toHaveLength(48);
+		).toHaveLength(72);
 		expect(
 			view.container.querySelectorAll("[data-connectivity-sample]"),
-		).toHaveLength(144);
+		).toHaveLength(216);
 		for (const image of view.container.querySelectorAll(
 			"img[data-connectivity-icon]",
 		)) {
@@ -194,5 +194,83 @@ describe("expanded connectivity catalog", () => {
 			view.container.querySelector("[data-connectivity-icon-fallback]"),
 		).not.toBeNull();
 		expect(screen.getByText("Google")).toBeVisible();
+	});
+});
+describe("fair queue progress", () => {
+	it("distinguishes queued, first request running and partial responses without counting partial sites as finished", async () => {
+		const base = data().results[0];
+		api.fetchConnectivity.mockResolvedValue(
+			data({
+				state: "running",
+				results: [
+					{
+						...base,
+						id: "google",
+						phase: "queued",
+						status: "pending",
+						samples: [],
+					},
+					{
+						...base,
+						id: "github",
+						name: "GitHub",
+						phase: "running",
+						status: "pending",
+						samples: [],
+					},
+					{
+						...base,
+						id: "telegram",
+						name: "Telegram",
+						phase: "queued",
+						status: "ok",
+						delay_ms: 18,
+						samples: [{ status: "ok", delay_ms: 18 }],
+					},
+					{
+						...base,
+						id: "discord",
+						name: "Discord",
+						phase: "complete",
+						status: "timeout",
+						samples: [{ status: "timeout" }],
+					},
+				],
+			}),
+		);
+		const view = mount();
+		expect(await screen.findByText("connectivity.status.queued")).toBeVisible();
+		expect(screen.getByText("connectivity.status.running")).toBeVisible();
+		expect(screen.getByText(/connectivity\.resampleQueued/)).toBeVisible();
+		expect(screen.getByText("connectivity.status.ok")).toBeVisible();
+		expect(screen.getByText("18")).toBeVisible();
+		expect(screen.getByText("connectivity.endedEarly")).toBeVisible();
+		expect(screen.getByRole("progressbar")).toHaveAttribute(
+			"aria-valuenow",
+			"1",
+		);
+		expect(
+			view.container.querySelectorAll('[data-connectivity-phase="running"]'),
+		).toHaveLength(1);
+	});
+	it("does not show unstarted sites as waiting forever once the batch deadline ends", async () => {
+		const base = data().results[0];
+		api.fetchConnectivity.mockResolvedValue(
+			data({
+				state: "complete",
+				results: [
+					{ ...base, phase: "complete", status: "batch_timeout", samples: [] },
+				],
+			}),
+		);
+		mount();
+		expect(
+			await screen.findByText("connectivity.status.batch_timeout"),
+		).toBeVisible();
+		expect(
+			screen.queryByText("connectivity.status.pending"),
+		).not.toBeInTheDocument();
+		expect(screen.getByText("0/3")).toBeVisible();
+		expect(screen.getByText("connectivity.endedEarly")).toBeVisible();
 	});
 });
