@@ -25,6 +25,10 @@ var deletedServerUUIDs = struct {
 }{values: make(map[string]struct{})}
 
 func initDeletedServerUUIDs() error {
+	// An interrupted send is never automatically retried after a dashboard restart.
+	if err := recoverDeletedCleanup(); err != nil {
+		return err
+	}
 	var tombstones []model.ServerDeletionTombstone
 	if err := DB.Where("released_at = 0").Find(&tombstones).Error; err != nil {
 		return err
@@ -235,9 +239,23 @@ func PermanentlyDeleteServersMatching(ids []uint64, expected map[uint64]ServerDe
 			if err := model.RecordServerOperation(tx, actor, "delete", server, nil); err != nil {
 				return err
 			}
+			platform, credentialHash := "", ""
+			cleanupOwner := server.UserID
+			if running, ok := ServerShared.Get(server.ID); ok && running != nil {
+				if host := running.RuntimeSnapshot().Host; host != nil {
+					platform = host.Platform
+				}
+			}
+			if strings.Contains(strings.ToLower(server.Name), "f50") {
+				platform = "f50"
+			}
+			if ServerTransferShared != nil {
+				cleanupOwner, credentialHash = ServerTransferShared.deletedCleanupIdentity(server.ID, server.UserID)
+			}
 			tombstones = append(tombstones, model.ServerDeletionTombstone{
 				UUID: server.UUID, Name: server.Name, OriginalID: server.ID,
 				DeletedByID: actor.ID, DeletedByName: actor.Name,
+				CleanupOwnerID: cleanupOwner, CleanupPlatform: platform, CleanupCredentialHash: credentialHash,
 			})
 		}
 		if err := tx.Clauses(clause.OnConflict{
@@ -250,7 +268,12 @@ func PermanentlyDeleteServersMatching(ids []uint64, expected map[uint64]ServerDe
 				"deleted_by_name": gorm.Expr("excluded.deleted_by_name"),
 				"last_ip":         "", "first_report_at": 0, "last_report_at": 0, "report_count": 0,
 				"released_at": 0, "released_by_id": 0, "released_by_name": "",
-				"block_version": gorm.Expr("server_deletion_tombstones.block_version + 1"),
+				"block_version":           gorm.Expr("server_deletion_tombstones.block_version + 1"),
+				"cleanup_owner_id":        gorm.Expr("excluded.cleanup_owner_id"),
+				"cleanup_platform":        gorm.Expr("excluded.cleanup_platform"),
+				"cleanup_credential_hash": gorm.Expr("excluded.cleanup_credential_hash"),
+				"cleanup_enabled":         false, "cleanup_revision": 0, "cleanup_state": "off",
+				"cleanup_attempts": 0, "cleanup_last_attempt_at": 0, "cleanup_message": "",
 			}),
 		}).Create(&tombstones).Error; err != nil {
 			return err

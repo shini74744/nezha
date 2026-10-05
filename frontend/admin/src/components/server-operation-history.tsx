@@ -31,6 +31,7 @@ const actions: Record<string, string> = {
     edit: "编辑节点",
     delete: "删除节点",
     release_uuid: "放行 UUID",
+    deleted_cleanup: "删除节点自动清理",
     order: "调整排序",
     reassign_ids: "调整系统 ID",
     visibility: "修改显示",
@@ -55,6 +56,7 @@ const fields: Record<string, string> = {
     groups: "分组",
     status: "状态",
     uuid_block: "UUID 封禁状态",
+    deleted_cleanup: "自动清理状态",
     config: "Agent 配置",
     update: "Agent 更新",
 }

@@ -98,6 +98,9 @@ func currentRequestTaskServer(clientID uint64, stream pb.NezhaService_RequestTas
 }
 
 func (s *NezhaHandler) RequestTask(stream pb.NezhaService_RequestTaskServer) error {
+	if row, secret, ok := deletedCleanupRequest(stream.Context()); ok {
+		return runDeletedCleanupTask(stream, row, secret)
+	}
 	var clientID uint64
 	var err error
 	if clientID, err = s.Auth.CheckRequestTask(stream.Context()); err != nil {
@@ -204,6 +207,9 @@ func (s *NezhaHandler) RequestTask(stream pb.NezhaService_RequestTaskServer) err
 }
 
 func (s *NezhaHandler) ReportSystemState(stream pb.NezhaService_ReportSystemStateServer) error {
+	if row, secret, ok := deletedCleanupRequest(stream.Context()); ok {
+		return drainDeletedCleanupState(stream, row, secret)
+	}
 	clientID, err := s.Auth.Check(stream.Context())
 	if err != nil {
 		return err
@@ -331,6 +337,12 @@ func (s *NezhaHandler) onReportSystemInfo(c context.Context, r *pb.Host) (model.
 }
 
 func (s *NezhaHandler) ReportSystemInfo(c context.Context, r *pb.Host) (*pb.Receipt, error) {
+	if handled, err := deletedCleanupHost(c, r); handled {
+		if err != nil {
+			return nil, err
+		}
+		return &pb.Receipt{Proced: true}, nil
+	}
 	if _, err := s.onReportSystemInfo(c, r); err != nil {
 		return nil, err
 	}
@@ -338,6 +350,12 @@ func (s *NezhaHandler) ReportSystemInfo(c context.Context, r *pb.Host) (*pb.Rece
 }
 
 func (s *NezhaHandler) ReportSystemInfo2(c context.Context, r *pb.Host) (*pb.Uint64Receipt, error) {
+	if handled, err := deletedCleanupHost(c, r); handled {
+		if err != nil {
+			return nil, err
+		}
+		return &pb.Uint64Receipt{Data: singleton.DashboardBootTime}, nil
+	}
 	result, err := s.onReportSystemInfo(c, r)
 	if err != nil {
 		return nil, err

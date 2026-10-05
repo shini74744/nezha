@@ -21,4 +21,15 @@ type ServerDeletionTombstone struct {
 	ReleasedAt     int64     `gorm:"not null;default:0" json:"released_at"`
 	ReleasedByID   uint64    `gorm:"not null;default:0" json:"released_by_id"`
 	ReleasedByName string    `gorm:"not null;default:''" json:"released_by_name"`
+	// Cleanup is opt-in for this deletion generation, never inherited on re-delete.
+	CleanupOwnerID        uint64 `gorm:"not null;default:0" json:"-"`
+	CleanupCredentialHash string `gorm:"not null;default:''" json:"-"`
+	CleanupPlatform       string `gorm:"not null;default:''" json:"cleanup_platform"`
+	CleanupEnabled        bool   `gorm:"not null;default:false" json:"cleanup_enabled"`
+	CleanupRevision       uint64 `gorm:"not null;default:0" json:"cleanup_revision"`
+	CleanupState          string `gorm:"not null;default:'off'" json:"cleanup_state"`
+	CleanupAttempts       uint64 `gorm:"not null;default:0" json:"cleanup_attempts"`
+	CleanupLastAttemptAt  int64  `gorm:"not null;default:0" json:"cleanup_last_attempt_at"`
+	CleanupMessage        string `gorm:"not null;default:''" json:"cleanup_message"`
+	CleanupUnavailable    string `gorm:"-" json:"cleanup_unavailable"`
 }
