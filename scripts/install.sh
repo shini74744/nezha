@@ -2,6 +2,17 @@
 # shini74744/agent only. Elevate through sudo when needed; never falls back to upstream.
 set -eu
 umask 077
+usage() {
+ printf '%s\n' "Usage: $0 [install|uninstall]" \
+  "  install    Install/update Agent (default)." \
+  "  uninstall  Stop/remove Agent services and their top-level *config*.yml files; keep binary/backups."
+}
+[ "$#" -le 1 ] || { usage >&2; exit 2; }
+case "${1:-install}" in
+ install|uninstall) action=${1:-install} ;;
+ -h|--help) usage; exit 0 ;;
+ *) usage >&2; exit 2 ;;
+esac
 if [ "$(id -u)" -ne 0 ]; then
  command -v sudo >/dev/null 2>&1 || { echo "sudo is required. Install sudo or run this script as root." >&2; exit 1; }
  # Pass only Agent settings through sudo; do not preserve the whole caller environment.
@@ -11,6 +22,54 @@ if [ "$(id -u)" -ne 0 ]; then
   exec sudo env "NZ_SERVER=${NZ_SERVER:-}" "NZ_TLS=${NZ_TLS:-false}" "NZ_CLIENT_SECRET=${NZ_CLIENT_SECRET:-}" sh "$0" "$@"
  fi
 fi
+dir=/opt/nezha/agent
+binary="$dir/nezha-agent"
+config="$dir/config.yml"
+
+uninstall() {
+ # Do not recurse: backup.*/config.yml belongs to a rollback, not a live service.
+ [ ! -L "$dir" ] || { echo "Refusing to uninstall through a symlinked Agent directory." >&2; return 1; }
+ found=0
+ failed=0
+ for config_file in "$dir"/*config*.yml; do
+  if [ -L "$config_file" ]; then
+   printf '%s\n' "Refusing symlinked configuration: $config_file" >&2
+   failed=1
+   continue
+  fi
+  [ -f "$config_file" ] || continue
+  found=1
+  if [ ! -x "$binary" ] || [ -L "$binary" ]; then
+   echo "Agent binary missing, not executable or symlinked; configurations retained." >&2
+   return 1
+  fi
+  # An already stopped service can reject stop; uninstall must still succeed
+  # before we remove its configuration. Never suppress uninstall failures.
+  "$binary" service -c "$config_file" stop || true
+  if "$binary" service -c "$config_file" uninstall; then
+   if rm -f -- "$config_file"; then
+    printf '%s\n' "已卸载 Agent 服务并移除配置：$config_file"
+   else
+    printf '%s\n' "服务已卸载，但配置删除失败：$config_file" >&2
+    failed=1
+   fi
+  else
+   printf '%s\n' "Agent 服务卸载失败，已保留配置：$config_file" >&2
+   failed=1
+  fi
+ done
+ [ "$failed" -eq 0 ] || return 1
+ if [ "$found" -eq 0 ]; then
+  printf '%s\n' "未找到 Agent 配置，无需卸载；未改动任何服务。"
+ else
+  printf '\033[0;32m%s\033[0m\n' "Uninstallation completed.（卸载完成，程序和历史备份已保留）"
+ fi
+}
+if [ "$action" = uninstall ]; then
+ uninstall
+ exit 0
+fi
+
 printf '\033[0;32m%s\033[0m\n' "安装脚本 agent.sh 已就绪"
 case "$(uname -s)" in
  Linux) os=linux ;;
@@ -36,9 +95,6 @@ if command -v sha256sum >/dev/null; then hash_tool=sha256sum
 elif command -v shasum >/dev/null; then hash_tool=shasum
 elif command -v sha256 >/dev/null; then hash_tool=sha256
 else echo "SHA256 utility required" >&2; exit 1; fi
-dir=/opt/nezha/agent
-binary="$dir/nezha-agent"
-config="$dir/config.yml"
 [ -n "${NZ_SERVER:-}" ] || [ -f "$config" ] || { echo "NZ_SERVER is required" >&2; exit 1; }
 [ -n "${NZ_CLIENT_SECRET:-}" ] || [ -f "$config" ] || { echo "NZ_CLIENT_SECRET is required" >&2; exit 1; }
 tmp=$(mktemp -d)

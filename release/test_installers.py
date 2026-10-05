@@ -3,7 +3,7 @@ import hashlib, os, pathlib, shutil, subprocess, tempfile, unittest, zipfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 class InstallerTest(unittest.TestCase):
-    def run_case(self, existing=False, corrupt=False, fail_download=False, fail_install=False):
+    def run_case(self, existing=False, corrupt=False, fail_download=False, fail_install=False, args=()):
         with tempfile.TemporaryDirectory(prefix="owned-installer-test-") as base:
             base = pathlib.Path(base)
             installed = base / "installed"
@@ -33,7 +33,7 @@ class InstallerTest(unittest.TestCase):
             env = dict(os.environ, PATH=str(mockbin)+":"+os.environ["PATH"], FIXTURE=str(base/"fixture"),
                        CALL_LOG=str(log), FAIL_INSTALL=str(int(fail_install)), FAIL_DOWNLOAD=str(int(fail_download)),
                        NZ_SERVER="fixture.invalid:443", NZ_CLIENT_SECRET="fixture-secret")
-            result = subprocess.run(["sh", str(script)], env=env, capture_output=True, text=True)
+            result = subprocess.run(["sh", str(script), *args], env=env, capture_output=True, text=True)
             failed = corrupt or fail_download or fail_install
             self.assertEqual(result.returncode != 0, failed, result.stdout+result.stderr)
             self.assertNotIn("下载来源", result.stdout)
@@ -51,6 +51,7 @@ class InstallerTest(unittest.TestCase):
             if existing:
                 self.assertEqual((installed/"config.yml").read_text(), "uuid: keep-this-uuid\nclient_secret: keep-secret\n")
     def test_new_install(self): self.run_case()
+    def test_explicit_install(self): self.run_case(args=("install",))
     def test_existing_config_and_uuid_preserved(self): self.run_case(existing=True)
     def test_checksum_failure_does_not_touch_existing(self): self.run_case(existing=True, corrupt=True)
     def test_download_failure_does_not_touch_existing(self): self.run_case(existing=True, fail_download=True)

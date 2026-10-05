@@ -9,6 +9,20 @@
 
 **已有官方 Agent 不会自动迁移**：需使用面板中的新安装命令重装一次，保留 UUID 和配置后，才会使用本仓库更新。安装脚本会先校验 SHA256 并备份旧文件。
 
+## 卸载 Agent（Linux/macOS/FreeBSD）
+
+在新版 `agent.sh` 所在目录执行：
+
+```sh
+./agent.sh uninstall
+# 未设置执行权限时，也可以使用：
+sh agent.sh uninstall
+```
+
+非 root 用户会通过 `sudo` 提权。命令会停止并卸载 `/opt/nezha/agent` 目录顶层 `*config*.yml` 对应的 Agent 服务（包括多实例），仅在服务卸载成功后删除对应配置。**配置含 UUID 和连接参数，请按需提前备份。** 程序文件、历史备份及面板数据不会删除，也不会重新下载安装包。没有配置时会提示无需卸载；服务卸载或配置删除失败时返回非零状态，不会虚报成功。配置/程序/Agent 目录为符号链接时拒绝卸载，避免误操作其他位置。
+
+此参数需要新版脚本，已保存在服务器上的旧 `agent.sh` 不会自动更新，必须先替换为新版。**不要向旧脚本传入 `uninstall` 或 `--help` 试探版本：旧脚本忽略参数，仍会走安装流程。** 新版支持 `sh agent.sh --help` 查看用法；无参数或 `install` 仍为安装，未知参数会直接报错退出。配置已丢失的遗留服务需要单独排查，本命令不会猜测并删除其他服务。
+
 Original project: Nezha Monitoring Agent (Apache-2.0). Upstream credits are retained below.
 
 ## Contributors
