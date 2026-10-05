@@ -66,9 +66,11 @@ export function DeletedServers() {
                             key={row.uuid}
                             className={
                                 "min-w-0 rounded-md border p-3 text-sm " +
-                                (row.report_count && !row.released_at
-                                    ? "border-amber-500/60 bg-amber-500/5"
-                                    : "")
+                                (row.cleanup_state === "attention" && !row.released_at
+                                    ? "border-red-500 bg-red-500/5"
+                                    : row.report_count && !row.released_at
+                                      ? "border-amber-500/60 bg-amber-500/5"
+                                      : "")
                             }
                         >
                             <div className="flex items-start justify-between gap-3">

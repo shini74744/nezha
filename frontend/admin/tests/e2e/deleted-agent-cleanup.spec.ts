@@ -25,6 +25,10 @@ for (const width of [360, 1366])
                         cleanup_message: "",
                         cleanup_last_attempt_at: 0,
                         cleanup_attempts: 0,
+                        cleanup_round_attempts: 0,
+                        cleanup_max_attempts: 3,
+                        cleanup_next_attempt_at: 0,
+                        cleanup_checked_at: 0,
                         cleanup_unavailable: "",
                     },
                     {
@@ -41,6 +45,10 @@ for (const width of [360, 1366])
                         cleanup_message: "",
                         cleanup_last_attempt_at: 0,
                         cleanup_attempts: 0,
+                        cleanup_round_attempts: 0,
+                        cleanup_max_attempts: 3,
+                        cleanup_next_attempt_at: 0,
+                        cleanup_checked_at: 0,
                         cleanup_unavailable: "",
                     },
                     {
@@ -57,6 +65,10 @@ for (const width of [360, 1366])
                         cleanup_message: "",
                         cleanup_last_attempt_at: 0,
                         cleanup_attempts: 0,
+                        cleanup_round_attempts: 0,
+                        cleanup_max_attempts: 3,
+                        cleanup_next_attempt_at: 0,
+                        cleanup_checked_at: 0,
                         cleanup_unavailable: "旧记录缺少原所属用户，无法安全校验重连身份",
                     },
                 ]
@@ -85,7 +97,7 @@ for (const width of [360, 1366])
                         rows[0].cleanup_revision++
                         rows[0].cleanup_state = body.enabled ? "waiting" : "cancelled"
                         rows[0].cleanup_message = body.enabled
-                            ? "等待节点携带有效凭据重连；仅尝试一次"
+                            ? "等待有效重连后立即卸载；间隔 1 分钟检查，本轮最多 3 次"
                             : "已关闭；已下发的命令无法撤回"
                         data = rows[0]
                     } else expect(route.request().method()).toBe("GET")
@@ -101,6 +113,8 @@ for (const width of [360, 1366])
                 await expect(dialog).toContainText("这是不可撤销操作")
                 await expect(dialog).toContainText(rows[0].uuid)
                 await expect(dialog).toContainText("不会放行 UUID")
+                await expect(dialog).toContainText("本轮最多 3 次")
+                await expect(dialog).toContainText("每隔 1 分钟")
                 await expect
                     .poll(async () => {
                         const box = await dialog.boundingBox()
@@ -140,14 +154,36 @@ for (const width of [360, 1366])
                 ).toBeDisabled()
                 await dialog.getByRole("button", { name: "取消", exact: true }).click()
                 expect(requests).toHaveLength(3)
-                rows[0].cleanup_state = "unknown"
+                rows[0].cleanup_state = "retry_wait"
+                rows[0].cleanup_enabled = true
+                rows[0].cleanup_round_attempts = 1
+                rows[0].cleanup_next_attempt_at = Math.floor(Date.now() / 1000) + 60
                 rows[0].cleanup_attempts = 1
                 rows[0].cleanup_last_attempt_at = Math.floor(Date.now() / 1000)
-                rows[0].cleanup_message = "等待启动回执超时，清理结果未知；不会自动重试"
+                rows[0].cleanup_message = "等待启动回执超时，清理结果未知；1 分钟后检查"
                 await panel.getByRole("button", { name: "刷新", exact: true }).click()
                 await expect(target).toContainText("结果未知")
                 await expect(target).toContainText("累计 1 次")
+                await expect(target).toContainText("本轮 1/3 次")
+                await expect(target).toContainText("下次检查")
                 await expect(target).toContainText("UUID 已拉黑")
+                expect(
+                    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+                ).toBe(true)
+                rows[0].cleanup_state = "attention"
+                rows[0].cleanup_round_attempts = 3
+                rows[0].cleanup_attempts = 3
+                rows[0].cleanup_enabled = false
+                rows[0].cleanup_next_attempt_at = 0
+                rows[0].cleanup_checked_at = Math.floor(Date.now() / 1000)
+                rows[0].cleanup_message =
+                    "多次卸载后仍可连接命令通道，已停止自动重试；请检查权限、守护进程或安装方式"
+                await panel.getByRole("button", { name: "刷新", exact: true }).click()
+                await expect(target).toHaveClass(/border-red-500/)
+                await expect(target.getByRole("alert")).toContainText("自动卸载已停止")
+                await expect(target).toContainText("本轮 3/3 次")
+                await expect(target).toContainText("最近检查")
+                await expect(other).not.toHaveClass(/border-red-500/)
                 expect(
                     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
                 ).toBe(true)
@@ -156,6 +192,11 @@ for (const width of [360, 1366])
                     fullPage: true,
                     animations: "disabled",
                 })
+                rows[0].released_at = Math.floor(Date.now() / 1000)
+                await panel.getByRole("button", { name: "刷新", exact: true }).click()
+                await expect(target).not.toHaveClass(/border-red-500/)
+                await expect(target.getByRole("alert")).toHaveCount(0)
+                await expect(target).toContainText("已停用（UUID 已放行）")
             },
         )
     }

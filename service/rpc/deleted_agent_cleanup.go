@@ -30,15 +30,18 @@ func deletedCleanupRequest(ctx context.Context) (*model.ServerDeletionTombstone,
 // Admission is isolated from auth.Check, normal server IDs, IO streams and metrics.
 // ReportSystemInfo is the first call in existing Agents, before RequestTask.
 func deletedCleanupHost(ctx context.Context, host *pb.Host) (bool, error) {
-	row, _, ok := deletedCleanupRequest(ctx)
+	row, secret, ok := deletedCleanupRequest(ctx)
 	if !ok {
 		return false, nil
 	}
 	ip, _ := ctx.Value(model.CtxKeyRealIP{}).(string)
 	singleton.RecordDeletedAgentReport(row.UUID, ip)
 	if host == nil || !singleton.DeletedCleanupHostAllowed(row, host.GetPlatform()) {
-		finishDeletedCleanup(row, "failed", "重连系统与删除记录不匹配或不支持标准卸载；未下发命令")
+		finishDeletedCleanup(row, "unsafe", "重连系统与删除记录不匹配或不支持标准卸载；已停止后续下发")
 		return true, status.Error(codes.PermissionDenied, "cleanup platform mismatch")
+	}
+	if !singleton.ObserveDeletedCleanup(row, secret) {
+		return true, status.Error(codes.Unavailable, "cleanup cooldown or session changed")
 	}
 	return true, nil
 }
@@ -76,7 +79,7 @@ func runDeletedCleanupTask(stream pb.NezhaService_RequestTaskServer, row *model.
 	if err != nil {
 		// CAS/audit failure must not mutate a different attempt or claim a send.
 		if attempted {
-			finishDeletedCleanup(row, "unknown", "任务未确认送达，结果未知；请检查后手动重试")
+			finishDeletedCleanup(row, "unknown", "任务未确认送达，结果未知")
 		}
 		return err
 	}
@@ -101,7 +104,7 @@ func runDeletedCleanupTask(stream pb.NezhaService_RequestTaskServer, row *model.
 			finishDeletedCleanup(row, "failed", "Agent 未启动清理，可能禁止命令执行、权限不足或不是标准安装")
 		}
 	case <-timer.C:
-		finishDeletedCleanup(row, "unknown", "等待启动回执超时，清理结果未知；不会自动重试")
+		finishDeletedCleanup(row, "unknown", "等待启动回执超时，清理结果未知")
 	case <-stream.Context().Done():
 		finishDeletedCleanup(row, "unknown", "连接中断，未收到卸载启动确认；不代表卸载成功")
 	}

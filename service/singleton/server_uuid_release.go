@@ -36,7 +36,7 @@ func ReleaseDeletedServerUUID(value string, version uint64, actor model.ServerOp
 		result := tx.Model(&model.ServerDeletionTombstone{}).
 			Where("uuid = ? AND block_version = ? AND released_at = 0", value, version).
 			Updates(map[string]any{"released_at": releasedAt, "released_by_id": actor.ID, "released_by_name": actor.Name,
-				"cleanup_enabled": false, "cleanup_revision": gorm.Expr("cleanup_revision + 1"), "cleanup_credential_hash": ""})
+				"cleanup_enabled": false, "cleanup_revision": gorm.Expr("cleanup_revision + 1"), "cleanup_credential_hash": "", "cleanup_next_attempt_at": 0})
 		if result.Error != nil {
 			return result.Error
 		}
@@ -49,6 +49,7 @@ func ReleaseDeletedServerUUID(value string, version uint64, actor model.ServerOp
 			return err
 		}
 		row.CleanupEnabled, row.CleanupCredentialHash = false, ""
+		row.CleanupNextAttemptAt = 0
 		row.CleanupRevision++
 		row.ReleasedAt, row.ReleasedByID, row.ReleasedByName = releasedAt, actor.ID, actor.Name
 		return nil
