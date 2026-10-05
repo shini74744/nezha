@@ -3,12 +3,12 @@ import {createServer} from "../../../user/src/test/fixtures";
 import {readFileSync} from "node:fs";
 const manifest = JSON.parse(readFileSync(new URL("../../../user/src/appearance/manifest.json", import.meta.url), "utf8")) as {key:string}[];
 test.use({ignoreHTTPSErrors:true});
-const names=["Google","YouTube","Cloudflare","GitHub","Microsoft","Wikipedia","Telegram","OpenAI","Netflix","百度","哔哩哔哩","腾讯"];
+const catalog = JSON.parse(readFileSync(new URL("../../../../service/connectivity/catalog.json", import.meta.url), "utf8")) as {id:string; name:string; group:string; host:string}[];
 async function setup(page:Page,theme:string,light=false,offline=false,owner=true,language="zh-CN",wallpaper=false) {
  const origin="https://127.0.0.1:"+(theme==="doraemon"?"18478":"18477"),now=Date.now();
  const server=createServer({id:7,name:"连通性测试节点",last_active:offline?"0001-01-01T00:00:00Z":new Date(now).toISOString()});
  const state={posts:0,gets:0,external:[] as string[],mode:"idle",readError:false,postError:false};
- const results=()=>names.map((name,i)=>({id:"site-"+i,name,group:i<9?"global":"china",host:["www.google.com","www.youtube.com","www.cloudflare.com","github.com","www.microsoft.com","www.wikipedia.org","telegram.org","openai.com","www.netflix.com","www.baidu.com","www.bilibili.com","www.qq.com"][i],
+ const results=()=>catalog.map(({id,name,group,host},i)=>({id,name,group,host,
   status:state.mode==="idle"?"pending":i===7?"http_error":i===8?"timeout":"ok",delay_ms:state.mode==="idle"||i===8?undefined:35+i*12,
   samples:state.mode==="idle"?[]:Array.from({length:3},()=>({status:i===7?"http_error":i===8?"timeout":"ok",http_status:i===7?403:undefined,delay_ms:i===8?undefined:35+i*12}))}));
  const response=()=>({server_id:7,online:!offline,can_run:owner,state:state.mode,rounds:3,started_at:state.mode==="idle"?undefined:now-2000,finished_at:state.mode==="complete"?now:undefined,retry_at:state.mode==="complete"?now+60000:undefined,results:results()});
@@ -49,7 +49,13 @@ for(const theme of ["default","doraemon"])for(const light of [false,true])for(co
  test(`connectivity layout ${theme} ${light?"light":"dark"} ${width}`,async({page},info)=>{
   await page.setViewportSize({width,height:900});const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
   const state=await setup(page,theme,light),view=page.locator("[data-server-connectivity]");
-  await expect(view.locator("[data-connectivity-target]")).toHaveCount(12);
+  await expect(view.locator("[data-connectivity-target]")).toHaveCount(48);
+  await expect(view.locator("[data-connectivity-group]")).toHaveCount(4);
+  await expect(view.locator("img[data-connectivity-icon]")).toHaveCount(48);
+  await expect.poll(() => view.locator("img[data-connectivity-icon]").evaluateAll((images) => images.every(img => (img as HTMLImageElement).complete && (img as HTMLImageElement).naturalWidth > 0))).toBe(true);
+  for (const region of [{id:"china",size:12},{id:"japan",size:4},{id:"usa",size:20},{id:"global",size:12}]) {
+   await expect(view.locator(`[data-connectivity-group="${region.id}"] [data-connectivity-target]`)).toHaveCount(region.size);
+  }
   expect(state.posts).toBe(0);await expect(page.locator("[data-server-network]")).toHaveCount(0);
   await view.getByRole("button",{name:"开始检测",exact:true}).click();
   await expect(view.getByRole("button",{name:"检测中…",exact:true})).toBeDisabled();expect(state.posts).toBe(1);
@@ -61,7 +67,7 @@ for(const theme of ["default","doraemon"])for(const light of [false,true])for(co
   const cards=await view.locator("[data-connectivity-target]").evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return {left:r.left,right:r.right,width:r.width}}));
   expect(cards.every(r=>r.left>=0&&r.right<=width+1&&r.width>0)).toBe(true);
   await view.scrollIntoViewIfNeeded();await page.screenshot({path:info.outputPath("connectivity.png"),fullPage:true});
-  expect(state.external.filter(url=>names.some(name=>url.toLowerCase().includes(name.toLowerCase())))).toEqual([]);
+  expect(state.external.filter(url=>new URL(url).hostname==="ip.net.coffee" || catalog.some(target=>new URL(url).hostname===target.host))).toEqual([]);
   expect(errors).toEqual([]);
  });
 }
@@ -81,7 +87,13 @@ test("network/detail tabs still work with combined network; help and failure rec
  await expect(view).toHaveCount(0);await page.locator(".server-info-tab").getByText("详情",{exact:true}).click();await expect(page.locator(".server-charts")).toBeVisible();
  state.readError=true;await page.locator(".server-info-tab").getByText("连通性",{exact:true}).click();await expect(view.getByRole("alert")).toHaveText(/检测结果读取失败/);
  await expect(view.locator("[data-connectivity-target]")).toHaveCount(0);state.readError=false;await view.getByRole("button",{name:"重新加载"}).click();
- await expect(view.locator("[data-connectivity-target]")).toHaveCount(12);
+ await expect(view.locator("[data-connectivity-target]")).toHaveCount(48);
+  await expect(view.locator("[data-connectivity-group]")).toHaveCount(4);
+  await expect(view.locator("img[data-connectivity-icon]")).toHaveCount(48);
+  await expect.poll(() => view.locator("img[data-connectivity-icon]").evaluateAll((images) => images.every(img => (img as HTMLImageElement).complete && (img as HTMLImageElement).naturalWidth > 0))).toBe(true);
+  for (const region of [{id:"china",size:12},{id:"japan",size:4},{id:"usa",size:20},{id:"global",size:12}]) {
+   await expect(view.locator(`[data-connectivity-group="${region.id}"] [data-connectivity-target]`)).toHaveCount(region.size);
+  }
 });
 test("English mobile tab labels and cards fit",async({page})=>{
  await page.setViewportSize({width:320,height:850});await setup(page,"default",true,false,true,"en-US");

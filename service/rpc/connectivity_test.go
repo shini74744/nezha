@@ -123,7 +123,7 @@ func (s *connectivityLoopbackAgent) Send(task *pb.Task) error {
 	s.sent.Add(1)
 	// Agent-side fixture: no outbound traffic is used during this test.
 	result := &pb.TaskResult{Id: task.Id, Type: task.Type, Successful: true, Delay: 42}
-	if task.Data == "https://openai.com/favicon.ico" {
+	if task.Data == "https://chatgpt.com/cdn-cgi/trace" {
 		result.Successful = false
 		result.Data = "应用错误: 403 Forbidden"
 	}
@@ -165,9 +165,9 @@ func TestConnectivityFullAgentTaskChannelDoesNotTouchMonitorHistory(t *testing.T
 	require.NoError(t, err)
 	require.Eventually(t, func() bool { return manager.Get("fixture").State == "complete" }, 2*time.Second, time.Millisecond)
 	snapshot := manager.Get("fixture")
-	require.EqualValues(t, 36, stream.sent.Load())
+	require.EqualValues(t, 3*len(connectivity.Targets()), stream.sent.Load())
 	for _, result := range snapshot.Results {
-		if result.ID == "openai" {
+		if result.ID == "chatgpt" {
 			require.Equal(t, "http_error", result.Status)
 			require.Equal(t, 403, result.Samples[0].HTTPStatus)
 		} else {

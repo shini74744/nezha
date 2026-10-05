@@ -18,23 +18,6 @@ type Target struct {
 	URL   string `json:"-"`
 }
 
-// Keep this list server-owned. The public API must never accept URLs, ports,
-// methods, headers or commands from a browser.
-var targets = []Target{
-	{"google", "Google", "global", "www.google.com", "https://www.google.com/generate_204"},
-	{"youtube", "YouTube", "global", "www.youtube.com", "https://www.youtube.com/generate_204"},
-	{"cloudflare", "Cloudflare", "global", "www.cloudflare.com", "https://www.cloudflare.com/cdn-cgi/trace"},
-	{"github", "GitHub", "global", "github.com", "https://github.com/favicon.ico"},
-	{"microsoft", "Microsoft", "global", "www.microsoft.com", "https://www.microsoft.com/favicon.ico"},
-	{"wikipedia", "Wikipedia", "global", "www.wikipedia.org", "https://www.wikipedia.org/favicon.ico"},
-	{"telegram", "Telegram", "global", "telegram.org", "https://telegram.org/favicon.ico"},
-	{"openai", "OpenAI", "global", "openai.com", "https://openai.com/favicon.ico"},
-	{"netflix", "Netflix", "global", "www.netflix.com", "https://www.netflix.com/favicon.ico"},
-	{"baidu", "百度", "china", "www.baidu.com", "https://www.baidu.com/favicon.ico"},
-	{"bilibili", "哔哩哔哩", "china", "www.bilibili.com", "https://www.bilibili.com/favicon.ico"},
-	{"qq", "腾讯", "china", "www.qq.com", "https://www.qq.com/favicon.ico"},
-}
-
 func Targets() []Target { return append([]Target(nil), targets...) }
 func FindTarget(id string) (Target, bool) {
 	for _, target := range targets {
@@ -88,7 +71,7 @@ var ErrBusy = errors.New("connectivity_busy")
 func NewManager() *Manager {
 	return &Manager{entries: map[string]*entry{}, now: time.Now, maxActive: 4,
 		maxEntries: 512, ttl: 24 * time.Hour, cooldown: time.Minute, rounds: 3,
-		workers: 4, timeout: 6 * time.Minute}
+		workers: 8, timeout: 12 * time.Minute}
 }
 func empty(rounds int) Snapshot {
 	snapshot := Snapshot{State: "idle", Rounds: rounds, Results: make([]Result, len(targets))}

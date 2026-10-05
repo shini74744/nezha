@@ -105,6 +105,11 @@
 		"backendUnavailableDescription": "頁面仍會正常顯示，但暫時無法載入監控資料。"
 	},
 	"connectivity": {
+		"sample": "第 {{index}} 次",
+		"samples": "已採樣 {{done}} / {{total}} 次",
+		"reachableCount": "可達 {{count}} / {{total}}",
+		"usa": "美國",
+		"japan": "日本",
 		"title": "節點連通性",
 		"origin": "由目前節點發起 HTTPS 檢測，不使用訪客網路",
 		"helpTitle": "連通性說明",
@@ -125,8 +130,8 @@
 		"empty": "尚無檢測紀錄",
 		"time": "檢測時間",
 		"rounds": "每項 {{count}} 次",
-		"global": "國際網站",
-		"china": "國內網站",
+		"global": "全球",
+		"china": "中國",
 		"status": {
 			"pending": "等待檢測",
 			"running": "正在檢測",

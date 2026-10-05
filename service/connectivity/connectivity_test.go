@@ -20,7 +20,7 @@ func waitComplete(t *testing.T, m *Manager, key string) Snapshot {
 }
 func TestFixedTargets(t *testing.T) {
 	got := Targets()
-	require.Len(t, got, 12)
+	require.Len(t, got, 48)
 	seen := map[string]bool{}
 	for _, target := range got {
 		u, err := url.Parse(target.URL)
@@ -65,7 +65,7 @@ func TestManagerDeduplicatesCooldownAndMedian(t *testing.T) {
 	wg.Wait()
 	close(release)
 	result := waitComplete(t, m, "node-a")
-	require.EqualValues(t, 36, calls.Load())
+	require.EqualValues(t, 3*len(Targets()), calls.Load())
 	for _, r := range result.Results {
 		require.Equal(t, "ok", r.Status)
 		require.Len(t, r.Samples, 3)
@@ -74,7 +74,7 @@ func TestManagerDeduplicatesCooldownAndMedian(t *testing.T) {
 	cached, err := m.Start("node-a", probe)
 	require.NoError(t, err)
 	require.Equal(t, result.StartedAt, cached.StartedAt)
-	require.EqualValues(t, 36, calls.Load())
+	require.EqualValues(t, 3*len(Targets()), calls.Load())
 	// Snapshot copies must not expose the mutable running collection.
 	cached.Results[0].Status = "modified"
 	cached.Results[0].Samples[0].Status = "modified"
@@ -84,7 +84,7 @@ func TestManagerDeduplicatesCooldownAndMedian(t *testing.T) {
 	_, err = m.Start("node-a", probe)
 	require.NoError(t, err)
 	waitComplete(t, m, "node-a")
-	require.EqualValues(t, 72, calls.Load())
+	require.EqualValues(t, 6*len(Targets()), calls.Load())
 	now = now.Add(25 * time.Hour)
 	require.Equal(t, "idle", m.Get("node-a").State)
 }
@@ -140,4 +140,43 @@ func TestMixedOutcomesAndMedian(t *testing.T) {
 	r = Result{Samples: []Sample{{Status: "timeout"}, {Status: "timeout"}, {Status: "timeout"}}}
 	summarize(&r)
 	require.Nil(t, r.DelayMS)
+}
+
+func TestExpandedReferenceCatalogAndBudget(t *testing.T) {
+	groups := map[string]int{}
+	for _, target := range Targets() {
+		groups[target.Group]++
+	}
+	require.Equal(t, map[string]int{"china": 12, "japan": 4, "usa": 20, "global": 12}, groups)
+	for _, id := range []string{"deepseek", "weixin", "sony", "nintendo", "claude", "chatgpt", "gemini", "steam", "tiktok", "mistral", "mercadolibre"} {
+		_, ok := FindTarget(id)
+		require.True(t, ok, id)
+	}
+	m := NewManager()
+	require.Equal(t, 8, m.workers)
+	// Even if every Agent request reaches the 35s upper bound, all 48 sites
+	// must receive their three real attempts before the overall batch deadline.
+	batches := (len(Targets()) + m.workers - 1) / m.workers
+	require.GreaterOrEqual(t, m.timeout, time.Duration(batches*m.rounds)*35*time.Second)
+}
+func TestExpandedWorkersRemainBounded(t *testing.T) {
+	m := NewManager()
+	var active, peak, calls atomic.Int32
+	probe := func(ctx context.Context, target Target) Sample {
+		n := active.Add(1)
+		for old := peak.Load(); n > old; old = peak.Load() {
+			if peak.CompareAndSwap(old, n) {
+				break
+			}
+		}
+		defer active.Add(-1)
+		calls.Add(1)
+		time.Sleep(time.Millisecond)
+		return Sample{Status: "ok"}
+	}
+	_, err := m.Start("bounded", probe)
+	require.NoError(t, err)
+	waitComplete(t, m, "bounded")
+	require.EqualValues(t, 144, calls.Load())
+	require.LessOrEqual(t, peak.Load(), int32(8))
 }
