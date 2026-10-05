@@ -216,6 +216,7 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	auth.GET("/waf/unknown-reports", restScopeMiddleware(model.ScopeAdminAll), pAdminHandler(listUnknownAgentReports))
 	auth.GET("/waf/deleted-servers", restScopeMiddleware(model.ScopeAdminAll), pAdminHandler(listDeletedServers))
 	auth.POST("/waf/release-uuid", restScopeMiddleware(model.ScopeAdminAll), adminHandler(releaseDeletedAgentUUID))
+	auth.POST("/waf/deleted-cleanup", restScopeAllOf(model.ScopeAdminAll, model.ScopeServerExec), adminHandler(configureDeletedCleanup))
 	auth.GET("/server/operations", restScopeMiddleware(model.ScopeAdminAll), pAdminHandler(listServerOperations))
 	auth.POST("/batch-delete/waf", restScopeMiddleware(model.ScopeAdminAll), adminHandler(batchDeleteBlockedAddress))
 	auth.GET("/online-user", restScopeMiddleware(model.ScopeAdminAll), pAdminHandler(listOnlineUser))

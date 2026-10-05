@@ -52,6 +52,24 @@ UUID 缺失/格式不合法使用独立记录表，最多保存 10,000 个「来
 
 删除清单长期保留。原 ID 仅为历史标识，不是外键，不随 ID 重排修改，也不会指向后来复用该 ID 的新节点。
 
+## 逐台重连自动卸载
+
+「已删除服务器」每张卡片底部提供 **重连自动卸载 → 设置**，默认关闭，仅作用于当前 UUID 的本次删除记录。开启必须管理员二次确认，不会自动为其他已删除节点开启。
+
+- 节点持有效归属凭据重连后，后台通过仅用于清理的受限通道下发固定、UUID 绑定的标准卸载任务；不打开网页 SSH、不恢复服务器记录、不解除 UUID/IP 封禁、不写入正常监控数据，不开放终端、文件或其他任务。
+- 每次开启最多下发一次。卡片显示等待重连、任务下发中、已启动清理、清理未启动或结果未知，以及最近执行时间和累计尝试次数。失败或未知需管理员检查后重新开启；不是无限重试。
+- 「已启动清理」仅表示 Agent 返回独立清理进程的启动确认，不是卸载完成证明。断线或超时不会当成卸载成功。
+- 关闭设置、放行 UUID 会停止后续下发；已经发出的命令无法撤回。旧页面的版本/设置修订号不能操作新一轮任务。同 UUID 重新注册后再删除，开关恢复关闭，旧任务不能影响新记录。
+- 等待中的设置重启后保留；下发过程中面板重启会标为结果未知并停止自动尝试，避免重复卸载。
+- 身份校验使用删除时保存的原所属用户与其当前有效连接密钥；已完成服务器转移的稳定专用凭据仅保留不可逆摘要用于本 UUID 清理，绝不返回前端或写入操作历史。原用户不存在、密钥错误/缺失、UUID 不符均不允许下发。未完成转移/恢复的归属不会猜测。
+- 旧删除记录（包括旧演示数据）没有可靠所属信息或操作系统快照时显示不可用原因，不按当前同 ID 的节点、来源 IP 或上报自称的 UUID 推断身份。新版删除记录会保存所需快照，开关仍默认关闭。
+- 标准 Linux / Windows / macOS / FreeBSD 沿用现有卸载脚本及 Agent 命令执行权限检查；F50、Android、OpenWrt 等特殊节点不支持自动卸载。关闭命令执行、权限不足、非标准安装等可能失败。未知系统不保证兼容。
+- 开关变更、下发尝试和回执状态记入服务器操作历史；只记录固定说明，不保存命令输出、连接密钥或脚本内容。
+
+写接口：`POST /api/v1/waf/deleted-cleanup`，JSON：
+`{"uuid":"节点 UUID","block_version":1,"cleanup_revision":0,"enabled":true}`。
+版本和修订号必须来自最新列表。Cookie 需 CSRF；PAT 需同时包含管理员和服务器执行 scope（或 `nezha:*`），按当前服务器 ID 限定的 PAT 不得操作历史删除节点。
+
 ## 手动放行 UUID
 
 「认证防火墙」中“UUID 已拉黑”后提供 **放行 UUID**，已删除服务器卡片也有入口，电脑/手机均可操作。仅已删除且仍被拉黑的 UUID 可放行；密钥错误、UUID 缺失/畸形或疑似冲突不能通过此按钮绕过认证。
@@ -136,7 +154,7 @@ python3 pkg/agentuninstall/test_cleanup.py -v
 cd frontend/admin
 npm test
 npm run build
-npx playwright test tests/e2e/firewall-uninstall.spec.ts tests/e2e/server-history.spec.ts tests/e2e/uuid-release.spec.ts
+npx playwright test tests/e2e/firewall-uninstall.spec.ts tests/e2e/server-history.spec.ts tests/e2e/uuid-release.spec.ts tests/e2e/deleted-agent-cleanup.spec.ts
 ```
 
 删除/清理测试只操作临时数据库、目录及假服务；浏览器测试拦截所有 API。不得为了验证记录而删除生产节点或修改生产节点 ID。跨系统模板、启动器模拟、Windows 语法检查不等于所有系统真实卸载验收。

@@ -1,11 +1,12 @@
 import { swrFetcher } from "@/api/api"
+import { DeletedAgentCleanup, type DeletedCleanupRecord } from "@/components/deleted-agent-cleanup"
 import { Button } from "@/components/ui/button"
 import { UUIDReleaseButton } from "@/components/uuid-release"
 import { Archive, RefreshCw, ShieldAlert } from "lucide-react"
 import { useState } from "react"
 import useSWR from "swr"
 
-interface DeletedServer {
+interface DeletedServer extends DeletedCleanupRecord {
     uuid: string
     name: string
     original_id: number
@@ -149,6 +150,7 @@ export function DeletedServers() {
                                     releasedAt={row.released_at}
                                 />
                             </div>
+                            <DeletedAgentCleanup row={row} />
                         </article>
                     ))}
                 </div>
