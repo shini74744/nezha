@@ -463,6 +463,7 @@ func fallbackToFrontend(frontendDist fs.FS) func(*gin.Context) {
 		regexp.MustCompile(`^/dashboard/profile$`),
 		regexp.MustCompile(`^/dashboard/settings$`),
 		regexp.MustCompile(`^/dashboard/settings/user$`),
+		regexp.MustCompile(`^/dashboard/settings/icons$`),
 		regexp.MustCompile(`^/dashboard/settings/appearance$`),
 		regexp.MustCompile(`^/dashboard/settings/dashboard-appearance$`),
 		regexp.MustCompile(`^/dashboard/settings/online-user$`),
