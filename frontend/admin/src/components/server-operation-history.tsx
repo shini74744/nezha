@@ -30,6 +30,7 @@ const actions: Record<string, string> = {
     create: "节点注册",
     edit: "编辑节点",
     delete: "删除节点",
+    release_uuid: "放行 UUID",
     order: "调整排序",
     reassign_ids: "调整系统 ID",
     visibility: "修改显示",
@@ -53,6 +54,7 @@ const fields: Record<string, string> = {
     public_note: "公开配置 / 备注",
     groups: "分组",
     status: "状态",
+    uuid_block: "UUID 封禁状态",
     config: "Agent 配置",
     update: "Agent 更新",
 }

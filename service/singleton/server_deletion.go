@@ -26,7 +26,7 @@ var deletedServerUUIDs = struct {
 
 func initDeletedServerUUIDs() error {
 	var tombstones []model.ServerDeletionTombstone
-	if err := DB.Find(&tombstones).Error; err != nil {
+	if err := DB.Where("released_at = 0").Find(&tombstones).Error; err != nil {
 		return err
 	}
 	deletedServerUUIDs.Lock()
@@ -156,7 +156,7 @@ func removeIDsFromCSV(raw string, deleted map[uint64]struct{}) (string, bool) {
 
 // PermanentlyDeleteServers removes server rows, every direct server_id row,
 // every persisted ID reference that could be inherited after ID reuse, and all
-// TSDB series. The deleted UUID is kept only as a permanent registration block.
+// TSDB series. The deleted UUID remains blocked until explicitly released.
 type ServerDeleteIdentity struct {
 	UUID   string
 	UserID uint64
@@ -240,7 +240,19 @@ func PermanentlyDeleteServersMatching(ids []uint64, expected map[uint64]ServerDe
 				DeletedByID: actor.ID, DeletedByName: actor.Name,
 			})
 		}
-		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&tombstones).Error; err != nil {
+		if err := tx.Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "uuid"}},
+			DoUpdates: clause.Assignments(map[string]any{
+				"created_at":      gorm.Expr("excluded.created_at"),
+				"name":            gorm.Expr("excluded.name"),
+				"original_id":     gorm.Expr("excluded.original_id"),
+				"deleted_by_id":   gorm.Expr("excluded.deleted_by_id"),
+				"deleted_by_name": gorm.Expr("excluded.deleted_by_name"),
+				"last_ip":         "", "first_report_at": 0, "last_report_at": 0, "report_count": 0,
+				"released_at": 0, "released_by_id": 0, "released_by_name": "",
+				"block_version": gorm.Expr("server_deletion_tombstones.block_version + 1"),
+			}),
+		}).Create(&tombstones).Error; err != nil {
 			return err
 		}
 

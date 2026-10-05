@@ -14,6 +14,8 @@ type UnknownAgentReportView struct {
 	UUID          string `json:"uuid"`
 	Name          string `json:"name"`
 	Kind          string `json:"kind"`
+	ReleasedAt    int64  `json:"released_at"`
+	BlockVersion  uint64 `json:"block_version"`
 	PreviousIP    string `json:"previous_ip,omitempty"`
 	PreviousPeer  string `json:"previous_peer,omitempty"`
 	LastPeer      string `json:"last_peer,omitempty"`

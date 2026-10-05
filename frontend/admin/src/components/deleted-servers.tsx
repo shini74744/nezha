@@ -1,5 +1,6 @@
 import { swrFetcher } from "@/api/api"
 import { Button } from "@/components/ui/button"
+import { UUIDReleaseButton } from "@/components/uuid-release"
 import { Archive, RefreshCw, ShieldAlert } from "lucide-react"
 import { useState } from "react"
 import useSWR from "swr"
@@ -12,6 +13,9 @@ interface DeletedServer {
     deleted_by_id: number
     deleted_by_name: string
     report_count: number
+    block_version: number
+    released_at: number
+    released_by_name: string
     last_report_at: number
 }
 export function DeletedServers() {
@@ -29,7 +33,7 @@ export function DeletedServers() {
             <div className="flex items-start justify-between gap-3">
                 <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
                     后台删除后立即保留在这里，不要求再次上报。UUID
-                    持续拉黑；如再次连接，也会出现在“认证防火墙”。 原 ID
+                    默认持续拉黑，管理员可手动放行；如再次连接，也会出现在“认证防火墙”。 原 ID
                     只作历史标识，可能被其他节点重新使用。
                 </p>
                 <Button
@@ -61,7 +65,9 @@ export function DeletedServers() {
                             key={row.uuid}
                             className={
                                 "min-w-0 rounded-md border p-3 text-sm " +
-                                (row.report_count ? "border-amber-500/60 bg-amber-500/5" : "")
+                                (row.report_count && !row.released_at
+                                    ? "border-amber-500/60 bg-amber-500/5"
+                                    : "")
                             }
                         >
                             <div className="flex items-start justify-between gap-3">
@@ -74,10 +80,10 @@ export function DeletedServers() {
                                     </span>
                                 </strong>
                                 <span className="shrink-0 rounded border px-1.5 py-0.5 text-xs">
-                                    已删除
+                                    {row.released_at ? "已删除 · 已放行" : "已删除"}
                                 </span>
                             </div>
-                            {row.report_count > 0 && (
+                            {row.report_count > 0 && !row.released_at && (
                                 <div className="mt-2 flex items-start gap-1.5 rounded-md bg-amber-500/10 px-2 py-1.5 text-xs text-amber-800 dark:text-amber-200">
                                     <ShieldAlert className="mt-0.5 size-3.5 shrink-0" />
                                     <span>
@@ -118,11 +124,31 @@ export function DeletedServers() {
                                     <dt className="text-muted-foreground">删除后上报</dt>
                                     <dd>
                                         {row.report_count
-                                            ? row.report_count + " 次 · 已拒绝连接"
+                                            ? row.report_count +
+                                              (row.released_at
+                                                  ? " 次 · 放行前已拦截"
+                                                  : " 次 · 已拒绝连接")
                                             : "尚未再次上报"}
                                     </dd>
                                 </div>
                             </dl>
+                            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+                                {row.released_at ? (
+                                    <p className="text-muted-foreground">
+                                        放行时间：
+                                        {new Date(row.released_at * 1000).toLocaleString()} ·{" "}
+                                        {row.released_by_name || "管理员"}
+                                    </p>
+                                ) : (
+                                    <span className="text-muted-foreground">UUID 已拉黑</span>
+                                )}
+                                <UUIDReleaseButton
+                                    uuid={row.uuid}
+                                    name={row.name}
+                                    blockVersion={row.block_version}
+                                    releasedAt={row.released_at}
+                                />
+                            </div>
                         </article>
                     ))}
                 </div>

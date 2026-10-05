@@ -8,6 +8,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+import { UUIDReleaseButton } from "@/components/uuid-release"
 import { RefreshCw, ShieldBan } from "lucide-react"
 import { useState } from "react"
 import useSWR from "swr"
@@ -24,6 +25,8 @@ interface UnknownReport {
     first_report_at: number
     last_report_at: number
     report_count: number
+    released_at: number
+    block_version: number
 }
 interface UnknownReportPage {
     value: UnknownReport[]
@@ -57,7 +60,9 @@ const reportStatus = (row: UnknownReport) =>
     row.kind === "conflict"
         ? "待核查 · 未自动封禁"
         : row.kind === "deleted"
-          ? "UUID 已拉黑"
+          ? row.released_at
+              ? "UUID 已放行"
+              : "UUID 已拉黑"
           : "认证已拒绝"
 function ReportSource({ row }: { row: UnknownReport }) {
     return (
@@ -168,9 +173,19 @@ export function UnknownAgentReports() {
                                             {date(row.last_report_at)}
                                         </TableCell>
                                         <TableCell>
-                                            <span className="whitespace-nowrap rounded border px-2 py-1 text-xs">
-                                                {reportStatus(row)}
-                                            </span>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className="whitespace-nowrap rounded border px-2 py-1 text-xs">
+                                                    {reportStatus(row)}
+                                                </span>
+                                                {row.kind === "deleted" && (
+                                                    <UUIDReleaseButton
+                                                        uuid={row.uuid}
+                                                        name={row.name}
+                                                        blockVersion={row.block_version}
+                                                        releasedAt={row.released_at}
+                                                    />
+                                                )}
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -213,9 +228,17 @@ export function UnknownAgentReports() {
                                         <dd>{date(row.last_report_at)}</dd>
                                     </div>
                                 </dl>
-                                <p className="mt-2 text-xs text-muted-foreground">
-                                    {reportStatus(row)}
-                                </p>
+                                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                                    <span>{reportStatus(row)}</span>
+                                    {row.kind === "deleted" && (
+                                        <UUIDReleaseButton
+                                            uuid={row.uuid}
+                                            name={row.name}
+                                            blockVersion={row.block_version}
+                                            releasedAt={row.released_at}
+                                        />
+                                    )}
+                                </div>
                             </article>
                         ))}
                     </div>
