@@ -99,4 +99,4 @@ GEOIP_DB=/path/to/country.mmdb VERSION=custom-$(git rev-parse --short HEAD) bash
 - 八个设置页面复用同一导航布局；保留原背景、字体、主题样式。桌面五列、手机两列，浏览器前进/后退同步选中项，切换长短页面不再因不同边距或页面高度改变导航位置。
 - 回归入口：`frontend/admin/tests/e2e/settings-layout.spec.ts`、`ddns-visual-editor.spec.ts`、`src/test/ddns-editor.test.ts` 及 `cmd/dashboard/controller/ddns_visual_editor_test.go`。浏览器测试使用模拟 API；控制器测试使用隔离数据库，不操作真实 DNS。
 
-- 网络概览上传/下载圆形图标使用统一的文字基线对齐，随字体字号缩放；默认显示及内置美化均生效，保留原单位、颜色、发光分级与手机纵向排列。回归入口：`frontend/admin/tests/e2e/speed-alignment.spec.ts`（隔离前台预览 `https://127.0.0.1:18476`）和 `frontend/user/src/test/speed-alignment.test.tsx`。
+- 网络概览上传/下载圆形图标与文字在速率框内统一垂直居中，不使用上下偏移；随字体字号缩放；默认显示及内置美化均生效，保留原单位、颜色、发光分级与手机纵向排列。回归入口：`frontend/admin/tests/e2e/speed-alignment.spec.ts`（隔离前台预览 `https://127.0.0.1:18476`）和 `frontend/user/src/test/speed-alignment.test.tsx`。

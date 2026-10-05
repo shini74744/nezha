@@ -71,15 +71,14 @@
       }
 
 /* Legacy overview styling applies to the whole icon + number, not only text. */
-/* Use the text baseline, not the line-box center: custom fonts have different
-   ascenders/descenders. The shared em offset centers both circular arrows on
-   the digits while keeping their size proportional to the inherited font. */
+/* Center both children in the badge, including its scaled/high-rate state.
+   Baseline alignment plus an icon offset shifts the circle down with custom
+   fonts; equal line boxes need no direction-specific or font-specific nudge. */
 .nz-network-speed {
- display:inline-flex; align-items:baseline; gap:2px; line-height:1; white-space:nowrap;
+ display:inline-flex; align-items:center; gap:2px; line-height:1; white-space:nowrap;
 }
 .nz-network-speed > svg {
  display:block; flex:none; width:1em; height:1em; margin:0;
- position:relative; top:.125em;
 }
 .nz-network-speed > .nz-rate-value {
  display:inline-block; font-size:inherit; line-height:inherit; white-space:nowrap;
