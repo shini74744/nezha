@@ -33,7 +33,7 @@ export const SettingsTab = ({ className }: { className?: string }) => {
                 <TabsTrigger value="/dashboard/settings/api-tokens" asChild>
                     <Link to="/dashboard/settings/api-tokens">{t("ApiTokens")}</Link>
                 </TabsTrigger>
-                {isAdmin && <TabsTrigger className="col-start-1" value="/dashboard/settings/appearance" asChild>
+                {isAdmin && <TabsTrigger className="sm:col-start-1" value="/dashboard/settings/appearance" asChild>
                     <Link to="/dashboard/settings/appearance">美化设置</Link>
                 </TabsTrigger>}
                 {isAdmin && <TabsTrigger value="/dashboard/settings/dashboard-appearance" asChild>

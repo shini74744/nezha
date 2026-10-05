@@ -23,6 +23,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { UnknownAgentReports } from "@/components/unknown-agent-reports"
 import { DeletedServers } from "@/components/deleted-servers"
+import { FirewallHelp } from "@/components/firewall-help"
 import { useAuth } from "@/hooks/useAuth"
 import { selectableTableFeatures } from "@/lib/table"
 import {
@@ -49,14 +50,17 @@ export default function WAFPage() {
                 onValueChange={(value) => setParams({ tab: value })}
                 className="min-w-0"
             >
-                <TabsList
-                    className="grid w-full grid-cols-3 sm:inline-flex sm:w-auto"
-                    aria-label="防火墙分类"
-                >
-                    <TabsTrigger value="web">Web 防火墙</TabsTrigger>
-                    <TabsTrigger value="unknown">认证防火墙</TabsTrigger>
-                    <TabsTrigger value="deleted">已删除服务器</TabsTrigger>
-                </TabsList>
+                <div className="flex min-w-0 items-center gap-1">
+                    <TabsList
+                        className="grid h-auto min-w-0 flex-1 grid-cols-3 sm:inline-flex sm:flex-none [&>[role=tab]]:min-h-11 [&>[role=tab]]:whitespace-normal [&>[role=tab]]:px-1 sm:[&>[role=tab]]:px-3"
+                        aria-label="防火墙分类"
+                    >
+                        <TabsTrigger value="web">Web 防火墙</TabsTrigger>
+                        <TabsTrigger value="unknown">认证防火墙</TabsTrigger>
+                        <TabsTrigger value="deleted">已删除服务器</TabsTrigger>
+                    </TabsList>
+                    {tab !== "web" && <FirewallHelp key={tab} tab={tab} />}
+                </div>
                 <TabsContent value="web">
                     <WebFirewallTable />
                 </TabsContent>

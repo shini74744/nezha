@@ -236,7 +236,7 @@ test("new tasks validate server selection, retain failed save draft and never ex
 test("dark mode, short viewport, many servers and scoped search remain usable", async ({
     page,
 }) => {
-    await page.addInitScript(() => localStorage.setItem("vite-ui-theme", "dark"))
+    await page.addInitScript(() => localStorage.setItem("nezha-dashboard-theme", "dark"))
     await page.setViewportSize({ width: 844, height: 390 })
     const { writes } = await setup(page)
     await page.route("**/api/v1/server", (route) =>

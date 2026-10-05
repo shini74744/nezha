@@ -16,8 +16,12 @@
 }
 
 @media (max-width: 639px) {
+    .settings-layout {
+        gap: 16px;
+    }
+
     .settings-navigation [role="tab"] {
-        min-height: 40px;
+        min-height: 44px;
         white-space: normal;
         overflow-wrap: anywhere;
     }
