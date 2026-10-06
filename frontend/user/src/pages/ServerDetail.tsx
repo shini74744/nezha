@@ -6,6 +6,7 @@ const ServerNetworkSection = lazy(() => import("@/components/ServerNetworkSectio
 const ServerDetailChart = lazy(() => import("@/components/ServerDetailChart"));
 import ServerDetailOverview from "@/components/ServerDetailOverview";
 import TabSwitch from "@/components/TabSwitch";
+import DetailPanel from "@/components/DetailPanel";
 const ServerConnectivity = lazy(() => import("@/components/ServerConnectivity"));
 const ServerNetworkInsight = lazy(() => import("@/components/ServerNetworkInsight"));
 import { Separator } from "@/components/ui/separator";
@@ -56,10 +57,12 @@ export default function ServerDetail() {
 				<ServerDetailSummary server_id={Number(server_id)} />
 			</section> */}
 
+			{currentTab !== "Network" && <DetailPanel key={server_id + ":" + currentTab}>
 			{currentTab === tabs[0] && <Suspense fallback={<SectionLoading/>}><ServerDetailChart server_id={server_id} /></Suspense>}
-			{(currentTab === "Detail" || currentTab === "Network") && <Suspense fallback={<SectionLoading/>}><ServerNetworkSection server_id={Number(server_id)} standalone={currentTab === "Network"} /></Suspense>}
 			{(currentTab === "BGP" || currentTab === "Streaming") && <Suspense fallback={<SectionLoading/>}><ServerNetworkInsight key={server_id+currentTab} serverId={Number(server_id)} kind={currentTab === "BGP" ? "bgp" : "streaming"}/></Suspense>}
 			{currentTab === "Connectivity" && <Suspense fallback={<SectionLoading/>}><ServerConnectivity key={server_id} serverId={Number(server_id)} countryCode={server?.country_code} /></Suspense>}
+			</DetailPanel>}
+			{(currentTab === "Network" || (currentTab === "Detail" && combinedNetwork)) && <DetailPanel key={server_id + ":network"}><Suspense fallback={<SectionLoading/>}><ServerNetworkSection server_id={Number(server_id)} standalone={currentTab === "Network"} /></Suspense></DetailPanel>}
 		</div>
 	);
 }

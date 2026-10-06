@@ -123,6 +123,8 @@ for (const theme of ["default", "doraemon"])
                 await page.locator(".server-info-tab").getByText("网络", { exact: true }).click()
                 await expect(page.locator(".server-charts")).toHaveCount(0)
                 await expect(network.locator("[data-chart]")).toHaveCount(1)
+                await network.getByRole("button", {name:/重庆电信/}).click()
+                await expect(network.locator(".recharts-line-curve")).toHaveCount(1)
                 state.enabled = true
                 await page.evaluate(() => {
                     Object.defineProperty(document, "visibilityState", {value:"hidden", configurable:true}); window.dispatchEvent(new Event("visibilitychange"));
@@ -132,6 +134,8 @@ for (const theme of ["default", "doraemon"])
                 await expect(page.locator(".server-info-tab").getByText("网络", {exact:true})).toHaveCount(0)
                 await expect(page.locator(".server-charts")).toHaveCount(1)
                 await expect(network.locator("[data-chart]")).toHaveCount(1)
+                await expect(network.locator(".recharts-line-curve")).toHaveCount(1)
+                await expect(network.getByRole("button", {name:/重庆电信/})).toHaveAttribute("data-active","true")
             }
             expect(errors).toEqual([])
         })

@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import ServerDetailOverview from "@/components/ServerDetailOverview";
 import { PeriodSelector } from "@/components/ServerDetailChart";
 import TabSwitch from "@/components/TabSwitch";
+import DetailPanel from "@/components/DetailPanel";
 import ServerConnectivity from "@/components/ServerConnectivity";
 import ServerNetworkSection from "@/components/ServerNetworkSection";
 import { fetchLoginUser, fetchServerMetrics, fetchSetting } from "@/lib/nezha-api";
@@ -76,6 +77,7 @@ export function OfflineServerDetail({server,now,initialTab="Detail"}:{server:Nez
   <section className="flex items-center my-2 w-full">
    <Separator className="flex-1"/><div className="flex justify-center w-full max-w-sm"><TabSwitch tabs={tabs} currentTab={tab} setCurrentTab={setTab}/></div><Separator className="flex-1"/>
   </section>
+  {tab!=="Network" && <DetailPanel key={server.id + ":" + tab}>
   {tab==="Detail" && (report?.tsdb_enabled||saved)?<section>
     <PeriodSelector selectedPeriod={activePeriod==="last"?"realtime":activePeriod} onPeriodChange={p=>setPeriod(p==="realtime"?"last":p)} isLogin={!!viewer} isTsdbEnabled={!!report?.tsdb_enabled} offline/>
     <p className="text-xs text-muted-foreground mb-3">{saved?"离线前最后 1 分钟的完整记录；已冻结保存，非实时数据。":"旧历史记录未保存完整主机信息和总容量；该机器重新上线后会自动补齐快照。"}</p>
@@ -83,9 +85,10 @@ export function OfflineServerDetail({server,now,initialTab="Detail"}:{server:Nez
      {chartGroups.map(group=><OfflineMetricCard key={group.title} group={group} report={report!} period={activePeriod}/>)}
     </div>
    </section>:null}
-  {(tab==="Detail"||tab==="Network") && <ServerNetworkSection server_id={server.id} standalone={tab==="Network"}/>}
   {(tab==="BGP"||tab==="Streaming")&&<Suspense fallback={<p role="status">正在加载…</p>}><ServerNetworkInsight key={server.id+tab} serverId={server.id} kind={tab==="BGP"?"bgp":"streaming"}/></Suspense>}
   {tab==="Connectivity" && <ServerConnectivity key={server.id} serverId={server.id} countryCode={server.country_code || saved?.country_code}/>}
+  </DetailPanel>}
+  {(tab==="Network"||(tab==="Detail"&&combinedNetwork)) && <DetailPanel key={server.id+":network"}><ServerNetworkSection server_id={server.id} standalone={tab==="Network"}/></DetailPanel>}
  </div>;
 }
 function MetricHeader({group,report}:{group:typeof groups[number];report:LastReport}) {

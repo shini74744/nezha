@@ -18,6 +18,8 @@ function ServerNetworkSection({
 	const { data } = useQuery({
 		queryKey: ["setting"],
 		queryFn: fetchSetting,
+		// The detail shell already observes settings; tab mounts must not start a duplicate refresh.
+		refetchOnMount: false,
 		refetchOnWindowFocus: true,
 		refetchInterval: 30000,
 	});

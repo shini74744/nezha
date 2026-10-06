@@ -258,7 +258,8 @@ for(const theme of ["default","doraemon"]) {
   const gate=new Promise<void>(resolve=>release=resolve);
   await page.route("**/api/v1/server/7/connectivity",async route=>{await gate;await route.fulfill({json:{success:true,data:{server_id:7,online:true,can_run:false,state:"idle",rounds:3,results:[]}}})});
   await page.locator(".server-info-tab").getByText("连通性",{exact:true}).click();
-  await expect(page.locator(".server-info-tab").getByText("网络",{exact:true})).toBeVisible();
+  await expect(page.locator(".server-info-tab").getByText("详情",{exact:true})).toBeVisible();
+  await expect(page.locator(".server-info-tab").getByText("网络",{exact:true})).toHaveCount(0);
   await expect(page.locator(".server-name")).toContainText("连通性测试节点");
   await expect(page.locator("[data-server-connectivity]")).toBeVisible();
   await page.locator(".server-info-tab").getByText("详情",{exact:true}).click();
