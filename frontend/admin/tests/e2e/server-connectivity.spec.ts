@@ -81,7 +81,9 @@ test("guest and offline only read cache; reloading does not trigger probes",asyn
  const state=await setup(page,"default",false,true,false);state.mode="complete";await page.reload();
  await page.locator(".server-info-tab").getByText("连通性",{exact:true}).click();
  const view=page.locator("[data-server-connectivity]");
- await expect(view.getByText(/节点当前离线/)).toBeVisible();await expect(view.getByText(/仅管理员或节点所属用户/)).toBeVisible();
+ await expect(view.locator("[data-connectivity-controls]")).toHaveCount(0);
+ await expect(view.getByRole("heading",{name:"节点连通性",exact:true})).toHaveCount(0);
+ await expect(view.locator("[data-connectivity-target]")).toHaveCount(72);
  await expect(view.getByRole("button",{name:/开始检测|重新检测/})).toHaveCount(0);
  await expect(view.getByText("(HTTP 403)")).toBeVisible();expect(state.posts).toBe(0);
 });
@@ -121,4 +123,33 @@ for(const theme of ["default","doraemon"])for(const light of [false,true])test(`
  await tab.focus();await page.keyboard.press("Enter");await expect(page.locator("[data-server-network]")).toBeVisible();
  await page.locator(".server-info-tab").getByRole("button",{name:"连通性",exact:true}).focus();await page.keyboard.press("Space");
  await expect(view).toBeVisible();expect(state.posts).toBe(1);
+});
+for(const theme of ["default","doraemon"])for(const light of [false,true])for(const width of [390,1440]){
+ test(`guest results only ${theme} ${light?"light":"dark"} ${width}`,async({page},info)=>{
+  await page.setViewportSize({width,height:900});
+  const state=await setup(page,theme,light,false,false,"zh-CN",true),view=page.locator("[data-server-connectivity]");
+  await expect(view.locator("[data-connectivity-target]")).toHaveCount(72);
+  await expect(view.locator("[data-connectivity-controls]")).toHaveCount(0);
+  await expect(view.getByRole("heading",{name:"节点连通性",exact:true})).toHaveCount(0);
+  await expect(view.getByText(/仅管理员或节点所属用户/)).toHaveCount(0);
+  await expect(view.getByRole("button")).toHaveCount(0);
+  expect(await view.evaluate(el=>el.firstElementChild?.hasAttribute("data-connectivity-group"))).toBe(true);
+  await expect.poll(()=>view.locator("img[data-connectivity-icon]").evaluateAll(images=>images.every(img=>(img as HTMLImageElement).complete&&(img as HTMLImageElement).naturalWidth>0))).toBe(true);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await view.locator("[data-connectivity-group]").first().scrollIntoViewIfNeeded();
+  await page.screenshot({path:info.outputPath("guest-results.png")});
+  expect(state.posts).toBe(0);
+ });
+}
+test("guest cache failure retains reload without exposing owner controls",async({page})=>{
+ const state=await setup(page,"default",false,false,false),view=page.locator("[data-server-connectivity]");
+ state.readError=true;
+ await page.locator(".server-info-tab").getByText("详情",{exact:true}).click();
+ await page.locator(".server-info-tab").getByText("连通性",{exact:true}).click();
+ await expect(view.getByRole("alert")).toHaveText(/检测结果读取失败/);
+ await expect(view.locator("[data-connectivity-controls]")).toHaveCount(0);
+ state.readError=false;await view.getByRole("button",{name:"重新加载"}).click();
+ await expect(view.locator("[data-connectivity-target]")).toHaveCount(72);
+ await expect(view.getByRole("button")).toHaveCount(0);
+ expect(state.posts).toBe(0);
 });

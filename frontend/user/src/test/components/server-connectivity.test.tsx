@@ -46,18 +46,59 @@ describe("node connectivity", () => {
 		expect(api.startConnectivity).not.toHaveBeenCalled();
 		expect(api.fetchConnectivity.mock.calls[0][0]).toBe(7);
 	});
-	it("visitors see cached results but no trigger", async () => {
-		api.fetchConnectivity.mockResolvedValue(
-			data({ can_run: false, state: "complete" }),
+	it.each([
+		"idle",
+		"running",
+		"complete",
+	] as const)("visitors see results without the controls or introduction in %s state", async (state) => {
+		api.fetchConnectivity.mockResolvedValue(data({ can_run: false, state }));
+		const view = mount();
+		expect(await screen.findByText("Google")).toBeVisible();
+		expect(
+			view.container.querySelector("[data-connectivity-controls]"),
+		).toBeNull();
+		expect(screen.queryByText("connectivity.title")).not.toBeInTheDocument();
+		expect(screen.queryByText("connectivity.origin")).not.toBeInTheDocument();
+		expect(screen.queryByText("connectivity.readOnly")).not.toBeInTheDocument();
+		expect(screen.queryByRole("button")).not.toBeInTheDocument();
+		expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+		expect(api.startConnectivity).not.toHaveBeenCalled();
+	});
+	it("does not flash the introduction while permissions are loading", async () => {
+		let resolve!: (value: ConnectivityData) => void;
+		api.fetchConnectivity.mockImplementationOnce(
+			() =>
+				new Promise<ConnectivityData>((done) => {
+					resolve = done;
+				}),
 		);
-		mount();
-		expect(await screen.findByText("connectivity.readOnly")).toBeVisible();
+		const view = mount();
+		expect(screen.getByRole("status")).toHaveTextContent(
+			"connectivity.loading",
+		);
 		expect(
-			screen.queryByRole("button", { name: "connectivity.start" }),
-		).not.toBeInTheDocument();
+			view.container.querySelector("[data-connectivity-controls]"),
+		).toBeNull();
+		expect(screen.queryByText("connectivity.title")).not.toBeInTheDocument();
+		resolve(data({ can_run: false }));
+		expect(await screen.findByText("Google")).toBeVisible();
+		expect(screen.queryByText("connectivity.loading")).not.toBeInTheDocument();
+	});
+	it("visitors can recover a cache read failure without triggering detection", async () => {
+		api.fetchConnectivity.mockRejectedValue(new Error("read failed"));
+		const view = mount();
 		expect(
-			screen.queryByRole("button", { name: "connectivity.retest" }),
-		).not.toBeInTheDocument();
+			await screen.findByRole("alert", {}, { timeout: 3000 }),
+		).toHaveTextContent("connectivity.readFailed");
+		expect(
+			view.container.querySelector("[data-connectivity-controls]"),
+		).toBeNull();
+		api.fetchConnectivity.mockResolvedValue(data({ can_run: false }));
+		fireEvent.click(
+			screen.getByRole("button", { name: "connectivity.reload" }),
+		);
+		expect(await screen.findByText("Google")).toBeVisible();
+		expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 		expect(api.startConnectivity).not.toHaveBeenCalled();
 	});
 	it("owner can start once and sees pending state", async () => {

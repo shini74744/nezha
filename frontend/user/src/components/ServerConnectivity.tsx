@@ -88,152 +88,169 @@ export default function ServerConnectivity({ serverId }: { serverId: number }) {
 			className="w-full min-w-0 space-y-4"
 			aria-label={t("tabSwitch.Connectivity")}
 		>
-			<Card className="min-w-0">
-				<CardContent className="p-4 sm:p-5 space-y-3">
-					<div className="flex flex-wrap items-center justify-between gap-3">
-						<div className="min-w-0">
-							<h2 className="flex items-center gap-2 text-base font-semibold">
-								<Globe2 className="size-4 shrink-0" aria-hidden />
-								<span>{t("connectivity.title")}</span>
+			{!data?.can_run && query.isPending && (
+				<p role="status" className="text-sm text-muted-foreground">
+					{t("connectivity.loading")}
+				</p>
+			)}
+			{!data?.can_run && query.isError && (
+				<p role="alert" className="text-sm">
+					{t("connectivity.readFailed")}{" "}
+					<button
+						type="button"
+						className="underline underline-offset-4"
+						onClick={() => query.refetch()}
+					>
+						{t("connectivity.reload")}
+					</button>
+				</p>
+			)}
+			{data?.can_run && (
+				<Card data-connectivity-controls className="min-w-0">
+					<CardContent className="p-4 sm:p-5 space-y-3">
+						<div className="flex flex-wrap items-center justify-between gap-3">
+							<div className="min-w-0">
+								<h2 className="flex items-center gap-2 text-base font-semibold">
+									<Globe2 className="size-4 shrink-0" aria-hidden />
+									<span>{t("connectivity.title")}</span>
+									<button
+										type="button"
+										aria-label={t("connectivity.helpTitle")}
+										aria-expanded={help}
+										onClick={() => setHelp((value) => !value)}
+										className="inline-flex size-7 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2"
+									>
+										<CircleHelp className="size-4" aria-hidden />
+									</button>
+								</h2>
+								<p className="mt-1 text-xs text-muted-foreground">
+									{t("connectivity.origin")}
+								</p>
+							</div>
+							{data?.can_run && (
+								<Button
+									size="sm"
+									variant="outline"
+									type="button"
+									disabled={
+										!data.online ||
+										running ||
+										mutation.isPending ||
+										cooldown > 0 ||
+										query.isError
+									}
+									onClick={() => mutation.mutate()}
+									className="shrink-0 gap-2"
+								>
+									{running || mutation.isPending ? (
+										<LoaderCircle
+											className="size-3.5 animate-spin"
+											aria-hidden
+										/>
+									) : (
+										<RefreshCw className="size-3.5" aria-hidden />
+									)}
+									{running
+										? t("connectivity.testing")
+										: cooldown > 0
+											? t("connectivity.cooldown", { seconds: cooldown })
+											: data.state === "idle"
+												? t("connectivity.start")
+												: t("connectivity.retest")}
+								</Button>
+							)}
+						</div>
+						{help && (
+							<div className="rounded-lg bg-muted/60 p-3 text-xs leading-relaxed text-muted-foreground">
+								{t("connectivity.help")}
+							</div>
+						)}
+						{query.isPending ? (
+							<p role="status" className="text-sm text-muted-foreground">
+								{t("connectivity.loading")}
+							</p>
+						) : query.isError ? (
+							<p role="alert" className="text-sm">
+								{t("connectivity.readFailed")}{" "}
 								<button
 									type="button"
-									aria-label={t("connectivity.helpTitle")}
-									aria-expanded={help}
-									onClick={() => setHelp((value) => !value)}
-									className="inline-flex size-7 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2"
+									className="underline underline-offset-4"
+									onClick={() => query.refetch()}
 								>
-									<CircleHelp className="size-4" aria-hidden />
+									{t("connectivity.reload")}
 								</button>
-							</h2>
-							<p className="mt-1 text-xs text-muted-foreground">
-								{t("connectivity.origin")}
 							</p>
-						</div>
-						{data?.can_run && (
-							<Button
-								size="sm"
-								variant="outline"
-								type="button"
-								disabled={
-									!data.online ||
-									running ||
-									mutation.isPending ||
-									cooldown > 0 ||
-									query.isError
-								}
-								onClick={() => mutation.mutate()}
-								className="shrink-0 gap-2"
-							>
-								{running || mutation.isPending ? (
-									<LoaderCircle className="size-3.5 animate-spin" aria-hidden />
-								) : (
-									<RefreshCw className="size-3.5" aria-hidden />
-								)}
-								{running
-									? t("connectivity.testing")
-									: cooldown > 0
-										? t("connectivity.cooldown", { seconds: cooldown })
-										: data.state === "idle"
-											? t("connectivity.start")
-											: t("connectivity.retest")}
-							</Button>
-						)}
-					</div>
-					{help && (
-						<div className="rounded-lg bg-muted/60 p-3 text-xs leading-relaxed text-muted-foreground">
-							{t("connectivity.help")}
-						</div>
-					)}
-					{query.isPending ? (
-						<p role="status" className="text-sm text-muted-foreground">
-							{t("connectivity.loading")}
-						</p>
-					) : query.isError ? (
-						<p role="alert" className="text-sm">
-							{t("connectivity.readFailed")}{" "}
-							<button
-								type="button"
-								className="underline underline-offset-4"
-								onClick={() => query.refetch()}
-							>
-								{t("connectivity.reload")}
-							</button>
-						</p>
-					) : (
-						data && (
-							<>
-								{!data.online && (
-									<p className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
-										<WifiOff className="size-4 shrink-0" aria-hidden />
-										{t("connectivity.offline")}
-									</p>
-								)}
-								{!data.can_run && (
-									<p className="text-xs text-muted-foreground">
-										{t("connectivity.readOnly")}
-									</p>
-								)}
-								<div
-									className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground"
-									role="status"
-									aria-live="polite"
-								>
-									<span>
-										{running
-											? t("connectivity.progress", {
-													done: completed,
-													total: data.results.length,
-												})
-											: data.state === "complete"
-												? t("connectivity.finished")
-												: t("connectivity.empty")}
-									</span>
-									{running && (
-										<span>
-											{t("connectivity.queueProgress", {
-												sampled,
-												active,
-												queued,
-											})}
-										</span>
+						) : (
+							data && (
+								<>
+									{!data.online && (
+										<p className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
+											<WifiOff className="size-4 shrink-0" aria-hidden />
+											{t("connectivity.offline")}
+										</p>
 									)}
-									{data.started_at && (
-										<span>
-											{t("connectivity.time")}:{" "}
-											{formatDate(data.finished_at || data.started_at)}
-										</span>
-									)}
-									<span>
-										{t("connectivity.rounds", { count: data.rounds })}
-									</span>
-								</div>
-								{running && (
 									<div
-										role="progressbar"
-										aria-label={t("connectivity.testing")}
-										aria-valuemin={0}
-										aria-valuemax={data.results.length}
-										aria-valuenow={completed}
-										className="h-1.5 overflow-hidden rounded-full bg-muted"
+										className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground"
+										role="status"
+										aria-live="polite"
 									>
-										<div
-											className="h-full rounded-full bg-primary transition-[width]"
-											style={{
-												width: `${data.results.length ? (completed / data.results.length) * 100 : 0}%`,
-											}}
-										/>
+										<span>
+											{running
+												? t("connectivity.progress", {
+														done: completed,
+														total: data.results.length,
+													})
+												: data.state === "complete"
+													? t("connectivity.finished")
+													: t("connectivity.empty")}
+										</span>
+										{running && (
+											<span>
+												{t("connectivity.queueProgress", {
+													sampled,
+													active,
+													queued,
+												})}
+											</span>
+										)}
+										{data.started_at && (
+											<span>
+												{t("connectivity.time")}:{" "}
+												{formatDate(data.finished_at || data.started_at)}
+											</span>
+										)}
+										<span>
+											{t("connectivity.rounds", { count: data.rounds })}
+										</span>
 									</div>
-								)}
-							</>
-						)
-					)}
-					{mutation.isError && (
-						<p role="alert" className="text-sm text-destructive">
-							{error}
-						</p>
-					)}
-				</CardContent>
-			</Card>
+									{running && (
+										<div
+											role="progressbar"
+											aria-label={t("connectivity.testing")}
+											aria-valuemin={0}
+											aria-valuemax={data.results.length}
+											aria-valuenow={completed}
+											className="h-1.5 overflow-hidden rounded-full bg-muted"
+										>
+											<div
+												className="h-full rounded-full bg-primary transition-[width]"
+												style={{
+													width: `${data.results.length ? (completed / data.results.length) * 100 : 0}%`,
+												}}
+											/>
+										</div>
+									)}
+								</>
+							)
+						)}
+						{mutation.isError && (
+							<p role="alert" className="text-sm text-destructive">
+								{error}
+							</p>
+						)}
+					</CardContent>
+				</Card>
+			)}
 			{!query.isError &&
 				data &&
 				regions.map(({ id: group, Icon }) => (

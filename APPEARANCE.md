@@ -186,7 +186,7 @@ live-custom-code.snapshot.json、配置备份和 smoke 测试数据库不应提�
 服务器详情的“详情 / 网络”旁增加“连通性”，默认主题、Doraemon、在线和离线详情共用。沿用现有 Card、TabSwitch、按钮与背景透明度样式，支持明暗模式、手机布局以及简中/繁中/英文（其他语言回退英文）。和“详细网络拆分”独立：网络合并开启时，连通性页不混入原网络历史图表。
 
 - **请求来源**：面板通过已有 gRPC Task 通道给所选节点下发 HTTP GET，实际探测由该节点的 Agent 执行。浏览器只访问面板接口，不访问目标站点；不通过 SSH，不执行 shell，不用面板本机替代离线节点检测。
-- **权限**：管理员或节点所属用户发起，访客只读缓存。遵循节点可见性、前台密码、ForceAuth、PAT 节点白名单；读取需 server:read、发起需 service:write，cookie 会话 POST 保留 CSRF 校验。
+- **权限**：管理员或节点所属用户发起，访客只读缓存。访客直接显示应用检测结果，不显示顶部“节点连通性”说明、检测操作和进度卡片；管理员及节点所属用户保留完整控制卡片。读取失败时仍提供重新加载，不会触发节点检测。遵循节点可见性、前台密码、ForceAuth、PAT 节点白名单；读取需 server:read、发起需 service:write，cookie 会话 POST 保留 CSRF 校验。
 - **目标**：基于 [Net.Coffee 连通性页](https://ip.net.coffee/link/) 的 48 项清单，另外补充 24 个国外应用，共 72 个 HTTPS 端点：中国 12、日本 7、美国 36、全球 17。新增 Telegram、Discord、WhatsApp、Slack、Notion、Dropbox、Microsoft、Disney+、Roblox、Epic Games、Perplexity、Hugging Face、Docker Hub、GitLab、Proton、pixiv 等。包含 DeepSeek、微信、小红书、Sony、任天堂、Claude、ChatGPT、AI Studio、Steam、TikTok、Mistral AI 等；完整名单和固定探测地址在 `service/connectivity/catalog.json`。分组依据参考页的站点分类，不代表实际请求一定落在对应国家的机房（可能由 CDN 就近响应）。此版不接受自定义 URL/端口/请求头/命令，不能作为通用代理或内网探测工具。
 - **图标与布局**：72 个站点的品牌图标随前端打包，同源加载或内联，不热链第三方图标服务。素材来源清单见 `frontend/user/src/assets/connectivity/sources.json`；品牌及商标归各自权利人。四组使用国旗/地球标识、可达数量与逐次采样点，手机双列、窄屏单列、宽屏四列；图标意外损坏时使用通用图形回退且保留站点名。沿用现有主题卡片与配色，不复制参考页的整站样式。
 - **结果与队列**：各地区交错调度，优先让每个应用发起第 1 次，再补足第 2、3 次；超时也算一次真实尝试，不连续占住检测位。首个结果立即显示；卡片区分排队中、正在检测、已有结果/等待下一次采样、完成，顶部显示已返回/检测中/排队数量。节点离线、Agent 禁用检测或整批截止会结束剩余采样并明确标记，不伪造未发出的次数。展示收到响应样本的耗时中位数和样本数；包括 DNS/TLS/轻量响应读取，不是 ICMP Ping。不重复追踪重定向（当前 Agent 行为），HTTP 403/429/5xx 单独标为已连通但站点返回错误；DNS、TLS、超时、拒绝连接、Agent 禁用探测或离线分别展示。混合结果标记为“不一致”，不把失败计作 0ms。能访问端点不等同于账号可用、流媒体解锁或整站完全可用。
