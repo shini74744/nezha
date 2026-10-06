@@ -152,6 +152,7 @@ async function setup(
                 server_id: 7,
                 online: !offline,
                 can_run: owner,
+                can_view_ip: owner,
                 results: media,
                 history: [
                     snap,
@@ -194,7 +195,7 @@ for (const theme of ["default", "doraemon"])
                         .locator('[data-network-insight="bgp"]')
                         .screenshot({ path: info.outputPath("bgp.png") })
                     await page.getByRole("button", { name: "IPv6", exact: true }).click()
-                    await expect(page.getByText("节点未上报此协议的公网 IP")).toBeVisible()
+                    await expect(page.getByText("未获取到此协议的公网 IP")).toBeVisible()
                     await page.getByRole("button", { name: "IPv4", exact: true }).click()
                     await page.getByRole("button").filter({ hasText: "历史快照" }).click()
                     await expect(page.getByText(/126.6.0.0/)).toBeVisible()
@@ -629,3 +630,24 @@ for (const theme of ["default", "doraemon"])
                 expect(state.external).toEqual([])
                 expect(errors).toEqual([])
             })
+
+for(const theme of ["default","doraemon"])for(const width of [390,1440])test("BGP guest hides both prefixes and shows IPv6 topology "+theme+" "+width,async({page},info)=>{
+ await page.setViewportSize({width,height:950});
+ await setup(page,theme,true,false);
+ await page.route("**/api/v1/server/7/bgp",route=>route.fulfill({json:{success:true,data:{
+  server_id:7,state:"complete",online:true,can_run:false,can_view_ip:false,
+  topologies:[topology,{...topology,family:"IPv6",prefix:"2606:4700::/32"}],
+  history:[{finished_at:Date.now(),topologies:[topology]},{finished_at:Date.now()-3600000,topologies:[{...topology,prefix:"126.6.0.0/16"}]}]
+ }}}));
+ await page.locator(".server-info-tab").getByText("BGP",{exact:true}).click();
+ await expect(page.getByText(/126[.]7[.]0[.]0/)).toHaveCount(0);
+ await expect(page.getByText("100 条观测路径",{exact:true})).toBeVisible();
+ await page.getByRole("button",{name:"IPv6",exact:true}).click();
+ await expect(page.locator("[data-bgp-graph]")).toBeVisible();
+ await expect(page.getByText(/2606:4700/)).toHaveCount(0);
+ await page.getByRole("button",{name:"IPv4",exact:true}).click();
+ await page.getByRole("button").filter({hasText:"历史快照"}).click();
+ await expect(page.getByText(/126[.]6[.]0[.]0/)).toHaveCount(0);
+ await expect(page.getByRole("button",{name:/重新检测/})).toHaveCount(0);
+ await page.screenshot({path:info.outputPath("guest-ip-private.png"),fullPage:true});
+});

@@ -18,7 +18,7 @@ var mediaCatalog = []MediaTarget{
 	{"disneyplus", "Disney+", "disneyplus", []string{"https://www.disneyplus.com/"}},
 	{"bbc", "BBC iPlayer", "bbc", []string{"https://open.live.bbc.co.uk/mediaselector/6/select/version/2.0/mediaset/pc/vpid/bbc_one_london/format/json"}},
 	{"tvb", "TVBAnywhere+", "", []string{"https://uapisfm.tvbanywhere.com.sg/geoip/check/platform/android"}},
-	{"spotify", "Spotify", "spotify", []string{"https://spclient.wg.spotify.com/signup/public/v1/account"}},
+	{"spotify", "Spotify", "spotify", []string{"https://www.spotify.com/"}},
 }
 
 func MediaTargets() []MediaTarget { return append([]MediaTarget(nil), mediaCatalog...) }
@@ -45,19 +45,24 @@ func EmptyMedia() []MediaResult {
 const mediaScript = `
 command -v curl >/dev/null 2>&1 || { printf 'NZM_UNSUPPORTED\n'; exit 0; }
 tmp=$(mktemp -d) || exit 1
-trap 'rm -f "$tmp/body"; rmdir "$tmp"' EXIT HUP INT TERM
+trap 'rm -f "$tmp/body" "$tmp/error"; rmdir "$tmp"' EXIT HUP INT TERM
 probe() {
  key=$1
  address=$2
- code=$(curl -q FAMILY --noproxy '*' --proto '=https' --proto-redir '=https' --max-redirs 4 --connect-timeout 3 --max-time 3 --max-filesize 2097152 -sL -A 'Mozilla/5.0 NezhaNetworkInsights/1' -H 'Accept-Language: en-US,en;q=0.9' -o "$tmp/body" -w '%{http_code}' "$address" 2>/dev/null)
+ : > "$tmp/body"
+ : > "$tmp/error"
+ code=$(curl -q FAMILY --noproxy '*' --proto '=https' --proto-redir '=https' --max-redirs 4 --connect-timeout 3 --max-time 8 --max-filesize 2097152 -sSL -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36' -H 'Accept-Language: en-US,en;q=0.9' -o "$tmp/body" -w '%{http_code}' "$address" 2>"$tmp/error")
  rc=$?
  flags=''
+ grep -Eiq 'Network is unreachable|No route to host' "$tmp/error" && flags="no_route,"
  has() { grep -Eiq "$1" "$tmp/body" 2>/dev/null; }
  has 'Our systems have detected unusual traffic|verify you are human|<title>Just a moment|<title>Before you continue' && flags="$flags""challenge,"
- has 'Oh no!|not available in your country|not available in your region|not yet available|UNSUPPORTED_LOCATION|geolocation|allow_in_this_country"[[:space:]]*:[[:space:]]*false|is_country_launched"[[:space:]]*:[[:space:]]*false' && flags="$flags""restricted,"
+ has 'Oh no!|not available in your country|not available in your region|not yet available|UNSUPPORTED_LOCATION|id"[[:space:]]*:[[:space:]]*"geolocation"|allow_in_this_country"[[:space:]]*:[[:space:]]*false|is_country_launched"[[:space:]]*:[[:space:]]*false' && flags="$flags""restricted,"
  has 'og:type[^>]+video[.]|videoId"[[:space:]]*:[[:space:]]*(80018499|81280792|70143836)|"@type"[[:space:]]*:[[:space:]]*"(Movie|TVSeries)"' && flags="$flags""title,"
  has 'ad-free|ad.free and offline|YouTube and YouTube Music ad.free' && flags="$flags""premium,"
  has 'allow_in_this_country"[[:space:]]*:[[:space:]]*true|isAllowed"[[:space:]]*:[[:space:]]*true|is_country_launched"[[:space:]]*:[[:space:]]*true' && flags="$flags""allowed,"
+ has '"inSupportedLocation"[[:space:]]*:[[:space:]]*true' && flags="$flags""allowed,"
+ has '"inSupportedLocation"[[:space:]]*:[[:space:]]*false' && flags="$flags""restricted,"
  has 'vs-hls-push-uk' && flags="$flags""bbc,"
  region=$(sed -nE 's/.*"(INNERTUBE_CONTEXT_GL|countryCode|country_code|country)"[[:space:]]*:[[:space:]]*"([A-Z]{2})".*/\2/p' "$tmp/body" 2>/dev/null | head -c 2)
  printf 'NZM|%s|%s|%s|%s|%s\n' "$key" "$code" "$rc" "$flags" "$region"
@@ -134,19 +139,26 @@ func ClassifyMedia(id, family, data string, successful bool) MediaResult {
 	out.Region = first.region
 	has := func(e evidence, s string) bool { return strings.Contains(","+e.flags, ","+s+",") }
 	valid := func(e evidence) bool { return e.exit == 0 && e.code == 200 && !has(e, "challenge") }
-	for _, e := range items {
+	failure := func(e evidence) string {
 		if e.exit == 28 {
-			out.Status = "timeout"
-			return out
+			return "timeout"
+		}
+		if has(e, "no_route") {
+			return "no_route"
+		}
+		if e.exit == 6 {
+			return "dns_error"
 		}
 		if e.exit != 0 {
-			out.Status = "network_error"
-			return out
+			return "network_error"
 		}
 		if has(e, "challenge") || e.code == 429 {
-			out.Status = "challenge"
-			return out
+			return "challenge"
 		}
+		if e.code == 403 && !has(e, "restricted") {
+			return "blocked"
+		}
+		return ""
 	}
 	if id == "netflix" {
 		licensed := false
@@ -154,18 +166,30 @@ func ClassifyMedia(id, family, data string, successful bool) MediaResult {
 		for i := 1; i < len(t.URLs); i++ {
 			e := items[i]
 			licensed = licensed || (valid(e) && has(e, "title") && !has(e, "restricted"))
-			restricted = restricted && (has(e, "restricted") || e.code == 404)
+			restricted = restricted && e.exit == 0 && !has(e, "challenge") && (has(e, "restricted") || e.code == 404)
 		}
 		if licensed {
 			out.Status = "unlocked"
 		} else if valid(first) && has(first, "title") && !has(first, "restricted") && restricted {
 			out.Status = "originals"
-		} else if first.code == 403 || has(first, "restricted") {
+		} else if first.exit == 0 && has(first, "restricted") {
 			out.Status = "restricted"
+		}
+		if out.Status == "unknown" {
+			for i := 0; i < len(t.URLs); i++ {
+				if status := failure(items[i]); status != "" {
+					out.Status = status
+					break
+				}
+			}
 		}
 		return out
 	}
-	if first.code == 403 || has(first, "restricted") {
+	if status := failure(first); status != "" {
+		out.Status = status
+		return out
+	}
+	if has(first, "restricted") {
 		out.Status = "restricted"
 		return out
 	}
@@ -185,6 +209,8 @@ func ClassifyMedia(id, family, data string, successful bool) MediaResult {
 	case "tvb", "disneyplus", "spotify":
 		if has(first, "allowed") {
 			out.Status = "unlocked"
+		} else if id == "disneyplus" || id == "spotify" {
+			out.Status = "reachable"
 		}
 	}
 	return out

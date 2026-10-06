@@ -29,7 +29,11 @@ export const mediaStatus: Record<string, string> = {
 	unsupported: "缺少工具或系统不支持",
 	disabled: "Agent 禁止执行",
 	offline: "节点已离线",
-	no_address: "未上报 IPv6",
+	no_address: "旧记录：未检测 IPv6",
+	reachable: "网页可达",
+	blocked: "访问被拒绝",
+	dns_error: "域名解析失败",
+	no_route: "无可用路由",
 };
 function MediaStatus({ value }: { value: MediaResult }) {
 	return (
@@ -37,15 +41,25 @@ function MediaStatus({ value }: { value: MediaResult }) {
 			<span className="text-muted-foreground shrink-0">{value.family}</span>
 			<span
 				data-media-status={value.status}
+				title={
+					value.status === "reachable"
+						? "仅确认公开网页可达，未获得足以判定解锁的区域信号；不代表账号播放权限"
+						: undefined
+				}
 				className={cn(
 					"text-right break-words",
 					value.status === "unlocked"
 						? "text-emerald-700 dark:text-emerald-400"
 						: value.status === "originals"
 							? "text-amber-700 dark:text-amber-400"
-							: ["restricted", "network_error", "timeout"].includes(
-										value.status,
-									)
+							: [
+										"restricted",
+										"network_error",
+										"timeout",
+										"blocked",
+										"dns_error",
+										"no_route",
+									].includes(value.status)
 								? "text-red-700 dark:text-red-400"
 								: "text-muted-foreground",
 				)}
@@ -122,8 +136,10 @@ export default function ServerNetworkInsight({
 								? "根据节点上报的公网 IP 查询 RIPE RIS 路由观测。不是访问者 IP，也不是实际测速线路。可切换 IPv4 / IPv6 和已保存的历史快照。"
 								: "请求由该节点 Agent 通过 IPv4 / IPv6 发起，不使用访客网络。Netflix 使用自制与非自制内容页面判定，YouTube 检查 Premium；其余平台使用公开区域信号。无法识别会显示无法判断，网页可达不等于解锁，结果不保证账号实际播放权限。需节点支持 sh、curl 且允许 Agent 执行固定命令。"}
 							<p className="mt-2">
-								仅管理员或节点所属用户可重新检测，访客只读。自动检测间隔和保留天数沿用“卡片设置
-								→ 连通性 → 自动检测与记录”，默认每 2 小时一次、保留 1 天。
+								仅管理员或节点所属用户可重新检测，访客只读。
+								{kind === "bgp"
+									? "IP 和网段仅管理员可见；自动检测使用“卡片设置 → BGP”，默认每 6 小时一次、保留 1 天。"
+									: "自动检测使用“卡片设置 → 连通性”，默认每 2 小时一次、保留 1 天。网页可达不代表已解锁。"}
 							</p>
 						</PopoverContent>
 					</Popover>
@@ -181,9 +197,12 @@ export default function ServerNetworkInsight({
 								</button>
 							))}
 						</div>
-						{topology?.prefix && (
+						{topology && topology.total > 0 && (
 							<span className="text-sm break-all">
-								{topology.prefix} · {topology.total} 条观测路径
+								{data.can_view_ip && topology.prefix
+									? `${topology.prefix} · `
+									: ""}
+								{topology.total} 条观测路径
 							</span>
 						)}
 					</div>

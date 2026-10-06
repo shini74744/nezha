@@ -83,16 +83,16 @@ func TestMediaClassification(t *testing.T) {
 		{"youtube", "NZM|0|200|0|challenge,premium,|US", "challenge"},
 		{"youtube", "NZM|0|200|0|restricted,premium,|CN", "restricted"},
 		{"youtube", "NZM|0|200|28|premium,|US", "timeout"},
-		{"youtube", "NZM|0|000|6||", "network_error"},
+		{"youtube", "NZM|0|000|6||", "dns_error"},
 		{"youtube", "NZM|0|429|0||", "challenge"},
-		{"youtube", "NZM|0|403|0||", "restricted"},
+		{"youtube", "NZM|0|403|0||", "blocked"},
 		{"youtube", "untrusted HTML or shell output", "unknown"},
 		{"youtube", "NZM_UNSUPPORTED", "unsupported"},
 		{"netflix", "NZM|0|200|0|title,|US\nNZM|1|200|0|title,|US\nNZM|2|200|0|restricted,|US", "unlocked"},
 		{"netflix", "NZM|0|200|0|title,|US\nNZM|1|404|0||US\nNZM|2|200|0|restricted,|US", "originals"},
 		{"netflix", "NZM|0|200|0||US\nNZM|1|404|0||US\nNZM|2|404|0||US", "unknown"},
 		{"netflix", "NZM|0|200|0|title,|US\nNZM|1|200|0|title,|US", "unknown"},
-		{"disneyplus", "NZM|0|200|0||US", "unknown"},
+		{"disneyplus", "NZM|0|200|0||US", "reachable"},
 		{"tvb", "NZM|0|200|0|allowed,|US", "unlocked"},
 		{"bbc", "NZM|0|200|0|bbc,|", "unlocked"},
 	}
@@ -129,4 +129,31 @@ func TestMediaFixedShellExtraction(t *testing.T) {
 		require.NoError(t, e, string(result))
 		require.Equal(t, c.want, ClassifyMedia(c.id, "IPv4", string(result), true).Status, string(result))
 	}
+}
+
+func TestBGPQueryIPv6UsesItsOwnPublicResource(t *testing.T) {
+	const ip = "2606:4700:4700::1111"
+	var mu sync.Mutex
+	resources := []string{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		resources = append(resources, r.URL.Query().Get("resource"))
+		mu.Unlock()
+		if strings.Contains(r.URL.Path, "as-overview") {
+			fmt.Fprint(w, `{"status":"ok","data":{"holder":"Cloudflare"}}`)
+			return
+		}
+		fmt.Fprint(w, `{"status":"ok","data":{"timestamp":"2026-10-06T00:00:00","bgp_state":[{"target_prefix":"2606:4700::/32","source_id":"v6-peer","path":[174,13335]}]}}`)
+	}))
+	defer srv.Close()
+	old := ripeClient
+	u, _ := url.Parse(srv.URL)
+	ripeClient = &http.Client{Transport: rewriteTransport{u}}
+	defer func() { ripeClient = old }()
+	got := QueryBGP(context.Background(), ip, "IPv6")
+	require.Equal(t, "ok", got.Status)
+	require.Equal(t, "IPv6", got.Family)
+	require.Equal(t, "2606:4700::/32", got.Prefix)
+	require.Equal(t, ip, resources[0])
+	require.Equal(t, 1, got.Total)
 }

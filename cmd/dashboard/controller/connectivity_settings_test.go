@@ -41,7 +41,7 @@ func TestConnectivitySettingsSaveRollbackAndRevision(t *testing.T) {
 	next, err = saveConnectivitySettings(config, connectivitySettingsForm{Revision: next.Revision, Items: next.Items}, func() error { return nil })
 	require.NoError(t, err)
 	require.Empty(t, next.Items)
-	require.Len(t, next.Defaults, 102)
+	require.Len(t, next.Defaults, 110)
 }
 func TestConnectivitySettingsPersistenceAndPrivateURL(t *testing.T) {
 	t.Chdir(t.TempDir())

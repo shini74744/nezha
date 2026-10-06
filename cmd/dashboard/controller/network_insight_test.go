@@ -15,7 +15,7 @@ import (
 
 func setupInsight(t *testing.T) {
 	setupServerGroupVisibilityFixture(t)
-	require.NoError(t, singleton.DB.AutoMigrate(&model.ServerIPHistory{}, &networkinsight.Record{}, &connectivity.Policy{}))
+	require.NoError(t, singleton.DB.AutoMigrate(&model.ServerIPHistory{}, &networkinsight.Record{}, &networkinsight.BGPPolicy{}, &connectivity.Policy{}))
 }
 func TestInsightReadOnlyVisibilityPermissionAndDisabled(t *testing.T) {
 	setupInsight(t)
@@ -141,4 +141,59 @@ func TestInsightCooldownRejectsDuplicateBeforeLaunching(t *testing.T) {
 	require.EqualError(t, launchInsight(s, "bgp", false), "请稍后重试")
 	require.Empty(t, insightJobs.values)
 	require.Empty(t, insightSlots)
+}
+
+func TestInsightPrefixIsAdminOnlyForLatestHistoryAndRunning(t *testing.T) {
+	setupInsight(t)
+	server, _ := singleton.ServerShared.Get(1)
+	identity, _, err := insightIdentity(server)
+	require.NoError(t, err)
+	now := time.Now().UnixMilli()
+	snap := networkinsight.Snapshot{State: "complete", FinishedAt: now, Topologies: []networkinsight.Topology{
+		{Family: "IPv4", Status: "ok", Prefix: "8.8.8.0/24", Total: 10},
+		{Family: "IPv6", Status: "ok", Prefix: "2606:4700::/32", Total: 12},
+	}}
+	raw, _ := json.Marshal(snap)
+	require.NoError(t, singleton.DB.Create(&networkinsight.Record{Identity: identity, Kind: "bgp", FinishedAt: now, Payload: string(raw)}).Error)
+	admin := &model.User{Common: model.Common{ID: 1}, Role: model.RoleAdmin}
+	owner := &model.User{Common: model.Common{ID: 1}, Role: model.RoleMember}
+	for _, running := range []bool{false, true} {
+		if running {
+			insightJobs.Lock()
+			insightJobs.values[identity+"bgp"] = cloneInsight(snap)
+			insightJobs.Unlock()
+			defer func() { insightJobs.Lock(); delete(insightJobs.values, identity+"bgp"); insightJobs.Unlock() }()
+		}
+		for _, user := range []*model.User{nil, owner, {Common: model.Common{ID: 200}, Role: model.RoleMember}, admin} {
+			got, err := readInsight(connectivityContext("1", user), "bgp")
+			require.NoError(t, err)
+			require.Equal(t, user == admin, got.CanViewIP)
+			body, _ := json.Marshal(got)
+			for _, p := range []string{"8.8.8.0/24", "2606:4700::/32"} {
+				if user == admin {
+					require.Contains(t, string(body), p)
+				} else {
+					require.NotContains(t, string(body), p)
+				}
+			}
+			require.Equal(t, 10, got.Topologies[0].Total)
+			require.Len(t, got.History, 1)
+		}
+	}
+}
+func TestInsightPoliciesHaveIndependentRetention(t *testing.T) {
+	setupInsight(t)
+	now := time.Now()
+	for _, kind := range []string{"bgp", "streaming"} {
+		require.NoError(t, singleton.DB.Create(&networkinsight.Record{Identity: kind, Kind: kind, FinishedAt: now.Add(-48 * time.Hour).UnixMilli(), Payload: "{}"}).Error)
+	}
+	require.NoError(t, pruneInsight("bgp", connectivity.Policy{RetentionDays: 1}, now))
+	var bgp, media int64
+	require.NoError(t, singleton.DB.Model(&networkinsight.Record{}).Where("kind = ?", "bgp").Count(&bgp).Error)
+	require.NoError(t, singleton.DB.Model(&networkinsight.Record{}).Where("kind = ?", "streaming").Count(&media).Error)
+	require.Zero(t, bgp)
+	require.EqualValues(t, 1, media)
+	require.NoError(t, pruneInsight("streaming", connectivity.Policy{RetentionDays: 3}, now))
+	require.NoError(t, singleton.DB.Model(&networkinsight.Record{}).Where("kind = ?", "streaming").Count(&media).Error)
+	require.EqualValues(t, 1, media)
 }

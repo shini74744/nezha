@@ -185,7 +185,7 @@ describe("node connectivity", () => {
 });
 
 describe("expanded connectivity catalog", () => {
-	it("renders all supported regions, all 102 packaged logos and sample indicators", async () => {
+	it("renders all supported regions, all 110 packaged logos and sample indicators", async () => {
 		const { default: catalog } = await import(
 			"../../../../../service/connectivity/catalog.json"
 		);
@@ -206,16 +206,16 @@ describe("expanded connectivity catalog", () => {
 		await screen.findByText("DeepSeek");
 		expect(
 			view.container.querySelectorAll("[data-connectivity-target]"),
-		).toHaveLength(102);
+		).toHaveLength(110);
 		expect(
 			view.container.querySelectorAll("[data-connectivity-group]"),
-		).toHaveLength(16);
+		).toHaveLength(18);
 		expect(
 			view.container.querySelectorAll("img[data-connectivity-icon]"),
-		).toHaveLength(102);
+		).toHaveLength(110);
 		expect(
 			view.container.querySelectorAll("[data-connectivity-sample]"),
-		).toHaveLength(306);
+		).toHaveLength(330);
 		for (const image of view.container.querySelectorAll(
 			"img[data-connectivity-icon]",
 		)) {

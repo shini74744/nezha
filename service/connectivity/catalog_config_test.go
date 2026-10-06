@@ -12,7 +12,7 @@ import (
 
 func TestCatalogDefaultsAndValidation(t *testing.T) {
 	items := DefaultCatalog()
-	require.Len(t, items, 102)
+	require.Len(t, items, 110)
 	require.NoError(t, ValidateCatalog(items))
 	require.NoError(t, ValidateCatalog([]CatalogItem{}))
 	bad := append([]CatalogItem{}, items...)

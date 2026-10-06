@@ -233,6 +233,8 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	auth.PATCH("/setting/dashboard-appearance", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateDashboardAppearance))
 	auth.GET("/setting/display", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getDisplaySettings))
 	auth.PATCH("/setting/display", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateDisplaySettings))
+	auth.GET("/setting/bgp/automation", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getBGPAutomation))
+	auth.PUT("/setting/bgp/automation", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateBGPAutomation))
 	auth.GET("/setting/connectivity/automation", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getConnectivityAutomation))
 	auth.PUT("/setting/connectivity/automation", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateConnectivityAutomation))
 	auth.GET("/setting/connectivity", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getConnectivitySettings))

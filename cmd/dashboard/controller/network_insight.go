@@ -21,10 +21,11 @@ import (
 
 type insightResponse struct {
 	networkinsight.Snapshot
-	ServerID uint64                    `json:"server_id"`
-	CanRun   bool                      `json:"can_run"`
-	Online   bool                      `json:"online"`
-	History  []networkinsight.Snapshot `json:"history,omitempty"`
+	ServerID  uint64                    `json:"server_id"`
+	CanRun    bool                      `json:"can_run"`
+	CanViewIP bool                      `json:"can_view_ip"`
+	Online    bool                      `json:"online"`
+	History   []networkinsight.Snapshot `json:"history,omitempty"`
 }
 
 var insightJobs = struct {
@@ -58,9 +59,13 @@ func insightIdentity(s *model.Server) (string, model.IP, error) {
 	raw := fmt.Sprintf("%s:%s:%s", connectivityKey(s), row.CurrentIP.IPv4Addr, row.CurrentIP.IPv6Addr)
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(raw))), row.CurrentIP, nil
 }
-func insightPolicy() (connectivity.Policy, error) {
+func insightPolicy(kind string) (connectivity.Policy, error) {
 	settingsMutationMu.Lock()
 	defer settingsMutationMu.Unlock()
+	if kind == "bgp" {
+		p, err := networkinsight.ReadBGPPolicy(singleton.DB)
+		return connectivity.Policy(p), err
+	}
 	return (connectivity.Store{DB: singleton.DB}).Policy()
 }
 func insightLatest(identity, kind string, cutoff int64) (networkinsight.Snapshot, error) {
@@ -91,7 +96,7 @@ func readInsight(c *gin.Context, kind string) (*insightResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	p, err := insightPolicy()
+	p, err := insightPolicy(kind)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +110,7 @@ func readInsight(c *gin.Context, kind string) (*insightResponse, error) {
 		snap = cloneInsight(live)
 	}
 	insightJobs.Unlock()
-	out := &insightResponse{Snapshot: snap, ServerID: s.ID, CanRun: canRunConnectivity(c, s), Online: rpc.ConnectivityOnline(s)}
+	out := &insightResponse{Snapshot: snap, ServerID: s.ID, CanRun: canRunConnectivity(c, s), CanViewIP: callerIsAdmin(c), Online: rpc.ConnectivityOnline(s)}
 	if kind == "bgp" {
 		var rows []networkinsight.Record
 		if err = singleton.DB.Where("identity = ? AND kind = ? AND finished_at >= ?", identity, kind, cutoff).Order("finished_at DESC").Limit(12).Find(&rows).Error; err != nil {
@@ -126,7 +131,20 @@ func readInsight(c *gin.Context, kind string) (*insightResponse, error) {
 	if err != nil || key != identity {
 		return nil, errors.New("server changed; reload")
 	}
+	if !out.CanViewIP {
+		redactInsight(&out.Snapshot)
+		for i := range out.History {
+			redactInsight(&out.History[i])
+		}
+	}
 	return out, nil
+}
+
+// Operate only on response-owned snapshots, never cached or persisted data.
+func redactInsight(s *networkinsight.Snapshot) {
+	for i := range s.Topologies {
+		s.Topologies[i].Prefix = ""
+	}
 }
 func startInsight(c *gin.Context, kind string) (*insightResponse, error) {
 	s, err := insightServer(c, kind)
@@ -159,10 +177,10 @@ func launchInsight(s *model.Server, kind string, automatic bool) error {
 	if err != nil {
 		return err
 	}
-	if kind == "bgp" && !networkinsight.PublicIP(ips.IPv4Addr) && !networkinsight.PublicIP(ips.IPv6Addr) {
+	if kind == "bgp" && !networkinsight.PublicIP(ips.IPv4Addr) && !networkinsight.PublicIP(ips.IPv6Addr) && !rpc.ConnectivityOnline(s) {
 		return errors.New("节点尚未上报公网 IP")
 	}
-	p, err := insightPolicy()
+	p, err := insightPolicy(kind)
 	if err != nil {
 		return err
 	}
@@ -209,7 +227,7 @@ func launchInsight(s *model.Server, kind string, automatic bool) error {
 			if e != nil || got != identity {
 				return false
 			}
-			if automatic && !connectivityAutoEnabled.Load() {
+			if automatic && ((kind == "bgp" && !bgpAutoEnabled.Load()) || (kind != "bgp" && !connectivityAutoEnabled.Load())) {
 				return false
 			}
 			return true
@@ -218,13 +236,23 @@ func launchInsight(s *model.Server, kind string, automatic bool) error {
 			return
 		}
 		if kind == "bgp" {
-			snap.Topologies = nil
-			for _, item := range []struct{ ip, family string }{{ips.IPv4Addr, "IPv4"}, {ips.IPv6Addr, "IPv6"}} {
-				if !valid() {
-					return
-				}
-				snap.Topologies = append(snap.Topologies, networkinsight.QueryBGP(ctx, item.ip, item.family))
+			// Look up a missing IPv6 on the target Agent; never use the dashboard's egress.
+			if !networkinsight.PublicIP(ips.IPv6Addr) && rpc.ConnectivityOnline(s) {
+				ips.IPv6Addr = rpc.InsightIPv6(ctx, s)
 			}
+			if !valid() {
+				return
+			}
+			snap.Topologies = make([]networkinsight.Topology, 2)
+			var wg sync.WaitGroup
+			for i, item := range []struct{ ip, family string }{{ips.IPv4Addr, "IPv4"}, {ips.IPv6Addr, "IPv6"}} {
+				wg.Add(1)
+				go func(i int, ip, family string) {
+					defer wg.Done()
+					snap.Topologies[i] = networkinsight.QueryBGP(ctx, ip, family)
+				}(i, item.ip, item.family)
+			}
+			wg.Wait()
 		} else {
 			snap.Results = networkinsight.EmptyMedia()
 			probe := rpc.MediaProbe(s)
@@ -247,8 +275,6 @@ func launchInsight(s *model.Server, kind string, automatic bool) error {
 					defer func() { <-sem }()
 					if !valid() {
 						item.Status = "disabled"
-					} else if item.Family == "IPv6" && !networkinsight.PublicIP(ips.IPv6Addr) {
-						item.Status = "no_address"
 					} else {
 						item = probe(ctx, item.ID, item.Family)
 					}
@@ -287,18 +313,24 @@ func StartNetworkInsightAutomation() {
 			defer ticker.Stop()
 			var cleaned time.Time
 			for now := range ticker.C {
-				p, err := insightPolicy()
-				if err != nil {
-					continue
+				policies := map[string]connectivity.Policy{}
+				for _, kind := range []string{"bgp", "streaming"} {
+					p, err := insightPolicy(kind)
+					if err != nil {
+						continue
+					}
+					policies[kind] = p
+					if kind == "bgp" {
+						bgpAutoEnabled.Store(p.Enabled)
+					}
+					if now.Sub(cleaned) >= time.Minute {
+						if err := pruneInsight(kind, p, now); err != nil {
+							log.Printf("NEZHA>> network insight prune failed: %v", err)
+						}
+					}
 				}
 				if now.Sub(cleaned) >= time.Minute {
-					if err = singleton.DB.Where("finished_at < ?", now.Add(-time.Duration(p.RetentionDays)*24*time.Hour).UnixMilli()).Delete(&networkinsight.Record{}).Error; err != nil {
-						log.Printf("NEZHA>> network insight prune failed: %v", err)
-					}
 					cleaned = now
-				}
-				if !p.Enabled {
-					continue
 				}
 				type candidate struct {
 					s    *model.Server
@@ -310,12 +342,13 @@ func StartNetworkInsightAutomation() {
 					if !rpc.ConnectivityOnline(s) {
 						return true
 					}
-					key, ips, e := insightIdentity(s)
+					key, _, e := insightIdentity(s)
 					if e != nil {
 						return true
 					}
 					for _, kind := range []string{"bgp", "streaming"} {
-						if !insightEnabled(s, kind) || (kind == "bgp" && !networkinsight.PublicIP(ips.IPv4Addr) && !networkinsight.PublicIP(ips.IPv6Addr)) {
+						p, ok := policies[kind]
+						if !ok || !p.Enabled || !insightEnabled(s, kind) {
 							continue
 						}
 						var row networkinsight.Record
@@ -349,4 +382,7 @@ func StartNetworkInsightAutomation() {
 			}
 		}()
 	})
+}
+func pruneInsight(kind string, p connectivity.Policy, now time.Time) error {
+	return singleton.DB.Where("kind = ? AND finished_at < ?", kind, now.Add(-time.Duration(p.RetentionDays)*24*time.Hour).UnixMilli()).Delete(&networkinsight.Record{}).Error
 }

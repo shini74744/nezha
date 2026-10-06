@@ -1,8 +1,6 @@
 import { FetcherMethod, fetcher } from "@/api/api"
 import ConnectivityAutomationSettings from "@/components/ConnectivityAutomationSettings"
 import ConnectivityDragHandle from "@/components/ConnectivityDragHandle"
-import { reorderConnectivity } from "@/lib/connectivity-order"
-import { connectivityRegions } from "../../../shared/connectivity-regions"
 import ConnectivityIconPicker from "@/components/ConnectivityIconPicker"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,12 +13,16 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/hooks/useAuth"
 import { resolveConnectivityIcon } from "@/lib/connectivity-icons"
+import { reorderConnectivity } from "@/lib/connectivity-order"
 import { Globe2, Pencil, Plus, RefreshCw, Save, Trash2 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { Navigate } from "react-router-dom"
 import { toast } from "sonner"
+
+import { connectivityRegions } from "../../../shared/connectivity-regions"
 
 type Item = {
     id: string
@@ -33,7 +35,7 @@ type Item = {
 }
 type State = { revision: string; items: Item[]; defaults: Item[]; max_targets: number }
 const endpoint = "/api/v1/setting/connectivity"
-const groups = connectivityRegions.map(region=>[region.id,region.zh])
+const groups = connectivityRegions.map((region) => [region.id, region.zh])
 const selectStyle = "h-10 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm"
 function validate(item: Item, defaults: Item[] = []) {
     if (!item.name.trim() || Array.from(item.name.trim()).length > 60)
@@ -82,6 +84,7 @@ function Brand({ id }: { id: string }) {
 }
 export default function CardSettings() {
     const { profile, loading } = useAuth()
+    const [category, setCategory] = useState("connectivity")
     const [saved, setSaved] = useState<State>(),
         [items, setItems] = useState<Item[]>([])
     const [reading, setReading] = useState(true),
@@ -91,7 +94,7 @@ export default function CardSettings() {
         [group, setGroup] = useState("all"),
         [editor, setEditor] = useState<Item | null>(null)
     const [iconBlocked, setIconBlocked] = useState(false)
-    const [dragTarget, setDragTarget] = useState<string|null>(null)
+    const [dragTarget, setDragTarget] = useState<string | null>(null)
     const [orderNotice, setOrderNotice] = useState("")
     const request = useRef({ sequence: 0 })
     const dirty = !!saved && JSON.stringify(items) !== JSON.stringify(saved.items)
@@ -149,15 +152,15 @@ export default function CardSettings() {
     }
     const reorder = (id: string, over: string) => {
         if (busy || reading || search.trim()) return
-        setItems(current=>reorderConnectivity(current,id,over))
+        setItems((current) => reorderConnectivity(current, id, over))
         setOrderNotice("顺序已调整，点击保存配置后生效")
     }
-    const move = (id:string, offset:number) => {
-        const row=items.find(item=>item.id===id)
+    const move = (id: string, offset: number) => {
+        const row = items.find((item) => item.id === id)
         if (!row) return
-        const peers=items.filter(item=>item.group===row.group)
-        const other=peers[peers.findIndex(item=>item.id===id)+offset]
-        if (other) reorder(id,other.id)
+        const peers = items.filter((item) => item.group === row.group)
+        const other = peers[peers.findIndex((item) => item.id === id) + offset]
+        if (other) reorder(id, other.id)
     }
     const filtered = items.filter(
         (row) =>
@@ -170,13 +173,15 @@ export default function CardSettings() {
     if (loading) return null
     if (profile?.role !== 0) return <Navigate to="/dashboard" replace />
     return (
-        <section className="space-y-5" data-card-settings>
+        <Tabs value={category} onValueChange={setCategory} className="space-y-5" data-card-settings>
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                     <h1 className="text-2xl font-semibold">卡片设置</h1>
-                    <p className="mt-1 text-sm text-muted-foreground">管理前台各类卡片的内容与显示。</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        管理前台各类卡片的内容与显示。
+                    </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className={category === "connectivity" ? "flex flex-wrap gap-2" : "hidden"}>
                     <Button
                         variant="outline"
                         disabled={busy || reading}
@@ -193,314 +198,370 @@ export default function CardSettings() {
                     </Button>
                 </div>
             </div>
-            <div role="tablist" aria-label="卡片分类" className="inline-flex rounded-md bg-muted p-1">
-                <button type="button" role="tab" id="connectivity-category" aria-selected="true" aria-controls="connectivity-settings-panel" className="rounded-sm bg-background px-4 py-2 text-sm font-medium shadow-sm">连通性</button>
-            </div>
-            <div role="tabpanel" id="connectivity-settings-panel" aria-labelledby="connectivity-category" className="space-y-5">
-            <ConnectivityAutomationSettings/>
-            <p className="text-sm text-muted-foreground">连通性检测点 · 全站统一 · 默认主题与哆啦 A 梦共用</p>
-            <div className="rounded-lg border bg-card p-4 text-sm leading-relaxed">
-                前端只显示图标、名称、检测圆点与延迟，不显示网址。保存不会发起检测；正在执行的批次保持原清单，完成后使用新配置。拖动左侧手柄调整同地区顺序（电脑、手机均可）；键盘聚焦手柄后按上下方向键也可调整。地区展示顺序根据节点地区自动排列。
-                <p className="mt-1 text-muted-foreground">
-                    每项检测 3 次，3 秒未回包即标记超时。仅允许管理员配置可信 HTTPS
-                    公网域名；节点自行解析 DNS，请勿填入密钥、私密链接或内部服务。
-                </p>
-            </div>
-            <p className="sr-only" aria-live="polite">{orderNotice}</p>
-            {search.trim() && <p className="text-xs text-muted-foreground">搜索时暂停排序，请清空搜索后拖动。</p>}
-            {error && (
-                <div
-                    role="alert"
-                    className="rounded-lg border border-destructive/50 p-3 text-sm text-destructive"
-                >
-                    {error}
-                </div>
-            )}
-            {reading ? (
-                <p role="status">正在读取检测点…</p>
-            ) : (
-                saved && (
-                    <>
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <p className="text-sm text-muted-foreground">
-                                共 {items.length} 项 · 已启用{" "}
-                                {items.filter((row) => row.enabled).length} 项
-                                {dirty && (
-                                    <span className="ml-2 text-amber-700 dark:text-amber-300">
-                                        有未保存修改
-                                    </span>
-                                )}
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                                <Button
-                                    variant="outline"
-                                    disabled={busy}
-                                    onClick={() => {
-                                        if (
-                                            window.confirm(
-                                                `恢复内置 ${saved.defaults.length} 项并清除当前自定义清单？保存配置后才生效。`,
-                                            )
-                                        )
-                                            setItems(saved.defaults.map((row) => ({ ...row })))
-                                    }}
-                                >
-                                    恢复默认
-                                </Button>
-                                <Button variant="outline" disabled={busy || !saved.defaults.some(row=>!items.some(item=>item.id===row.id))}
-                                    onClick={()=>{
-                                        const missing=saved.defaults.filter(row=>!items.some(item=>item.id===row.id))
-                                        if(items.length+missing.length>saved.max_targets){setError(`补充后超过 ${saved.max_targets} 项上限，请先删除不需要的项。`);return}
-                                        if(window.confirm(`补充 ${missing.length} 个缺少的内置检测点？保留现有项的设置和顺序；以前移除的内置项也会补回。保存配置后生效。`))setItems(current=>[...current,...missing.map(row=>({...row}))])
-                                    }}>补充内置检测点</Button>
-                                <Button
-                                    disabled={busy || items.length >= saved.max_targets}
-                                    onClick={() =>
-                                        setEditor({
-                                            id: "custom-" + crypto.randomUUID(),
-                                            name: "",
-                                            group: group === "all" ? "global" : group,
-                                            url: "https://",
-                                            icon: "",
-                                            enabled: true,
-                                        })
-                                    }
-                                >
-                                    <Plus className="mr-2 size-4" />
-                                    添加检测点
-                                </Button>
-                            </div>
-                        </div>
-                        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_180px]">
-                            <Input
-                                aria-label="搜索检测点"
-                                placeholder="搜索名称或检测地址"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                            />
-                            <select
-                                aria-label="筛选地区"
-                                className={selectStyle}
-                                value={group}
-                                onChange={(e) => setGroup(e.target.value)}
-                            >
-                                <option value="all">全部地区</option>
-                                {groups.map(([id, name]) => (
-                                    <option key={id} value={id}>
-                                        {name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="space-y-2">
-                            {filtered.map((row) => {
-                                const peers = items.filter((item) => item.group === row.group),
-                                    position = peers.findIndex((item) => item.id === row.id)
-                                return (
-                                    <article
-                                        key={row.id}
-                                        data-checkpoint-id={row.id}
-                                        data-checkpoint-group={row.group}
-                                        data-drop-target={dragTarget===row.id || undefined}
-                                        className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-3 data-[drop-target]:ring-2 data-[drop-target]:ring-primary"
-                                    >
-                                        <ConnectivityDragHandle id={row.id} name={row.name} group={row.group}
-                                            disabled={busy || !!search.trim()} onDrop={reorder} onStep={move} onTarget={setDragTarget}/>
-                                        <Brand id={row.icon} />
-                                        <div className="min-w-0 flex-1 basis-36">
-                                            <h2 className="truncate text-sm font-semibold">
-                                                {row.name}
-                                            </h2>
-                                            <p className="break-all text-xs text-muted-foreground">
-                                                {row.url}
-                                            </p>
-                                            <p className="mt-1 text-xs text-muted-foreground">
-                                                {groups.find(([id]) => id === row.group)?.[1]} · 第{" "}
-                                                {position + 1} 项
-                                            </p>
-                                        </div>
-                                        <div className="ml-auto flex flex-wrap items-center gap-1.5">
-                                            <Switch
-                                                aria-label={"启用 " + row.name}
-                                                checked={row.enabled}
-                                                disabled={busy}
-                                                onCheckedChange={(enabled) =>
-                                                    setItems((current) =>
-                                                        current.map((item) =>
-                                                            item.id === row.id
-                                                                ? { ...item, enabled }
-                                                                : item,
-                                                        ),
-                                                    )
-                                                }
-                                            />
-                                            <Button
-                                                size="icon"
-                                                variant="outline"
-                                                aria-label={"编辑 " + row.name}
-                                                disabled={busy}
-                                                onClick={() => setEditor({ ...row })}
-                                            >
-                                                <Pencil className="size-4" />
-                                            </Button>
-                                            <Button
-                                                size="icon"
-                                                variant="destructive"
-                                                aria-label={"删除 " + row.name}
-                                                disabled={busy}
-                                                onClick={() => {
-                                                    if (
-                                                        window.confirm(
-                                                            "移除检测点“" +
-                                                                row.name +
-                                                                "”？保存配置后生效，不会删除服务器。",
-                                                        )
-                                                    )
-                                                        setItems((current) =>
-                                                            current.filter(
-                                                                (item) => item.id !== row.id,
-                                                            ),
-                                                        )
-                                                }}
-                                            >
-                                                <Trash2 className="size-4" />
-                                            </Button>
-                                        </div>
-                                    </article>
-                                )
-                            })}
-                            {filtered.length === 0 && (
-                                <p className="rounded-lg border p-8 text-center text-sm text-muted-foreground">
-                                    {items.length
-                                        ? "没有匹配的检测点"
-                                        : "暂无检测点，点击“添加检测点”开始配置"}
-                                </p>
-                            )}
-                        </div>
-                    </>
-                )
-            )}
-            <Dialog
-                open={!!editor}
-                onOpenChange={(open) => {
-                    if (!open) setEditor(null)
-                }}
+            <TabsList aria-label="卡片分类">
+                <TabsTrigger value="connectivity">连通性</TabsTrigger>
+                <TabsTrigger value="bgp">BGP</TabsTrigger>
+            </TabsList>
+            <TabsContent value="bgp" forceMount className="data-[state=inactive]:hidden">
+                <ConnectivityAutomationSettings kind="bgp" />
+            </TabsContent>
+            <TabsContent
+                value="connectivity"
+                forceMount
+                className="space-y-5 data-[state=inactive]:hidden"
             >
-                <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
-                    <DialogHeader>
-                        <DialogTitle>
-                            {items.some((row) => row.id === editor?.id)
-                                ? "编辑检测点"
-                                : "添加检测点"}
-                        </DialogTitle>
-                        <DialogDescription>
-                            修改先保存到草稿，点击页面“保存配置”后全站生效。
-                        </DialogDescription>
-                    </DialogHeader>
-                    {editor && (
-                        <form
-                            className="space-y-4"
-                            onSubmit={(e) => {
-                                e.preventDefault()
-                                if (iconBlocked || validate(editor, saved?.defaults)) return
-                                const next = {
-                                    ...editor,
-                                    name: editor.name.trim(),
-                                    url: editor.url.trim(),
-                                }
-                                setItems((current) =>
-                                    current.some((row) => row.id === next.id)
-                                        ? current.map((row) => (row.id === next.id ? next : row))
-                                        : [...current, next],
-                                )
-                                setEditor(null)
-                            }}
-                        >
-                            <label className="block space-y-1 text-sm">
-                                <span>应用名称</span>
-                                <Input
-                                    required
-                                    maxLength={60}
-                                    value={editor.name}
-                                    onChange={(e) => setEditor({ ...editor, name: e.target.value })}
-                                />
-                            </label>
-                            <label className="block space-y-1 text-sm">
-                                <span>检测地址</span>
-                                <Input
-                                    required
-                                    type="url"
-                                    maxLength={2048}
-                                    value={editor.url}
-                                    onChange={(e) => setEditor({ ...editor, url: e.target.value })}
-                                />
-                            </label>
-                            <div className="grid gap-3 sm:grid-cols-2">
-                                <label className="block space-y-1 text-sm">
-                                    <span>地区</span>
-                                    <select
-                                        aria-label="地区"
-                                        className={selectStyle}
-                                        value={editor.group}
-                                        onChange={(e) =>
-                                            setEditor({ ...editor, group: e.target.value })
+                <ConnectivityAutomationSettings />
+                <p className="text-sm text-muted-foreground">
+                    连通性检测点 · 全站统一 · 默认主题与哆啦 A 梦共用
+                </p>
+                <div className="rounded-lg border bg-card p-4 text-sm leading-relaxed">
+                    前端只显示图标、名称、检测圆点与延迟，不显示网址。保存不会发起检测；正在执行的批次保持原清单，完成后使用新配置。拖动左侧手柄调整同地区顺序（电脑、手机均可）；键盘聚焦手柄后按上下方向键也可调整。地区展示顺序根据节点地区自动排列。
+                    <p className="mt-1 text-muted-foreground">
+                        每项检测 3 次，3 秒未回包即标记超时。仅允许管理员配置可信 HTTPS
+                        公网域名；节点自行解析 DNS，请勿填入密钥、私密链接或内部服务。
+                    </p>
+                </div>
+                <p className="sr-only" aria-live="polite">
+                    {orderNotice}
+                </p>
+                {search.trim() && (
+                    <p className="text-xs text-muted-foreground">
+                        搜索时暂停排序，请清空搜索后拖动。
+                    </p>
+                )}
+                {error && (
+                    <div
+                        role="alert"
+                        className="rounded-lg border border-destructive/50 p-3 text-sm text-destructive"
+                    >
+                        {error}
+                    </div>
+                )}
+                {reading ? (
+                    <p role="status">正在读取检测点…</p>
+                ) : (
+                    saved && (
+                        <>
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <p className="text-sm text-muted-foreground">
+                                    共 {items.length} 项 · 已启用{" "}
+                                    {items.filter((row) => row.enabled).length} 项
+                                    {dirty && (
+                                        <span className="ml-2 text-amber-700 dark:text-amber-300">
+                                            有未保存修改
+                                        </span>
+                                    )}
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        variant="outline"
+                                        disabled={busy}
+                                        onClick={() => {
+                                            if (
+                                                window.confirm(
+                                                    `恢复内置 ${saved.defaults.length} 项并清除当前自定义清单？保存配置后才生效。`,
+                                                )
+                                            )
+                                                setItems(saved.defaults.map((row) => ({ ...row })))
+                                        }}
+                                    >
+                                        恢复默认
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        disabled={
+                                            busy ||
+                                            !saved.defaults.some(
+                                                (row) => !items.some((item) => item.id === row.id),
+                                            )
+                                        }
+                                        onClick={() => {
+                                            const missing = saved.defaults.filter(
+                                                (row) => !items.some((item) => item.id === row.id),
+                                            )
+                                            if (items.length + missing.length > saved.max_targets) {
+                                                setError(
+                                                    `补充后超过 ${saved.max_targets} 项上限，请先删除不需要的项。`,
+                                                )
+                                                return
+                                            }
+                                            if (
+                                                window.confirm(
+                                                    `补充 ${missing.length} 个缺少的内置检测点？保留现有项的设置和顺序；以前移除的内置项也会补回。保存配置后生效。`,
+                                                )
+                                            )
+                                                setItems((current) => [
+                                                    ...current,
+                                                    ...missing.map((row) => ({ ...row })),
+                                                ])
+                                        }}
+                                    >
+                                        补充内置检测点
+                                    </Button>
+                                    <Button
+                                        disabled={busy || items.length >= saved.max_targets}
+                                        onClick={() =>
+                                            setEditor({
+                                                id: "custom-" + crypto.randomUUID(),
+                                                name: "",
+                                                group: group === "all" ? "global" : group,
+                                                url: "https://",
+                                                icon: "",
+                                                enabled: true,
+                                            })
                                         }
                                     >
-                                        {groups.map(([id, name]) => (
-                                            <option key={id} value={id}>
-                                                {name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
-                                <ConnectivityIconPicker
-                                    key={editor.id}
-                                    value={editor}
-                                    options={saved?.defaults || []}
-                                    onBlockedChange={setIconBlocked}
-                                    onChange={(value) =>
-                                        setEditor((current) =>
-                                            current ? { ...current, ...value } : null,
-                                        )
-                                    }
-                                />
+                                        <Plus className="mr-2 size-4" />
+                                        添加检测点
+                                    </Button>
+                                </div>
                             </div>
-                            <div className="flex items-center justify-between">
-                                <Brand id={editor.icon} />
-                                <label className="flex items-center gap-2 text-sm">
-                                    启用
-                                    <Switch
-                                        checked={editor.enabled}
-                                        onCheckedChange={(enabled) =>
-                                            setEditor({ ...editor, enabled })
+                            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_180px]">
+                                <Input
+                                    aria-label="搜索检测点"
+                                    placeholder="搜索名称或检测地址"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                />
+                                <select
+                                    aria-label="筛选地区"
+                                    className={selectStyle}
+                                    value={group}
+                                    onChange={(e) => setGroup(e.target.value)}
+                                >
+                                    <option value="all">全部地区</option>
+                                    {groups.map(([id, name]) => (
+                                        <option key={id} value={id}>
+                                            {name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="space-y-2">
+                                {filtered.map((row) => {
+                                    const peers = items.filter((item) => item.group === row.group),
+                                        position = peers.findIndex((item) => item.id === row.id)
+                                    return (
+                                        <article
+                                            key={row.id}
+                                            data-checkpoint-id={row.id}
+                                            data-checkpoint-group={row.group}
+                                            data-drop-target={dragTarget === row.id || undefined}
+                                            className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-3 data-[drop-target]:ring-2 data-[drop-target]:ring-primary"
+                                        >
+                                            <ConnectivityDragHandle
+                                                id={row.id}
+                                                name={row.name}
+                                                group={row.group}
+                                                disabled={busy || !!search.trim()}
+                                                onDrop={reorder}
+                                                onStep={move}
+                                                onTarget={setDragTarget}
+                                            />
+                                            <Brand id={row.icon} />
+                                            <div className="min-w-0 flex-1 basis-36">
+                                                <h2 className="truncate text-sm font-semibold">
+                                                    {row.name}
+                                                </h2>
+                                                <p className="break-all text-xs text-muted-foreground">
+                                                    {row.url}
+                                                </p>
+                                                <p className="mt-1 text-xs text-muted-foreground">
+                                                    {groups.find(([id]) => id === row.group)?.[1]} ·
+                                                    第 {position + 1} 项
+                                                </p>
+                                            </div>
+                                            <div className="ml-auto flex flex-wrap items-center gap-1.5">
+                                                <Switch
+                                                    aria-label={"启用 " + row.name}
+                                                    checked={row.enabled}
+                                                    disabled={busy}
+                                                    onCheckedChange={(enabled) =>
+                                                        setItems((current) =>
+                                                            current.map((item) =>
+                                                                item.id === row.id
+                                                                    ? { ...item, enabled }
+                                                                    : item,
+                                                            ),
+                                                        )
+                                                    }
+                                                />
+                                                <Button
+                                                    size="icon"
+                                                    variant="outline"
+                                                    aria-label={"编辑 " + row.name}
+                                                    disabled={busy}
+                                                    onClick={() => setEditor({ ...row })}
+                                                >
+                                                    <Pencil className="size-4" />
+                                                </Button>
+                                                <Button
+                                                    size="icon"
+                                                    variant="destructive"
+                                                    aria-label={"删除 " + row.name}
+                                                    disabled={busy}
+                                                    onClick={() => {
+                                                        if (
+                                                            window.confirm(
+                                                                "移除检测点“" +
+                                                                    row.name +
+                                                                    "”？保存配置后生效，不会删除服务器。",
+                                                            )
+                                                        )
+                                                            setItems((current) =>
+                                                                current.filter(
+                                                                    (item) => item.id !== row.id,
+                                                                ),
+                                                            )
+                                                    }}
+                                                >
+                                                    <Trash2 className="size-4" />
+                                                </Button>
+                                            </div>
+                                        </article>
+                                    )
+                                })}
+                                {filtered.length === 0 && (
+                                    <p className="rounded-lg border p-8 text-center text-sm text-muted-foreground">
+                                        {items.length
+                                            ? "没有匹配的检测点"
+                                            : "暂无检测点，点击“添加检测点”开始配置"}
+                                    </p>
+                                )}
+                            </div>
+                        </>
+                    )
+                )}
+                <Dialog
+                    open={!!editor}
+                    onOpenChange={(open) => {
+                        if (!open) setEditor(null)
+                    }}
+                >
+                    <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
+                        <DialogHeader>
+                            <DialogTitle>
+                                {items.some((row) => row.id === editor?.id)
+                                    ? "编辑检测点"
+                                    : "添加检测点"}
+                            </DialogTitle>
+                            <DialogDescription>
+                                修改先保存到草稿，点击页面“保存配置”后全站生效。
+                            </DialogDescription>
+                        </DialogHeader>
+                        {editor && (
+                            <form
+                                className="space-y-4"
+                                onSubmit={(e) => {
+                                    e.preventDefault()
+                                    if (iconBlocked || validate(editor, saved?.defaults)) return
+                                    const next = {
+                                        ...editor,
+                                        name: editor.name.trim(),
+                                        url: editor.url.trim(),
+                                    }
+                                    setItems((current) =>
+                                        current.some((row) => row.id === next.id)
+                                            ? current.map((row) =>
+                                                  row.id === next.id ? next : row,
+                                              )
+                                            : [...current, next],
+                                    )
+                                    setEditor(null)
+                                }}
+                            >
+                                <label className="block space-y-1 text-sm">
+                                    <span>应用名称</span>
+                                    <Input
+                                        required
+                                        maxLength={60}
+                                        value={editor.name}
+                                        onChange={(e) =>
+                                            setEditor({ ...editor, name: e.target.value })
                                         }
                                     />
                                 </label>
-                            </div>
-                            {validate(editor, saved?.defaults) && (
-                                <p className="text-xs text-muted-foreground">
-                                    {validate(editor, saved?.defaults)}
-                                </p>
-                            )}
-                            <DialogFooter>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => setEditor(null)}
-                                >
-                                    取消
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    disabled={iconBlocked || !!validate(editor, saved?.defaults)}
-                                >
-                                    保存到草稿
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                    )}
-                </DialogContent>
-            </Dialog>
-            </div>
-        </section>
+                                <label className="block space-y-1 text-sm">
+                                    <span>检测地址</span>
+                                    <Input
+                                        required
+                                        type="url"
+                                        maxLength={2048}
+                                        value={editor.url}
+                                        onChange={(e) =>
+                                            setEditor({ ...editor, url: e.target.value })
+                                        }
+                                    />
+                                </label>
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    <label className="block space-y-1 text-sm">
+                                        <span>地区</span>
+                                        <select
+                                            aria-label="地区"
+                                            className={selectStyle}
+                                            value={editor.group}
+                                            onChange={(e) =>
+                                                setEditor({ ...editor, group: e.target.value })
+                                            }
+                                        >
+                                            {groups.map(([id, name]) => (
+                                                <option key={id} value={id}>
+                                                    {name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                    <ConnectivityIconPicker
+                                        key={editor.id}
+                                        value={editor}
+                                        options={saved?.defaults || []}
+                                        onBlockedChange={setIconBlocked}
+                                        onChange={(value) =>
+                                            setEditor((current) =>
+                                                current ? { ...current, ...value } : null,
+                                            )
+                                        }
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <Brand id={editor.icon} />
+                                    <label className="flex items-center gap-2 text-sm">
+                                        启用
+                                        <Switch
+                                            checked={editor.enabled}
+                                            onCheckedChange={(enabled) =>
+                                                setEditor({ ...editor, enabled })
+                                            }
+                                        />
+                                    </label>
+                                </div>
+                                {validate(editor, saved?.defaults) && (
+                                    <p className="text-xs text-muted-foreground">
+                                        {validate(editor, saved?.defaults)}
+                                    </p>
+                                )}
+                                <DialogFooter>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => setEditor(null)}
+                                    >
+                                        取消
+                                    </Button>
+                                    <Button
+                                        type="submit"
+                                        disabled={
+                                            iconBlocked || !!validate(editor, saved?.defaults)
+                                        }
+                                    >
+                                        保存到草稿
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                        )}
+                    </DialogContent>
+                </Dialog>
+            </TabsContent>
+        </Tabs>
     )
 }

@@ -23,7 +23,10 @@ async function setup(page: Page, role = 0, theme = "light") {
         iconStores: 0,
         iconError: false,
         iconDelay: 0,
-        policy: {enabled:true,interval_hours:2,retention_days:1,revision:"p1"}, policyWrites:0,
+        bgpPolicy: { enabled: true, interval_hours: 6, retention_days: 1, revision: "b1" },
+        bgpWrites: 0,
+        policy: { enabled: true, interval_hours: 2, retention_days: 1, revision: "p1" },
+        policyWrites: 0,
     }
     await page.addInitScript((theme) => {
         localStorage.setItem("nezha-dashboard-theme", theme)
@@ -71,9 +74,19 @@ async function setup(page: Page, role = 0, theme = "light") {
         if (path === "/api/v1/profile") data = { id: 1, role, username: "qa" }
         if (path === "/api/v1/setting")
             data = { config: { language: "zh-CN", site_name: "测试面板" }, frontend_templates: [] }
-        if(path === "/api/v1/setting/connectivity/automation") {
-            if(request.method()==="PUT"){state.policy=request.postDataJSON();state.policyWrites++}
-            return route.fulfill({json:{success:true,data:state.policy}})
+        if (path === "/api/v1/setting/bgp/automation") {
+            if (request.method() === "PUT") {
+                state.bgpPolicy = request.postDataJSON()
+                state.bgpWrites++
+            }
+            return route.fulfill({ json: { success: true, data: state.bgpPolicy } })
+        }
+        if (path === "/api/v1/setting/connectivity/automation") {
+            if (request.method() === "PUT") {
+                state.policy = request.postDataJSON()
+                state.policyWrites++
+            }
+            return route.fulfill({ json: { success: true, data: state.policy } })
         }
         if (path === "/api/v1/setting/connectivity") {
             if (role !== 0) return route.fulfill({ json: { success: false, error: "denied" } })
@@ -104,7 +117,7 @@ for (const width of [390, 1440])
             page.on("pageerror", (error) => errors.push(error.message))
             const state = await setup(page, 0, theme)
             await expect(page.getByRole("heading", { name: "卡片设置", exact: true })).toBeVisible()
-            await expect(page.locator("[data-checkpoint-id]")).toHaveCount(102)
+            await expect(page.locator("[data-checkpoint-id]")).toHaveCount(defaults.length)
             const before = await page.locator("[data-card-settings]").boundingBox()
             await page.getByRole("button", { name: "添加检测点", exact: true }).click()
             const dialog = page.getByRole("dialog")
@@ -155,7 +168,7 @@ for (const width of [390, 1440])
             await page.getByRole("button", { name: "删除 Custom renamed", exact: true }).click()
             await page.getByRole("button", { name: "保存配置", exact: true }).click()
             await expect(page.getByRole("button", { name: "保存配置", exact: true })).toBeDisabled()
-            expect(state.items).toHaveLength(102)
+            expect(state.items).toHaveLength(defaults.length)
             await page.getByLabel("搜索检测点").fill("")
             await page.getByLabel("筛选地区").selectOption("japan")
             expect(
@@ -255,59 +268,120 @@ test("closing an in-flight icon import cannot replace another checkpoint", async
     await expect(dialog.getByRole("button", { name: "保存到草稿" })).toBeEnabled()
     expect(state.iconStores).toBe(0)
 })
-for (const width of [390,1440]) test("drag pointer ordering and automation settings "+width,async({page},info)=>{
- await page.setViewportSize({width,height:950});
- const state=await setup(page,0,"dark");
- await expect(page.getByRole("tab",{name:"连通性",exact:true})).toHaveAttribute("aria-selected","true");
- await expect(page.getByLabel("检测间隔（小时）")).toHaveValue("2");
- await expect(page.getByLabel("记录保留（天）")).toHaveValue("1");
- await page.getByLabel("检测间隔（小时）").fill("0");
- await expect(page.getByRole("button",{name:"保存自动检测设置",exact:true})).toBeDisabled();
- await page.getByLabel("检测间隔（小时）").fill("4");await page.getByLabel("记录保留（天）").fill("3");
- await page.getByRole("button",{name:"保存自动检测设置",exact:true}).click();
- await expect.poll(()=>state.policyWrites).toBe(1);
- expect(state.policy).toMatchObject({enabled:true,interval_hours:4,retention_days:3});
- await page.getByLabel("筛选地区").selectOption("singapore");
- const ids=()=>page.locator("[data-checkpoint-id]").evaluateAll(nodes=>nodes.map(n=>n.getAttribute("data-checkpoint-id")));
- const before=await ids();
- const handle=page.getByRole("button",{name:"拖动排序 Grab",exact:true});
- await handle.scrollIntoViewIfNeeded();
- const from=await handle.boundingBox(),to=await page.locator('[data-checkpoint-id="cna"]').boundingBox();
- if(!from||!to)throw Error("drag bounds");
- await page.mouse.move(from.x+from.width/2,from.y+from.height/2);await page.mouse.down();
- await page.mouse.move(to.x+to.width/2,to.y+to.height/2,{steps:16});await page.mouse.up();
- await expect.poll(ids).toEqual([before[1],before[2],before[0]]);
- expect(state.writes).toBe(0);await page.getByRole("button",{name:"保存配置",exact:true}).click();
- await expect.poll(()=>state.writes).toBe(1);
- await page.reload();await page.getByLabel("筛选地区").selectOption("singapore");
- await expect.poll(ids).toEqual([before[1],before[2],before[0]]);
- await expect(page.getByLabel("检测间隔（小时）")).toHaveValue("4");
- await expect(page.getByLabel("记录保留（天）")).toHaveValue("3");
- await page.screenshot({path:info.outputPath("drag-automation.png"),fullPage:true});
-});
+for (const width of [390, 1440])
+    test("drag pointer ordering and automation settings " + width, async ({ page }, info) => {
+        await page.setViewportSize({ width, height: 950 })
+        const state = await setup(page, 0, "dark")
+        await expect(page.getByRole("tab", { name: "连通性", exact: true })).toHaveAttribute(
+            "aria-selected",
+            "true",
+        )
+        await expect(page.getByRole("tabpanel", { name: "连通性", exact: true }).getByLabel("检测间隔（小时）")).toHaveValue("2")
+        await expect(page.getByRole("tabpanel", { name: "连通性", exact: true }).getByLabel("记录保留（天）")).toHaveValue("1")
+        await page.getByRole("tabpanel", { name: "连通性", exact: true }).getByLabel("检测间隔（小时）").fill("0")
+        await expect(
+            page.getByRole("button", { name: "保存自动检测设置", exact: true }),
+        ).toBeDisabled()
+        await page.getByRole("tabpanel", { name: "连通性", exact: true }).getByLabel("检测间隔（小时）").fill("4")
+        await page.getByRole("tabpanel", { name: "连通性", exact: true }).getByLabel("记录保留（天）").fill("3")
+        await page.getByRole("button", { name: "保存自动检测设置", exact: true }).click()
+        await expect.poll(() => state.policyWrites).toBe(1)
+        expect(state.policy).toMatchObject({ enabled: true, interval_hours: 4, retention_days: 3 })
+        await page.getByLabel("筛选地区").selectOption("singapore")
+        const ids = () =>
+            page
+                .locator("[data-checkpoint-id]")
+                .evaluateAll((nodes) => nodes.map((n) => n.getAttribute("data-checkpoint-id")))
+        const before = await ids()
+        const handle = page.getByRole("button", { name: "拖动排序 Grab", exact: true })
+        await handle.scrollIntoViewIfNeeded()
+        const from = await handle.boundingBox(),
+            to = await page.locator('[data-checkpoint-id="cna"]').boundingBox()
+        if (!from || !to) throw Error("drag bounds")
+        await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2)
+        await page.mouse.down()
+        await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 16 })
+        await page.mouse.up()
+        await expect.poll(ids).toEqual([before[1], before[2], before[0]])
+        expect(state.writes).toBe(0)
+        await page.getByRole("button", { name: "保存配置", exact: true }).click()
+        await expect.poll(() => state.writes).toBe(1)
+        await page.reload()
+        await page.getByLabel("筛选地区").selectOption("singapore")
+        await expect.poll(ids).toEqual([before[1], before[2], before[0]])
+        await expect(page.getByRole("tabpanel", { name: "连通性", exact: true }).getByLabel("检测间隔（小时）")).toHaveValue("4")
+        await expect(page.getByRole("tabpanel", { name: "连通性", exact: true }).getByLabel("记录保留（天）")).toHaveValue("3")
+        await page.screenshot({ path: info.outputPath("drag-automation.png"), fullPage: true })
+    })
 
-test("touch drag and explicit missing-default merge preserve custom choices",async({page})=>{
- await page.setViewportSize({width:390,height:950});
- const state=await setup(page);
- state.items=state.items.filter((row:any)=>["grab","shopee","cna"].includes(row.id));
- state.items[0]={...state.items[0],name:"我的 Grab",enabled:false};
- await page.reload();
- await expect(page.locator("[data-checkpoint-id]")).toHaveCount(3);
- const cdp=await page.context().newCDPSession(page);
- await cdp.send("Emulation.setTouchEmulationEnabled",{enabled:true,maxTouchPoints:1});
- const handle=page.getByRole("button",{name:"拖动排序 我的 Grab",exact:true});
- await handle.scrollIntoViewIfNeeded();
- const from=(await handle.boundingBox())!,to=(await page.locator('[data-checkpoint-id="cna"]').boundingBox())!;
- const a={x:from.x+from.width/2,y:from.y+from.height/2},b={x:to.x+50,y:to.y+to.height/2};
- await cdp.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[a]});
- for(let i=1;i<=12;i++)await cdp.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{x:a.x+(b.x-a.x)*i/12,y:a.y+(b.y-a.y)*i/12}]});
- await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
- await expect(page.locator("[data-checkpoint-id]").last()).toHaveAttribute("data-checkpoint-id","grab");
- page.once("dialog",dialog=>dialog.accept());
- await page.getByRole("button",{name:"补充内置检测点",exact:true}).click();
- await expect(page.locator("[data-checkpoint-id]")).toHaveCount(102);
- await page.getByRole("button",{name:"保存配置",exact:true}).click();
- await expect.poll(()=>state.writes).toBe(1);
- expect(state.items.slice(0,3).map((row:any)=>row.id)).toEqual(["shopee","cna","grab"]);
- expect(state.items.find((row:any)=>row.id==="grab")).toMatchObject({name:"我的 Grab",enabled:false});
-});
+test("touch drag and explicit missing-default merge preserve custom choices", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 950 })
+    const state = await setup(page)
+    state.items = state.items.filter((row: any) => ["grab", "shopee", "cna"].includes(row.id))
+    state.items[0] = { ...state.items[0], name: "我的 Grab", enabled: false }
+    await page.reload()
+    await expect(page.locator("[data-checkpoint-id]")).toHaveCount(3)
+    const cdp = await page.context().newCDPSession(page)
+    await cdp.send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 1 })
+    const handle = page.getByRole("button", { name: "拖动排序 我的 Grab", exact: true })
+    await handle.scrollIntoViewIfNeeded()
+    const from = (await handle.boundingBox())!,
+        to = (await page.locator('[data-checkpoint-id="cna"]').boundingBox())!
+    const a = { x: from.x + from.width / 2, y: from.y + from.height / 2 },
+        b = { x: to.x + 50, y: to.y + to.height / 2 }
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [a] })
+    for (let i = 1; i <= 12; i++)
+        await cdp.send("Input.dispatchTouchEvent", {
+            type: "touchMove",
+            touchPoints: [{ x: a.x + ((b.x - a.x) * i) / 12, y: a.y + ((b.y - a.y) * i) / 12 }],
+        })
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] })
+    await expect(page.locator("[data-checkpoint-id]").last()).toHaveAttribute(
+        "data-checkpoint-id",
+        "grab",
+    )
+    page.once("dialog", (dialog) => dialog.accept())
+    await page.getByRole("button", { name: "补充内置检测点", exact: true }).click()
+    await expect(page.locator("[data-checkpoint-id]")).toHaveCount(defaults.length)
+    await page.getByRole("button", { name: "保存配置", exact: true }).click()
+    await expect.poll(() => state.writes).toBe(1)
+    expect(state.items.slice(0, 3).map((row: any) => row.id)).toEqual(["shopee", "cna", "grab"])
+    expect(state.items.find((row: any) => row.id === "grab")).toMatchObject({
+        name: "我的 Grab",
+        enabled: false,
+    })
+})
+for (const width of [390, 1440])
+    for (const theme of ["light", "dark"])
+        test("independent BGP settings " + theme + " " + width, async ({ page }, info) => {
+            await page.setViewportSize({ width, height: 900 })
+            const state = await setup(page, 0, theme)
+            await page.getByLabel("筛选地区").selectOption("hongkong")
+            await expect(page.locator("[data-checkpoint-id]")).toHaveCount(4)
+            await page.getByLabel("筛选地区").selectOption("macau")
+            await expect(page.locator("[data-checkpoint-id]")).toHaveCount(4)
+            await page.getByRole("tab", { name: "BGP", exact: true }).click()
+            await expect(page.getByLabel("BGP 检测间隔（小时）", { exact: true })).toHaveValue("6")
+            await expect(page.getByLabel("BGP 记录保留（天）", { exact: true })).toHaveValue("1")
+            await expect(
+                page.getByRole("button", { name: "保存配置", exact: true }),
+            ).not.toBeVisible()
+            await page.getByLabel("BGP 检测间隔（小时）", { exact: true }).fill("8")
+            await page.getByLabel("BGP 记录保留（天）", { exact: true }).fill("2")
+            await page.getByRole("button", { name: "保存自动检测设置", exact: true }).click()
+            await expect.poll(() => state.bgpWrites).toBe(1)
+            expect(state.policy).toMatchObject({ interval_hours: 2, retention_days: 1 })
+            expect(state.policyWrites).toBe(0)
+            expect(state.writes).toBe(0)
+            await page.getByRole("tab", { name: "连通性", exact: true }).click()
+            await expect(page.getByRole("tabpanel", { name: "连通性", exact: true }).getByLabel("检测间隔（小时）", { exact: true })).toHaveValue("2")
+            await expect(page.getByLabel("筛选地区")).toHaveValue("macau")
+            await page.getByRole("tab", { name: "BGP", exact: true }).click()
+            await page.reload()
+            await page.getByRole("tab", { name: "BGP", exact: true }).click()
+            await expect(page.getByLabel("BGP 检测间隔（小时）", { exact: true })).toHaveValue("8")
+            expect(
+                await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+            ).toBe(true)
+            await page.screenshot({ path: info.outputPath("bgp-settings.png"), fullPage: true })
+        })

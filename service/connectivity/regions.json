@@ -110,5 +110,19 @@
     "zh": "俄罗斯",
     "tw": "俄羅斯",
     "en": "Russia"
+  },
+  {
+    "id": "hongkong",
+    "country": "HK",
+    "zh": "香港",
+    "tw": "香港",
+    "en": "Hong Kong"
+  },
+  {
+    "id": "macau",
+    "country": "MO",
+    "zh": "澳门",
+    "tw": "澳門",
+    "en": "Macau"
   }
 ]
