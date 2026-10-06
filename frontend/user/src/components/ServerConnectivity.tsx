@@ -361,7 +361,7 @@ function ConnectivityCard({
 			data-connectivity-phase={result.phase}
 			className="min-w-0 rounded-xl shadow-none"
 		>
-			<CardContent className="grid min-h-[66px] grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-2 px-3 py-2.5">
+			<CardContent className="grid min-h-[54px] grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-2 px-3 py-2">
 				<span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-white/95 p-0.5">
 					{icon && failedIcon !== icon ? (
 						<img
