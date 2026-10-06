@@ -541,6 +541,46 @@
       "file": "traveloka.ico",
       "source": "https://www.traveloka.com/favicon.ico",
       "homepage": "https://www.traveloka.com"
+    },
+    {
+      "id": "tvbhk",
+      "file": "tvbhk.ico",
+      "source": "https://www.tvb.com/favicon.ico"
+    },
+    {
+      "id": "hk01",
+      "file": "hk01.png",
+      "source": "https://www.hk01.com/apple-touch-icon.png?v=5AeznpzBEm"
+    },
+    {
+      "id": "mtrhk",
+      "file": "mtrhk.ico",
+      "source": "https://www.mtr.com.hk/favicon.ico"
+    },
+    {
+      "id": "viuhk",
+      "file": "viuhk.png",
+      "source": "https://www.viu.com/ott/1viu-static/assets/favicon/apple-touch-icon.png"
+    },
+    {
+      "id": "ctmmo",
+      "file": "ctmmo.ico",
+      "source": "https://www.ctm.net/favicon.ico"
+    },
+    {
+      "id": "tdmmo",
+      "file": "tdmmo.ico",
+      "source": "https://www.tdm.com.mo/static/favicon.ico"
+    },
+    {
+      "id": "macaupass",
+      "file": "macaupass.ico",
+      "source": "https://www.macaupass.com/favicon.ico"
+    },
+    {
+      "id": "govmo",
+      "file": "govmo.png",
+      "source": "https://www.gov.mo/zh-hant/wp-content/static/favicon/apple-icon-57x57.png"
     }
   ],
   "extensions": "24 additional international apps; official site favicons except Epic Games icon from Simple Icons (CC0). Brand trademarks belong to their respective owners.",

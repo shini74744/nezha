@@ -680,7 +680,7 @@ function Observation({
 			>
 				{(
 					{
-						no_public_ip: "节点未上报此协议的公网 IP",
+						no_public_ip: "未获取到此协议的公网 IP",
 						no_routes: "数据源暂未观测到该地址的 BGP 路由",
 						unavailable: "BGP 数据源暂时不可用，请稍后重试",
 					} as Record<string, string>

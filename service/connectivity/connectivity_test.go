@@ -20,7 +20,7 @@ func waitComplete(t *testing.T, m *Manager, key string) Snapshot {
 }
 func TestFixedTargets(t *testing.T) {
 	got := Targets()
-	require.Len(t, got, 102)
+	require.Len(t, got, 110)
 	seen := map[string]bool{}
 	for _, target := range got {
 		u, err := url.Parse(target.URL)
@@ -148,14 +148,14 @@ func TestExpandedReferenceCatalogAndBudget(t *testing.T) {
 	for _, target := range Targets() {
 		groups[target.Group]++
 	}
-	require.Equal(t, map[string]int{"china": 12, "japan": 7, "usa": 36, "global": 11, "korea": 3, "uk": 3, "germany": 3, "france": 3, "canada": 3, "australia": 3, "india": 3, "brazil": 3, "russia": 3, "singapore": 3, "malaysia": 3, "indonesia": 3}, groups)
+	require.Equal(t, map[string]int{"china": 12, "japan": 7, "usa": 36, "global": 11, "korea": 3, "uk": 3, "germany": 3, "france": 3, "canada": 3, "australia": 3, "india": 3, "brazil": 3, "russia": 3, "singapore": 3, "malaysia": 3, "indonesia": 3, "hongkong": 4, "macau": 4}, groups)
 	for _, id := range []string{"deepseek", "weixin", "sony", "nintendo", "claude", "chatgpt", "gemini", "steam", "tiktok", "mistral", "mercadolibre"} {
 		_, ok := FindTarget(id)
 		require.True(t, ok, id)
 	}
 	m := NewManager()
 	require.Equal(t, 12, m.workers)
-	// Even if every Agent request reaches the 3s upper bound, all 102 sites
+	// Even if every Agent request reaches the 3s upper bound, all 110 sites
 	// must receive their three real attempts before the overall batch deadline.
 	batches := (len(Targets()) + m.workers - 1) / m.workers
 	require.GreaterOrEqual(t, m.timeout, time.Duration(batches*m.rounds)*ProbeTimeout)
@@ -178,7 +178,7 @@ func TestExpandedWorkersRemainBounded(t *testing.T) {
 	_, err := m.Start("bounded", probe)
 	require.NoError(t, err)
 	waitComplete(t, m, "bounded")
-	require.EqualValues(t, 306, calls.Load())
+	require.EqualValues(t, len(Targets())*3, calls.Load())
 	require.LessOrEqual(t, peak.Load(), int32(12))
 }
 func TestQueueInterleavesRegionsAndRetriesOnlyAfterFirstPass(t *testing.T) {

@@ -24,7 +24,7 @@ func (s *NezhaHandler) ReportGeoIP(ctx context.Context, report *pb.GeoIP) (*pb.G
 		if ip == "" {
 			ip, _ = ctx.Value(model.CtxKeyConnectingIP{}).(string)
 		}
-		geoIP.IP.IPv4Addr = ip
+		geoIP.IP = connectionIP(ip)
 	}
 	joinedIP := geoIP.IP.Join()
 	server, ok := singleton.ServerShared.Get(clientID)
@@ -67,4 +67,14 @@ func (s *NezhaHandler) ReportGeoIP(ctx context.Context, report *pb.GeoIP) (*pb.G
 	server.GeoIP = &geoIP
 	server.SetSnapshotCountry(location)
 	return &pb.GeoIP{Ip: nil, CountryCode: location, DashboardBootTime: singleton.DashboardBootTime}, nil
+}
+func connectionIP(value string) model.IP {
+	ip := net.ParseIP(value)
+	if ip == nil {
+		return model.IP{}
+	}
+	if ip.To4() != nil {
+		return model.IP{IPv4Addr: ip.String()}
+	}
+	return model.IP{IPv6Addr: ip.String()}
 }

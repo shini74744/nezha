@@ -49,7 +49,7 @@ func TestMediaProbeDispatchIsFixedAndBoundToAgentSession(t *testing.T) {
 		sent++
 		require.EqualValues(t, model.TaskTypeCommand, task.Type)
 		require.Contains(t, task.Data, "https://www.youtube.com/premium")
-		require.Contains(t, task.Data, "--max-time 3")
+		require.Contains(t, task.Data, "--max-time 8")
 		require.NotContains(t, task.Data, "curl -k")
 		deliverMediaResult(&pb.TaskResult{Id: task.Id, Type: task.Type, Successful: true, Data: "NZM|0|200|0|premium,|US"}, 7, stream)
 	}
@@ -64,4 +64,33 @@ func TestMediaProbeDispatchIsFixedAndBoundToAgentSession(t *testing.T) {
 	server.SetTaskStream(&requestTaskSecurityStream{ctx: context.Background()})
 	require.Equal(t, "offline", probe(context.Background(), "youtube", "IPv4").Status)
 	require.Equal(t, 1, sent)
+}
+
+func TestInsightIPv6DiscoveryUsesBGPAgentAndSwitch(t *testing.T) {
+	server := requestTaskSecurityServer(7, 200, "ipv6-fixture")
+	setupRequestTaskSecurityFixture(t, []*model.Server{server}, nil, nil, nil)
+	server, _ = singleton.ServerShared.Get(7)
+	server.AttachStateStream(stateGenerationStream{}).UpdateState(&model.HostState{}, time.Now())
+	_, err := server.RuntimeHandle().ApplyHostReport(&model.Host{Platform: "linux"}, time.Now(), nil)
+	require.NoError(t, err)
+	stream := &requestTaskSecurityStream{ctx: context.Background()}
+	sent := 0
+	stream.onSend = func(task *pb.Task) {
+		sent++
+		require.Contains(t, task.Data, "curl -q -6")
+		require.Contains(t, task.Data, "https://api6.ipify.org")
+		deliverMediaResult(&pb.TaskResult{Id: task.Id, Type: task.Type, Successful: true, Data: "2606:4700:4700::1111"}, 7, stream)
+	}
+	server.SetTaskStream(stream)
+	server.StreamingDisabled = true
+	require.Equal(t, "2606:4700:4700::1111", InsightIPv6(context.Background(), server))
+	require.Equal(t, 1, sent)
+	server.BGPDisabled = true
+	require.Empty(t, InsightIPv6(context.Background(), server))
+	require.Equal(t, 1, sent)
+}
+func TestConnectionIPPreservesActualFamily(t *testing.T) {
+	require.Equal(t, model.IP{IPv6Addr: "2606:4700:4700::1111"}, connectionIP("2606:4700:4700::1111"))
+	require.Equal(t, model.IP{IPv4Addr: "1.1.1.1"}, connectionIP("::ffff:1.1.1.1"))
+	require.Empty(t, connectionIP("bad"))
 }

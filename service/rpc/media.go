@@ -25,27 +25,48 @@ type mediaWaiter struct {
 }
 
 func MediaProbe(server *model.Server) func(context.Context, string, string) networkinsight.MediaResult {
-	id, uuid, owner, stream := server.ID, server.UUID, server.GetUserID(), server.GetTaskStream()
+	run := insightCommandRunner(server, "streaming")
 	return func(parent context.Context, target, family string) networkinsight.MediaResult {
 		base := networkinsight.ClassifyMedia(target, family, "", false)
 		command, err := networkinsight.MediaCommand(target, family)
 		if err != nil {
 			return base
 		}
-		current, ok := singleton.ServerShared.Get(id)
-		valid := func(s *model.Server) bool {
-			return s != nil && s.UUID == uuid && s.GetUserID() == owner && s.GetTaskStream() == stream && !s.StreamingDisabled && ConnectivityOnline(s) && !singleton.ServerIDReassignmentInProgress.Load() && !singleton.IsDeletedServerUUID(uuid)
-		}
-		if !ok || !valid(current) {
-			base.Status = "offline"
+		result, status := run(parent, command, 35*time.Second)
+		if status != "" {
+			base.Status = status
 			return base
+		}
+		return networkinsight.ClassifyMedia(target, family, result.GetData(), result.GetSuccessful())
+	}
+}
+
+// Missing address discovery is fixed, read-only, and bound to the target's current
+// authenticated Agent session. It never updates DDNS, reported IPs or interfaces.
+func InsightIPv6(ctx context.Context, server *model.Server) string {
+	result, status := insightCommandRunner(server, "bgp")(ctx, networkinsight.IPv6Command(), 14*time.Second)
+	if status != "" || !result.GetSuccessful() {
+		return ""
+	}
+	return networkinsight.ParseIPv6(result.GetData())
+}
+
+func insightCommandRunner(server *model.Server, kind string) func(context.Context, string, time.Duration) (*pb.TaskResult, string) {
+	id, uuid, owner, stream := server.ID, server.UUID, server.GetUserID(), server.GetTaskStream()
+	return func(parent context.Context, command string, timeout time.Duration) (*pb.TaskResult, string) {
+		valid := func(s *model.Server) bool {
+			enabled := s != nil && ((kind == "bgp" && !s.BGPDisabled) || (kind == "streaming" && !s.StreamingDisabled))
+			return enabled && s.UUID == uuid && s.GetUserID() == owner && s.GetTaskStream() == stream && ConnectivityOnline(s) && !singleton.ServerIDReassignmentInProgress.Load() && !singleton.IsDeletedServerUUID(uuid)
+		}
+		current, ok := singleton.ServerShared.Get(id)
+		if !ok || !valid(current) {
+			return nil, "offline"
 		}
 		host := current.RuntimeSnapshot().Host
 		if host == nil || strings.Contains(strings.ToLower(host.Platform), "windows") {
-			base.Status = "unsupported"
-			return base
+			return nil, "unsupported"
 		}
-		ctx, cancel := context.WithTimeout(parent, 15*time.Second)
+		ctx, cancel := context.WithTimeout(parent, timeout)
 		defer cancel()
 		taskID := mediaTaskMask | mediaCounter.Add(1)
 		waiter := &mediaWaiter{id, stream, make(chan *pb.TaskResult, 1)}
@@ -54,8 +75,7 @@ func MediaProbe(server *model.Server) func(context.Context, string, string) netw
 		select {
 		case mediaSends <- struct{}{}:
 		case <-ctx.Done():
-			base.Status = "timeout"
-			return base
+			return nil, "timeout"
 		}
 		sent := make(chan error, 1)
 		go func() {
@@ -70,31 +90,27 @@ func MediaProbe(server *model.Server) func(context.Context, string, string) netw
 		select {
 		case err := <-sent:
 			if err != nil {
-				base.Status = "offline"
-				return base
+				return nil, "offline"
 			}
 		case <-ctx.Done():
-			base.Status = "timeout"
-			return base
+			return nil, "timeout"
 		}
 		select {
 		case result := <-waiter.result:
 			s, ok := singleton.ServerShared.Get(id)
 			if !ok || !valid(s) {
-				base.Status = "offline"
-				return base
+				return nil, "offline"
 			}
 			if ctx.Err() != nil {
-				base.Status = "timeout"
-				return base
+				return nil, "timeout"
 			}
-			return networkinsight.ClassifyMedia(target, family, result.GetData(), result.GetSuccessful())
+			return result, ""
 		case <-ctx.Done():
-			base.Status = "timeout"
-			return base
+			return nil, "timeout"
 		}
 	}
 }
+
 func deliverMediaResult(result *pb.TaskResult, reporterID uint64, stream pb.NezhaService_RequestTaskServer) bool {
 	if result == nil || result.GetId()&mediaTaskMask == 0 {
 		return false

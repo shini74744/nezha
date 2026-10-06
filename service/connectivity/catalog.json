@@ -712,5 +712,61 @@
     "group": "indonesia",
     "host": "www.traveloka.com",
     "url": "https://www.traveloka.com/favicon.ico"
+  },
+  {
+    "id": "tvbhk",
+    "name": "TVB",
+    "group": "hongkong",
+    "host": "www.tvb.com",
+    "url": "https://www.tvb.com/favicon.ico"
+  },
+  {
+    "id": "hk01",
+    "name": "香港01",
+    "group": "hongkong",
+    "host": "www.hk01.com",
+    "url": "https://www.hk01.com/apple-touch-icon.png?v=5AeznpzBEm"
+  },
+  {
+    "id": "mtrhk",
+    "name": "港铁",
+    "group": "hongkong",
+    "host": "www.mtr.com.hk",
+    "url": "https://www.mtr.com.hk/favicon.ico"
+  },
+  {
+    "id": "viuhk",
+    "name": "Viu",
+    "group": "hongkong",
+    "host": "www.viu.com",
+    "url": "https://www.viu.com/ott/1viu-static/assets/favicon/apple-touch-icon.png"
+  },
+  {
+    "id": "ctmmo",
+    "name": "澳门电讯",
+    "group": "macau",
+    "host": "www.ctm.net",
+    "url": "https://www.ctm.net/favicon.ico"
+  },
+  {
+    "id": "tdmmo",
+    "name": "澳门广播电视",
+    "group": "macau",
+    "host": "www.tdm.com.mo",
+    "url": "https://www.tdm.com.mo/static/favicon.ico"
+  },
+  {
+    "id": "macaupass",
+    "name": "澳门通 MPay",
+    "group": "macau",
+    "host": "www.macaupass.com",
+    "url": "https://www.macaupass.com/favicon.ico"
+  },
+  {
+    "id": "govmo",
+    "name": "澳门政务",
+    "group": "macau",
+    "host": "www.gov.mo",
+    "url": "https://www.gov.mo/zh-hant/wp-content/static/favicon/apple-icon-57x57.png"
   }
 ]
