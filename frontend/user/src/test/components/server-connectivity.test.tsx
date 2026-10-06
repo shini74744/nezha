@@ -423,3 +423,11 @@ it("administrators can immediately retest during the owner cooldown",async()=>{
  expect(api.startConnectivity).toHaveBeenCalledTimes(1);
  expect(screen.getByRole("button",{name:"connectivity.testing"})).toBeDisabled();
 });
+
+it.each([false,true])("has no per-second redraw timer for visitors or cooldown-exempt admins (%s)",async(admin)=>{
+ const timer=vi.spyOn(window,"setInterval");
+ api.fetchConnectivity.mockResolvedValue(data({state:"complete",can_run:admin,can_bypass_cooldown:admin,retry_at:Date.now()+60000}));
+ const view=mount();await screen.findByText("Google");
+ expect(timer.mock.calls.filter(call=>call[1]===1000)).toHaveLength(0);
+ view.unmount();timer.mockRestore();
+});

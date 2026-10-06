@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, memo, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { fetchSetting } from "@/lib/nezha-api";
@@ -11,7 +11,7 @@ const NetworkChart = lazy(() =>
 
 // Both views use one chart instance, so changing tabs preserves its filters
 // and never creates a second polling request.
-export default function ServerNetworkSection({
+function ServerNetworkSection({
 	server_id, standalone,
 }: { server_id: number; standalone: boolean }) {
 	const { t } = useTranslation();
@@ -37,3 +37,5 @@ export default function ServerNetworkSection({
 		</section>
 	);
 }
+
+export default memo(ServerNetworkSection);

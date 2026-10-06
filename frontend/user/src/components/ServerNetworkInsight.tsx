@@ -1,5 +1,6 @@
 import { formatDetectionTime } from "@/lib/detection-time";
-import { useState } from "react";
+import { memo, useState } from "react";
+import SnapshotTimeline from "./SnapshotTimeline";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleHelp, RefreshCw, Tv } from "lucide-react";
 import { fetchLoginUser } from "@/lib/nezha-api";
@@ -73,7 +74,7 @@ function MediaStatus({ value }: { value: MediaResult }) {
 		</div>
 	);
 }
-export default function ServerNetworkInsight({
+function ServerNetworkInsight({
 	serverId,
 	kind,
 }: {
@@ -107,10 +108,9 @@ export default function ServerNetworkInsight({
 	});
 	const data = query.data,
 		active = data?.state === "running" || run.isPending;
-	const snapshot =
-		(historyAt
-			? data?.history?.find((item) => item.finished_at === historyAt)
-			: undefined) || data;
+	const selectedHistory = data?.history?.find((item) => item.finished_at === historyAt);
+	const effectiveHistoryAt = selectedHistory ? historyAt : 0;
+	const snapshot = selectedHistory || data;
 	const families = data?.available_families?.length
 		? data.available_families
 		: ["IPv4", "IPv6"];
@@ -212,10 +212,7 @@ export default function ServerNetworkInsight({
 						)}
 					</div>
 					{!!data.history?.length && (
-						<nav
-							className="flex gap-2 overflow-x-auto pb-2 mb-3"
-							aria-label="BGP 历史快照"
-						>
+						<SnapshotTimeline>
 							{data.history.map((item, i) => (
 								<button
 									key={item.finished_at}
@@ -223,13 +220,13 @@ export default function ServerNetworkInsight({
 										setHistoryAt(i === 0 ? 0 : (item.finished_at ?? 0))
 									}
 									aria-pressed={
-										(historyAt === 0 && i === 0) ||
-										historyAt === item.finished_at
+										(effectiveHistoryAt === 0 && i === 0) ||
+										effectiveHistoryAt === item.finished_at
 									}
 									className={cn(
-										"shrink-0 border rounded-lg px-3 py-2 text-xs text-left",
-										((historyAt === 0 && i === 0) ||
-											historyAt === item.finished_at) &&
+										"shrink-0 whitespace-nowrap border rounded-lg px-3 py-2 text-xs text-left",
+										((effectiveHistoryAt === 0 && i === 0) ||
+											effectiveHistoryAt === item.finished_at) &&
 											"border-blue-500 bg-blue-50 dark:bg-blue-950",
 									)}
 								>
@@ -241,7 +238,7 @@ export default function ServerNetworkInsight({
 									</span>
 								</button>
 							))}
-						</nav>
+						</SnapshotTimeline>
 					)}
 					{topology ? (
 						<>
@@ -307,3 +304,5 @@ export default function ServerNetworkInsight({
 		</section>
 	);
 }
+
+export default memo(ServerNetworkInsight);

@@ -161,6 +161,46 @@ export function NetworkChart({
 		retry: 1,
 	});
 
+	const { monitors, transformedData, formattedData, chartDataKey, initChartConfig } = useMemo(() => {
+		const monitors = Array.isArray(monitorData?.data)
+			? monitorData.data.filter((item) => item.created_at?.length && item.avg_delay?.length)
+			: [];
+		const transformedData = transformData(monitors);
+		const formattedData = formatData(monitors);
+		const monitorInfoByName = new Map(
+			monitors.map((item) => [
+				item.monitor_name,
+				{ id: item.monitor_id, displayIndex: item.display_index },
+			]),
+		);
+		const chartDataKey = Object.keys(transformedData).sort((a, b) => {
+			const aInfo = monitorInfoByName.get(a);
+			const bInfo = monitorInfoByName.get(b);
+			if (!aInfo && !bInfo) return a.localeCompare(b);
+			if (!aInfo) return 1;
+			if (!bInfo) return -1;
+
+			const indexDiff = (bInfo.displayIndex ?? 0) - (aInfo.displayIndex ?? 0);
+			if (indexDiff !== 0) return indexDiff;
+
+			return aInfo.id - bInfo.id;
+		});
+
+		const initChartConfig = {
+			avg_delay: {
+				label: t("monitor.avgDelay"),
+			},
+			...chartDataKey.reduce((acc, key) => {
+				acc[key] = {
+					label: key,
+				};
+				return acc;
+			}, {} as ChartConfig),
+		} satisfies ChartConfig;
+
+		return { monitors, transformedData, formattedData, chartDataKey, initChartConfig };
+	}, [monitorData?.data, t]);
+
 	if ((!monitorData && isError) || monitorData?.success === false) {
 		return <div role="alert" className="rounded-lg border p-4 text-sm text-muted-foreground">
 			{t("monitor.loadError")}
@@ -170,44 +210,7 @@ export function NetworkChart({
 		</div>;
 	}
 	if (!monitorData) return <NetworkChartLoading />;
-	const monitors = Array.isArray(monitorData.data)
-		? monitorData.data.filter((item) => item.created_at?.length && item.avg_delay?.length)
-		: [];
-	if (!monitors.length) {
-		return <div role="status" className="rounded-lg border p-4 text-sm text-muted-foreground">{t("monitor.noData")}</div>;
-	}
-	const transformedData = transformData(monitors);
-	const formattedData = formatData(monitors);
-	const monitorInfoByName = new Map(
-		monitors.map((item) => [
-			item.monitor_name,
-			{ id: item.monitor_id, displayIndex: item.display_index },
-		]),
-	);
-	const chartDataKey = Object.keys(transformedData).sort((a, b) => {
-		const aInfo = monitorInfoByName.get(a);
-		const bInfo = monitorInfoByName.get(b);
-		if (!aInfo && !bInfo) return a.localeCompare(b);
-		if (!aInfo) return 1;
-		if (!bInfo) return -1;
-
-		const indexDiff = (bInfo.displayIndex ?? 0) - (aInfo.displayIndex ?? 0);
-		if (indexDiff !== 0) return indexDiff;
-
-		return aInfo.id - bInfo.id;
-	});
-
-	const initChartConfig = {
-		avg_delay: {
-			label: t("monitor.avgDelay"),
-		},
-		...chartDataKey.reduce((acc, key) => {
-			acc[key] = {
-				label: key,
-			};
-			return acc;
-		}, {} as ChartConfig),
-	} satisfies ChartConfig;
+	if (!monitors.length) return <div role="status" className="rounded-lg border p-4 text-sm text-muted-foreground">{t("monitor.noData")}</div>;
 
 	return (
 		<NetworkChartClient
@@ -847,7 +850,7 @@ const transformData = (data: NezhaMonitor[]) => {
 	return monitorData;
 };
 
-const formatData = (rawData: NezhaMonitor[]) => {
+export const formatData = (rawData: NezhaMonitor[]) => {
 	const result: { [time: number]: ResultItem } = {};
 
 	const allTimes = new Set<number>();
@@ -865,12 +868,15 @@ const formatData = (rawData: NezhaMonitor[]) => {
 		// Calculate packet loss if not provided
 		const packetLoss = item.packet_loss || calculatePacketLoss(avg_delay);
 
+		// Preserve indexOf semantics for duplicate timestamps: the first value wins.
+		const timeIndices = new Map<number, number>();
+		created_at.forEach((time, index) => { if (!timeIndices.has(time)) timeIndices.set(time, index); });
 		allTimeArray.forEach((time) => {
 			if (!result[time]) {
 				result[time] = { created_at: time };
 			}
 
-			const timeIndex = created_at.indexOf(time);
+			const timeIndex = timeIndices.get(time) ?? -1;
 			// @ts-expect-error - avg_delay is an array
 			result[time][monitor_name] =
 				timeIndex !== -1 ? avg_delay[timeIndex] : null;

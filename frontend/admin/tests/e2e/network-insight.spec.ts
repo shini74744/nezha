@@ -58,7 +58,7 @@ async function setup(
             bgp_disabled: disabled,
             streaming_disabled: disabled,
         })
-    const state = { posts: [] as string[], external: [] as string[], reads: 0 }
+    const state = { posts: [] as string[], external: [] as string[], reads: 0, tick: () => {} }
     const media = [
         ["netflix", "Netflix", "netflix", "unlocked"],
         ["youtube", "YouTube Premium", "youtube", "restricted"],
@@ -79,9 +79,11 @@ async function setup(
         { light },
     )
     await page.context().addCookies([{ name: "nz-csrf", value: "test-signed-csrf", url: base }])
-    await page.routeWebSocket("**/api/v1/ws/server", (ws) =>
-        ws.send(JSON.stringify({ now, servers: [server], online: offline ? 0 : 1 })),
-    )
+    await page.routeWebSocket("**/api/v1/ws/server", (ws) => {
+        let frame = 0
+        state.tick = () => ws.send(JSON.stringify({ now: now + frame++ * 1000, servers: [server], online: offline ? 0 : 1 }))
+        state.tick()
+    })
     await page.route("**/*", (route) => {
         const req = route.request(),
             u = new URL(req.url())
@@ -705,3 +707,95 @@ for (const theme of ["default","doraemon"]) for (const width of [390,1440]) {
   await view.locator(".bgp-legend").screenshot({path:info.outputPath("production-legend.png")});
  });
 }
+
+for (const theme of ["default", "doraemon"]) test("detail interaction performance " + theme, async ({page}, info) => {
+    await page.setViewportSize({width:390,height:900})
+    const cdp = await page.context().newCDPSession(page)
+    await cdp.send("Emulation.setCPUThrottlingRate", {rate:4})
+    const state = await setup(page, theme, true, false)
+    await page.locator(".server-charts svg").first().waitFor()
+    const times: any[] = []
+    for (const label of ["BGP","流媒体","详细","BGP","流媒体","BGP"]) {
+        const tab = label === "详细" ? page.locator(".server-info-tab").getByRole("button").first() : page.locator(".server-info-tab").getByRole("button", {name:label,exact:true})
+        const result = await tab.evaluate(async el => {
+            const started = performance.now()
+            ;(el as HTMLElement).click()
+            await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+            return {paint:performance.now()-started,pressed:el.getAttribute("aria-pressed")}
+        })
+        if(label==="BGP") await expect(page.locator("[data-bgp-graph]")).toBeVisible()
+        else if(label==="流媒体") await expect(page.locator("[data-media-card]")).toHaveCount(6)
+        else await expect(page.locator(".server-charts")).toBeVisible()
+        times.push({label,...result})
+    }
+    await cdp.send("Profiler.enable")
+    await cdp.send("Profiler.start")
+    for(let i=0;i<10;i++){ state.tick(); await page.waitForTimeout(120) }
+    const {profile} = await cdp.send("Profiler.stop")
+    await info.attach("cpu-profile", {body:JSON.stringify(profile),contentType:"application/json"})
+    const counts=new Map<number,number>()
+    for(const id of profile.samples || []) counts.set(id,(counts.get(id)||0)+1)
+    const hot=profile.nodes.map((n:any)=>({name:n.callFrame.functionName,url:n.callFrame.url,hits:counts.get(n.id)||0})).sort((a:any,b:any)=>b.hits-a.hits).slice(0,18)
+    console.log("DETAIL_PERF", JSON.stringify({theme,times,reads:state.reads,hot}))
+    expect(times.every(t=>t.pressed==="true")).toBe(true)
+})
+
+for(const theme of ["default","doraemon"]) for(const width of [320,390,1440])
+test("snapshot timeline scroll and selection "+theme+" "+width,async({page},info)=>{
+ await page.setViewportSize({width,height:900});
+ const state=await setup(page,theme,true,false);
+ const slot=Date.parse("2026-10-06T16:00:00Z");
+ const history=Array.from({length:12},(_,i)=>({state:"complete",finished_at:slot-i*3600000+9000,scheduled_at:slot-i*3600000,topologies:[{...topology,total:100+i},{...topology,family:"IPv6",total:200+i}]}));
+ await page.route("**/api/v1/server/7/bgp",r=>r.fulfill({json:{success:true,data:{...history[0],server_id:7,online:true,can_run:false,available_families:["IPv4","IPv6"],history}}}));
+ await page.locator(".server-info-tab").getByText("BGP",{exact:true}).click();
+ const nav=page.getByRole("navigation",{name:"BGP 历史快照"});
+ const buttons=nav.getByRole("button");
+ await expect(buttons).toHaveCount(12);
+ await expect(buttons.first()).toHaveAttribute("aria-pressed","true");
+ await expect(page.getByText("100 条观测路径",{exact:true})).toBeVisible();
+ const geometry=await nav.evaluate(el=>({w:el.clientWidth,sw:el.scrollWidth,ys:[...el.children].map(e=>e.getBoundingClientRect().top)}));
+ expect(geometry.sw).toBeGreaterThan(geometry.w);
+ expect(new Set(geometry.ys.map(Math.round)).size).toBe(1);
+ await page.getByRole("button",{name:"较早快照",exact:true}).click();
+ await expect.poll(()=>nav.evaluate(el=>el.scrollLeft)).toBeGreaterThan(30);
+ // Scrolling alone must not select a different snapshot.
+ await expect(buttons.first()).toHaveAttribute("aria-pressed","true");
+ await buttons.last().click();
+ await expect(buttons.last()).toHaveAttribute("aria-pressed","true");
+ await expect(page.getByText("111 条观测路径",{exact:true})).toBeVisible();
+ await page.getByRole("button",{name:"IPv6",exact:true}).click();
+ await expect(page.getByText("211 条观测路径",{exact:true})).toBeVisible();
+ state.tick();
+ await expect(buttons.last()).toHaveAttribute("aria-pressed","true");
+ await buttons.first().focus(); await page.keyboard.press("Enter");
+ await expect(page.getByText("200 条观测路径",{exact:true})).toBeVisible();
+ await nav.hover(); // Wait for focus-induced page scrolling to settle before wheel input.
+ await page.mouse.wheel(220,0);
+ await expect.poll(()=>nav.evaluate(el=>el.scrollLeft)).toBeGreaterThan(20);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ await page.locator("[data-snapshot-timeline]").screenshot({path:info.outputPath("timeline.png")});
+ expect(state.posts).toEqual([]);
+});
+
+for(const theme of ["default","doraemon"]) test("snapshot timeline native touch "+theme,async({page})=>{
+ await page.setViewportSize({width:390,height:900});
+ await setup(page,theme,true,false);
+ const history=Array.from({length:8},(_,i)=>({state:"complete",finished_at:Date.now()-i*3600000,topologies:[topology]}));
+ await page.route("**/api/v1/server/7/bgp",r=>r.fulfill({json:{success:true,data:{...history[0],server_id:7,online:true,can_run:false,history}}}));
+ await page.locator(".server-info-tab").getByText("BGP",{exact:true}).click();
+ const nav=page.getByRole("navigation",{name:"BGP 历史快照"});
+ await nav.hover();
+ const rect=(await nav.boundingBox())!;
+ const cdp=await page.context().newCDPSession(page);
+ await cdp.send("Emulation.setTouchEmulationEnabled",{enabled:true});
+ const startX=rect.x+rect.width*.8,y=rect.y+rect.height/2;
+ await cdp.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x:startX,y}]});
+ for(let step=1;step<=8;step++){
+  await cdp.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{x:startX-step*20,y}]});
+  await page.waitForTimeout(20);
+ }
+ await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
+ await expect.poll(()=>nav.evaluate(el=>el.scrollLeft)).toBeGreaterThan(40);
+ await expect(nav.getByRole("button").first()).toHaveAttribute("aria-pressed","true");
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});

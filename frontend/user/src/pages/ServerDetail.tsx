@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fetchSetting } from "@/lib/nezha-api";
@@ -27,7 +27,7 @@ export default function ServerDetail() {
 	const { id: server_id } = useParams();
 	const { lastData } = useWebSocketContext();
 	const server = lastData?.servers.find(s => s.id === Number(server_id));
-	const tabs = ["Detail", ...(!combinedNetwork ? ["Network"] : []), ...(!server?.connectivity_disabled ? ["Connectivity"] : []), ...(!server?.bgp_disabled ? ["BGP"] : []), ...(!server?.streaming_disabled ? ["Streaming"] : [])];
+	const tabs = useMemo(() => ["Detail", ...(!combinedNetwork ? ["Network"] : []), ...(!server?.connectivity_disabled ? ["Connectivity"] : []), ...(!server?.bgp_disabled ? ["BGP"] : []), ...(!server?.streaming_disabled ? ["Streaming"] : [])], [combinedNetwork, server?.connectivity_disabled, server?.bgp_disabled, server?.streaming_disabled]);
 	const currentTab = tabs.includes(selectedTab) ? selectedTab : "Detail";
 	if (server && lastData && !formatNezhaInfo(lastData.now, server).online) {
 		return <Suspense fallback={<div className="mx-auto w-full max-w-5xl server-info"><ServerDetailOverview server_id={server_id!}/><SectionLoading/></div>}><OfflineServerDetail key={server.id} server={server} now={lastData.now} initialTab={currentTab} /></Suspense>;
