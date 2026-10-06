@@ -120,3 +120,42 @@ func TestConnectivityDisabledDeniesAllViewersAndManualProbes(t *testing.T) {
 	_, err := getConnectivity(connectivityContext("1", nil))
 	require.NoError(t, err)
 }
+
+func TestConnectivityLatestCompletedIncludedForViewersDuringRefresh(t *testing.T) {
+	setupServerGroupVisibilityFixture(t)
+	old := connectivityManager
+	m := connectivity.NewManager()
+	connectivityManager = m
+	defer func() { connectivityManager = old }()
+	server, _ := singleton.ServerShared.Get(1)
+	key := connectivityKey(server)
+	targets, err := configuredConnectivityTargets()
+	require.NoError(t, err)
+	snapshot := connectivity.Snapshot{State: "complete", FinishedAt: time.Now().Add(-time.Hour).UnixMilli(), Rounds: 3}
+	for _, target := range targets {
+		snapshot.Results = append(snapshot.Results, connectivity.Result{Target: target, Status: "ok", Phase: "complete", Samples: []connectivity.Sample{{Status: "ok"}}})
+	}
+	m.Restore(key, snapshot)
+	gate := make(chan struct{})
+	done := make(chan struct{})
+	m.SetCompletionHandler(func(string, connectivity.Snapshot) { close(done) })
+	_, err = m.Start(key, func(context.Context, connectivity.Target) connectivity.Sample {
+		<-gate
+		return connectivity.Sample{Status: "timeout"}
+	}, targets)
+	require.NoError(t, err)
+	defer func() { close(gate); <-done }()
+	for _, user := range []*model.User{nil, {Common: model.Common{ID: 10}, Role: model.RoleAdmin}} {
+		got, err := getConnectivity(connectivityContext("1", user))
+		require.NoError(t, err)
+		require.Equal(t, "running", got.State)
+		require.NotNil(t, got.Latest)
+		require.Equal(t, snapshot.FinishedAt, got.Latest.FinishedAt)
+		require.Equal(t, "ok", got.Latest.Results[0].Status)
+		require.Equal(t, user != nil, got.CanRun)
+	}
+	server.SetUserID(200)
+	got, err := getConnectivity(connectivityContext("1", nil))
+	require.NoError(t, err)
+	require.Nil(t, got.Latest)
+}

@@ -225,6 +225,18 @@ func launchInsight(s *model.Server, kind string, automatic bool) error {
 		insightJobs.Unlock()
 		return errors.New("检测已在执行")
 	}
+	if automatic {
+		var scheduled networkinsight.Record
+		err := singleton.DB.Select("scheduled_at").Where("identity = ? AND kind = ? AND scheduled_at > 0", identity, kind).Order("scheduled_at DESC").Limit(1).Find(&scheduled).Error
+		if err != nil {
+			insightJobs.Unlock()
+			return err
+		}
+		if scheduled.ScheduledAt >= connectivity.ClockSlot(time.UnixMilli(now), p.IntervalHours).UnixMilli() {
+			insightJobs.Unlock()
+			return connectivity.ErrNotReady
+		}
+	}
 	if latest.RetryAt > now {
 		insightJobs.Unlock()
 		return errors.New("请稍后重试")
@@ -237,6 +249,11 @@ func launchInsight(s *model.Server, kind string, automatic bool) error {
 	}
 	snap := latest
 	snap.State = "running"
+	snap.FinishedAt = 0
+	snap.ScheduledAt = 0
+	if automatic {
+		snap.ScheduledAt = connectivity.ClockSlot(time.UnixMilli(now), p.IntervalHours).UnixMilli()
+	}
 	snap.StartedAt = now
 	snap.RetryAt = now + 5*60*1000
 	insightJobs.values[key] = cloneInsight(snap)
@@ -324,7 +341,7 @@ func launchInsight(s *model.Server, kind string, automatic bool) error {
 		if e != nil {
 			return
 		}
-		if e = singleton.DB.Create(&networkinsight.Record{Identity: identity, Kind: kind, FinishedAt: snap.FinishedAt, Payload: string(raw)}).Error; e != nil {
+		if e = singleton.DB.Create(&networkinsight.Record{Identity: identity, Kind: kind, FinishedAt: snap.FinishedAt, ScheduledAt: snap.ScheduledAt, Payload: string(raw)}).Error; e != nil {
 			log.Printf("NEZHA>> network insight persistence failed: %v", e)
 		}
 	}()
@@ -379,10 +396,14 @@ func StartNetworkInsightAutomation() {
 							continue
 						}
 						var row networkinsight.Record
-						if singleton.DB.Select("finished_at").Where("identity = ? AND kind = ?", key, kind).Order("finished_at DESC").Limit(1).Find(&row).Error != nil {
+						if singleton.DB.Select("finished_at", "scheduled_at").Where("identity = ? AND kind = ? AND scheduled_at > 0", key, kind).Order("scheduled_at DESC").Limit(1).Find(&row).Error != nil {
 							continue
 						}
-						if now.UnixMilli()-row.FinishedAt >= int64(time.Duration(p.IntervalHours)*time.Hour/time.Millisecond) {
+						last := row.ScheduledAt
+						if last == 0 {
+							last = row.FinishedAt
+						}
+						if last == 0 || last < connectivity.ClockSlot(now, p.IntervalHours).UnixMilli() {
 							candidates = append(candidates, candidate{s, kind, row.FinishedAt})
 						}
 					}

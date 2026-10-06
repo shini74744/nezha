@@ -11,6 +11,6 @@ export function connectivityRegionName(region: typeof registry[number], language
 export function orderedConnectivityRegions(countryCode?: string) {
   const code = countryCode?.trim().toUpperCase();
   const local = registry.find(region => region.country && region.country === (code === "UK" ? "GB" : code));
-  const ids = [...new Set([local?.id, "usa", "global", ...registry.map(region => region.id)])];
+  const ids = [...new Set([local?.id !== "china" ? local?.id : undefined, "global", ...registry.map(region => region.id).filter(id => id !== "china"), "china"])];
   return ids.flatMap(id => registry.filter(region => region.id === id));
 }

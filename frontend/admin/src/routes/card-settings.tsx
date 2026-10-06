@@ -1,5 +1,6 @@
 import { FetcherMethod, fetcher } from "@/api/api"
 import ConnectivityAutomationSettings from "@/components/ConnectivityAutomationSettings"
+import SettingHelp from "@/components/SettingHelp"
 import ConnectivityDragHandle from "@/components/ConnectivityDragHandle"
 import ConnectivityIconPicker from "@/components/ConnectivityIconPicker"
 import { Button } from "@/components/ui/button"
@@ -211,15 +212,13 @@ export default function CardSettings() {
                 className="space-y-5 data-[state=inactive]:hidden"
             >
                 <ConnectivityAutomationSettings />
-                <p className="text-sm text-muted-foreground">
-                    连通性检测点 · 全站统一 · 默认主题与哆啦 A 梦共用
-                </p>
-                <div className="rounded-lg border bg-card p-4 text-sm leading-relaxed">
-                    前端只显示图标、名称、检测圆点与延迟，不显示网址。保存不会发起检测；正在执行的批次保持原清单，完成后使用新配置。拖动左侧手柄调整同地区顺序（电脑、手机均可）；键盘聚焦手柄后按上下方向键也可调整。地区展示顺序根据节点地区自动排列。
-                    <p className="mt-1 text-muted-foreground">
-                        每项检测 3 次，3 秒未回包即标记超时。仅允许管理员配置可信 HTTPS
-                        公网域名；节点自行解析 DNS，请勿填入密钥、私密链接或内部服务。
-                    </p>
+                <div className="flex items-center gap-1">
+                    <h2 className="font-semibold">连通性检测点</h2>
+                    <SettingHelp label="连通性检测点">
+                        <p>管理全站检测目标，保存后用于后续检测。拖动手柄可调整同一地区的顺序，也可聚焦手柄后按上下方向键。</p>
+                        <p className="mt-2">前台优先展示节点所在地区，其次是全球，中国区域始终排在最后。</p>
+                        <p className="mt-2">请使用可信的 HTTPS 公共网址，不要填写密码、令牌、私密链接或内网地址。</p>
+                    </SettingHelp>
                 </div>
                 <p className="sr-only" aria-live="polite">
                     {orderNotice}

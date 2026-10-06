@@ -437,8 +437,8 @@ for(const width of [320,390,768,1440]) test("observation graph interactions and 
  await page.keyboard.press("Escape");await expect(page.getByRole("dialog")).toHaveCount(0);
  await expect(page.getByRole("button",{name:"全屏显示",exact:true})).toBeFocused();
  await page.getByRole("button",{name:"横向布局",exact:true}).click();
- await page.getByRole("button",{name:/图例与口径说明/}).click();
- await expect(page.getByText(/灰紫虚线为 RIPEstat ASN 邻接补充/)).toBeVisible();
+ await page.getByRole("button",{name:/图例与使用说明/}).click();
+ await expect(page.getByText(/灰紫虚线为 RIPEstat 提供的 AS 邻接关系/)).toBeVisible();
  await page.getByRole("button",{name:"采集源",exact:true}).click();
  await page.locator(".bgp-branch").first().click();
  await expect(page.getByRole("complementary",{name:"分支信息"})).toBeVisible();
@@ -680,3 +680,28 @@ for (const theme of ["default", "doraemon"])
             await expect(panel).not.toContainText("126.7.0.0")
             expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
         })
+
+for (const theme of ["default","doraemon"]) for (const width of [390,1440]) {
+ test(`production BGP copy and scheduled history ${theme} ${width}`,async({page},info)=>{
+  await page.setViewportSize({width,height:900});
+  await setup(page,theme,true,false);
+  const slot=Date.parse("2026-10-06T16:00:00Z"),finished=slot+127000;
+  await page.route("**/api/v1/server/7/bgp",route=>route.fulfill({json:{success:true,data:{
+   server_id:7,online:true,can_run:false,can_view_ip:false,available_families:["IPv4"],state:"complete",scheduled_at:slot,finished_at:finished,
+   topologies:[{...topology,prefix:undefined}],history:[{state:"complete",scheduled_at:slot,finished_at:finished,topologies:[{...topology,prefix:undefined}]}]
+  }}}));
+  await page.locator(".server-info-tab").getByText("BGP",{exact:true}).click();
+  const view=page.locator('[data-network-insight="bgp"]');
+  await expect(view.getByRole("navigation",{name:"BGP 历史快照"}).getByText("2026/10/7 00:00:00",{exact:true})).toBeVisible();
+  await view.getByRole("button",{name:"BGP 路由拓扑说明",exact:true}).click();
+  await expect(page.getByText(/展示节点网络的 BGP 路由关系/)).toBeVisible();
+  await expect(page.getByText(/IP 地址及网段仅管理员可见/)).toBeVisible();
+  await page.keyboard.press("Escape");
+  await view.getByRole("button",{name:/图例与使用说明/}).click();
+  await expect(view.getByText(/完整图展示本次记录收录的全部节点/)).toBeVisible();
+  await expect(view.getByText(/BGP 路由观测不代表实际流量路径/)).toBeVisible();
+  await expect(view.getByText(/通常最多 32|最多查询 16|外层 hop|外层 transit/)).toHaveCount(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await view.locator(".bgp-legend").screenshot({path:info.outputPath("production-legend.png")});
+ });
+}

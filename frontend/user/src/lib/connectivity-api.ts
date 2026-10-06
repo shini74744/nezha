@@ -30,16 +30,20 @@ export interface ConnectivityResult {
 	samples: ConnectivitySample[];
 	delay_ms?: number;
 }
-export interface ConnectivityData {
-	server_id: number;
-	online: boolean;
-	can_run: boolean;
+export interface ConnectivitySnapshot {
+	scheduled_at?: number;
 	state: "idle" | "running" | "complete";
 	started_at?: number;
 	finished_at?: number;
 	retry_at?: number;
 	rounds: number;
 	results: ConnectivityResult[];
+}
+export interface ConnectivityData extends ConnectivitySnapshot {
+	server_id: number;
+	online: boolean;
+	can_run: boolean;
+	latest?: ConnectivitySnapshot;
 }
 export async function fetchConnectivity(
 	serverId: number,

@@ -229,3 +229,27 @@ func TestBGPFamiliesFollowLiveIPDisappearanceAndRecovery(t *testing.T) {
 	require.Equal(t, []string{"IPv6"}, bgpAvailableFamilies(model.IP{IPv6Addr: "2606:4700:4700::1111"}, networkinsight.Snapshot{}))
 	require.Equal(t, []string{"IPv4"}, bgpAvailableFamilies(model.IP{}, networkinsight.Snapshot{Topologies: []networkinsight.Topology{{Family: "IPv6", Status: "no_public_ip"}}}))
 }
+
+func TestInsightAutomaticSlotDeduplicatesAfterManualRecordAndRestart(t *testing.T) {
+	setupInsight(t)
+	server, _ := singleton.ServerShared.Get(1)
+	require.NoError(t, singleton.DB.Create(&model.ServerIPHistory{ServerUUID: server.UUID, CurrentIP: model.IP{IPv4Addr: "1.1.1.1"}}).Error)
+	identity, _, err := insightIdentity(server)
+	require.NoError(t, err)
+	for _, kind := range []string{"bgp", "streaming"} {
+		p, err := insightPolicy(kind)
+		require.NoError(t, err)
+		slot := connectivity.ClockSlot(time.Now(), p.IntervalHours).UnixMilli()
+		saved := networkinsight.Snapshot{State: "complete", ScheduledAt: slot, StartedAt: slot + 1000, FinishedAt: slot + 2000}
+		raw, err := json.Marshal(saved)
+		require.NoError(t, err)
+		require.NoError(t, singleton.DB.Create(&networkinsight.Record{Identity: identity, Kind: kind, ScheduledAt: slot, FinishedAt: saved.FinishedAt, Payload: string(raw)}).Error)
+		saved.ScheduledAt = 0
+		saved.FinishedAt += 1000
+		raw, err = json.Marshal(saved)
+		require.NoError(t, err)
+		require.NoError(t, singleton.DB.Create(&networkinsight.Record{Identity: identity, Kind: kind, FinishedAt: saved.FinishedAt, Payload: string(raw)}).Error)
+		require.ErrorIs(t, launchInsight(server, kind, true), connectivity.ErrNotReady)
+		require.Empty(t, insightJobs.values)
+	}
+}

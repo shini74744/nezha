@@ -58,6 +58,7 @@ export interface MediaResult {
 	region?: string;
 }
 export interface InsightSnapshot {
+	scheduled_at?: number;
 	state: string;
 	started_at?: number;
 	finished_at?: number;

@@ -1,11 +1,12 @@
 package networkinsight
 
 type Record struct {
-	ID         uint64 `gorm:"primaryKey"`
-	Identity   string `gorm:"index:idx_insight_identity_time,priority:1"`
-	Kind       string `gorm:"index:idx_insight_identity_time,priority:2"`
-	FinishedAt int64  `gorm:"index;index:idx_insight_identity_time,priority:3"`
-	Payload    string
+	ID          uint64 `gorm:"primaryKey"`
+	Identity    string `gorm:"index:idx_insight_identity_time,priority:1"`
+	Kind        string `gorm:"index:idx_insight_identity_time,priority:2"`
+	FinishedAt  int64  `gorm:"index;index:idx_insight_identity_time,priority:3"`
+	ScheduledAt int64
+	Payload     string
 }
 
 func (Record) TableName() string { return "network_insight_records" }
@@ -40,10 +41,11 @@ type MediaResult struct {
 	Region string `json:"region,omitempty"`
 }
 type Snapshot struct {
-	State      string        `json:"state"`
-	StartedAt  int64         `json:"started_at,omitempty"`
-	FinishedAt int64         `json:"finished_at,omitempty"`
-	RetryAt    int64         `json:"retry_at,omitempty"`
-	Topologies []Topology    `json:"topologies,omitempty"`
-	Results    []MediaResult `json:"results,omitempty"`
+	ScheduledAt int64         `json:"scheduled_at,omitempty"`
+	State       string        `json:"state"`
+	StartedAt   int64         `json:"started_at,omitempty"`
+	FinishedAt  int64         `json:"finished_at,omitempty"`
+	RetryAt     int64         `json:"retry_at,omitempty"`
+	Topologies  []Topology    `json:"topologies,omitempty"`
+	Results     []MediaResult `json:"results,omitempty"`
 }

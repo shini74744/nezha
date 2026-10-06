@@ -1,3 +1,4 @@
+import { formatDetectionTime } from "@/lib/detection-time";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CN, JP, US, KR, SG, MY, ID, GB, DE, FR, CA, AU, IN, BR, RU } from "country-flag-icons/react/3x2";
 import {
@@ -30,6 +31,7 @@ export default function ServerConnectivity({ serverId, countryCode }: { serverId
 	const key = ["server-connectivity", serverId];
 	const [now, setNow] = useState(Date.now());
 	const [help, setHelp] = useState(false);
+	const [manualRun, setManualRun] = useState<string>();
 	const query = useQuery({
 		queryKey: key,
 		queryFn: ({ signal }) => fetchConnectivity(serverId, signal),
@@ -43,6 +45,7 @@ export default function ServerConnectivity({ serverId, countryCode }: { serverId
 		mutationFn: (targetId?: string) => startConnectivity(serverId, targetId),
 		onSuccess: async (data) => {
 			await client.cancelQueries({ queryKey: key });
+			setManualRun(`${serverId}:${data.started_at}`);
 			client.setQueryData(key, data);
 		},
 		onError: () => {
@@ -53,8 +56,11 @@ export default function ServerConnectivity({ serverId, countryCode }: { serverId
 		const timer = window.setInterval(() => setNow(Date.now()), 1000);
 		return () => clearInterval(timer);
 	}, []);
-	const data = query.data;
-	const running = data?.state === "running";
+	const live = query.data;
+	const running = live?.state === "running";
+	const showingLatest = running && !!live.latest && manualRun !== `${serverId}:${live.started_at}`;
+	const data = live && showingLatest ? { ...live, ...live.latest, retry_at: live.retry_at } : live;
+	const showingProgress = running && !showingLatest;
 	const cooldown = Math.max(0, Math.ceil(((data?.retry_at || 0) - now) / 1000));
 	const completed =
 		data?.results.filter((result) =>
@@ -96,7 +102,7 @@ export default function ServerConnectivity({ serverId, countryCode }: { serverId
 			)}
 			{data?.can_run && (
 				<Card data-connectivity-controls className="min-w-0">
-					<CardContent className="p-4 sm:p-5 space-y-3">
+					<CardContent className="px-4 py-3 sm:px-5 sm:py-3 space-y-2">
 						<div className="flex flex-wrap items-center justify-between gap-3">
 							<div className="min-w-0">
 								<h2 className="flex items-center gap-2 text-base font-semibold">
@@ -112,9 +118,6 @@ export default function ServerConnectivity({ serverId, countryCode }: { serverId
 										<CircleHelp className="size-4" aria-hidden />
 									</button>
 								</h2>
-								<p className="mt-1 text-xs text-muted-foreground">
-									{t("connectivity.origin")}
-								</p>
 							</div>
 							{data?.can_run && (
 								<Button
@@ -185,7 +188,7 @@ export default function ServerConnectivity({ serverId, countryCode }: { serverId
 										aria-live="polite"
 									>
 										<span>
-											{running
+											{showingProgress
 												? t("connectivity.progress", {
 														done: completed,
 														total: data.results.length,
@@ -196,15 +199,15 @@ export default function ServerConnectivity({ serverId, countryCode }: { serverId
 										</span>
 										{data.started_at && (
 											<span>
-												{t("connectivity.time")}:{" "}
-												{formatDate(data.finished_at || data.started_at)}
+												{t(data.scheduled_at ? "connectivity.scheduledTime" : "connectivity.time")}:{" "}
+												<span title={formatDate(data.finished_at || data.started_at)}>{data.scheduled_at ? formatDetectionTime(data.scheduled_at, true) : formatDate(data.finished_at || data.started_at)}</span>
 											</span>
 										)}
 										<span>
 											{t("connectivity.rounds", { count: data.rounds })}
 										</span>
 									</div>
-									{running && (
+									{showingProgress && (
 										<div
 											role="progressbar"
 											aria-label={t("connectivity.testing")}
