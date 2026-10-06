@@ -37,3 +37,17 @@ Connectivity includes Hong Kong (TVB, HK01, MTR, Viu) and Macau (CTM, TDM, Macau
 - https://www.vps69.com/posts/tutorial/streaming-unlock/
 
 Third-party detector scripts are research references, not downloaded or executed.
+
+### BGP protocol availability
+
+BGP responses expose `available_families` (protocol names only, never IPs). The UI
+uses the current reported public addresses to hide an absent IPv6 tab and restore
+it automatically after IPv6 is reported again; IPv6-only nodes retain their IPv6
+tab. A missing selected family safely falls back to an available family. Address
+changes invalidate the old identity's snapshots. Availability refresh follows
+the existing Agent IP-report period and the page's normal polling interval.
+
+Agent v2.3.7 fixes the HTTPS dial-lock bottleneck and enforces the connectivity
+task's three-second request deadline inside the Agent, including TLS and body
+reads. Ordinary HTTP service monitors retain their existing timeout. IPv4 and
+IPv6 changes, appearances and disappearances independently trigger IP reports.

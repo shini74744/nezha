@@ -21,11 +21,12 @@ import (
 
 type insightResponse struct {
 	networkinsight.Snapshot
-	ServerID  uint64                    `json:"server_id"`
-	CanRun    bool                      `json:"can_run"`
-	CanViewIP bool                      `json:"can_view_ip"`
-	Online    bool                      `json:"online"`
-	History   []networkinsight.Snapshot `json:"history,omitempty"`
+	ServerID          uint64                    `json:"server_id"`
+	CanRun            bool                      `json:"can_run"`
+	CanViewIP         bool                      `json:"can_view_ip"`
+	Online            bool                      `json:"online"`
+	History           []networkinsight.Snapshot `json:"history,omitempty"`
+	AvailableFamilies []string                  `json:"available_families,omitempty"`
 }
 
 var insightJobs = struct {
@@ -92,7 +93,7 @@ func readInsight(c *gin.Context, kind string) (*insightResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	identity, _, err := insightIdentity(s)
+	identity, ips, err := insightIdentity(s)
 	if err != nil {
 		return nil, err
 	}
@@ -112,6 +113,7 @@ func readInsight(c *gin.Context, kind string) (*insightResponse, error) {
 	insightJobs.Unlock()
 	out := &insightResponse{Snapshot: snap, ServerID: s.ID, CanRun: canRunConnectivity(c, s), CanViewIP: callerIsAdmin(c), Online: rpc.ConnectivityOnline(s)}
 	if kind == "bgp" {
+		out.AvailableFamilies = bgpAvailableFamilies(ips, snap)
 		var rows []networkinsight.Record
 		if err = singleton.DB.Where("identity = ? AND kind = ? AND finished_at >= ?", identity, kind, cutoff).Order("finished_at DESC").Limit(12).Find(&rows).Error; err != nil {
 			return nil, err
@@ -138,6 +140,31 @@ func readInsight(c *gin.Context, kind string) (*insightResponse, error) {
 		}
 	}
 	return out, nil
+}
+
+// Only disclose protocol availability, never addresses. The identity includes
+// both current IPs, so a removed IPv6 cannot reuse an older dual-stack snapshot.
+func bgpAvailableFamilies(ips model.IP, snap networkinsight.Snapshot) []string {
+	available := map[string]bool{
+		"IPv4": networkinsight.PublicIP(ips.IPv4Addr),
+		"IPv6": networkinsight.PublicIP(ips.IPv6Addr),
+	}
+	// A successful on-node discovery may precede the next ordinary IP report.
+	for _, topology := range snap.Topologies {
+		if topology.Prefix != "" && topology.Status != "no_public_ip" {
+			available[topology.Family] = true
+		}
+	}
+	families := []string{}
+	for _, family := range []string{"IPv4", "IPv6"} {
+		if available[family] {
+			families = append(families, family)
+		}
+	}
+	if len(families) == 0 {
+		families = append(families, "IPv4")
+	}
+	return families
 }
 
 // Operate only on response-owned snapshots, never cached or persisted data.

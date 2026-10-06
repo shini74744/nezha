@@ -69,6 +69,7 @@ export interface InsightData extends InsightSnapshot {
 	server_id: number;
 	can_run: boolean;
 	can_view_ip?: boolean;
+	available_families?: string[];
 	online: boolean;
 	history?: InsightSnapshot[];
 }
