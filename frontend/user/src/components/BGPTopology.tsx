@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import type {
 	ASNode,
 	BGPTopology as Topology,
@@ -7,6 +8,7 @@ import { cn } from "@/lib/utils";
 
 export default function BGPTopology({ topology }: { topology: Topology }) {
 	const canvas = useRef<HTMLCanvasElement>(null);
+	const [expanded, setExpanded] = useState(false);
 	const graph = useMemo(() => {
 		const columns = [
 			new Map<number, { node: ASNode; count: number }>(),
@@ -22,11 +24,22 @@ export default function BGPTopology({ topology }: { topology: Topology }) {
 						count: (old?.count || 0) + p.count,
 					});
 				}
-		const lists = columns.map((c) =>
+		const allLists = columns.map((c) =>
 			[...c.values()].sort(
 				(a, b) => b.count - a.count || a.node.asn - b.node.asn,
 			),
 		);
+		const direct = expanded ? allLists[1] : allLists[1].slice(0, 6);
+		const directASNs = new Set(direct.map((v) => v.node.asn));
+		const secondASNs = new Set(
+			topology.paths
+				.filter((p) => p.direct && directASNs.has(p.direct.asn) && p.second)
+				.map((p) => p.second?.asn),
+		);
+		const second = allLists[2].filter((v) => secondASNs.has(v.node.asn));
+		const lists = [allLists[0], direct, expanded ? second : second.slice(0, 8)];
+		const totalNodes = allLists.reduce((sum, nodes) => sum + nodes.length, 0);
+		const canExpand = allLists[1].length > 6 || allLists[2].length > 8;
 		const height = Math.max(420, ...lists.map((l) => l.length * 78 + 65)),
 			positions = new Map<string, { x: number; y: number }>();
 		lists.forEach((list, col) => {
@@ -56,13 +69,20 @@ export default function BGPTopology({ topology }: { topology: Topology }) {
 					old = edges.get(key);
 				edges.set(key, { from, to, count: (old?.count || 0) + p.count });
 			}
-		return { lists, height, positions, edges: [...edges.values()] };
-	}, [topology]);
+		return {
+			lists,
+			height,
+			positions,
+			edges: [...edges.values()],
+			canExpand,
+			totalNodes,
+		};
+	}, [topology, expanded]);
 	useEffect(() => {
 		const el = canvas.current,
 			ctx = el?.getContext("2d");
 		if (!el || !ctx) return;
-		const ratio = window.devicePixelRatio || 1;
+		const ratio = Math.min(window.devicePixelRatio || 1, 2);
 		el.width = 980 * ratio;
 		el.height = graph.height * ratio;
 		ctx.scale(ratio, ratio);
@@ -103,6 +123,24 @@ export default function BGPTopology({ topology }: { topology: Topology }) {
 			<p className="text-xs text-muted-foreground sm:hidden mb-2">
 				左右滑动查看完整拓扑
 			</p>
+			{graph.canExpand && (
+				<div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+					<p className="text-xs text-muted-foreground">
+						{expanded
+							? "显示本次汇总的全部 AS"
+							: "默认显示主要 AS，避免拓扑过长"}
+					</p>
+					<Button
+						type="button"
+						size="sm"
+						variant="outline"
+						aria-expanded={expanded}
+						onClick={() => setExpanded((value) => !value)}
+					>
+						{expanded ? "收起为主要 AS" : `展开全部 AS（${graph.totalNodes}）`}
+					</Button>
+				</div>
+			)}
 			<section
 				className="max-w-full overflow-x-auto overscroll-x-contain rounded-lg"
 				// biome-ignore lint/a11y/noNoninteractiveTabindex: Allow keyboard panning of the scrollable topology.
@@ -119,7 +157,7 @@ export default function BGPTopology({ topology }: { topology: Topology }) {
 					/>
 					{[
 						"源 AS",
-						"直接上游 · 观测路径占比",
+						"直接上游 · 所示路径占比",
 						"二级上游 · 蓝框为骨干参考",
 					].map((label, col) => (
 						<h3
@@ -174,7 +212,7 @@ export default function BGPTopology({ topology }: { topology: Topology }) {
 				。按采集器观测路径计数，不代表带宽或商业上下游关系；蓝框仅作常见骨干 AS
 				参考。
 				{displayed < topology.total &&
-					`展示 ${displayed} / ${topology.total} 条路径（按主要路径汇总）。`}
+					`汇总 ${displayed} / ${topology.total} 条路径；占比为所示观测数占全部观测数，不包含未展示路径。`}
 			</p>
 		</div>
 	);

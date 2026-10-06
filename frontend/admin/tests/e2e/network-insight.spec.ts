@@ -342,3 +342,21 @@ test("long translated tabs remain reachable on narrow screens",async({page},info
  await tabs.getByText("BGP",{exact:true}).click();
  await expect(page.locator("[data-bgp-graph]")).toBeVisible();
 });
+
+for (const width of [390,1440]) test("large BGP topology stays compact and expands "+width,async({page},info)=>{
+ await page.setViewportSize({width,height:1000});
+ await setup(page,"default",true,false);
+ const paths=Array.from({length:40},(_,i)=>({origin:as(17676,"SoftBank Corp."),direct:as(1299+i%5,"Upstream "+i%5),second:as(30000+i,"Secondary "+i),count:1}));
+ await page.route("**/api/v1/server/7/bgp",r=>r.fulfill({json:{success:true,data:{state:"complete",server_id:7,online:true,can_run:false,topologies:[{...topology,total:40,paths}]}}}));
+ await page.locator(".server-info-tab").getByText("BGP",{exact:true}).click();
+ const graph=page.locator("[data-bgp-graph]");
+ await expect(graph.getByRole("link")).toHaveCount(14);
+ expect((await graph.boundingBox())!.height).toBeLessThanOrEqual(700);
+ await page.locator('[data-network-insight="bgp"]').screenshot({path:info.outputPath("large-compact.png")});
+ await page.getByRole("button",{name:/展开全部 AS/}).click();
+ await expect(graph.getByRole("link")).toHaveCount(46);
+ await page.getByRole("button",{name:"收起为主要 AS"}).click();
+ await expect(graph.getByRole("link")).toHaveCount(14);
+ expect((await graph.boundingBox())!.height).toBeLessThanOrEqual(700);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
