@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement, ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { NetworkChart, NetworkChartClient } from "@/components/NetworkChart";
+import { NetworkChart, NetworkChartClient, formatData } from "@/components/NetworkChart";
 import type { ChartConfig } from "@/components/ui/chart";
 import { createTestQueryClient } from "@/test/utils";
 import type { NezhaMonitor, ServerMonitorChart } from "@/types/nezha-api";
@@ -300,4 +300,37 @@ describe("NetworkChartClient", () => {
 			screen.getByRole("switch", { name: "monitor.peakCut" }),
 		).toHaveAttribute("data-state", "unchecked");
 	});
+});
+
+describe("network timestamp index preserves chart data", () => {
+ it("keeps gaps, ordering, loss and the first duplicate timestamp unchanged", () => {
+  const input = [
+   {...monitorData[0],monitor_name:"A",created_at:[30,10,10],avg_delay:[3,1,99],packet_loss:[.3,.1,.9]},
+   {...monitorData[1],monitor_name:"B",created_at:[20,30],avg_delay:[2,4],packet_loss:[.2,.4]},
+  ];
+  expect(formatData(input)).toEqual([
+   {created_at:10,A:1,A_packet_loss:.1,B:null,B_packet_loss:null},
+   {created_at:20,A:null,A_packet_loss:null,B:2,B_packet_loss:.2},
+   {created_at:30,A:3,A_packet_loss:.3,B:4,B_packet_loss:.4},
+  ]);
+ });
+ it("does not linearly scan every history array for every timestamp", () => {
+  const input=monitorData.map(row=>({...row,created_at:[...row.created_at]}));
+  const scans=input.map(row=>vi.spyOn(row.created_at,"indexOf"));
+  expect(formatData(input)).toHaveLength(times.length);
+  for(const scan of scans)expect(scan).not.toHaveBeenCalled();
+ });
+});
+
+it("preserves every point in a dense history while avoiding quadratic timestamp scans",()=>{
+ const rows=Array.from({length:12},(_,n)=>({...monitorData[0],monitor_name:"line"+n,created_at:Array.from({length:6000},(_,i)=>i*1000),avg_delay:Array.from({length:6000},(_,i)=>i+n),packet_loss:Array(6000).fill(0)}));
+ const before=performance.now();
+ const legacy=rows[0].created_at.map(time=>{
+  const point:Record<string,number>={created_at:time};
+  for(const row of rows){const i=row.created_at.indexOf(time);point[row.monitor_name]=row.avg_delay[i];point[row.monitor_name+"_packet_loss"]=row.packet_loss![i];}
+  return point;
+ });
+ const middle=performance.now(), indexed=formatData(rows),after=performance.now();
+ expect(indexed).toEqual(legacy);
+ console.log("NETWORK_HISTORY_BENCH",JSON.stringify({points:72000,legacy_ms:middle-before,indexed_ms:after-middle}));
 });

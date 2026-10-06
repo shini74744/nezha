@@ -8,7 +8,7 @@ import {
 	RefreshCw,
 	WifiOff,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,7 +24,7 @@ import { orderedConnectivityRegions, connectivityRegionName } from "../../../sha
 
 const flagIcons: Record<string, typeof CN> = { CN, JP, US, KR, SG, MY, ID, GB, DE, FR, CA, AU, IN, BR, RU };
 
-export default function ServerConnectivity({ serverId, countryCode }: { serverId: number; countryCode?: string }) {
+function ServerConnectivity({ serverId, countryCode }: { serverId: number; countryCode?: string }) {
 	const regions = orderedConnectivityRegions(countryCode).map(region => ({...region, Icon: flagIcons[region.country] || Globe2}));
 	const { t, i18n } = useTranslation();
 	const client = useQueryClient();
@@ -52,16 +52,23 @@ export default function ServerConnectivity({ serverId, countryCode }: { serverId
 			void query.refetch();
 		},
 	});
-	useEffect(() => {
-		const timer = window.setInterval(() => setNow(Date.now()), 1000);
-		return () => clearInterval(timer);
-	}, []);
 	const live = query.data;
 	const running = live?.state === "running";
 	const showingLatest = running && !!live.latest && manualRun !== `${serverId}:${live.started_at}`;
 	const data = live && showingLatest ? { ...live, ...live.latest, retry_at: live.retry_at } : live;
 	const showingProgress = running && !showingLatest;
 	const cooldown = live?.can_bypass_cooldown ? 0 : Math.max(0, Math.ceil(((data?.retry_at || 0) - now) / 1000));
+	const retryAt = live?.can_run && !live.can_bypass_cooldown ? live.retry_at : undefined;
+	useEffect(() => {
+		setNow(Date.now());
+		if (!retryAt || retryAt <= Date.now()) return;
+		const timer = window.setInterval(() => {
+			const current = Date.now();
+			setNow(current);
+			if (current >= retryAt) clearInterval(timer);
+		}, 1000);
+		return () => clearInterval(timer);
+	}, [retryAt]);
 	const completed =
 		data?.results.filter((result) =>
 			result.phase
@@ -447,3 +454,4 @@ function ConnectivityCard({
 		</Card>
 	);
 }
+export default memo(ServerConnectivity);

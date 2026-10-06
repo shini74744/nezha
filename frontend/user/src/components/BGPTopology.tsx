@@ -10,7 +10,7 @@ import {
 	Scan,
 	X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	coreGraph,
 	edgeKey,
@@ -31,7 +31,7 @@ import "./bgp-observation.css";
 type View = { x: number; y: number; scale: number };
 const clamp = (value: number, min: number, max: number) =>
 	Math.max(min, Math.min(max, value));
-export default function BGPTopology({ topology }: { topology: Topology }) {
+function BGPTopology({ topology }: { topology: Topology }) {
 	const graph = useMemo(() => graphFor(topology), [topology]);
 	// Snapshot identity resets the view; background polling of the same snapshot does not.
 	const identity = [
@@ -898,3 +898,4 @@ function Observation({
 		</>
 	);
 }
+export default memo(BGPTopology);
