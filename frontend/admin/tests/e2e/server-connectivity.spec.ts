@@ -75,7 +75,13 @@ for(const theme of ["default","doraemon"])for(const light of [false,true])for(co
   await expect(view.getByText("检测超时（3 秒未收到 Agent 回包）",{exact:true})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
   const cards=await view.locator("[data-connectivity-target]").evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return {left:r.left,right:r.right,width:r.width,height:r.height}}));
-  expect(cards.every(r=>r.left>=0&&r.right<=width+1&&r.width>0&&r.height<=72)).toBe(true);
+  expect(cards.every(r=>r.left>=0&&r.right<=width+1&&r.width>0&&r.height>=54&&r.height<=60)).toBe(true);
+  const aligned=await view.locator("[data-connectivity-target]").evaluateAll(nodes=>nodes.every(node=>{
+   const bounds=node.getBoundingClientRect(), icon=node.querySelector("[data-connectivity-icon], [data-connectivity-icon-fallback]")?.getBoundingClientRect(), delay=node.querySelector("[data-connectivity-delay]")!.getBoundingClientRect();
+   const text=[...node.querySelectorAll("h4, [data-connectivity-status]")].map(el=>el.getBoundingClientRect());
+   return icon && Math.abs(icon.top+icon.height/2-(bounds.top+bounds.height/2))<=1 && Math.abs(delay.top+delay.height/2-(bounds.top+bounds.height/2))<=1 && text.every(rect=>rect.top>=bounds.top&&rect.bottom<=bounds.bottom);
+  }));
+  expect(aligned).toBe(true);
   expect(await view.innerHTML()).not.toContain("www.sony.jp");
   expect(await view.innerHTML()).not.toContain("www.nintendo.co.jp");
   await view.scrollIntoViewIfNeeded();await page.screenshot({path:info.outputPath("connectivity.png"),fullPage:true});
@@ -173,7 +179,7 @@ test("compact reference row has names dots and latency but no website text",asyn
  const html=await view.innerHTML();
  for(const row of state.override)expect(html).not.toContain(row.host);
  const sizes=await view.locator("[data-connectivity-target]").evaluateAll(nodes=>nodes.map(n=>({height:n.getBoundingClientRect().height,top:n.getBoundingClientRect().top})));
- expect(sizes.every(size=>size.height<=72&&size.top===sizes[0].top)).toBe(true);
+ expect(sizes.every(size=>size.height>=54&&size.height<=60&&size.top===sizes[0].top)).toBe(true);
  await grid.screenshot({path:info.outputPath("compact-reference.png")});
  expect(state.posts).toBe(0);
 });
