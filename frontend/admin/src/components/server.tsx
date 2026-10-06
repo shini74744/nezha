@@ -984,9 +984,11 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                         ] as const).map(([name, label]) => (
                                                             <FormField key={name} control={form.control} name={name} render={({ field }) => (
                                                                 <FormItem className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 space-y-0 rounded-md border p-3" data-connectivity-setting={name === "connectivity_disabled" ? "" : undefined}>
-                                                                    <FormLabel>{label}</FormLabel>
+                                                                    <div className="flex min-w-0 items-center">
+                                                                        <FormLabel className="whitespace-nowrap">{label}</FormLabel>
+                                                                        <SettingHelp label={label}>默认开启；关闭后隐藏前台标签并停止对应检测。</SettingHelp>
+                                                                    </div>
                                                                     <FormControl><Switch className="shrink-0" aria-label={label} checked={!field.value} onCheckedChange={checked => field.onChange(!checked)} /></FormControl>
-                                                                    <p className="col-span-2 text-xs leading-5 text-muted-foreground">默认开启；关闭后隐藏前台标签并停止对应检测。</p>
                                                                 </FormItem>
                                                             )} />
                                                         ))}

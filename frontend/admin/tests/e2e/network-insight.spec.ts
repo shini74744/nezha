@@ -252,9 +252,11 @@ test("offline node keeps cached streaming and blocks retest", async ({ page }) =
     await expect(page.getByRole("button", { name: "重新检测流媒体解锁" })).toBeDisabled()
     await expect(page.getByText(/节点离线，显示已保存结果/)).toBeVisible()
 })
-for (const width of [390, 1440])
-    test("admin three independent switches " + width, async ({ page }, info) => {
+for (const theme of ["light", "dark"])
+for (const width of [320, 390, 1440])
+    test("admin three independent switches " + width + " " + theme, async ({ page }, info) => {
         await page.setViewportSize({ width, height: 1000 })
+        await page.addInitScript((theme) => localStorage.setItem("nezha-dashboard-theme", theme), theme)
         let server: any = {
             id: 11,
             name: "开关测试",
@@ -287,7 +289,39 @@ for (const width of [390, 1440])
         const dialog = page.getByRole("dialog")
         for (const name of ["连通性", "BGP", "流媒体"])
             await expect(dialog.getByRole("switch", { name, exact: true })).toBeChecked()
-        await dialog.locator("[data-network-feature-settings]").scrollIntoViewIfNeeded()
+        const settings = dialog.locator("[data-network-feature-settings]")
+        await settings.scrollIntoViewIfNeeded()
+        const helpText = "默认开启；关闭后隐藏前台标签并停止对应检测。"
+        await expect(page.getByText(helpText, { exact: true })).toHaveCount(0)
+        for (const name of ["连通性", "BGP", "流媒体"]) {
+            const help = settings.getByRole("button", { name: name + "说明", exact: true })
+            const toggle = settings.getByRole("switch", { name, exact: true })
+            const helpBox = (await help.boundingBox())!
+            const toggleBox = (await toggle.boundingBox())!
+            expect(helpBox.x + helpBox.width).toBeLessThanOrEqual(toggleBox.x)
+            expect(Math.abs(helpBox.y + helpBox.height / 2 - toggleBox.y - toggleBox.height / 2)).toBeLessThan(2)
+            await help.click()
+            const popover = page.locator("[data-setting-help]")
+            await expect(popover).toHaveText(helpText)
+            await expect(popover).toBeVisible()
+            const box = (await popover.boundingBox())!
+            expect(box.x).toBeGreaterThanOrEqual(0)
+            expect(box.x + box.width).toBeLessThanOrEqual(width)
+            if (name === "连通性")
+                await page.screenshot({ path: info.outputPath("admin-feature-help.png") })
+            await page.keyboard.press("Escape")
+            await expect(popover).toHaveCount(0)
+            await expect(help).toBeFocused()
+            await expect(toggle).toBeChecked()
+            expect(updates).toHaveLength(0)
+        }
+        const help = settings.getByRole("button", { name: "流媒体说明", exact: true })
+        await help.focus()
+        await page.keyboard.press("Enter")
+        await expect(page.locator("[data-setting-help]")).toBeVisible()
+        await page.keyboard.press("Escape")
+        await expect(page.locator("[data-setting-help]")).toHaveCount(0)
+        expect((await settings.locator(":scope > div").first().boundingBox())!.height).toBeLessThan(72)
         await page.screenshot({ path: info.outputPath("admin-switches.png") })
         await dialog.getByRole("switch", { name: "BGP", exact: true }).click()
         await dialog.getByRole("switch", { name: "流媒体", exact: true }).click()
