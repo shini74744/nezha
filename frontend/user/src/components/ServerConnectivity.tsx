@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
+import { CN, JP, US } from "country-flag-icons/react/3x2";
 import {
 	CircleHelp,
 	Globe2,
@@ -8,16 +7,18 @@ import {
 	RefreshCw,
 	WifiOff,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
+	type ConnectivityResult,
 	fetchConnectivity,
 	startConnectivity,
-	type ConnectivityResult,
 } from "@/lib/connectivity-api";
+import { resolveConnectivityIcon } from "@/lib/connectivity-icons";
 import { cn } from "@/lib/utils";
-import { connectivityIcons } from "@/lib/connectivity-icons";
-import { CN, JP, US } from "country-flag-icons/react/3x2";
+import ConnectivityMarquee from "./ConnectivityMarquee";
 
 const regions = [
 	{ id: "china", Icon: CN },
@@ -309,8 +310,9 @@ function ConnectivityCard({
 }) {
 	const { t } = useTranslation();
 	const [failedIcon, setFailedIcon] = useState<string>();
-	const icon =
-		connectivityIcons[result.icon === undefined ? result.id : result.icon];
+	const icon = resolveConnectivityIcon(
+		result.icon === undefined ? result.id : result.icon,
+	);
 	const status =
 		result.status === "pending" && result.phase
 			? result.phase === "running"
@@ -422,10 +424,7 @@ function ConnectivityCard({
 								);
 							})}
 						</div>
-						<span
-							className={cn("min-w-0 truncate", stateColor)}
-							data-connectivity-status
-						>
+						<ConnectivityMarquee className={stateColor} text={detail}>
 							{!positive
 								? t(`connectivity.status.${status}`)
 								: result.phase && result.phase !== "complete"
@@ -438,7 +437,7 @@ function ConnectivityCard({
 							{codes.length > 0 && (
 								<span className="ml-1">(HTTP {codes.join("/")})</span>
 							)}
-						</span>
+						</ConnectivityMarquee>
 						<span className="sr-only">
 							{result.samples.length}/{rounds}
 							{positive && <span>{t("connectivity.status.ok")}</span>}

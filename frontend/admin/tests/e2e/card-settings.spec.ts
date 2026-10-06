@@ -19,6 +19,10 @@ async function setup(page: Page, role = 0, theme = "light") {
         writes: 0,
         conflict: false,
         reads: 0,
+        iconFetches: 0,
+        iconStores: 0,
+        iconError: false,
+        iconDelay: 0,
     }
     await page.addInitScript((theme) => {
         localStorage.setItem("nezha-dashboard-theme", theme)
@@ -32,6 +36,36 @@ async function setup(page: Page, role = 0, theme = "light") {
     await page.route("**/api/v1/**", async (route) => {
         const request = route.request(),
             path = new URL(request.url()).pathname
+        if (path.startsWith("/api/v1/logo/assets/"))
+            return route.fulfill({
+                contentType: "image/png",
+                body: Buffer.from(
+                    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jS1cAAAAASUVORK5CYII=",
+                    "base64",
+                ),
+            })
+        if (path === "/api/v1/logo/fetch") {
+            state.iconFetches++
+            expect(request.headers()["x-csrf-token"]).toBe("mock-token")
+            expect(request.postDataJSON().mode).toBe("image")
+            if (state.iconDelay)
+                await new Promise((resolve) => setTimeout(resolve, state.iconDelay))
+            if (state.iconError)
+                return route.fulfill({ json: { success: false, error: "图片下载失败" } })
+            return route.fulfill({
+                json: { success: true, data: { image: "data:image/png;base64,mock" } },
+            })
+        }
+        if (path === "/api/v1/logo/store") {
+            state.iconStores++
+            expect(request.postDataJSON()).toEqual({ logo: "data:image/png;base64,mock" })
+            return route.fulfill({
+                json: {
+                    success: true,
+                    data: { logo: "/api/v1/logo/assets/" + "a".repeat(64) + ".png" },
+                },
+            })
+        }
         let data: any = []
         if (path === "/api/v1/profile") data = { id: 1, role, username: "qa" }
         if (path === "/api/v1/setting")
@@ -136,4 +170,82 @@ test("member has neither settings page nor configuration reads", async ({ page }
     await expect(page.locator("[data-card-settings]")).toHaveCount(0)
     expect(state.reads).toBe(0)
     expect(state.writes).toBe(0)
+})
+for (const width of [320, 1440])
+    test(`custom icon import persistence and recovery ${width}`, async ({ page }, info) => {
+        await page.setViewportSize({ width, height: 900 })
+        const state = await setup(page, 0, "dark"),
+            dialog = page.getByRole("dialog")
+        await page.getByRole("button", { name: "编辑 DeepSeek", exact: true }).click()
+        await dialog.getByLabel("图标", { exact: true }).selectOption("custom")
+        const save = dialog.getByRole("button", { name: "保存到草稿" })
+        await expect(save).toBeDisabled()
+        const input = dialog.getByLabel("图标地址", { exact: true })
+        await input.fill("http://example.com/icon.png")
+        await dialog.getByRole("button", { name: "使用图标地址" }).click()
+        await expect(dialog.getByRole("alert")).toContainText("HTTPS")
+        expect(state.iconFetches).toBe(0)
+        await input.fill("https://example.com/icon.png")
+        await dialog.getByRole("button", { name: "使用图标地址" }).click()
+        await expect(save).toBeEnabled()
+        expect(state.iconFetches).toBe(1)
+        expect(state.iconStores).toBe(1)
+        const asset = "/api/v1/logo/assets/" + "a".repeat(64) + ".png"
+        await expect(dialog.locator("img")).toHaveAttribute("src", asset)
+        await expect
+            .poll(() =>
+                dialog
+                    .locator("img")
+                    .evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0),
+            )
+            .toBe(true)
+        expect(
+            await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+        ).toBe(true)
+        await page.screenshot({ path: info.outputPath("custom-icon-editor.png") })
+        await save.click()
+        await page.getByRole("button", { name: "保存配置", exact: true }).click()
+        await expect(page.getByRole("button", { name: "保存配置", exact: true })).toBeDisabled()
+        expect(state.items.find((item: any) => item.id === "deepseek")).toMatchObject({
+            icon: asset,
+            icon_source: "https://example.com/icon.png",
+        })
+        await page.reload()
+        await page.getByRole("button", { name: "编辑 DeepSeek", exact: true }).click()
+        await expect(input).toHaveValue("https://example.com/icon.png")
+        await expect(save).toBeEnabled()
+        state.iconError = true
+        await input.fill("https://example.com/broken.png")
+        await expect(save).toBeDisabled()
+        await dialog.getByRole("button", { name: "使用图标地址" }).click()
+        await expect(dialog.getByRole("alert")).toContainText("原图标未更改")
+        await expect(dialog.locator("img")).toHaveAttribute("src", asset)
+        expect(state.iconStores).toBe(1)
+        await input.fill("https://example.com/icon.png")
+        await expect(save).toBeEnabled()
+        await dialog.getByLabel("图标", { exact: true }).selectOption("sony")
+        await expect(input).toHaveCount(0)
+        await save.click()
+        await page.getByRole("button", { name: "保存配置", exact: true }).click()
+        await expect(page.getByRole("button", { name: "保存配置", exact: true })).toBeDisabled()
+        expect(state.items.find((item: any) => item.id === "deepseek")).toMatchObject({
+            icon: "sony",
+            icon_source: "",
+        })
+    })
+test("closing an in-flight icon import cannot replace another checkpoint", async ({ page }) => {
+    const state = await setup(page),
+        dialog = page.getByRole("dialog")
+    state.iconDelay = 700
+    await page.getByRole("button", { name: "编辑 DeepSeek", exact: true }).click()
+    await dialog.getByLabel("图标", { exact: true }).selectOption("custom")
+    await dialog.getByLabel("图标地址", { exact: true }).fill("https://example.com/icon.png")
+    await dialog.getByRole("button", { name: "使用图标地址" }).click()
+    await expect(dialog.getByRole("button", { name: "保存到草稿" })).toBeDisabled()
+    await dialog.getByRole("button", { name: "取消", exact: true }).click()
+    await page.getByRole("button", { name: "编辑 Sony", exact: true }).click()
+    await page.waitForTimeout(900)
+    await expect(dialog.getByLabel("图标", { exact: true })).toHaveValue("sony")
+    await expect(dialog.getByRole("button", { name: "保存到草稿" })).toBeEnabled()
+    expect(state.iconStores).toBe(0)
 })

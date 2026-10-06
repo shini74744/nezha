@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/nezhahq/nezha/model"
+	"github.com/nezhahq/nezha/pkg/logoasset"
 	"github.com/nezhahq/nezha/service/connectivity"
 	"github.com/nezhahq/nezha/service/singleton"
 	"github.com/stretchr/testify/require"
@@ -43,11 +44,14 @@ func TestConnectivitySettingsSaveRollbackAndRevision(t *testing.T) {
 	require.Len(t, next.Defaults, 72)
 }
 func TestConnectivitySettingsPersistenceAndPrivateURL(t *testing.T) {
+	t.Chdir(t.TempDir())
+	icon, iconErr := logoasset.Put(logoDirectory, "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jZ1kAAAAASUVORK5CYII=")
+	require.NoError(t, iconErr)
 	file := filepath.Join(t.TempDir(), "config.yaml")
 	require.NoError(t, os.WriteFile(file, []byte("jwt_secret_key: fixture\nagent_secret_key: fixture\n"), 0600))
 	conf := &model.Config{}
 	require.NoError(t, conf.Read(file, nil))
-	items := []connectivity.CatalogItem{{ID: "custom-test", Name: "Custom", Group: "global", URL: "https://example.com/private-path", Icon: "", Enabled: true}}
+	items := []connectivity.CatalogItem{{ID: "custom-test", Name: "Custom", Group: "global", URL: "https://example.com/private-path", Icon: icon, IconSource: "https://example.com/private-icon-source.png", Enabled: true}}
 	_, err := saveConnectivitySettings(conf, connectivitySettingsForm{Revision: appearanceRevision("", "connectivity"), Items: items}, conf.Save)
 	require.NoError(t, err)
 	reloaded := &model.Config{}
@@ -61,10 +65,12 @@ func TestConnectivitySettingsPersistenceAndPrivateURL(t *testing.T) {
 	require.Len(t, targets, 1)
 	raw, _ := json.Marshal(targets)
 	require.NotContains(t, string(raw), "private-path")
+	require.NotContains(t, string(raw), "private-icon-source")
 	response, err := listConfig(newServerGroupCtx(nil))
 	require.NoError(t, err)
 	raw, _ = json.Marshal(response)
 	require.NotContains(t, string(raw), "private-path")
+	require.NotContains(t, string(raw), "private-icon-source")
 	require.NotContains(t, string(raw), "connectivity_config")
 }
 func TestConnectivitySettingsAdminGuardAndStrictBody(t *testing.T) {
@@ -86,7 +92,7 @@ func TestConnectivitySettingsAdminGuardAndStrictBody(t *testing.T) {
 		require.NotEmpty(t, denied["error"])
 		require.NotContains(t, recorder.Body.String(), "defaults")
 	}
-	for _, body := range []string{`{"revision":"x","items":[],"url":"https://example.com"}`, `{"revision":"x","items":[]}{}`, strings.Repeat("x", 385<<10)} {
+	for _, body := range []string{`{"revision":"x","items":[],"url":"https://example.com"}`, `{"revision":"x","items":[]}{}`, strings.Repeat("x", 769<<10)} {
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 		c.Request = httptest.NewRequest("PUT", "/api/v1/setting/connectivity", strings.NewReader(body))
 		_, err := updateConnectivitySettings(c)
@@ -97,4 +103,24 @@ func TestConnectivitySettingsAdminGuardAndStrictBody(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(source), `auth.GET("/setting/connectivity", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getConnectivitySettings))`)
 	require.Contains(t, string(source), `auth.PUT("/setting/connectivity", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateConnectivitySettings))`)
+}
+
+func TestConnectivitySettingsStoresImportedIconAndRejectsMissingAsset(t *testing.T) {
+	t.Chdir(t.TempDir())
+	icon, err := logoasset.Put(logoDirectory, "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jZ1kAAAAASUVORK5CYII=")
+	require.NoError(t, err)
+	config := &model.Config{}
+	items := connectivity.DefaultCatalog()
+	items[0].Icon = icon
+	items[0].IconSource = "https://example.com/icon.png"
+	next, err := saveConnectivitySettings(config, connectivitySettingsForm{Revision: appearanceRevision("", "connectivity"), Items: items}, func() error { return nil })
+	require.NoError(t, err)
+	parsed, err := connectivity.ParseCatalog(config.ConnectivityConfig)
+	require.NoError(t, err)
+	require.Equal(t, items[0], parsed[0])
+	old := config.ConnectivityConfig
+	items[0].Icon = "/api/v1/logo/assets/" + strings.Repeat("f", 64) + ".png"
+	_, err = saveConnectivitySettings(config, connectivitySettingsForm{Revision: next.Revision, Items: items}, func() error { t.Fatal("missing icon must not save"); return nil })
+	require.Error(t, err)
+	require.Equal(t, old, config.ConnectivityConfig)
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nezhahq/nezha/model"
+	"github.com/nezhahq/nezha/pkg/logoasset"
 	"github.com/nezhahq/nezha/service/connectivity"
 	"github.com/nezhahq/nezha/service/singleton"
 )
@@ -56,6 +57,13 @@ func saveConnectivitySettings(config *model.Config, form connectivitySettingsFor
 	if err := connectivity.ValidateCatalog(form.Items); err != nil {
 		return nil, err
 	}
+	for _, item := range form.Items {
+		if logoasset.Name(item.Icon) != "" {
+			if _, err := logoasset.Put(logoDirectory, item.Icon); err != nil {
+				return nil, err
+			}
+		}
+	}
 	raw, err := json.Marshal(form.Items)
 	if err != nil {
 		return nil, err
@@ -70,7 +78,7 @@ func saveConnectivitySettings(config *model.Config, form connectivitySettingsFor
 }
 func updateConnectivitySettings(c *gin.Context) (*connectivitySettings, error) {
 	c.Header("Cache-Control", "no-store")
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 384<<10)
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 768<<10)
 	decoder := json.NewDecoder(c.Request.Body)
 	decoder.DisallowUnknownFields()
 	var form connectivitySettingsForm

@@ -1,0 +1,56 @@
+.nz-connectivity-marquee {
+	display: block;
+	flex: 1 1 0%;
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+}
+.nz-connectivity-marquee-track {
+	display: inline-block;
+	width: max-content;
+	max-width: none;
+	vertical-align: top;
+}
+.nz-connectivity-marquee[data-overflow="true"]
+	> .nz-connectivity-marquee-track {
+	animation: nz-connectivity-pan var(--nz-pan-duration) linear infinite;
+}
+.nz-connectivity-marquee:hover > .nz-connectivity-marquee-track,
+.nz-connectivity-marquee:focus > .nz-connectivity-marquee-track,
+.nz-connectivity-marquee[data-visible="false"]
+	> .nz-connectivity-marquee-track {
+	animation-play-state: paused;
+}
+.nz-connectivity-marquee:focus-visible {
+	outline: 1px solid currentColor;
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+@keyframes nz-connectivity-pan {
+	0%,
+	12% {
+		transform: translateX(0);
+	}
+	45%,
+	57% {
+		transform: translateX(var(--nz-pan-end));
+	}
+	90%,
+	100% {
+		transform: translateX(0);
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.nz-connectivity-marquee {
+		overflow-x: auto;
+		scrollbar-width: none;
+	}
+	.nz-connectivity-marquee::-webkit-scrollbar {
+		display: none;
+	}
+	.nz-connectivity-marquee[data-overflow="true"]
+		> .nz-connectivity-marquee-track {
+		animation: none;
+		transform: none;
+	}
+}

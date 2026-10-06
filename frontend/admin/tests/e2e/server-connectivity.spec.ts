@@ -22,6 +22,10 @@ async function setup(page:Page,theme:string,light=false,offline=false,owner=true
   const req=route.request(),u=new URL(req.url());
   if(u.origin!==origin){state.external.push(u.href);return route.abort();}
   if(u.pathname==="/connectivity-wallpaper.svg") return route.fulfill({contentType:"image/svg+xml",body:'<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800"><defs><linearGradient id="bg"><stop stop-color="#052e16"/><stop offset=".45" stop-color="#14532d"/><stop offset=".5" stop-color="#ecfccb"/><stop offset="1" stop-color="#f0fdf4"/></linearGradient></defs><rect width="1200" height="800" fill="url(#bg)"/><path d="M0 640L1200 80M0 710L1200 150" stroke="#c4a875" stroke-width="28"/></svg>'});
+  if(u.pathname.startsWith("/api/v1/logo/assets/")) {
+   if(u.pathname.includes("bbbbbbbb"))return route.fulfill({status:404,body:"missing"});
+   return route.fulfill({contentType:"image/png",body:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jS1cAAAAASUVORK5CYII=","base64")});
+  }
   if(!u.pathname.startsWith("/api/"))return route.continue();
   let data:any=[];
   if(u.pathname.endsWith("/connectivity")){
@@ -172,4 +176,40 @@ test("compact reference row has names dots and latency but no website text",asyn
  expect(sizes.every(size=>size.height<=72&&size.top===sizes[0].top)).toBe(true);
  await grid.screenshot({path:info.outputPath("compact-reference.png")});
  expect(state.posts).toBe(0);
+});
+for(const theme of ["default","doraemon"])test(`overflow status pans and cached icons ${theme}`,async({page},info)=>{
+ await page.setViewportSize({width:320,height:850});
+ const state=await setup(page,theme,true,false,false);
+ const make=(id:string,status:string,icon:string)=>({id,name:id,group:"china",host:"private.example",icon,status,delay_ms:185,phase:"complete",samples:Array.from({length:3},()=>({status,http_status:status==="http_error"?403:undefined}))});
+ state.mode="complete";
+ state.override=[make("long-status","agent_timeout","/api/v1/logo/assets/"+"a".repeat(64)+".png"),make("short-status","timeout","/api/v1/logo/assets/"+"b".repeat(64)+".png"),make("external-icon","http_error","https://example.com/not-requested.png")];
+ await page.reload();await page.locator(".server-info-tab").getByText("连通性",{exact:true}).click();
+ const view=page.locator("[data-server-connectivity]"),box=view.locator('[data-connectivity-target="long-status"]'),status=box.locator("[data-connectivity-status]"),track=status.locator(".nz-connectivity-marquee-track");
+ await box.scrollIntoViewIfNeeded();
+ await expect(status).toHaveAttribute("data-overflow","true");
+ await expect(box.locator("img")).toHaveAttribute("src","/api/v1/logo/assets/"+"a".repeat(64)+".png");
+ await expect.poll(()=>box.locator("img").evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth>0)).toBe(true);
+ await expect(view.locator('[data-connectivity-target="short-status"] img')).toHaveCount(0);
+ await expect(view.locator('[data-connectivity-target="external-icon"] img')).toHaveCount(0);
+ await expect(view.locator('[data-connectivity-target="short-status"] [data-connectivity-status]')).toHaveAttribute("data-overflow","false");
+ const movement=await track.evaluate(el=>{
+  const animation=el.getAnimations()[0];if(!animation)throw Error("animation missing");
+  const duration=Number(animation.effect!.getTiming().duration);
+  animation.pause();
+  const at=(fraction:number)=>{animation.currentTime=duration*fraction;return new DOMMatrix(getComputedStyle(el).transform).m41;};
+  return {start:at(0),end:at(.5),back:at(1),distance:(el as HTMLElement).scrollWidth-(el.parentElement as HTMLElement).clientWidth};
+ });
+ expect(movement.start).toBe(0);expect(movement.end).toBeCloseTo(-movement.distance,0);expect(movement.back).toBe(0);
+ await status.hover();expect(await track.evaluate(el=>getComputedStyle(el).animationPlayState)).toBe("paused");
+ await page.mouse.move(0,0);await status.focus();expect(await track.evaluate(el=>getComputedStyle(el).animationPlayState)).toBe("paused");
+ await page.screenshot({path:info.outputPath("overflow-mobile.png")});
+ await page.emulateMedia({reducedMotion:"reduce"});
+ expect(await track.evaluate(el=>getComputedStyle(el).animationName)).toBe("none");
+ expect(await status.evaluate(el=>getComputedStyle(el).overflowX)).toBe("auto");
+ await page.emulateMedia({reducedMotion:"no-preference"});
+ await page.setViewportSize({width:740,height:850});
+ await expect(status).toHaveAttribute("data-overflow","false");
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ expect(state.posts).toBe(0);
+ expect(state.external.filter(url=>url.includes("not-requested")||url.includes("private.example"))).toEqual([]);
 });

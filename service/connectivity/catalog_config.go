@@ -10,17 +10,20 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/nezhahq/nezha/pkg/logoasset"
 )
 
 const MaxTargets = 120
 
 type CatalogItem struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Group   string `json:"group"`
-	URL     string `json:"url"`
-	Icon    string `json:"icon"`
-	Enabled bool   `json:"enabled"`
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Group      string `json:"group"`
+	URL        string `json:"url"`
+	Icon       string `json:"icon"`
+	IconSource string `json:"icon_source,omitempty"`
+	Enabled    bool   `json:"enabled"`
 }
 
 func DefaultCatalog() []CatalogItem {
@@ -97,8 +100,14 @@ func ValidateCatalog(items []CatalogItem) error {
 				return fmt.Errorf("%s：%w", item.Name, err)
 			}
 		}
-		if !icons[item.Icon] {
-			return errors.New("请选择内置图标或默认图标")
+		if !icons[item.Icon] && logoasset.Name(item.Icon) == "" {
+			return errors.New("请选择内置图标、默认图标或已导入的图片")
+		}
+		if item.IconSource != "" {
+			u, err := url.Parse(item.IconSource)
+			if logoasset.Name(item.Icon) == "" || err != nil || len(item.IconSource) > 2048 || strings.TrimSpace(item.IconSource) != item.IconSource || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.Fragment != "" || (u.Port() != "" && u.Port() != "443") {
+				return errors.New("自定义图标来源须为已导入的 HTTPS 图片地址")
+			}
 		}
 	}
 	return nil

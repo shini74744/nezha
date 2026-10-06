@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/stretchr/testify/require"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -115,4 +116,24 @@ func TestCatalogLiteralHostsAndExplicitGenericIcon(t *testing.T) {
 	// An edited or repurposed built-in must not gain the fixed-IP exception.
 	items[0].URL = "https://" + "1.1.1.1" + "/"
 	require.Error(t, ValidateCatalog(items))
+}
+
+func TestCatalogAcceptsOnlyStoredCustomIcons(t *testing.T) {
+	items := DefaultCatalog()
+	items[0].Icon = "/api/v1/logo/assets/" + strings.Repeat("a", 64) + ".png"
+	items[0].IconSource = "https://example.com/icon.png"
+	require.NoError(t, ValidateCatalog(items))
+	raw, err := json.Marshal(EnabledTargets(items))
+	require.NoError(t, err)
+	require.NotContains(t, string(raw), "icon_source")
+	require.NotContains(t, string(raw), "https://example.com/icon.png")
+	for _, bad := range []string{"https://example.com/icon.png", "data:image/png;base64,AAAA", "/api/v1/logo/assets/../config.yaml", "/api/v1/logo/assets/" + strings.Repeat("a", 64) + ".html"} {
+		items[0].Icon = bad
+		require.Error(t, ValidateCatalog(items), bad)
+	}
+	items[0].Icon = "/api/v1/logo/assets/" + strings.Repeat("a", 64) + ".png"
+	for _, bad := range []string{"http://example.com/a", "https://user:pass@example.com/a", "https://example.com:22/a", "https://example.com/a#fragment"} {
+		items[0].IconSource = bad
+		require.Error(t, ValidateCatalog(items), bad)
+	}
 }
