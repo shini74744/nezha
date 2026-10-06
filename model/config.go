@@ -47,6 +47,7 @@ type ConfigForGuests struct {
 }
 
 type ConfigDashboard struct {
+	ConnectivityConfig            string `koanf:"connectivity_config" json:"-"`
 	DashboardAppearanceLegacyCode string `koanf:"dashboard_appearance_legacy_code" json:"-"`
 	AppearanceLegacyCode          string `koanf:"appearance_legacy_code" json:"-"`
 	InstallHost                   string `koanf:"install_host" json:"install_host,omitempty"`
@@ -357,11 +358,12 @@ func (c *Config) save() error {
 	}
 	data, err := yaml.Marshal(struct {
 		*Config
+		ConnectivityConfig            string `json:"connectivity_config,omitempty"`
 		AppearanceLegacyCode          string `json:"appearance_legacy_code,omitempty"`
 		DashboardAppearanceLegacyCode string `json:"dashboard_appearance_legacy_code,omitempty"`
 		FrontendPasswordHash          string `json:"frontend_password_hash,omitempty"`
 		JWTSecretKey                  string `json:"jwt_secret_key,omitempty"`
-	}{Config: c, AppearanceLegacyCode: c.AppearanceLegacyCode, DashboardAppearanceLegacyCode: c.DashboardAppearanceLegacyCode, FrontendPasswordHash: c.FrontendPasswordHash, JWTSecretKey: persistedJWT})
+	}{Config: c, ConnectivityConfig: c.ConnectivityConfig, AppearanceLegacyCode: c.AppearanceLegacyCode, DashboardAppearanceLegacyCode: c.DashboardAppearanceLegacyCode, FrontendPasswordHash: c.FrontendPasswordHash, JWTSecretKey: persistedJWT})
 	if err != nil {
 		return err
 	}

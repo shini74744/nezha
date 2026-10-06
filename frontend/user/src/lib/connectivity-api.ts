@@ -24,6 +24,7 @@ export interface ConnectivityResult {
 	name: string;
 	group: "china" | "japan" | "usa" | "global";
 	host: string;
+	icon?: string;
 	phase?: "queued" | "running" | "complete";
 	status: ConnectivityStatus;
 	samples: ConnectivitySample[];

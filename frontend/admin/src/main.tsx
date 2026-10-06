@@ -28,6 +28,7 @@ import ServerExpiryPage from "./routes/server-expiry"
 import OnlineUserPage from "./routes/online-user"
 import ProfilePage from "./routes/profile"
 import SettingsPage from "./routes/settings"
+import CardSettings from "./routes/card-settings"
 import SettingsLayout from "./routes/settings-layout"
 import IconSettings from "./routes/icon-settings"
 import AppearancePage from "./routes/appearance"
@@ -150,6 +151,7 @@ const router = createBrowserRouter([
                         ),
                     },
                     { path: "icons", element: <IconSettings /> },
+                    { path: "cards", element: <CardSettings /> },
                     { path: "dashboard-appearance", element: <DashboardAppearancePage /> },
                     { path: "appearance", element: <AppearancePage /> },
                     { path: "user", element: <UserPage /> },

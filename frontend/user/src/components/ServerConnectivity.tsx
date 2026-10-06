@@ -2,13 +2,10 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
-	CheckCircle2,
 	CircleHelp,
-	Clock3,
 	Globe2,
 	LoaderCircle,
 	RefreshCw,
-	ShieldAlert,
 	WifiOff,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -134,6 +131,7 @@ export default function ServerConnectivity({ serverId }: { serverId: number }) {
 									type="button"
 									disabled={
 										!data.online ||
+										data.results.length === 0 ||
 										running ||
 										mutation.isPending ||
 										cooldown > 0 ||
@@ -251,45 +249,54 @@ export default function ServerConnectivity({ serverId }: { serverId: number }) {
 					</CardContent>
 				</Card>
 			)}
+			{!query.isError && data?.results.length === 0 && (
+				<p className="text-sm text-muted-foreground">
+					{t("connectivity.noTargets")}
+				</p>
+			)}
 			{!query.isError &&
 				data &&
-				regions.map(({ id: group, Icon }) => (
-					<div
-						key={group}
-						data-connectivity-group={group}
-						className="space-y-2"
-					>
-						<div className="flex flex-wrap items-center justify-between gap-2">
-							<h3 className="flex items-center gap-2 text-sm font-semibold">
-								<Icon className="h-4 w-6 shrink-0" aria-hidden />
-								{t(`connectivity.${group}`)}
-							</h3>
-							<span className="text-xs text-muted-foreground">
-								{t("connectivity.reachableCount", {
-									count: data.results.filter(
-										(r) =>
-											r.group === group &&
-											r.samples.some(
-												(s) => s.status === "ok" || s.status === "http_error",
-											),
-									).length,
-									total: data.results.filter((r) => r.group === group).length,
-								})}
-							</span>
+				regions
+					.filter(({ id }) =>
+						data.results.some((result) => result.group === id),
+					)
+					.map(({ id: group, Icon }) => (
+						<div
+							key={group}
+							data-connectivity-group={group}
+							className="space-y-2"
+						>
+							<div className="flex flex-wrap items-center justify-between gap-2">
+								<h3 className="flex items-center gap-2 text-sm font-semibold">
+									<Icon className="h-4 w-6 shrink-0" aria-hidden />
+									{t(`connectivity.${group}`)}
+								</h3>
+								<span className="text-xs text-muted-foreground">
+									{t("connectivity.reachableCount", {
+										count: data.results.filter(
+											(r) =>
+												r.group === group &&
+												r.samples.some(
+													(s) => s.status === "ok" || s.status === "http_error",
+												),
+										).length,
+										total: data.results.filter((r) => r.group === group).length,
+									})}
+								</span>
+							</div>
+							<div className="grid min-w-0 grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+								{data.results
+									.filter((result) => result.group === group)
+									.map((result) => (
+										<ConnectivityCard
+											key={result.id}
+											result={result}
+											rounds={data.rounds}
+										/>
+									))}
+							</div>
 						</div>
-						<div className="grid min-w-0 grid-cols-1 gap-3 min-[360px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-							{data.results
-								.filter((result) => result.group === group)
-								.map((result) => (
-									<ConnectivityCard
-										key={result.id}
-										result={result}
-										rounds={data.rounds}
-									/>
-								))}
-						</div>
-					</div>
-				))}
+					))}
 		</section>
 	);
 }
@@ -301,8 +308,9 @@ function ConnectivityCard({
 	rounds: number;
 }) {
 	const { t } = useTranslation();
-	const [iconFailed, setIconFailed] = useState(false);
-	const icon = connectivityIcons[result.id];
+	const [failedIcon, setFailedIcon] = useState<string>();
+	const icon =
+		connectivityIcons[result.icon === undefined ? result.id : result.icon];
 	const status =
 		result.status === "pending" && result.phase
 			? result.phase === "running"
@@ -315,13 +323,6 @@ function ConnectivityCard({
 	const reached = status === "http_error";
 	const waiting =
 		status === "pending" || status === "queued" || status === "running";
-	const Icon = positive
-		? CheckCircle2
-		: reached || status === "unstable"
-			? ShieldAlert
-			: waiting
-				? Clock3
-				: WifiOff;
 	const codes = [
 		...new Set(
 			result.samples.map((sample) => sample.http_status).filter(Boolean),
@@ -329,130 +330,141 @@ function ConnectivityCard({
 	];
 	const delay = result.delay_ms;
 	const hasDelay = delay !== undefined && Number.isFinite(delay);
+	const stateColor = positive
+		? "text-emerald-700 dark:text-emerald-300"
+		: reached || status === "unstable"
+			? "text-amber-700 dark:text-amber-300"
+			: waiting
+				? "text-muted-foreground"
+				: "text-red-700 dark:text-red-300";
+	const detail = [
+		t(`connectivity.status.${status}`),
+		codes.length ? `HTTP ${codes.join("/")}` : "",
+		result.samples.length > 0 && result.phase && result.phase !== "complete"
+			? t(
+					result.phase === "running"
+						? "connectivity.sampling"
+						: "connectivity.resampleQueued",
+				)
+			: "",
+		result.phase === "complete" && result.samples.length < rounds
+			? t("connectivity.endedEarly")
+			: "",
+	]
+		.filter(Boolean)
+		.join(" · ");
 	return (
 		<Card
 			data-connectivity-target={result.id}
 			data-connectivity-phase={result.phase}
-			className="min-w-0"
+			className="min-w-0 rounded-xl shadow-none"
 		>
-			<CardContent className="space-y-2.5 p-3">
-				<div className="flex min-w-0 items-center gap-2.5">
-					<span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/95 p-1.5">
-						{icon && !iconFailed ? (
-							<img
-								data-connectivity-icon
-								src={icon}
-								alt=""
-								aria-hidden
-								className="size-6 object-contain"
-								onError={() => setIconFailed(true)}
-							/>
-						) : (
-							<Globe2
-								data-connectivity-icon-fallback
-								className="size-5 text-slate-500"
-								aria-hidden
-							/>
-						)}
-					</span>
-					<div className="min-w-0">
-						<h4 className="truncate text-sm font-semibold" title={result.name}>
-							{result.name}
-						</h4>
-						<p
-							className="truncate text-[10px] text-muted-foreground"
-							title={result.host}
-						>
-							{result.host}
-						</p>
-					</div>
-				</div>
-				<div className="flex items-center justify-between gap-2">
-					<div
-						className="flex items-center gap-1"
-						role="img"
-						aria-label={t("connectivity.samples", {
-							done: result.samples.length,
-							total: rounds,
-						})}
+			<CardContent className="grid min-h-[66px] grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-2 px-3 py-2.5">
+				<span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-white/95 p-0.5">
+					{icon && failedIcon !== icon ? (
+						<img
+							data-connectivity-icon
+							src={icon}
+							alt=""
+							aria-hidden
+							className="size-6 object-contain"
+							onError={() => setFailedIcon(icon)}
+						/>
+					) : (
+						<Globe2
+							data-connectivity-icon-fallback
+							className="size-5 text-slate-500"
+							aria-hidden
+						/>
+					)}
+				</span>
+				<div className="min-w-0 space-y-1">
+					<h4
+						className="truncate text-sm font-medium leading-5"
+						title={result.name}
 					>
-						{Array.from({ length: rounds }, (_, index) => {
-							const sample = result.samples[index];
-							const responded =
-								sample?.status === "ok" || sample?.status === "http_error";
-							return (
-								<span
-									key={index}
-									data-connectivity-sample
-									title={
-										t("connectivity.sample", { index: index + 1 }) +
-										": " +
-										t(`connectivity.status.${sample?.status || "pending"}`)
-									}
-									className={cn(
-										"size-1.5 rounded-full",
-										!sample
-											? "bg-muted-foreground/30"
-											: responded
-												? "bg-emerald-600 dark:bg-emerald-400"
-												: "bg-red-600 dark:bg-red-400",
-									)}
-								/>
-							);
-						})}
-						<span className="ml-1 text-[10px] text-muted-foreground">
+						{result.name}
+					</h4>
+					<div
+						className="flex min-w-0 items-center gap-1.5 text-[10px] leading-3"
+						title={detail}
+					>
+						<div
+							className="flex shrink-0 items-center gap-1"
+							role="img"
+							aria-label={t("connectivity.samples", {
+								done: result.samples.length,
+								total: rounds,
+							})}
+						>
+							{Array.from({ length: rounds }, (_, index) => {
+								const sample = result.samples[index];
+								const responded =
+									sample?.status === "ok" || sample?.status === "http_error";
+								return (
+									<span
+										key={index}
+										data-connectivity-sample
+										title={
+											t("connectivity.sample", { index: index + 1 }) +
+											": " +
+											t(`connectivity.status.${sample?.status || "pending"}`)
+										}
+										className={cn(
+											"size-1.5 rounded-full",
+											!sample
+												? "bg-muted-foreground/30"
+												: responded
+													? "bg-emerald-600 dark:bg-emerald-400"
+													: "bg-red-600 dark:bg-red-400",
+										)}
+									/>
+								);
+							})}
+						</div>
+						<span
+							className={cn("min-w-0 truncate", stateColor)}
+							data-connectivity-status
+						>
+							{!positive
+								? t(`connectivity.status.${status}`)
+								: result.phase && result.phase !== "complete"
+									? t(
+											result.phase === "running"
+												? "connectivity.sampling"
+												: "connectivity.resampleQueued",
+										)
+									: null}
+							{codes.length > 0 && (
+								<span className="ml-1">(HTTP {codes.join("/")})</span>
+							)}
+						</span>
+						<span className="sr-only">
 							{result.samples.length}/{rounds}
+							{positive && <span>{t("connectivity.status.ok")}</span>}
 							{result.phase === "complete" &&
 								result.samples.length < rounds && (
-									<span className="ml-1">{t("connectivity.endedEarly")}</span>
+									<span>{t("connectivity.endedEarly")}</span>
 								)}
 						</span>
 					</div>
-					<p className="shrink-0 font-mono text-lg font-semibold tabular-nums">
-						{hasDelay ? (
-							<>
-								{delay.toFixed(delay < 10 ? 1 : 0)}
-								<span className="ml-0.5 text-[10px] font-normal text-muted-foreground">
-									ms
-								</span>
-							</>
-						) : (
-							<span className="text-muted-foreground">—</span>
-						)}
-					</p>
 				</div>
-				<div
+				<p
+					data-connectivity-delay
 					className={cn(
-						"flex items-start gap-1 text-[11px] leading-4",
-						positive
-							? "text-emerald-700 dark:text-emerald-300"
-							: reached || status === "unstable"
-								? "text-amber-700 dark:text-amber-300"
-								: waiting
-									? "text-muted-foreground"
-									: "text-red-700 dark:text-red-300",
+						"shrink-0 whitespace-nowrap text-base font-semibold leading-5 tabular-nums",
+						stateColor,
 					)}
 				>
-					<Icon className="mt-0.5 size-3 shrink-0" aria-hidden />
-					<span>
-						{t(`connectivity.status.${status}`)}
-						{result.samples.length > 0 &&
-							result.phase &&
-							result.phase !== "complete" && (
-								<span className="ml-1 text-muted-foreground">
-									·{" "}
-									{t(
-										result.phase === "running"
-											? "connectivity.sampling"
-											: "connectivity.resampleQueued",
-									)}
-								</span>
-							)}
-						{codes.length > 0 && (
-							<span className="ml-1">(HTTP {codes.join("/")})</span>
-						)}
-					</span>
-				</div>
+					{hasDelay ? (
+						<>
+							{delay.toFixed(delay < 10 ? 1 : 0)}
+							<span className="text-xs">ms</span>
+						</>
+					) : (
+						"—"
+					)}
+				</p>
 			</CardContent>
 		</Card>
 	);

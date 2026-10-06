@@ -19,6 +19,7 @@ type Target struct {
 	Group string `json:"group"`
 	Host  string `json:"host"`
 	URL   string `json:"-"`
+	Icon  string `json:"icon"`
 }
 
 func Targets() []Target { return append([]Target(nil), targets...) }
@@ -77,7 +78,8 @@ func NewManager() *Manager {
 		maxEntries: 512, ttl: 24 * time.Hour, cooldown: time.Minute, rounds: 3,
 		workers: 12, timeout: 2 * time.Minute}
 }
-func empty(rounds int) Snapshot {
+func empty(rounds int, selected ...[]Target) Snapshot {
+	targets := selectedTargets(selected)
 	snapshot := Snapshot{State: "idle", Rounds: rounds, Results: make([]Result, len(targets))}
 	for i, t := range targets {
 		snapshot.Results[i] = Result{Target: t, Status: "pending", Samples: []Sample{}}
@@ -91,21 +93,25 @@ func clone(s Snapshot) Snapshot {
 	}
 	return s
 }
-func (m *Manager) Get(key string) Snapshot {
+func (m *Manager) Get(key string, selected ...[]Target) Snapshot {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if e := m.entries[key]; e != nil {
 		if e.snapshot.State == "running" || m.now().Sub(e.touched) < m.ttl {
-			return clone(e.snapshot)
+			return reconcile(e.snapshot, selectedTargets(selected))
 		}
 		delete(m.entries, key)
 	}
-	return empty(m.rounds)
+	return empty(m.rounds, selectedTargets(selected))
 }
 
 // Start deduplicates requests for the same identity and never queues unbounded work.
 // Jobs intentionally outlive an individual page/request, so viewers share one run.
-func (m *Manager) Start(key string, probe Probe) (Snapshot, error) {
+func (m *Manager) Start(key string, probe Probe, selected ...[]Target) (Snapshot, error) {
+	targets := append([]Target(nil), selectedTargets(selected)...)
+	if len(targets) == 0 {
+		return empty(m.rounds, targets), errors.New("connectivity_no_targets")
+	}
 	m.mu.Lock()
 	now := m.now()
 	if e := m.entries[key]; e != nil && (e.snapshot.State == "running" || now.UnixMilli() < e.snapshot.RetryAt) {
@@ -138,7 +144,7 @@ func (m *Manager) Start(key string, probe Probe) (Snapshot, error) {
 		}
 		delete(m.entries, oldest)
 	}
-	s := empty(m.rounds)
+	s := empty(m.rounds, targets)
 	s.State = "running"
 	for i := range s.Results {
 		s.Results[i].Phase = "queued"
@@ -149,12 +155,13 @@ func (m *Manager) Start(key string, probe Probe) (Snapshot, error) {
 	m.active++
 	snapshot := clone(s)
 	m.mu.Unlock()
-	go m.run(e, probe)
+	go m.run(e, probe, targets)
 	return snapshot, nil
 }
 
 // Interleave regions so a slow region cannot occupy the entire first wave.
-func initialQueue() []int {
+func initialQueue(selected ...[]Target) []int {
+	targets := selectedTargets(selected)
 	groups := []string{}
 	byGroup := map[string][]int{}
 	for i, target := range targets {
@@ -183,7 +190,7 @@ func stopSampling(status string) bool {
 	return false
 }
 
-func (m *Manager) run(e *entry, probe Probe) {
+func (m *Manager) run(e *entry, probe Probe, targets []Target) {
 	ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
 	defer cancel()
 	type completion struct {
@@ -206,7 +213,7 @@ func (m *Manager) run(e *entry, probe Probe) {
 			}
 		}()
 	}
-	queue := initialQueue()
+	queue := initialQueue(targets)
 	active := 0
 	deadline := ctx.Done()
 	for len(queue) > 0 || active > 0 {
@@ -273,4 +280,44 @@ func summarize(r *Result) {
 		}
 		r.DelayMS = &value
 	}
+}
+func selectedTargets(selected [][]Target) []Target {
+	if len(selected) > 0 {
+		return selected[0]
+	}
+	return targets
+}
+
+// In-flight batches retain their immutable catalog. Afterwards render the latest
+// order/labels, retaining samples only when the target identity AND URL match.
+// New/edited endpoints stay pending until an authorized user starts another run.
+// RetryAt survives edits: changing settings cannot bypass per-node cooldown.
+func reconcile(source Snapshot, current []Target) Snapshot {
+	if source.State == "running" {
+		return clone(source)
+	}
+	snapshot := source
+	snapshot.Results = make([]Result, 0, len(current))
+	byID := map[string]Result{}
+	for _, result := range source.Results {
+		byID[result.ID] = result
+	}
+	changed := false
+	for _, target := range current {
+		old, ok := byID[target.ID]
+		if ok && old.URL == target.URL {
+			old.Target = target
+			old.Samples = append([]Sample{}, old.Samples...)
+			snapshot.Results = append(snapshot.Results, old)
+		} else {
+			changed = true
+			snapshot.Results = append(snapshot.Results, Result{Target: target, Status: "pending", Samples: []Sample{}})
+		}
+	}
+	if changed {
+		snapshot.State = "idle"
+		snapshot.StartedAt = 0
+		snapshot.FinishedAt = 0
+	}
+	return snapshot
 }

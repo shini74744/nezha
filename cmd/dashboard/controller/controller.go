@@ -228,6 +228,8 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	auth.PATCH("/setting/dashboard-appearance", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateDashboardAppearance))
 	auth.GET("/setting/display", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getDisplaySettings))
 	auth.PATCH("/setting/display", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateDisplaySettings))
+	auth.GET("/setting/connectivity", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getConnectivitySettings))
+	auth.PUT("/setting/connectivity", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateConnectivitySettings))
 	auth.GET("/setting/appearance", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getAppearance))
 	auth.PATCH("/setting/appearance", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateAppearance))
 	auth.POST("/maintenance", restScopeMiddleware(model.ScopeAdminAll), adminHandler(runMaintenance))
@@ -467,6 +469,7 @@ func fallbackToFrontend(frontendDist fs.FS) func(*gin.Context) {
 		regexp.MustCompile(`^/dashboard/settings/user$`),
 		regexp.MustCompile(`^/dashboard/settings/icons$`),
 		regexp.MustCompile(`^/dashboard/settings/appearance$`),
+		regexp.MustCompile(`^/dashboard/settings/cards$`),
 		regexp.MustCompile(`^/dashboard/settings/dashboard-appearance$`),
 		regexp.MustCompile(`^/dashboard/settings/online-user$`),
 		regexp.MustCompile(`^/dashboard/settings/waf$`),

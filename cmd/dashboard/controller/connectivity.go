@@ -57,7 +57,11 @@ func getConnectivity(c *gin.Context) (*connectivityResponse, error) {
 		return nil, err
 	}
 	key := connectivityKey(server)
-	snapshot := connectivityManager.Get(key)
+	targets, err := configuredConnectivityTargets()
+	if err != nil {
+		return nil, err
+	}
+	snapshot := connectivityManager.Get(key, targets)
 	current, err := connectivityServer(c)
 	if err != nil || connectivityKey(current) != key {
 		return nil, errors.New("server changed; reload")
@@ -65,7 +69,7 @@ func getConnectivity(c *gin.Context) (*connectivityResponse, error) {
 	return &connectivityResponse{Snapshot: snapshot, ServerID: current.ID, Online: rpc.ConnectivityOnline(current), CanRun: canRunConnectivity(c, current)}, nil
 }
 
-// @Summary Start a fixed-target connectivity test from this node
+// @Summary Start an administrator-configured connectivity test from this node
 // @Description Owner/admin only, CSRF protected, deduplicated and rate limited. No browser-provided URLs or commands are accepted.
 // @Tags auth required
 // @Security BearerAuth
@@ -89,12 +93,16 @@ func startConnectivity(c *gin.Context) (*connectivityResponse, error) {
 	if !rpc.ConnectivityOnline(server) {
 		return nil, errors.New("connectivity_offline")
 	}
-	probe := rpc.ConnectivityProbe(server)
+	targets, err := configuredConnectivityTargets()
+	if err != nil {
+		return nil, err
+	}
+	probe := rpc.ConnectivityProbe(server, targets)
 	current, err := connectivityServer(c)
 	if err != nil || connectivityKey(current) != key || !canRunConnectivity(c, current) {
 		return nil, errors.New("server changed; reload")
 	}
-	_, err = connectivityManager.Start(key, probe)
+	_, err = connectivityManager.Start(key, probe, targets)
 	if err != nil {
 		return nil, err
 	}
