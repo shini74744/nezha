@@ -6,6 +6,7 @@ const tabs = [
     ["美化设置", "/appearance"],
     ["后台美化设置", "/dashboard-appearance"],
     ["图标设置", "/icons"],
+    ["卡片设置", "/cards"],
     ["用户", "/user"],
     ["在线用户", "/online-user"],
     ["防火墙", "/waf"],
@@ -59,6 +60,7 @@ export async function mockSettings(page: Page, beauty = false, role = 0) {
             data = { config: dashboard, custom_code: "", archived_code: "", revision: "test" }
         if (path === "/api/v1/setting/display")
             data = { statistics_split: true, detail_network_split: true }
+        if (path === "/api/v1/setting/connectivity") data = {revision:"test",items:[],defaults:[],max_targets:120}
         if (path === "/api/v1/online-user") data = { count: 0, value: [] }
         if (path === "/api/v1/waf") data = { count: 0, value: [] }
         await route.fulfill({ json: { success: true, data } })
@@ -78,7 +80,7 @@ for (const width of [320, 390, 768, 1872])
                 const writes = await mockSettings(page, beauty)
                 await page.goto(base + "/appearance")
                 const nav = page.locator(".settings-navigation")
-                await expect(nav.getByRole("tab")).toHaveCount(8)
+                await expect(nav.getByRole("tab")).toHaveCount(9)
                 if (width < 640) {
                     const boxes = await nav.getByRole("tab").evaluateAll(elements =>
                         elements.map(el => {
@@ -86,15 +88,16 @@ for (const width of [320, 390, 768, 1872])
                             return {x,y,width,height}
                         }),
                     )
-                    // Eight tabs fill four contiguous rows, with no desktop row-start gap.
-                    expect(new Set(boxes.map(b => b.y)).size).toBe(4)
+                    // Nine tabs fill five contiguous rows; the last row has one item.
+                    expect(new Set(boxes.map(b => b.y)).size).toBe(5)
                     for (let i=0; i<8; i+=2) {
                         expect(boxes[i].y).toBe(boxes[i+1].y)
                         expect(boxes[i].height).toBeGreaterThanOrEqual(44)
                         expect(boxes[i].x).toBe(boxes[0].x)
                         expect(boxes[i+1].x).toBeGreaterThan(boxes[i].x)
                     }
-                    expect((await nav.boundingBox())!.height).toBeLessThanOrEqual(204)
+                    expect(boxes[8].x).toBe(boxes[0].x)
+                    expect((await nav.boundingBox())!.height).toBeLessThanOrEqual(254)
                 }
                 const original = await nav.elementHandle()
                 const documentY = await nav.evaluate(

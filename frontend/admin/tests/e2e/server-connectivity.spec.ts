@@ -7,12 +7,12 @@ const catalog = JSON.parse(readFileSync(new URL("../../../../service/connectivit
 async function setup(page:Page,theme:string,light=false,offline=false,owner=true,language="zh-CN",wallpaper=false) {
  const origin="https://127.0.0.1:"+(theme==="doraemon"?"18478":"18477"),now=Date.now();
  const server=createServer({id:7,name:"连通性测试节点",last_active:offline?"0001-01-01T00:00:00Z":new Date(now).toISOString()});
- const state={posts:0,gets:0,external:[] as string[],mode:"idle",readError:false,postError:false};
+ const state={posts:0,gets:0,external:[] as string[],override:null as any[]|null,mode:"idle",readError:false,postError:false};
  const results=()=>catalog.map(({id,name,group,host},i)=>({id,name,group,host,
   phase:state.mode==="idle"?undefined:state.mode==="running"?(i===0?"running":i===1?"complete":"queued"):"complete",
   status:state.mode==="idle"||(state.mode==="running"&&i!==1)?"pending":i===7?"http_error":i===8?"timeout":i===9?"agent_timeout":"ok",delay_ms:state.mode==="idle"||(state.mode==="running"&&i!==1)||i===8||i===9?undefined:35+i*12,
   samples:state.mode==="idle"||(state.mode==="running"&&i!==1)?[]:Array.from({length:3},()=>({status:i===7?"http_error":i===8?"timeout":i===9?"agent_timeout":"ok",http_status:i===7?403:undefined,delay_ms:i===8||i===9?undefined:35+i*12}))}));
- const response=()=>({server_id:7,online:!offline,can_run:owner,state:state.mode,rounds:3,started_at:state.mode==="idle"?undefined:now-2000,finished_at:state.mode==="complete"?now:undefined,retry_at:state.mode==="complete"?now+60000:undefined,results:results()});
+ const response=()=>({server_id:7,online:!offline,can_run:owner,state:state.mode,rounds:3,started_at:state.mode==="idle"?undefined:now-2000,finished_at:state.mode==="complete"?now:undefined,retry_at:state.mode==="complete"?now+60000:undefined,results:state.override??results()});
  await page.addInitScript(({light,language})=>{
   localStorage.setItem("language",language);localStorage.setItem("vite-ui-theme",light?"light":"dark");localStorage.setItem("doraemon-ui-theme",light?"light":"dark");localStorage.setItem("doraemon-sky",light?"light":"dark");
  },{light,language});
@@ -70,8 +70,10 @@ for(const theme of ["default","doraemon"])for(const light of [false,true])for(co
   await expect(view.getByText("请求超时",{exact:true})).toBeVisible();
   await expect(view.getByText("检测超时（3 秒未收到 Agent 回包）",{exact:true})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
-  const cards=await view.locator("[data-connectivity-target]").evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return {left:r.left,right:r.right,width:r.width}}));
-  expect(cards.every(r=>r.left>=0&&r.right<=width+1&&r.width>0)).toBe(true);
+  const cards=await view.locator("[data-connectivity-target]").evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return {left:r.left,right:r.right,width:r.width,height:r.height}}));
+  expect(cards.every(r=>r.left>=0&&r.right<=width+1&&r.width>0&&r.height<=72)).toBe(true);
+  expect(await view.innerHTML()).not.toContain("www.sony.jp");
+  expect(await view.innerHTML()).not.toContain("www.nintendo.co.jp");
   await view.scrollIntoViewIfNeeded();await page.screenshot({path:info.outputPath("connectivity.png"),fullPage:true});
   expect(state.external.filter(url=>new URL(url).hostname==="ip.net.coffee" || catalog.some(target=>new URL(url).hostname===target.host))).toEqual([]);
   expect(errors).toEqual([]);
@@ -151,5 +153,23 @@ test("guest cache failure retains reload without exposing owner controls",async(
  state.readError=false;await view.getByRole("button",{name:"重新加载"}).click();
  await expect(view.locator("[data-connectivity-target]")).toHaveCount(72);
  await expect(view.getByRole("button")).toHaveCount(0);
+ expect(state.posts).toBe(0);
+});
+test("compact reference row has names dots and latency but no website text",async({page},info)=>{
+ await page.setViewportSize({width:1600,height:900});
+ const state=await setup(page,"default",true,false,false);
+ const delays=[45,42,49,39];
+ // Select the same first four Japanese brands as the supplied reference.
+ state.override=catalog.filter(row=>row.group==="japan").slice(0,4).map((row,i)=>({...row,icon:row.id,status:"ok",phase:"complete",delay_ms:delays[i],samples:Array.from({length:3},()=>({status:"ok",delay_ms:delays[i]}))}));
+ state.mode="complete";
+ await page.reload();await page.locator(".server-info-tab").getByText("连通性",{exact:true}).click();
+ const view=page.locator("[data-server-connectivity]"),grid=view.locator('[data-connectivity-group="japan"] > .grid');
+ await expect(view.locator("[data-connectivity-target]")).toHaveCount(4);
+ await expect.poll(()=>view.locator("img").evaluateAll(imgs=>imgs.every(img=>(img as HTMLImageElement).complete&&(img as HTMLImageElement).naturalWidth>0))).toBe(true);
+ const html=await view.innerHTML();
+ for(const row of state.override)expect(html).not.toContain(row.host);
+ const sizes=await view.locator("[data-connectivity-target]").evaluateAll(nodes=>nodes.map(n=>({height:n.getBoundingClientRect().height,top:n.getBoundingClientRect().top})));
+ expect(sizes.every(size=>size.height<=72&&size.top===sizes[0].top)).toBe(true);
+ await grid.screenshot({path:info.outputPath("compact-reference.png")});
  expect(state.posts).toBe(0);
 });

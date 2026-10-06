@@ -315,3 +315,70 @@ describe("fair queue progress", () => {
 		expect(screen.getByText("connectivity.endedEarly")).toBeVisible();
 	});
 });
+
+describe("compact configurable connectivity cards", () => {
+	it("does not render website addresses and uses the configured icon for custom targets", async () => {
+		api.fetchConnectivity.mockResolvedValue(
+			data({
+				can_run: false,
+				results: [
+					{
+						id: "custom-test",
+						icon: "google",
+						name: "My app",
+						group: "global",
+						host: "private-path.example.com",
+						status: "ok",
+						phase: "complete",
+						samples: [{ status: "ok", delay_ms: 42 }],
+						delay_ms: 42,
+					},
+				],
+			}),
+		);
+		const view = mount();
+		expect(await screen.findByText("My app")).toBeVisible();
+		expect(
+			screen.queryByText("private-path.example.com"),
+		).not.toBeInTheDocument();
+		expect(view.container.innerHTML).not.toContain("private-path.example.com");
+		expect(
+			view.container.querySelector("[data-connectivity-icon]"),
+		).not.toBeNull();
+		expect(
+			view.container.querySelectorAll("[data-connectivity-group]"),
+		).toHaveLength(1);
+		expect(screen.getByText("42")).toBeVisible();
+	});
+	it("supports a disabled/empty catalog without allowing a new run", async () => {
+		api.fetchConnectivity.mockResolvedValue(data({ results: [] }));
+		mount();
+		expect(await screen.findByText("connectivity.noTargets")).toBeVisible();
+		expect(
+			screen.getByRole("button", { name: "connectivity.start" }),
+		).toBeDisabled();
+	});
+	it("respects explicit default icons and the configured order", async () => {
+		const base = data().results[0];
+		api.fetchConnectivity.mockResolvedValue(
+			data({
+				results: [
+					{ ...base, id: "z", name: "Last alphabetically", icon: "" },
+					{ ...base, id: "a", name: "First alphabetically", icon: "google" },
+				],
+			}),
+		);
+		const view = mount();
+		await screen.findByText("Last alphabetically");
+		expect(
+			Array.from(
+				view.container.querySelectorAll("[data-connectivity-target]"),
+			).map((el) => el.getAttribute("data-connectivity-target")),
+		).toEqual(["z", "a"]);
+		expect(
+			view.container.querySelector(
+				'[data-connectivity-target="z"] [data-connectivity-icon-fallback]',
+			),
+		).not.toBeNull();
+	});
+});

@@ -218,3 +218,22 @@ func TestConnectivitySlowAgentReplyDoesNotBlockOtherSitesAndStillSamplesThreeTim
 		require.Len(t, row.Samples, 3)
 	}
 }
+
+func TestConnectivityConfiguredTargetsAreCapturedByValue(t *testing.T) {
+	server := requestTaskSecurityServer(7, 200, "custom-connectivity")
+	setupRequestTaskSecurityFixture(t, []*model.Server{server}, nil, nil, nil)
+	server, _ = singleton.ServerShared.Get(7)
+	server.AttachStateStream(stateGenerationStream{}).UpdateState(&model.HostState{}, time.Now())
+	stream := &requestTaskSecurityStream{ctx: context.Background()}
+	selected := []connectivity.Target{{ID: "custom", URL: "https://example.com/health"}}
+	stream.onSend = func(task *pb.Task) {
+		require.Equal(t, "https://example.com/health", task.Data)
+		require.EqualValues(t, model.TaskTypeHTTPGet, task.Type)
+		deliverConnectivityResult(&pb.TaskResult{Id: task.Id, Type: task.Type, Successful: true, Delay: 3}, 7, stream)
+	}
+	server.SetTaskStream(stream)
+	probe := ConnectivityProbe(server, selected)
+	selected[0].URL = "https://changed.example.com/"
+	require.Equal(t, "ok", probe(context.Background(), connectivity.Target{ID: "custom", URL: "http://127.0.0.1"}).Status)
+	require.Equal(t, "error", probe(context.Background(), connectivity.Target{ID: "unapproved"}).Status)
+}

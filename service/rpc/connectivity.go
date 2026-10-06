@@ -46,10 +46,18 @@ func ConnectivityOnline(server *model.Server) bool {
 
 // ConnectivityProbe binds each batch to its original UUID, owner and task stream.
 // Reconnection/transfer/reassignment cannot silently change the machine probed.
-func ConnectivityProbe(server *model.Server) connectivity.Probe {
+func ConnectivityProbe(server *model.Server, selected ...[]connectivity.Target) connectivity.Probe {
+	catalog := connectivity.Targets()
+	if len(selected) > 0 {
+		catalog = selected[0]
+	}
+	approved := make(map[string]connectivity.Target, len(catalog))
+	for _, target := range catalog {
+		approved[target.ID] = target
+	}
 	id, uuid, owner, stream := server.ID, server.UUID, server.GetUserID(), server.GetTaskStream()
 	return func(parent context.Context, target connectivity.Target) connectivity.Sample {
-		fixed, ok := connectivity.FindTarget(target.ID)
+		fixed, ok := approved[target.ID]
 		if !ok {
 			return connectivity.Sample{Status: "error"}
 		}

@@ -111,6 +111,7 @@
 		"backendUnavailableDescription": "The page is still available, but data cannot be loaded right now."
 	},
 	"connectivity": {
+		"noTargets": "No enabled connectivity targets",
 		"sample": "Sample {{index}}",
 		"samples": "{{done}} / {{total}} samples",
 		"reachableCount": "Reachable {{count}} / {{total}}",
@@ -222,7 +223,7 @@
 		"all": "All"
 	},
 	"statistics": {
-    "toggle": "Show or hide statistics",
+		"toggle": "Show or hide statistics",
 		"closeDay": "Close day details",
 		"choose": "Choose statistics view",
 		"traffic": "Traffic usage",

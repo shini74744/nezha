@@ -21,7 +21,7 @@ import { useMainStore } from "@/hooks/useMainStore"
 import { useMediaQuery } from "@/hooks/useMediaQuery"
 import { cn } from "@/lib/utils"
 import i18next from "i18next"
-import { LogOut, Settings, User2 } from "lucide-react"
+import { LogOut, Settings, User2, LayoutGrid } from "lucide-react"
 import { DateTime } from "luxon"
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
@@ -117,7 +117,7 @@ export default function Header() {
                                         onOpenChange={setDropdownOpen}
                                     >
                                         <DropdownMenuTrigger asChild>
-                                            <Avatar className="ml-1 h-8 w-8 cursor-pointer border-foreground border-[1px]">
+                                            <Avatar role="button" tabIndex={0} aria-label="账户菜单" className="ml-1 h-8 w-8 cursor-pointer border-foreground border-[1px]">
                                                 <AvatarImage
                                                     src={
                                                         brand.enabled&&brand.avatar?brand.avatar:"https://api.dicebear.com/7.x/notionists/svg?seed=" +
@@ -160,6 +160,7 @@ export default function Header() {
                                                         </div>
                                                     </DropdownMenuItem>
                                                 )}
+                                            {isAdmin && <DropdownMenuItem className="cursor-pointer" onClick={() => {setDropdownOpen(false);navigate("/dashboard/settings/cards")}}><div className="flex items-center gap-2 w-full"><LayoutGrid />卡片设置</div></DropdownMenuItem>}
                                             </DropdownMenuGroup>
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem
@@ -322,7 +323,7 @@ export default function Header() {
                     <>
                         <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
                             <DropdownMenuTrigger asChild>
-                                <Avatar className="ml-1 h-8 w-8 cursor-pointer border-foreground border-[1px]">
+                                <Avatar role="button" tabIndex={0} aria-label="账户菜单" className="ml-1 h-8 w-8 cursor-pointer border-foreground border-[1px]">
                                     <AvatarImage
                                         src={
                                             brand.enabled&&brand.avatar?brand.avatar:"https://api.dicebear.com/7.x/notionists/svg?seed=" +
@@ -363,6 +364,7 @@ export default function Header() {
                                             </div>
                                         </DropdownMenuItem>
                                     )}
+                                {isAdmin && <DropdownMenuItem className="cursor-pointer" onClick={() => {setDropdownOpen(false);navigate("/dashboard/settings/cards")}}><div className="flex items-center gap-2 w-full"><LayoutGrid />卡片设置</div></DropdownMenuItem>}
                                 </DropdownMenuGroup>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={logout} className="cursor-pointer">
