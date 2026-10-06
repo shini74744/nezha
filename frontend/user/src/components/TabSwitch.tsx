@@ -19,11 +19,11 @@ export default function TabSwitch({
 			? window.CustomBackgroundImage
 			: undefined;
 	return (
-		<div className="z-50 flex flex-col items-start rounded-[50px] server-info-tab">
+		<div className="z-50 flex max-w-full flex-col items-start overflow-x-auto overscroll-x-contain rounded-[50px] server-info-tab">
 			<div
 				ref={containerRef}
 				className={cn(
-					"relative flex items-center gap-1 rounded-[50px] bg-stone-100 p-[3px] dark:bg-stone-800",
+					"relative flex shrink-0 items-center gap-1 rounded-[50px] bg-stone-100 p-[3px] dark:bg-stone-800",
 					{
 						"bg-stone-100/70 dark:bg-stone-800/70": customBackgroundImage,
 					},
@@ -67,7 +67,7 @@ export default function TabSwitch({
 						)}
 					>
 						<div className="relative z-20 flex items-center gap-1">
-							<p className="whitespace-nowrap">{t(`tabSwitch.${tab}`)}</p>
+							<p className="whitespace-nowrap">{t(`tabSwitch.${tab}`, {defaultValue:tab==="Streaming"?"流媒体":tab})}</p>
 						</div>
 					</div>
 				))}

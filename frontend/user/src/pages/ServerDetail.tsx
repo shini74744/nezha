@@ -5,6 +5,7 @@ const ServerDetailChart = lazy(() => import("@/components/ServerDetailChart"));
 import ServerDetailOverview from "@/components/ServerDetailOverview";
 import TabSwitch from "@/components/TabSwitch";
 const ServerConnectivity = lazy(() => import("@/components/ServerConnectivity"));
+const ServerNetworkInsight = lazy(() => import("@/components/ServerNetworkInsight"));
 import { Separator } from "@/components/ui/separator";
 import { useWebSocketContext } from "@/hooks/use-websocket-context";
 import { formatNezhaInfo } from "@/lib/utils";
@@ -21,7 +22,7 @@ export default function ServerDetail() {
 	const { id: server_id } = useParams();
 	const { lastData } = useWebSocketContext();
 	const server = lastData?.servers.find(s => s.id === Number(server_id));
-	const tabs = server?.connectivity_disabled ? ["Detail", "Network"] : ["Detail", "Network", "Connectivity"];
+	const tabs = ["Detail", "Network", ...(!server?.connectivity_disabled ? ["Connectivity"] : []), ...(!server?.bgp_disabled ? ["BGP"] : []), ...(!server?.streaming_disabled ? ["Streaming"] : [])];
 	const currentTab = tabs.includes(selectedTab) ? selectedTab : "Detail";
 	if (server && lastData && !formatNezhaInfo(lastData.now, server).online) {
 		return <Suspense fallback={<div className="mx-auto w-full max-w-5xl server-info"><ServerDetailOverview server_id={server_id!}/><SectionLoading/></div>}><OfflineServerDetail key={server.id} server={server} now={lastData.now} initialTab={currentTab} /></Suspense>;
@@ -51,7 +52,8 @@ export default function ServerDetail() {
 			</section> */}
 
 			{currentTab === tabs[0] && <Suspense fallback={<SectionLoading/>}><ServerDetailChart server_id={server_id} /></Suspense>}
-			{currentTab !== "Connectivity" && <Suspense fallback={<SectionLoading/>}><ServerNetworkSection server_id={Number(server_id)} standalone={currentTab === tabs[1]} /></Suspense>}
+			{(currentTab === "Detail" || currentTab === "Network") && <Suspense fallback={<SectionLoading/>}><ServerNetworkSection server_id={Number(server_id)} standalone={currentTab === tabs[1]} /></Suspense>}
+			{(currentTab === "BGP" || currentTab === "Streaming") && <Suspense fallback={<SectionLoading/>}><ServerNetworkInsight key={server_id+currentTab} serverId={Number(server_id)} kind={currentTab === "BGP" ? "bgp" : "streaming"}/></Suspense>}
 			{currentTab === "Connectivity" && <Suspense fallback={<SectionLoading/>}><ServerConnectivity key={server_id} serverId={Number(server_id)} countryCode={server?.country_code} /></Suspense>}
 		</div>
 	);

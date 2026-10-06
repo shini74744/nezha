@@ -247,6 +247,8 @@ func filterServersForViewer(servers []*model.Server, viewerUserID uint64, viewer
 			PublicNote:           utils.IfOr(withPublicNote, server.PublicNote, ""),
 			DisplayIndex:         server.DisplayIndex,
 			HideForDisplay:       server.HideForDisplay,
+			BGPDisabled:          server.BGPDisabled,
+			StreamingDisabled:    server.StreamingDisabled,
 			ConnectivityDisabled: server.ConnectivityDisabled,
 			Host:                 publicHost,
 			State:                runtime.State,

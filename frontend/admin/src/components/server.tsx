@@ -104,6 +104,8 @@ export const serverFormSchema = z.object({
     hide_for_guest: asOptionalField(z.boolean()),
     hide_for_display: asOptionalField(z.boolean()),
     connectivity_disabled: asOptionalField(z.boolean()),
+    bgp_disabled: asOptionalField(z.boolean()),
+    streaming_disabled: asOptionalField(z.boolean()),
     enable_ddns: asOptionalField(z.boolean()),
     ddns_profiles: asOptionalField(z.array(z.number())),
     ddns_profiles_raw: asOptionalField(z.string()),
@@ -974,12 +976,21 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                         )}
                                                     </div>
                                                     </div>
-                                                    <FormField control={form.control} name="connectivity_disabled" render={({ field }) => (
-                                                        <FormItem className="flex items-center justify-between gap-3 rounded-md border p-3" data-connectivity-setting>
-                                                            <div><FormLabel>连通性</FormLabel><p className="text-xs text-muted-foreground">默认开启；关闭后前台不显示连通性，且不能发起检测。</p></div>
-                                                            <FormControl><Switch aria-label="连通性" checked={!field.value} onCheckedChange={checked => field.onChange(!checked)} /></FormControl>
-                                                        </FormItem>
-                                                    )}/>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:col-span-2" data-network-feature-settings>
+                                                        {([
+                                                            ["connectivity_disabled", "连通性"],
+                                                            ["bgp_disabled", "BGP"],
+                                                            ["streaming_disabled", "流媒体"],
+                                                        ] as const).map(([name, label]) => (
+                                                            <FormField key={name} control={form.control} name={name} render={({ field }) => (
+                                                                <FormItem className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 space-y-0 rounded-md border p-3" data-connectivity-setting={name === "connectivity_disabled" ? "" : undefined}>
+                                                                    <FormLabel>{label}</FormLabel>
+                                                                    <FormControl><Switch className="shrink-0" aria-label={label} checked={!field.value} onCheckedChange={checked => field.onChange(!checked)} /></FormControl>
+                                                                    <p className="col-span-2 text-xs leading-5 text-muted-foreground">默认开启；关闭后隐藏前台标签并停止对应检测。</p>
+                                                                </FormItem>
+                                                            )} />
+                                                        ))}
+                                                    </div>
                                                     <ProviderLogoEditor note={publicNoteObj} onChange={setPublicNoteObj} serverId={data.id} name={form.watch('name')}/>
                                                     <LinkTagsEditor note={publicNoteObj} onChange={setPublicNoteObj}/>
                                                     {publicNoteErrors["plan.linkTags"]&&<p className="text-xs text-destructive">{publicNoteErrors["plan.linkTags"]}</p>}

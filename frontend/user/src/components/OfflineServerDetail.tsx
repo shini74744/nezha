@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
+const ServerNetworkInsight=lazy(()=>import("./ServerNetworkInsight"));
 import dayjs from "dayjs";
 import { useQuery } from "@tanstack/react-query";
 import { Area, AreaChart, XAxis, YAxis, CartesianGrid } from "recharts";
@@ -43,7 +44,7 @@ function valueText(value:number|undefined,unit:string) {
 }
 export function OfflineServerDetail({server,now,initialTab="Detail"}:{server:NezhaServer;now:number;initialTab?:string}) {
  const [selectedTab,setTab]=useState(initialTab),[period,setPeriod]=useState<"last"|MetricPeriod>("last");
- const tabs=server.connectivity_disabled?["Detail","Network"]:["Detail","Network","Connectivity"];
+ const tabs=["Detail","Network",...(!server.connectivity_disabled?["Connectivity"]:[]),...(!server.bgp_disabled?["BGP"]:[]),...(!server.streaming_disabled?["Streaming"]:[])];
  const tab=tabs.includes(selectedTab)?selectedTab:"Detail";
  const member=useQuery({queryKey:["login-user"],queryFn:fetchLoginUser,retry:0,staleTime:30000});
  const viewer=member.isError?0:member.data?.data?.id||0;
@@ -79,7 +80,8 @@ export function OfflineServerDetail({server,now,initialTab="Detail"}:{server:Nez
      {chartGroups.map(group=><OfflineMetricCard key={group.title} group={group} report={report!} period={activePeriod}/>)}
     </div>
    </section>:null}
-  {tab!=="Connectivity" && <ServerNetworkSection server_id={server.id} standalone={tab==="Network"}/>}
+  {(tab==="Detail"||tab==="Network") && <ServerNetworkSection server_id={server.id} standalone={tab==="Network"}/>}
+  {(tab==="BGP"||tab==="Streaming")&&<Suspense fallback={<p role="status">正在加载…</p>}><ServerNetworkInsight key={server.id+tab} serverId={server.id} kind={tab==="BGP"?"bgp":"streaming"}/></Suspense>}
   {tab==="Connectivity" && <ServerConnectivity key={server.id} serverId={server.id} countryCode={server.country_code || saved?.country_code}/>}
  </div>;
 }

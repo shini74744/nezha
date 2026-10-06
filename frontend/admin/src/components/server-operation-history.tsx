@@ -48,6 +48,8 @@ const fields: Record<string, string> = {
     display_index: "显示排序",
     hide_for_guest: "对游客隐藏",
     connectivity_disabled: "隐藏连通性",
+    bgp_disabled: "隐藏 BGP",
+    streaming_disabled: "隐藏流媒体",
     hide_for_display: "前台隐藏",
     enable_ddns: "启用 DDNS",
     ddns_profiles: "DDNS 配置 ID",
