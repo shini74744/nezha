@@ -61,7 +61,7 @@ export default function ServerConnectivity({ serverId, countryCode }: { serverId
 	const showingLatest = running && !!live.latest && manualRun !== `${serverId}:${live.started_at}`;
 	const data = live && showingLatest ? { ...live, ...live.latest, retry_at: live.retry_at } : live;
 	const showingProgress = running && !showingLatest;
-	const cooldown = Math.max(0, Math.ceil(((data?.retry_at || 0) - now) / 1000));
+	const cooldown = live?.can_bypass_cooldown ? 0 : Math.max(0, Math.ceil(((data?.retry_at || 0) - now) / 1000));
 	const completed =
 		data?.results.filter((result) =>
 			result.phase
@@ -322,15 +322,15 @@ function ConnectivityCard({
 		),
 	];
 	const delay = result.delay_ms;
-	const hasDelay = delay !== undefined && Number.isFinite(delay);
-	const stateColor = positive
+	const hasDelay = delay !== undefined && Number.isFinite(delay) && delay >= 0;
+	const stateColor = hasDelay || positive
 		? "text-emerald-700 dark:text-emerald-300"
 		: reached || status === "unstable"
 			? "text-amber-700 dark:text-amber-300"
 			: waiting
 				? "text-muted-foreground"
 				: "text-red-700 dark:text-red-300";
-	const detail = [
+	const detail = hasDelay ? t("connectivity.status.ok") : [
 		!waiting ? t(`connectivity.status.${status}`) : "",
 		codes.length ? `HTTP ${codes.join("/")}` : "",
 		result.phase === "complete" && result.samples.length < rounds
@@ -397,7 +397,7 @@ function ConnectivityCard({
 										title={
 											t("connectivity.sample", { index: index + 1 }) +
 											": " +
-											t(`connectivity.status.${sample?.status || "pending"}`)
+											t(`connectivity.status.${hasDelay && sample?.status === "http_error" ? "ok" : sample?.status || "pending"}`)
 										}
 										className={cn(
 											"size-1.5 rounded-full",
@@ -411,12 +411,12 @@ function ConnectivityCard({
 								);
 							})}
 						</div>
-						<ConnectivityMarquee className={stateColor} text={detail}>
+						{!hasDelay && <ConnectivityMarquee className={stateColor} text={detail}>
 							{!positive && !waiting ? t(`connectivity.status.${status}`) : null}
 							{codes.length > 0 && (
 								<span className="ml-1">(HTTP {codes.join("/")})</span>
 							)}
-						</ConnectivityMarquee>
+						</ConnectivityMarquee>}
 						<span className="sr-only">
 							{result.samples.length}/{rounds}
 							{positive && <span>{t("connectivity.status.ok")}</span>}

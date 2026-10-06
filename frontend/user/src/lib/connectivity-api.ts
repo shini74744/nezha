@@ -43,6 +43,7 @@ export interface ConnectivityData extends ConnectivitySnapshot {
 	server_id: number;
 	online: boolean;
 	can_run: boolean;
+	can_bypass_cooldown?: boolean;
 	latest?: ConnectivitySnapshot;
 }
 export async function fetchConnectivity(

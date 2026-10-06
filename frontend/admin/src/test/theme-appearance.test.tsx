@@ -33,7 +33,7 @@ async function selectDora(){
  const select=screen.getByRole("combobox",{name:"设置主题"});
  await waitFor(()=>expect((select as HTMLSelectElement).disabled).toBe(false));
  fireEvent.change(select,{target:{value:"doraemon-dist"}});
- await screen.findByText(/流量进度条、伙伴与道具功能可分别设置/);
+ await screen.findByRole("heading",{name:"主题外观：哆啦 A 梦"});
  await waitFor(()=>expect((screen.getByRole("combobox",{name:"设置主题"}) as HTMLSelectElement).disabled).toBe(false));
 }
 describe("independent theme appearance editor",()=>{

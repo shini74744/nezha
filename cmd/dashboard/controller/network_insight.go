@@ -187,7 +187,7 @@ func startInsight(c *gin.Context, kind string) (*insightResponse, error) {
 	if kind == "streaming" && !rpc.ConnectivityOnline(s) {
 		return nil, errors.New("节点离线，无法发起流媒体检测")
 	}
-	if err = launchInsight(s, kind, false); err != nil {
+	if err = launchInsight(s, kind, false, callerIsAdmin(c)); err != nil {
 		return nil, err
 	}
 	return readInsight(c, kind)
@@ -196,7 +196,7 @@ func getBGP(c *gin.Context) (*insightResponse, error)         { return readInsig
 func startBGP(c *gin.Context) (*insightResponse, error)       { return startInsight(c, "bgp") }
 func getStreaming(c *gin.Context) (*insightResponse, error)   { return readInsight(c, "streaming") }
 func startStreaming(c *gin.Context) (*insightResponse, error) { return startInsight(c, "streaming") }
-func launchInsight(s *model.Server, kind string, automatic bool) error {
+func launchInsight(s *model.Server, kind string, automatic bool, bypassCooldown ...bool) error {
 	if !insightEnabled(s, kind) {
 		return errors.New("feature disabled")
 	}
@@ -237,7 +237,7 @@ func launchInsight(s *model.Server, kind string, automatic bool) error {
 			return connectivity.ErrNotReady
 		}
 	}
-	if latest.RetryAt > now {
+	if latest.RetryAt > now && (automatic || len(bypassCooldown) == 0 || !bypassCooldown[0]) {
 		insightJobs.Unlock()
 		return errors.New("请稍后重试")
 	}

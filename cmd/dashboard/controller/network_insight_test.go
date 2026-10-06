@@ -253,3 +253,26 @@ func TestInsightAutomaticSlotDeduplicatesAfterManualRecordAndRestart(t *testing.
 		require.Empty(t, insightJobs.values)
 	}
 }
+
+func TestInsightOnlyAdminBypassesCooldownWithoutBypassingCapacity(t *testing.T) {
+	setupInsight(t)
+	server, _ := singleton.ServerShared.Get(1)
+	require.NoError(t, singleton.DB.Create(&model.ServerIPHistory{ServerUUID: server.UUID, CurrentIP: model.IP{IPv4Addr: "1.1.1.1"}}).Error)
+	identity, _, err := insightIdentity(server)
+	require.NoError(t, err)
+	now := time.Now().UnixMilli()
+	raw, _ := json.Marshal(networkinsight.Snapshot{State: "complete", FinishedAt: now, RetryAt: now + 300000})
+	require.NoError(t, singleton.DB.Create(&networkinsight.Record{Identity: identity, Kind: "bgp", FinishedAt: now, Payload: string(raw)}).Error)
+	oldSlots := insightSlots
+	insightSlots = make(chan struct{}, 1)
+	insightSlots <- struct{}{}
+	defer func() { insightSlots = oldSlots }()
+	owner := &model.User{Common: model.Common{ID: 1}, Role: model.RoleMember}
+	admin := &model.User{Common: model.Common{ID: 10}, Role: model.RoleAdmin}
+	_, err = startBGP(connectivityContext("1", owner))
+	require.EqualError(t, err, "请稍后重试")
+	_, err = startBGP(connectivityContext("1", admin))
+	require.EqualError(t, err, "检测繁忙，请稍后重试")
+	require.EqualError(t, launchInsight(server, "bgp", true, true), "请稍后重试")
+	require.Empty(t, insightJobs.values)
+}

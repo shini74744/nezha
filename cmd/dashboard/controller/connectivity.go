@@ -16,10 +16,11 @@ var connectivityManager = connectivity.NewManager()
 
 type connectivityResponse struct {
 	connectivity.Snapshot
-	Latest   *connectivity.Snapshot `json:"latest,omitempty"`
-	ServerID uint64                 `json:"server_id"`
-	Online   bool                   `json:"online"`
-	CanRun   bool                   `json:"can_run"`
+	CanBypassCooldown bool                   `json:"can_bypass_cooldown"`
+	Latest            *connectivity.Snapshot `json:"latest,omitempty"`
+	ServerID          uint64                 `json:"server_id"`
+	Online            bool                   `json:"online"`
+	CanRun            bool                   `json:"can_run"`
 }
 
 func connectivityKey(server *model.Server) string {
@@ -68,6 +69,7 @@ func getConnectivity(c *gin.Context) (*connectivityResponse, error) {
 		return nil, errors.New("server changed; reload")
 	}
 	response := &connectivityResponse{Snapshot: snapshot, ServerID: current.ID, Online: rpc.ConnectivityOnline(current), CanRun: canRunConnectivity(c, current)}
+	response.CanBypassCooldown = response.CanRun && callerIsAdmin(c)
 	if snapshot.State == "running" {
 		if latest, ok := connectivityManager.LatestCompleted(key, targets); ok {
 			response.Latest = &latest
@@ -110,7 +112,9 @@ func startConnectivity(c *gin.Context) (*connectivityResponse, error) {
 	if err != nil || connectivityKey(current) != key || !canRunConnectivity(c, current) {
 		return nil, errors.New("server changed; reload")
 	}
-	if target := c.Param("target"); target != "" {
+	if callerIsAdmin(c) {
+		_, err = connectivityManager.StartImmediate(key, c.Param("target"), probe, targets)
+	} else if target := c.Param("target"); target != "" {
 		_, err = connectivityManager.StartTarget(key, target, probe, targets)
 	} else {
 		_, err = connectivityManager.Start(key, probe, targets)

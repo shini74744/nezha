@@ -1,5 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { fetchSetting } from "@/lib/nezha-api";
 const ServerNetworkSection = lazy(() => import("@/components/ServerNetworkSection"));
 const ServerDetailChart = lazy(() => import("@/components/ServerDetailChart"));
 import ServerDetailOverview from "@/components/ServerDetailOverview";
@@ -18,11 +20,14 @@ export default function ServerDetail() {
 	}, []);
 
 	const [selectedTab, setCurrentTab] = useState("Detail");
+	const { data: setting } = useQuery({queryKey: ["setting"], queryFn: fetchSetting, refetchOnWindowFocus: true, refetchInterval: 30000});
+	const combinedNetwork = setting?.data?.config?.show_network_in_detail === true;
+	useEffect(() => { if (combinedNetwork && selectedTab === "Network") setCurrentTab("Detail"); }, [combinedNetwork, selectedTab]);
 
 	const { id: server_id } = useParams();
 	const { lastData } = useWebSocketContext();
 	const server = lastData?.servers.find(s => s.id === Number(server_id));
-	const tabs = ["Detail", "Network", ...(!server?.connectivity_disabled ? ["Connectivity"] : []), ...(!server?.bgp_disabled ? ["BGP"] : []), ...(!server?.streaming_disabled ? ["Streaming"] : [])];
+	const tabs = ["Detail", ...(!combinedNetwork ? ["Network"] : []), ...(!server?.connectivity_disabled ? ["Connectivity"] : []), ...(!server?.bgp_disabled ? ["BGP"] : []), ...(!server?.streaming_disabled ? ["Streaming"] : [])];
 	const currentTab = tabs.includes(selectedTab) ? selectedTab : "Detail";
 	if (server && lastData && !formatNezhaInfo(lastData.now, server).online) {
 		return <Suspense fallback={<div className="mx-auto w-full max-w-5xl server-info"><ServerDetailOverview server_id={server_id!}/><SectionLoading/></div>}><OfflineServerDetail key={server.id} server={server} now={lastData.now} initialTab={currentTab} /></Suspense>;
@@ -52,7 +57,7 @@ export default function ServerDetail() {
 			</section> */}
 
 			{currentTab === tabs[0] && <Suspense fallback={<SectionLoading/>}><ServerDetailChart server_id={server_id} /></Suspense>}
-			{(currentTab === "Detail" || currentTab === "Network") && <Suspense fallback={<SectionLoading/>}><ServerNetworkSection server_id={Number(server_id)} standalone={currentTab === tabs[1]} /></Suspense>}
+			{(currentTab === "Detail" || currentTab === "Network") && <Suspense fallback={<SectionLoading/>}><ServerNetworkSection server_id={Number(server_id)} standalone={currentTab === "Network"} /></Suspense>}
 			{(currentTab === "BGP" || currentTab === "Streaming") && <Suspense fallback={<SectionLoading/>}><ServerNetworkInsight key={server_id+currentTab} serverId={Number(server_id)} kind={currentTab === "BGP" ? "bgp" : "streaming"}/></Suspense>}
 			{currentTab === "Connectivity" && <Suspense fallback={<SectionLoading/>}><ServerConnectivity key={server_id} serverId={Number(server_id)} countryCode={server?.country_code} /></Suspense>}
 		</div>

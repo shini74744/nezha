@@ -133,7 +133,7 @@ describe("node connectivity", () => {
 			screen.getByRole("button", { name: "connectivity.retest" }),
 		).toBeDisabled();
 	});
-	it("HTTP 403 is distinguished from network failure and zero delay is valid", async () => {
+	it.each([403, 404, 500])("HTTP %s with valid zero delay has no error copy or warning color", async (httpStatus) => {
 		api.fetchConnectivity.mockResolvedValue(
 			data({
 				state: "complete",
@@ -144,18 +144,18 @@ describe("node connectivity", () => {
 						group: "global",
 						host: "www.google.com",
 						status: "http_error",
-						samples: [{ status: "http_error", http_status: 403, delay_ms: 0 }],
+						samples: [{ status: "http_error", http_status: httpStatus, delay_ms: 0 }],
 						delay_ms: 0,
 					},
 				],
 			}),
 		);
-		mount();
-		expect(
-			await screen.findByText("connectivity.status.http_error"),
-		).toBeVisible();
-		expect(screen.getByText("(HTTP 403)")).toBeVisible();
-		expect(screen.getByText("0.0")).toBeVisible();
+		const view = mount();
+		expect(await screen.findByText("0.0")).toBeVisible();
+		expect(screen.queryByText("connectivity.status.http_error")).not.toBeInTheDocument();
+		expect(screen.queryByText(/HTTP/)).not.toBeInTheDocument();
+		expect(view.container.querySelector("[data-connectivity-delay]")).toHaveClass("text-emerald-700");
+		expect(view.container.querySelector('[title*="http_error"]')).toBeNull();
 	});
 	it("cooldown disables retrigger and help is keyboard-operable", async () => {
 		api.fetchConnectivity.mockResolvedValue(
@@ -410,4 +410,16 @@ describe("latest completed default", () => {
   expect(await screen.findByRole("progressbar")).toBeVisible();
   expect(screen.queryByText("42")).not.toBeInTheDocument();
  });
+});
+
+it("administrators can immediately retest during the owner cooldown",async()=>{
+ api.fetchConnectivity.mockResolvedValue(data({state:"complete",can_bypass_cooldown:true,retry_at:Date.now()+60000}));
+ api.startConnectivity.mockResolvedValue(data({state:"running",can_bypass_cooldown:true}));
+ mount();
+ const button=await screen.findByRole("button",{name:"connectivity.retest"});
+ expect(button).toBeEnabled();
+ fireEvent.click(button);
+ expect(await screen.findByRole("progressbar")).toBeVisible();
+ expect(api.startConnectivity).toHaveBeenCalledTimes(1);
+ expect(screen.getByRole("button",{name:"connectivity.testing"})).toBeDisabled();
 });
