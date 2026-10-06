@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+	coreGraph,
 	edgeKey,
 	graphFor,
 	layoutGraph,
@@ -47,6 +48,7 @@ function Observation({
 	topology: Topology;
 	graph: ReturnType<typeof graphFor>;
 }) {
+	const [full, setFull] = useState(false);
 	const [enhanced, setEnhanced] = useState(false),
 		[vertical, setVertical] = useState(false);
 	const [showRS, setShowRS] = useState(false),
@@ -73,10 +75,15 @@ function Observation({
 	}, []);
 	const pointers = useRef(new Map<number, { x: number; y: number }>()),
 		dragged = useRef(false);
+	const core = useMemo(() => coreGraph(graph), [graph]);
 	const layout = useMemo(
-		() => layoutGraph(graph, showRS, vertical),
-		[graph, showRS, vertical],
+		() => layoutGraph(full ? graph : core, showRS, vertical),
+		[graph, core, full, showRS, vertical],
 	);
+	const availableNodes = graph.nodes.filter(
+		(n) => showRS || !n.route_server,
+	).length;
+	const foldedNodes = availableNodes - layout.nodes.length;
 	const byASN = useMemo(
 		() => new Map(layout.nodes.map((n) => [n.asn, n])),
 		[layout],
@@ -86,7 +93,7 @@ function Observation({
 		[graph, selected, selectedEdge],
 	);
 	const selectedNode = selected === null ? undefined : byASN.get(selected);
-	const edgeSelection = graph.edges.find((e) => edgeKey(e) === selectedEdge);
+	const edgeSelection = layout.edges.find((e) => edgeKey(e) === selectedEdge);
 	const fitView = useCallback(
 		(initial = false) => {
 			const el = viewport.current;
@@ -95,20 +102,21 @@ function Observation({
 				maxX = Math.max(...layout.nodes.map((n) => n.x + NODE_W / 2));
 			const minY = Math.min(...layout.nodes.map((n) => n.y - NODE_H / 2)),
 				maxY = Math.max(...layout.nodes.map((n) => n.y + NODE_H / 2));
+			const focusOrigin = initial && full;
 			const scale = clamp(
 				Math.min(
-					initial
+					focusOrigin
 						? (el.clientWidth - 40) / layout.width
 						: (el.clientWidth - 40) / (maxX - minX + 40),
 					(el.clientHeight - 70) / (maxY - minY),
 				),
-				initial ? 0.45 : 0.02,
+				focusOrigin ? 0.45 : 0.02,
 				1,
 			);
 			setView({
 				scale,
 				x:
-					initial && !vertical
+					focusOrigin && !vertical
 						? Math.max(
 								72,
 								(el.clientWidth - layout.width * scale) / 2 + 160 * scale,
@@ -117,7 +125,7 @@ function Observation({
 				y: (el.clientHeight - (minY + maxY) * scale) / 2,
 			});
 		},
-		[layout, vertical],
+		[layout, vertical, full],
 	);
 	// Geometry changes (not array identity during polling) warrant a new fit.
 	const geometry = layout.nodes.map((n) => `${n.asn}:${n.x}:${n.y}`).join("|");
@@ -146,6 +154,13 @@ function Observation({
 	useEffect(() => {
 		if (selected !== null && !byASN.has(selected)) setSelected(null);
 	}, [selected, byASN]);
+	useEffect(() => {
+		if (
+			selectedEdge !== null &&
+			!layout.edges.some((e) => edgeKey(e) === selectedEdge)
+		)
+			setSelectedEdge(null);
+	}, [selectedEdge, layout.edges]);
 	const zoom = useCallback(
 		(factor: number, x = size.width / 2, y = size.height / 2) =>
 			setView((v) => {
@@ -304,6 +319,28 @@ function Observation({
 	};
 	const controls = (
 		<div className="bgp-toolbar" role="toolbar" aria-label="BGP 图表工具">
+			<div className="bgp-segments">
+				<button
+					type="button"
+					aria-pressed={!full}
+					onClick={() => {
+						setFull(false);
+						setExpanded(false);
+					}}
+				>
+					主干图
+				</button>
+				<button
+					type="button"
+					aria-pressed={full}
+					onClick={() => {
+						setFull(true);
+						setExpanded(false);
+					}}
+				>
+					完整图
+				</button>
+			</div>
 			<div className="bgp-segments">
 				<button
 					type="button"
@@ -665,6 +702,15 @@ function Observation({
 				</span>
 			</header>
 			{controls}
+			<div className="bgp-scope" aria-live="polite">
+				<span>
+					{full ? "完整图" : "主干图"} · 显示 {layout.nodes.length} /{" "}
+					{availableNodes} 个 AS
+				</span>
+				{foldedNodes > 0 && (
+					<span>已折叠 {foldedNodes} 个 AS，切换完整图查看</span>
+				)}
+			</div>
 			{chart}
 			{!layout.nodes.length && (
 				<p role="status" className="bgp-notice">
@@ -678,8 +724,8 @@ function Observation({
 			)}
 			{graph.truncated && (
 				<p className="bgp-notice">
-					当前显示 {graph.included_path_count} / {graph.observed_path_count}{" "}
-					条观测样本；超出安全上限的完整路径未显示。
+					快照收录 {graph.included_path_count} / {graph.observed_path_count}{" "}
+					条观测样本；超出安全上限的完整路径未收录。
 				</p>
 			)}
 			<section className="bgp-summary" aria-label="观测分支摘要">
@@ -687,7 +733,8 @@ function Observation({
 					<div>
 						<h4>观测分支摘要</h4>
 						<p>
-							按观测统计，一行是一段直接观测到的 AS 相邻关系，不是完整路径。
+							仅列当前视图的分支，统计仍基于原始快照；每行是直接观测到的 AS
+							相邻关系。
 						</p>
 					</div>
 					<div className="bgp-sort" role="toolbar" aria-label="分支排序">
@@ -783,6 +830,13 @@ function Observation({
 					<div className="bgp-legend-grid">
 						<div>
 							<h4>观测事实</h4>
+							<p>
+								主干图优先展示样本较多的分支，并保留真实连接路径；通常最多 32 个
+								AS、每层 8 个，起源始终保留。小图不折叠。
+							</p>
+							<p>
+								折叠仅影响展示，不删除数据、不重算样本比例。完整图展示本快照已收录的节点，路由服务器仍受独立开关控制。
+							</p>
 							<p>蓝色节点：目标 AS / 前缀起源</p>
 							<p>绿色节点：观测到的直接外层 hop</p>
 							<p>灰色节点：观测到的更外层 transit</p>

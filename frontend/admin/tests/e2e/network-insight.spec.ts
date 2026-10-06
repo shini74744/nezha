@@ -1,6 +1,7 @@
 import { type Page, expect, test } from "@playwright/test"
 
 import { createServer } from "../../../user/src/test/fixtures"
+import { graphFor } from "../../../user/src/lib/bgp-graph"
 
 test.use({ ignoreHTTPSErrors: true })
 const origin = (theme: string) => "https://127.0.0.1:" + (theme === "doraemon" ? "18478" : "18477")
@@ -384,6 +385,9 @@ for (const width of [390,1440]) test("large BGP topology remains bounded and fit
  await page.route("**/api/v1/server/7/bgp",r=>r.fulfill({json:{success:true,data:{state:"complete",server_id:7,online:true,can_run:false,topologies:[{...topology,total:40,paths}]}}}));
  await page.locator(".server-info-tab").getByText("BGP",{exact:true}).click();
  const graph=page.locator("[data-bgp-graph]");
+ await expect(graph.locator("[data-bgp-asn]")).toHaveCount(6);
+ await expect(page.locator(".bgp-scope")).toContainText("已折叠 40 个 AS");
+ await page.getByRole("button",{name:"完整图",exact:true}).click();
  await expect(graph.locator("[data-bgp-asn]")).toHaveCount(46);
  expect((await graph.boundingBox())!.height).toBeLessThanOrEqual(720);
  await page.getByRole("button",{name:"适应画布",exact:true}).click();
@@ -550,3 +554,78 @@ for (const theme of ["default", "doraemon"])
             expect(errors).toEqual([])
         } finally { await context.close() }
     })
+
+for (const theme of ["default", "doraemon"])
+    for (const light of [true, false])
+        for (const width of [390, 1440])
+            test("BGP core folds dense branches without changing saved evidence " + theme + " " + light + " " + width, async ({ page }, info) => {
+                await page.setViewportSize({ width, height: 1000 })
+                await page.clock.install()
+                const state = await setup(page, theme, light, false), errors: string[] = []
+                page.on("pageerror", e => errors.push(e.message))
+                const paths = Array.from({ length: 100 }, (_, i) => ({
+                    origin: as(10, "Origin"), direct: as(20 + i % 4, "Direct " + i % 4),
+                    second: as(100 + i, "Transit " + i), count: i < 16 ? 40 - i : 1,
+                }))
+                const graph = graphFor({ ...topology, total: 700, paths })
+                graph.legacy = false
+                graph.truncated = true
+                graph.collector_count = 23
+                for (const [i, path] of graph.paths.entries()) {
+                    graph.nodes.push({ ...as(1000 + i, "Outer " + i), layer: 3, role: "transit", sample_count: path.count, collector_count: 1 })
+                    graph.edges.push({ source: 100 + i, target: 1000 + i, kind: "observed", provenance: "RIPE RIS", sample_count: path.count, collector_count: 1 })
+                    path.asns.push(1000 + i)
+                }
+                let reads = 0
+                await page.route("**/api/v1/server/7/bgp", r => {
+                    reads++
+                    return r.fulfill({ json: { success: true, data: { state: "complete", server_id: 7, online: true, can_run: false, topologies: [{ ...topology, graph }] } } })
+                })
+                await page.locator(".server-info-tab").getByText("BGP", { exact: true }).click()
+                const viewport = page.locator("[data-bgp-graph]"), nodes = page.locator("[data-bgp-asn]")
+                await expect(page.getByRole("button", { name: "主干图", exact: true })).toHaveAttribute("aria-pressed", "true")
+                const count = await nodes.count()
+                expect(count).toBeGreaterThan(10)
+                expect(count).toBeLessThanOrEqual(32)
+                await expect(page.locator(".bgp-scope")).toContainText(count + " / 205 个 AS")
+                await expect(page.getByText(/快照收录.*700/)).toContainText("604 / 700")
+                // Initial core view fits all nodes, no manual Fit or vertical scrolling inside the canvas.
+                expect(await viewport.evaluate(el => {
+                    const box = el.getBoundingClientRect()
+                    return [...el.querySelectorAll("[data-bgp-asn]")].every(n => {
+                        const r = n.getBoundingClientRect()
+                        return r.left >= box.left && r.right <= box.right && r.top >= box.top && r.bottom <= box.bottom
+                    })
+                })).toBe(true)
+                await page.locator(".bgp-observation").screenshot({ path: info.outputPath("core.png") })
+                await page.getByRole("button", { name: "完整图", exact: true }).click()
+                await expect(nodes).toHaveCount(205)
+                await expect(page.locator(".bgp-scope")).not.toContainText("已折叠")
+                await page.locator('[data-bgp-asn="1099"]').focus()
+                await page.keyboard.press("Enter")
+                await expect(page.getByRole("complementary", { name: "节点信息" })).toBeVisible()
+                await page.getByRole("button", { name: "主干图", exact: true }).click()
+                await expect(nodes).toHaveCount(count)
+                await expect(page.getByRole("complementary", { name: "节点信息" })).toHaveCount(0)
+                await expect(page.locator(".bgp-dimmed")).toHaveCount(0)
+                await page.getByRole("button", { name: "全屏显示", exact: true }).click()
+                await expect(page.getByRole("dialog")).toBeVisible()
+                await expect(nodes).toHaveCount(count)
+                await page.getByRole("button", { name: "完整图", exact: true }).click()
+                await expect(nodes).toHaveCount(205)
+                await page.keyboard.press("Escape")
+                await expect(nodes).toHaveCount(205)
+                // Reading the same snapshot does not reset the user's display mode.
+                const beforeRefresh = reads
+                await page.clock.fastForward(31000)
+                await expect.poll(() => reads).toBeGreaterThan(beforeRefresh)
+                await expect(page.getByRole("button", { name: "完整图", exact: true })).toHaveAttribute("aria-pressed", "true")
+                await page.getByRole("button", { name: "主干图", exact: true }).click()
+                await page.getByRole("button", { name: "纵向布局", exact: true }).click()
+                await expect(page.locator(".bgp-layer-vertical")).toHaveCount(4)
+                await page.locator(".bgp-observation").screenshot({ path: info.outputPath("core-vertical.png") })
+                expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
+                expect(state.posts).toEqual([])
+                expect(state.external).toEqual([])
+                expect(errors).toEqual([])
+            })
