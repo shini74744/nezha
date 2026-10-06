@@ -17,3 +17,10 @@ export const connectivityIcons: Record<string, string> = Object.fromEntries(
         url,
     ]),
 )
+
+export function isStoredConnectivityIcon(value: string): boolean {
+    return /^\/api\/v1\/logo\/assets\/[a-f0-9]{64}\.(png|jpg|webp|gif|ico|svg)$/.test(value)
+}
+export function resolveConnectivityIcon(value: string): string | undefined {
+    return connectivityIcons[value] || (isStoredConnectivityIcon(value) ? value : undefined)
+}

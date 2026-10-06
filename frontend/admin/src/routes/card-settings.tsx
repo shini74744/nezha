@@ -1,4 +1,5 @@
 import { FetcherMethod, fetcher } from "@/api/api"
+import ConnectivityIconPicker from "@/components/ConnectivityIconPicker"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
@@ -11,13 +12,21 @@ import {
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { useAuth } from "@/hooks/useAuth"
-import { connectivityIcons } from "@/lib/connectivity-icons"
+import { resolveConnectivityIcon } from "@/lib/connectivity-icons"
 import { ArrowDown, ArrowUp, Globe2, Pencil, Plus, RefreshCw, Save, Trash2 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { Navigate } from "react-router-dom"
 import { toast } from "sonner"
 
-type Item = { id: string; name: string; group: string; url: string; icon: string; enabled: boolean }
+type Item = {
+    id: string
+    name: string
+    group: string
+    url: string
+    icon: string
+    icon_source?: string
+    enabled: boolean
+}
 type State = { revision: string; items: Item[]; defaults: Item[]; max_targets: number }
 const endpoint = "/api/v1/setting/connectivity"
 const groups = [
@@ -55,12 +64,13 @@ function validate(item: Item, defaults: Item[] = []) {
 }
 function Brand({ id }: { id: string }) {
     const [failed, setFailed] = useState(false)
+    const source = resolveConnectivityIcon(id)
     useEffect(() => setFailed(false), [id])
     return (
         <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-white p-1">
-            {connectivityIcons[id] && !failed ? (
+            {source && !failed ? (
                 <img
-                    src={connectivityIcons[id]}
+                    src={source}
                     alt=""
                     className="size-6 object-contain"
                     onError={() => setFailed(true)}
@@ -81,6 +91,7 @@ export default function CardSettings() {
     const [search, setSearch] = useState(""),
         [group, setGroup] = useState("all"),
         [editor, setEditor] = useState<Item | null>(null)
+    const [iconBlocked, setIconBlocked] = useState(false)
     const request = useRef({ sequence: 0 })
     const dirty = !!saved && JSON.stringify(items) !== JSON.stringify(saved.items)
     const adopt = (value: State) => {
@@ -393,7 +404,7 @@ export default function CardSettings() {
                             className="space-y-4"
                             onSubmit={(e) => {
                                 e.preventDefault()
-                                if (validate(editor, saved?.defaults)) return
+                                if (iconBlocked || validate(editor, saved?.defaults)) return
                                 const next = {
                                     ...editor,
                                     name: editor.name.trim(),
@@ -444,24 +455,17 @@ export default function CardSettings() {
                                         ))}
                                     </select>
                                 </label>
-                                <label className="block space-y-1 text-sm">
-                                    <span>图标</span>
-                                    <select
-                                        aria-label="图标"
-                                        className={selectStyle}
-                                        value={editor.icon}
-                                        onChange={(e) =>
-                                            setEditor({ ...editor, icon: e.target.value })
-                                        }
-                                    >
-                                        <option value="">默认地球图标</option>
-                                        {saved?.defaults.map((row) => (
-                                            <option key={row.id} value={row.id}>
-                                                {row.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
+                                <ConnectivityIconPicker
+                                    key={editor.id}
+                                    value={editor}
+                                    options={saved?.defaults || []}
+                                    onBlockedChange={setIconBlocked}
+                                    onChange={(value) =>
+                                        setEditor((current) =>
+                                            current ? { ...current, ...value } : null,
+                                        )
+                                    }
+                                />
                             </div>
                             <div className="flex items-center justify-between">
                                 <Brand id={editor.icon} />
@@ -490,7 +494,7 @@ export default function CardSettings() {
                                 </Button>
                                 <Button
                                     type="submit"
-                                    disabled={!!validate(editor, saved?.defaults)}
+                                    disabled={iconBlocked || !!validate(editor, saved?.defaults)}
                                 >
                                     保存到草稿
                                 </Button>
