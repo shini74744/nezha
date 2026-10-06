@@ -128,7 +128,7 @@ describe("ServerDetail", () => {
 		expect(screen.queryByTestId("detail-chart")).not.toBeInTheDocument();
 	});
 
-	it("shows one network chart below details when enabled and keeps it across tabs", async () => {
+	it("merges network below details and hides the separate network tab", async () => {
 		apiMocks.fetchSetting.mockResolvedValue({success:true,data:{config:{show_network_in_detail:true}}});
 		const user = userEvent.setup();
 		renderDetail(<MemoryRouter initialEntries={["/server/7"]}><Routes>
@@ -136,9 +136,7 @@ describe("ServerDetail", () => {
 		</Routes></MemoryRouter>);
 		const network = await screen.findByTestId("network-chart");
 		expect(screen.getByTestId("detail-chart").compareDocumentPosition(network) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-		await user.click(screen.getByRole("button", {name:"Network"}));
-		expect(screen.getByTestId("network-chart")).toBe(network);
-		expect(screen.queryByTestId("detail-chart")).not.toBeInTheDocument();
+		expect(screen.queryByRole("button", {name:"Network"})).not.toBeInTheDocument();
 		await user.click(screen.getByRole("button", {name:"Detail"}));
 		expect(screen.getAllByTestId("network-chart")).toHaveLength(1);
 		expect(screen.getByTestId("network-chart")).toBe(network);
@@ -155,7 +153,7 @@ describe("ServerDetail", () => {
 	});
 
 	it("redirects when route params are missing", async () => {
-		render(
+		renderDetail(
 			<MemoryRouter initialEntries={["/server"]}>
 				<Routes>
 					<Route path="/server" element={<ServerDetail />} />

@@ -90,3 +90,31 @@ func TestSchedulerRestartAndDelayedFinishUseScheduledSlot(t *testing.T) {
 	require.Equal(t, 2, calls)
 	require.Equal(t, now.UnixMilli(), history)
 }
+
+func TestImmediateAdminRetryBypassesOnlyCooldown(t *testing.T) {
+	m := NewManager()
+	m.maxActive = 1
+	targets := Targets()[:1]
+	old := empty(3, targets)
+	old.State = "complete"
+	old.FinishedAt = time.Now().UnixMilli()
+	old.RetryAt = time.Now().Add(time.Hour).UnixMilli()
+	m.Restore("node", old)
+	unused := func(context.Context, Target) Sample { panic("cooldown must not probe") }
+	got, err := m.Start("node", unused, targets)
+	require.NoError(t, err)
+	require.Equal(t, "complete", got.State)
+	gate := make(chan struct{})
+	done := make(chan struct{})
+	m.SetCompletionHandler(func(string, Snapshot) { close(done) })
+	got, err = m.StartImmediate("node", targets[0].ID, func(context.Context, Target) Sample { <-gate; return Sample{Status: "ok"} }, targets)
+	require.NoError(t, err)
+	defer func() { close(gate); <-done }()
+	require.Equal(t, "running", got.State)
+	require.False(t, got.Full)
+	duplicate, err := m.StartImmediate("node", "", unused, targets)
+	require.NoError(t, err)
+	require.Equal(t, got.StartedAt, duplicate.StartedAt)
+	_, err = m.StartImmediate("other", "", unused, targets)
+	require.ErrorIs(t, err, ErrBusy)
+}

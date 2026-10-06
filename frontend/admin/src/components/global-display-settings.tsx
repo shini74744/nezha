@@ -1,6 +1,7 @@
 import { FetcherMethod, fetcher } from "@/api/api"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
+import SettingHelp from "@/components/SettingHelp"
 import { useEffect, useId, useRef, useState } from "react"
 import { toast } from "sonner"
 
@@ -10,12 +11,12 @@ const options = [
         key: "statistics_split",
         title: "统计显示拆分",
         description:
-            "开启后，可通过二级菜单分别查看流量统计或在线率；关闭后，点击统计按钮一起显示，再次点击收起。",
+            "开启后分别查看流量统计和在线率；关闭后合并显示。",
     },
     {
         key: "detail_network_split",
         title: "详细网络拆分",
-        description: "开启后，详细与网络分开查看；关闭后，网络监控同时显示在详细图表下方。",
+        description: "开启后，详情与网络分标签显示；关闭后，网络监控合并到详情页，并隐藏网络标签。",
     },
 ] as const
 const endpoint = "/api/v1/setting/display"
@@ -74,19 +75,13 @@ export function GlobalDisplaySettings() {
             {options.map((option) => (
                 <div key={option.key} className="flex items-center justify-between gap-4">
                     <div className="min-w-0 space-y-1">
-                        <label htmlFor={id + option.key} className="text-sm font-medium">
-                            {option.title}
-                        </label>
-                        <p
-                            id={id + option.key + "-description"}
-                            className="text-sm text-muted-foreground"
-                        >
-                            {option.description}
-                        </p>
+                        <div className="flex items-center gap-1">
+                            <label htmlFor={id + option.key} className="text-sm font-medium">{option.title}</label>
+                            <SettingHelp label={option.title}>{option.description}</SettingHelp>
+                        </div>
                     </div>
                     <Switch
                         id={id + option.key}
-                        aria-describedby={id + option.key + "-description"}
                         checked={saved?.[option.key] ?? false}
                         disabled={!saved || busy}
                         onCheckedChange={(value) => save(option.key, value)}
@@ -94,7 +89,7 @@ export function GlobalDisplaySettings() {
                 </div>
             ))}
             <p className="text-xs text-muted-foreground">
-                独立于下方主题设置及“启用内置美化”开关，更改后自动保存。
+                适用于全部主题，修改后自动保存。
             </p>
             {busy && (
                 <p role="status" className="text-sm text-muted-foreground">

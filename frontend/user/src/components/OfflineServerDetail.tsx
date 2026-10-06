@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
 const ServerNetworkInsight=lazy(()=>import("./ServerNetworkInsight"));
 import dayjs from "dayjs";
 import { useQuery } from "@tanstack/react-query";
@@ -12,7 +12,7 @@ import { PeriodSelector } from "@/components/ServerDetailChart";
 import TabSwitch from "@/components/TabSwitch";
 import ServerConnectivity from "@/components/ServerConnectivity";
 import ServerNetworkSection from "@/components/ServerNetworkSection";
-import { fetchLoginUser, fetchServerMetrics } from "@/lib/nezha-api";
+import { fetchLoginUser, fetchServerMetrics, fetchSetting } from "@/lib/nezha-api";
 import { formatBytes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { snapshotInterval } from "@/lib/snapshot-interval";
@@ -44,7 +44,10 @@ function valueText(value:number|undefined,unit:string) {
 }
 export function OfflineServerDetail({server,now,initialTab="Detail"}:{server:NezhaServer;now:number;initialTab?:string}) {
  const [selectedTab,setTab]=useState(initialTab),[period,setPeriod]=useState<"last"|MetricPeriod>("last");
- const tabs=["Detail","Network",...(!server.connectivity_disabled?["Connectivity"]:[]),...(!server.bgp_disabled?["BGP"]:[]),...(!server.streaming_disabled?["Streaming"]:[])];
+ const {data:setting}=useQuery({queryKey:["setting"],queryFn:fetchSetting,refetchOnWindowFocus:true,refetchInterval:30000});
+ const combinedNetwork=setting?.data?.config?.show_network_in_detail===true;
+ useEffect(()=>{if(combinedNetwork&&selectedTab==="Network")setTab("Detail")},[combinedNetwork,selectedTab]);
+ const tabs=["Detail",...(!combinedNetwork?["Network"]:[]),...(!server.connectivity_disabled?["Connectivity"]:[]),...(!server.bgp_disabled?["BGP"]:[]),...(!server.streaming_disabled?["Streaming"]:[])];
  const tab=tabs.includes(selectedTab)?selectedTab:"Detail";
  const member=useQuery({queryKey:["login-user"],queryFn:fetchLoginUser,retry:0,staleTime:30000});
  const viewer=member.isError?0:member.data?.data?.id||0;

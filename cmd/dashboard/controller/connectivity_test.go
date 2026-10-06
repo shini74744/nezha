@@ -34,6 +34,7 @@ func TestConnectivityViewerPermissionsAndNoGETSideEffects(t *testing.T) {
 		got, err := getConnectivity(connectivityContext("1", tt.user))
 		require.NoError(t, err)
 		require.Equal(t, tt.canRun, got.CanRun)
+		require.Equal(t, tt.user == admin, got.CanBypassCooldown)
 		require.Equal(t, "idle", got.State)
 		require.False(t, got.Online)
 	}

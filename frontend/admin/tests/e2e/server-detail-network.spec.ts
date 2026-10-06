@@ -4,7 +4,7 @@ import { createServer } from "../../../user/src/test/fixtures"
 
 test.use({ ignoreHTTPSErrors: true })
 async function setup(page: Page, theme: string, enabled = true, offline = false) {
-    const origin = theme === "doraemon" ? "https://127.0.0.1:5190" : "https://127.0.0.1:5189"
+    const origin = theme === "doraemon" ? "https://127.0.0.1:18478" : "https://127.0.0.1:18477"
     const state = { enabled, mode: "data", periods: [] as string[] }
     const now = Date.now(),
         last = now - 3600000
@@ -103,6 +103,7 @@ for (const theme of ["default", "doraemon"])
             await expect(page.locator(".server-charts [data-chart]")).toHaveCount(6)
             await expect(network.getByText("18 个监控服务")).toBeVisible()
             await expect(network.locator("[data-chart]")).toHaveCount(1)
+            await expect(page.locator(".server-info-tab").getByText("网络", {exact:true})).toHaveCount(0)
             await expect(network.locator(".recharts-line-curve")).toHaveCount(18)
             const details = await page.locator(".server-charts").boundingBox(),
                 box = await network.boundingBox()
@@ -113,24 +114,24 @@ for (const theme of ["default", "doraemon"])
             await network.scrollIntoViewIfNeeded()
             await page.screenshot({ path: info.outputPath("combined.png"), fullPage: true })
             if (width === 390) {
-                const line = network.getByRole("button", { name: /^重庆电信 / })
-                await line.click()
-                await expect(line).toHaveAttribute("data-active", "true")
-                const peak = network.getByRole("switch", { name: "削峰" })
-                await peak.click()
-                const peakState = await peak.getAttribute("data-state")
-                await network.getByText("7 天", { exact: true }).click()
-                await expect.poll(() => state.periods.includes("7d")).toBe(true)
+                state.enabled = false
+                await page.evaluate(() => {
+                    Object.defineProperty(document, "visibilityState", {value:"hidden", configurable:true}); window.dispatchEvent(new Event("visibilitychange"));
+                    Object.defineProperty(document, "visibilityState", {value:"visible", configurable:true}); window.dispatchEvent(new Event("visibilitychange"));
+                    delete (document as any).visibilityState;
+                })
                 await page.locator(".server-info-tab").getByText("网络", { exact: true }).click()
                 await expect(page.locator(".server-charts")).toHaveCount(0)
-                await expect(network.getByRole("switch", { name: "削峰" })).toHaveAttribute(
-                    "data-state",
-                    peakState,
-                )
-                await expect(line).toHaveAttribute("data-active", "true")
-                await page.locator(".server-info-tab").getByText("详情", { exact: true }).click()
+                await expect(network.locator("[data-chart]")).toHaveCount(1)
+                state.enabled = true
+                await page.evaluate(() => {
+                    Object.defineProperty(document, "visibilityState", {value:"hidden", configurable:true}); window.dispatchEvent(new Event("visibilitychange"));
+                    Object.defineProperty(document, "visibilityState", {value:"visible", configurable:true}); window.dispatchEvent(new Event("visibilitychange"));
+                    delete (document as any).visibilityState;
+                })
+                await expect(page.locator(".server-info-tab").getByText("网络", {exact:true})).toHaveCount(0)
                 await expect(page.locator(".server-charts")).toHaveCount(1)
-                await expect(page.locator("[data-server-network]")).toHaveCount(1)
+                await expect(network.locator("[data-chart]")).toHaveCount(1)
             }
             expect(errors).toEqual([])
         })
@@ -174,6 +175,7 @@ for (const theme of ["default", "doraemon"])
         const state = await setup(page, theme, true, true)
         await expect(page.locator("[data-offline-detail] .server-charts")).toBeVisible()
         await expect(page.locator("[data-server-network]").getByText("18 个监控服务")).toBeVisible()
+        await expect(page.locator(".server-info-tab").getByText("网络", {exact:true})).toHaveCount(0)
         state.enabled = false
         await page.reload()
         await expect(page.locator("[data-offline-detail] .server-charts")).toBeVisible()
@@ -184,7 +186,7 @@ for (const width of [320, 390, 1440])
     test(
         "appearance global switch preserves state across themes " + width,
         async ({ page }, info) => {
-            const origin = "https://127.0.0.1:5195"
+            const origin = "http://127.0.0.1:18479"
             await page.setViewportSize({ width, height: 900 })
             await page.addInitScript(() => {
                 localStorage.setItem("i18nextLng", "zh-CN")
@@ -240,6 +242,12 @@ for (const width of [320, 390, 1440])
             expect(
                 await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
             ).toBe(true)
+            await expect(page.getByText(/功能代码随面板内置|正在设置：/)).toHaveCount(0)
+            const help = page.getByRole("button", {name:"详细网络拆分说明",exact:true})
+            await help.click()
+            await expect(page.locator("[data-setting-help]")).toContainText("隐藏网络标签")
+            await page.keyboard.press("Escape")
+            await expect(help).toBeFocused()
             await toggle.scrollIntoViewIfNeeded()
             await page.screenshot({ path: info.outputPath("appearance-global-switch.png") })
             const theme = page.getByRole("combobox", { name: "设置主题" })

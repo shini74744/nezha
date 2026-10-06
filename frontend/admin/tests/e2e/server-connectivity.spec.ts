@@ -7,12 +7,12 @@ const catalog = JSON.parse(readFileSync(new URL("../../../../service/connectivit
 async function setup(page:Page,theme:string,light=false,offline=false,owner=true,language="zh-CN",wallpaper=false,countryCode="us",disabled=false,clickTab=true) {
  const origin="https://127.0.0.1:"+(theme==="doraemon"?"18478":"18477"),now=Date.now();
  const server=createServer({id:7,name:"连通性测试节点",country_code:countryCode,connectivity_disabled:disabled,last_active:offline?"0001-01-01T00:00:00Z":new Date(now).toISOString()});
- const state={posts:0,postPaths:[] as string[],gets:0,external:[] as string[],override:null as any[]|null,latest:undefined as any,mode:"idle",readError:false,postError:false};
+ const state={posts:0,postPaths:[] as string[],gets:0,external:[] as string[],override:null as any[]|null,latest:undefined as any,canBypass:false,mode:"idle",readError:false,postError:false};
  const results=()=>catalog.map(({id,name,group,host},i)=>({id,name,group,host,
   phase:state.mode==="idle"?undefined:state.mode==="running"?(i===0?"running":i===1?"complete":"queued"):"complete",
   status:state.mode==="idle"||(state.mode==="running"&&i!==1)?"pending":i===7?"http_error":i===8?"timeout":i===9?"agent_timeout":"ok",delay_ms:state.mode==="idle"||(state.mode==="running"&&i!==1)||i===8||i===9?undefined:35+i*12,
   samples:state.mode==="idle"||(state.mode==="running"&&i!==1)?[]:Array.from({length:3},()=>({status:i===7?"http_error":i===8?"timeout":i===9?"agent_timeout":"ok",http_status:i===7?403:undefined,delay_ms:i===8||i===9?undefined:35+i*12}))}));
- const response=()=>({server_id:7,online:!offline,can_run:owner,state:state.mode,latest:state.latest,rounds:3,started_at:state.mode==="idle"?undefined:now-2000,finished_at:state.mode==="complete"?now:undefined,retry_at:state.mode==="complete"?now+60000:undefined,results:state.override??results()});
+ const response=()=>({server_id:7,online:!offline,can_run:owner,can_bypass_cooldown:owner&&state.canBypass,state:state.mode,latest:state.latest,rounds:3,started_at:state.mode==="idle"?undefined:now-2000,finished_at:state.mode==="complete"?now:undefined,retry_at:state.mode==="complete"?now+60000:undefined,results:state.override??results()});
  await page.addInitScript(({light,language})=>{
   localStorage.setItem("language",language);localStorage.setItem("vite-ui-theme",light?"light":"dark");localStorage.setItem("doraemon-ui-theme",light?"light":"dark");localStorage.setItem("doraemon-sky",light?"light":"dark");
  },{light,language});
@@ -70,7 +70,7 @@ for(const theme of ["default","doraemon"])for(const light of [false,true])for(co
   await expect(view.getByText(/排队 \d+ 项/)).toHaveCount(0);
   state.mode="complete";
   await expect(view.getByRole("button",{name:/秒后可重测/})).toBeDisabled({timeout:10000});
-  await expect(view.getByText("(HTTP 403)")).toBeVisible();
+  await expect(view.getByText("(HTTP 403)")).toHaveCount(0);
   await expect(view.getByText("请求超时",{exact:true})).toBeVisible();
   await expect(view.getByText("检测超时（3 秒未收到 Agent 回包）",{exact:true})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
@@ -97,14 +97,16 @@ test("guest and offline only read cache; reloading does not trigger probes",asyn
  await expect(view.getByRole("heading",{name:"节点连通性",exact:true})).toHaveCount(0);
  await expect(view.locator("[data-connectivity-target]")).toHaveCount(catalog.length);
  await expect(view.getByRole("button",{name:/开始检测|重新检测/})).toHaveCount(0);
- await expect(view.getByText("(HTTP 403)")).toBeVisible();expect(state.posts).toBe(0);
+ await expect(view.getByText("(HTTP 403)")).toHaveCount(0);expect(state.posts).toBe(0);
 });
 test("network/detail tabs still work with combined network; help and failure recovery",async({page})=>{
  const state=await setup(page,"default"),view=page.locator("[data-server-connectivity]");
  await view.getByRole("button",{name:"连通性说明",exact:true}).click();await expect(view.getByText(/不是 ICMP Ping/)).toBeVisible();
  state.postError=true;await view.getByRole("button",{name:"开始检测",exact:true}).click();await expect(view.getByRole("alert")).toHaveText(/当前检测任务较多/);
- await page.locator(".server-info-tab").getByText("网络",{exact:true}).click();await expect(page.locator("[data-server-network]")).toBeVisible();
- await expect(view).toHaveCount(0);await page.locator(".server-info-tab").getByText("详情",{exact:true}).click();await expect(page.locator(".server-charts")).toBeVisible();
+ await expect(page.locator(".server-info-tab").getByText("网络",{exact:true})).toHaveCount(0);
+ await page.locator(".server-info-tab").getByText("详情",{exact:true}).click();
+ await expect(page.locator("[data-server-network]")).toBeVisible();await expect(view).toHaveCount(0);
+ await expect(page.locator(".server-charts")).toBeVisible();
  state.readError=true;await page.locator(".server-info-tab").getByText("连通性",{exact:true}).click();await expect(view.getByRole("alert")).toHaveText(/检测结果读取失败/);
  await expect(view.locator("[data-connectivity-target]")).toHaveCount(0);state.readError=false;await view.getByRole("button",{name:"重新加载"}).click();
  await expect(view.locator("[data-connectivity-target]")).toHaveCount(catalog.length);
@@ -131,7 +133,7 @@ for(const theme of ["default","doraemon"])for(const light of [false,true])test(`
  await expect(view.getByRole("button",{name:/秒后可重测/})).toBeDisabled({timeout:10000});
  await view.scrollIntoViewIfNeeded();await page.screenshot({path:info.outputPath("wallpaper.png"),fullPage:true});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
- const tab=page.locator(".server-info-tab").getByRole("button",{name:"网络",exact:true});
+ const tab=page.locator(".server-info-tab").getByRole("button",{name:"详情",exact:true});
  await tab.focus();await page.keyboard.press("Enter");await expect(page.locator("[data-server-network]")).toBeVisible();
  await page.locator(".server-info-tab").getByRole("button",{name:"连通性",exact:true}).focus();await page.keyboard.press("Space");
  await expect(view).toBeVisible();expect(state.posts).toBe(1);
@@ -186,12 +188,14 @@ test("compact reference row has names dots and latency but no website text",asyn
 for(const theme of ["default","doraemon"])test(`overflow status pans and cached icons ${theme}`,async({page},info)=>{
  await page.setViewportSize({width:320,height:850});
  const state=await setup(page,theme,true,false,false);
- const make=(id:string,status:string,icon:string)=>({id,name:id,group:"china",host:"private.example",icon,status,delay_ms:185,phase:"complete",samples:Array.from({length:3},()=>({status,http_status:status==="http_error"?403:undefined}))});
+ const make=(id:string,status:string,icon:string)=>({id,name:id,group:"china",host:"private.example",icon,status,delay_ms:status==="http_error"?185:undefined,phase:"complete",samples:Array.from({length:3},()=>({status,http_status:status==="http_error"?403:undefined}))});
  state.mode="complete";
  state.override=[make("long-status","agent_timeout","/api/v1/logo/assets/"+"a".repeat(64)+".png"),make("short-status","timeout","/api/v1/logo/assets/"+"b".repeat(64)+".png"),make("external-icon","http_error","https://example.com/not-requested.png")];
  await page.reload();await page.locator(".server-info-tab").getByText("连通性",{exact:true}).click();
  const view=page.locator("[data-server-connectivity]"),box=view.locator('[data-connectivity-target="long-status"]'),status=box.locator("[data-connectivity-status]"),track=status.locator(".nz-connectivity-marquee-track");
  await box.scrollIntoViewIfNeeded();
+ // Constrain the status area to exercise overflow independently of latency width.
+ await status.evaluate(el => { (el as HTMLElement).style.maxWidth="90px"; });
  await expect(status).toHaveAttribute("data-overflow","true");
  await expect(box.locator("img")).toHaveAttribute("src","/api/v1/logo/assets/"+"a".repeat(64)+".png");
  await expect.poll(()=>box.locator("img").evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth>0)).toBe(true);
@@ -213,6 +217,7 @@ for(const theme of ["default","doraemon"])test(`overflow status pans and cached 
  expect(await track.evaluate(el=>getComputedStyle(el).animationName)).toBe("none");
  expect(await status.evaluate(el=>getComputedStyle(el).overflowX)).toBe("auto");
  await page.emulateMedia({reducedMotion:"no-preference"});
+ await status.evaluate(el => { (el as HTMLElement).style.maxWidth=""; });
  await page.setViewportSize({width:740,height:850});
  await expect(status).toHaveAttribute("data-overflow","false");
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
@@ -286,3 +291,20 @@ for (const theme of ["default","doraemon"]) for (const width of [390,1440]) {
   await expect(view.getByText("42ms",{exact:true})).toHaveCount(0);
  });
 }
+
+for (const theme of ["default","doraemon"]) test("administrator bypass cooldown "+theme,async({page})=>{
+ const state=await setup(page,theme,true);
+ state.mode="complete";state.canBypass=true;
+ await page.reload();await page.locator(".server-info-tab").getByText("连通性",{exact:true}).click();
+ const view=page.locator("[data-server-connectivity]");
+ await expect(view.getByRole("button",{name:"重新检测",exact:true})).toBeEnabled();
+ await expect(view.getByRole("button",{name:/秒后可重测/})).toHaveCount(0);
+ await view.getByRole("button",{name:"重新检测",exact:true}).click();
+ await expect(view.getByRole("button",{name:"检测中…",exact:true})).toBeDisabled();
+ expect(state.posts).toBe(1);
+ state.mode="complete";
+ await expect(view.getByRole("button",{name:"重新检测",exact:true})).toBeEnabled({timeout:10000});
+ await view.locator('[data-connectivity-target="deepseek"]').click();
+ await expect.poll(()=>state.posts).toBe(2);
+ expect(state.postPaths[1]).toMatch(/\/deepseek$/);
+});

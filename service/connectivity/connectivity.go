@@ -145,7 +145,13 @@ func (m *Manager) StartTarget(key, id string, probe Probe, targets []Target) (Sn
 func (m *Manager) StartScheduled(key string, probe Probe, targets []Target, scheduledAt int64) (Snapshot, error) {
 	return m.start(key, probe, targets, "", scheduledAt)
 }
-func (m *Manager) start(key string, probe Probe, selected []Target, id string, scheduledAt int64) (Snapshot, error) {
+
+// StartImmediate is for authorized administrators. It bypasses cooldown only;
+// active-job deduplication and global capacity limits still apply.
+func (m *Manager) StartImmediate(key, id string, probe Probe, targets []Target) (Snapshot, error) {
+	return m.start(key, probe, targets, id, 0, true)
+}
+func (m *Manager) start(key string, probe Probe, selected []Target, id string, scheduledAt int64, bypassCooldown ...bool) (Snapshot, error) {
 	targets := append([]Target(nil), selected...)
 	found := id == ""
 	for _, target := range targets {
@@ -161,7 +167,8 @@ func (m *Manager) start(key string, probe Probe, selected []Target, id string, s
 	}
 	m.mu.Lock()
 	now := m.now()
-	if e := m.entries[key]; e != nil && (e.snapshot.State == "running" || now.UnixMilli() < e.snapshot.RetryAt) {
+	bypass := len(bypassCooldown) > 0 && bypassCooldown[0]
+	if e := m.entries[key]; e != nil && (e.snapshot.State == "running" || (!bypass && now.UnixMilli() < e.snapshot.RetryAt)) {
 		snapshot := clone(e.snapshot)
 		m.mu.Unlock()
 		return snapshot, nil

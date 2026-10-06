@@ -2,6 +2,7 @@ import {fetcher, FetcherMethod} from "@/api/api"
 import {BackgroundSettings} from "@/components/background-settings"
 import {AppearanceSection} from "@/components/appearance-section"
 import {GlobalDisplaySettings} from "@/components/global-display-settings"
+import SettingHelp from "@/components/SettingHelp"
 import {VisitorIPSettings} from "@/components/visitor-ip-settings"
 import {SakanaCharacters} from "@/components/sakana-characters"
 import {SpeedSettings} from "@/components/speed-settings"
@@ -122,10 +123,9 @@ function ThemeAppearanceEditor({theme,onDirtyChange,onBusyChange}:{theme:Appeara
  Object.keys(d.defaults).length>1?<div className="grid gap-4 sm:grid-cols-2">{(d.key==="runtime"?["prefix","startDate"]:Object.keys(d.defaults)).filter(key=>key!=="enabled" && !(d.key==="sponsor" && key==="desktopTop") && (d.key!=="live2d" || key==="provider" || (config.features.live2d.provider==="sakana"?["character","customCharacters","size","controls","autoMotion"]:["cdnPath","tools"]).includes(key))).map(key=>renderField(d.key,key,config.features[d.key][key]??d.defaults[key]))}</div>:<p className="text-sm text-muted-foreground">此功能暂无额外参数，使用右侧开关启用或关闭。</p>}
  </AppearanceSection>
  return <div className="space-y-6">
- <div className="rounded-lg border p-4 space-y-3"><p>正在设置：{themeName}。配置独立保存，不影响其他主题；这里不会切换前台正在使用的主题。</p>
- {!isDefault&&<p className="text-sm text-muted-foreground">流量进度条、伙伴与道具功能可分别设置。手机保留全部伙伴，通过尺寸和排布适配；关闭装饰不影响服务器数据。</p>}
- <p className="text-sm text-muted-foreground">功能代码随面板内置，不依赖 jm/xjs 外链，也没有域名授权限制。图片、视频、字体及统计/IP 服务仍可能需要联网。</p>
- {saved?.current_template&&saved.current_template!==theme&&<p className="text-amber-600">当前前台未使用{themeName}，保存后在切换到该主题时生效。</p>}
+ <div className="rounded-lg border p-4 space-y-3">
+ <div className="flex items-center gap-1"><h2 className="font-semibold">主题外观：{themeName}</h2><SettingHelp label="主题外观"><p>仅调整所选主题的外观，不会切换当前主题。修改后请点击“保存美化设置”。</p><p>图片、视频、字体等外部资源需要网络连接。</p></SettingHelp></div>
+ {saved?.current_template&&saved.current_template!==theme&&<p className="text-amber-600">当前未启用{themeName}，设置将在切换到该主题后生效。</p>}
  <label className="flex items-center gap-3"><Switch aria-label="启用内置美化" disabled={!saved||reading||busy} checked={config.enabled} onCheckedChange={enabled=>setConfig(c=>({...c,enabled}))}/>启用内置美化</label>
  {isDefault&&saved?.custom_code&&<div className="flex flex-wrap gap-2"><Button variant="outline" onClick={importLegacy}>迁移已核对的原有美化</Button><Button variant="outline" onClick={exportCode}>导出原始代码备份</Button></div>}
  {migrate&&<p className="text-amber-600">本次保存将归档原始美化代码并停止旧脚本执行，避免与内置功能重复。</p>}
