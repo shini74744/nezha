@@ -110,7 +110,11 @@ export default function ServerNetworkInsight({
 		(historyAt
 			? data?.history?.find((item) => item.finished_at === historyAt)
 			: undefined) || data;
-	const topology = snapshot?.topologies?.find((t) => t.family === family);
+	const families = data?.available_families?.length
+		? data.available_families
+		: ["IPv4", "IPv6"];
+	const selectedFamily = families.includes(family) ? family : families[0];
+	const topology = snapshot?.topologies?.find((t) => t.family === selectedFamily);
 	const names = [...new Set((data?.results || []).map((r) => r.id))];
 	const title = kind === "bgp" ? "BGP 路由拓扑" : "流媒体解锁";
 	return (
@@ -183,14 +187,14 @@ export default function ServerNetworkInsight({
 				<>
 					<div className="flex flex-wrap items-center gap-3 mb-3">
 						<div className="inline-flex rounded-full bg-muted p-1">
-							{["IPv4", "IPv6"].map((f) => (
+							{families.map((f) => (
 								<button
 									key={f}
 									onClick={() => setFamily(f)}
-									aria-pressed={family === f}
+									aria-pressed={selectedFamily === f}
 									className={cn(
 										"rounded-full px-3 py-1.5 text-xs",
-										family === f && "bg-background shadow-sm",
+										selectedFamily === f && "bg-background shadow-sm",
 									)}
 								>
 									{f}

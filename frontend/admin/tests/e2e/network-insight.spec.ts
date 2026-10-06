@@ -651,3 +651,32 @@ for(const theme of ["default","doraemon"])for(const width of [390,1440])test("BG
  await expect(page.getByRole("button",{name:/重新检测/})).toHaveCount(0);
  await page.screenshot({path:info.outputPath("guest-ip-private.png"),fullPage:true});
 });
+
+for (const theme of ["default", "doraemon"])
+    for (const width of [390, 1440])
+        test("BGP families disappear and recover " + theme + " " + width, async ({ page }, info) => {
+            await page.setViewportSize({ width, height: 1000 })
+            await setup(page, theme, true, false)
+            let families = ["IPv4", "IPv6"]
+            await page.route("**/api/v1/server/7/bgp", (route) => route.fulfill({
+                json: { success: true, data: {
+                    server_id: 7, online: true, can_run: false, can_view_ip: false,
+                    available_families: families, state: "running",
+                    topologies: families.map(family => ({ ...topology, family, prefix: "" })),
+                } },
+            }))
+            await page.locator(".server-info-tab").getByText("BGP", { exact: true }).click()
+            const panel = page.locator('[data-network-insight="bgp"]')
+            await expect(panel.getByRole("button", { name: "IPv6", exact: true })).toBeVisible()
+            await panel.getByRole("button", { name: "IPv6", exact: true }).click()
+            await expect(panel.getByRole("button", { name: "IPv6", exact: true })).toHaveAttribute("aria-pressed", "true")
+            families = ["IPv4"]
+            await expect(panel.getByRole("button", { name: "IPv6", exact: true })).toHaveCount(0, { timeout: 10000 })
+            await expect(panel.getByRole("button", { name: "IPv4", exact: true })).toHaveAttribute("aria-pressed", "true")
+            await expect(panel.locator("[data-bgp-graph]")).toBeVisible()
+            await panel.screenshot({ path: info.outputPath("ipv4-only.png") })
+            families = ["IPv4", "IPv6"]
+            await expect(panel.getByRole("button", { name: "IPv6", exact: true })).toBeVisible({ timeout: 10000 })
+            await expect(panel).not.toContainText("126.7.0.0")
+            expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
+        })

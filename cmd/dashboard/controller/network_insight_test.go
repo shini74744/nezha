@@ -197,3 +197,35 @@ func TestInsightPoliciesHaveIndependentRetention(t *testing.T) {
 	require.NoError(t, singleton.DB.Model(&networkinsight.Record{}).Where("kind = ?", "streaming").Count(&media).Error)
 	require.EqualValues(t, 1, media)
 }
+
+func TestBGPFamiliesFollowLiveIPDisappearanceAndRecovery(t *testing.T) {
+	setupInsight(t)
+	server, _ := singleton.ServerShared.Get(1)
+	row := model.ServerIPHistory{ServerUUID: server.UUID, CurrentIP: model.IP{IPv4Addr: "1.1.1.1", IPv6Addr: "2606:4700:4700::1111"}}
+	require.NoError(t, singleton.DB.Create(&row).Error)
+	identity, _, err := insightIdentity(server)
+	require.NoError(t, err)
+	now := time.Now().UnixMilli()
+	raw, _ := json.Marshal(networkinsight.Snapshot{State: "complete", FinishedAt: now, Topologies: []networkinsight.Topology{{Family: "IPv6", Status: "ok", Prefix: "2606:4700::/32"}}})
+	require.NoError(t, singleton.DB.Create(&networkinsight.Record{Identity: identity, Kind: "bgp", FinishedAt: now, Payload: string(raw)}).Error)
+	for _, ip6 := range []string{"2606:4700:4700::1111", "", "2606:4700:4700::2222"} {
+		row.CurrentIP.IPv6Addr = ip6
+		require.NoError(t, singleton.DB.Save(&row).Error)
+		got, err := readInsight(connectivityContext("1", nil), "bgp")
+		require.NoError(t, err)
+		want := []string{"IPv4"}
+		if ip6 != "" {
+			want = append(want, "IPv6")
+		}
+		require.Equal(t, want, got.AvailableFamilies)
+		body, _ := json.Marshal(got)
+		require.NotContains(t, string(body), "2606:4700")
+		require.NotContains(t, string(body), "1.1.1.1")
+		if ip6 == "" {
+			require.Empty(t, got.Topologies)
+			require.Empty(t, got.History)
+		}
+	}
+	require.Equal(t, []string{"IPv6"}, bgpAvailableFamilies(model.IP{IPv6Addr: "2606:4700:4700::1111"}, networkinsight.Snapshot{}))
+	require.Equal(t, []string{"IPv4"}, bgpAvailableFamilies(model.IP{}, networkinsight.Snapshot{Topologies: []networkinsight.Topology{{Family: "IPv6", Status: "no_public_ip"}}}))
+}
