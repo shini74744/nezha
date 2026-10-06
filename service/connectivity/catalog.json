@@ -422,7 +422,7 @@
   {
     "id": "naver",
     "name": "Naver",
-    "group": "global",
+    "group": "korea",
     "host": "www.naver.com",
     "url": "https://www.naver.com/favicon.ico"
   },
@@ -443,21 +443,21 @@
   {
     "id": "bbc",
     "name": "BBC",
-    "group": "global",
+    "group": "uk",
     "host": "www.bbc.com",
     "url": "https://www.bbc.com/favicon.ico"
   },
   {
     "id": "mistral",
     "name": "Mistral AI",
-    "group": "global",
+    "group": "france",
     "host": "mistral.ai",
     "url": "https://mistral.ai/favicon.ico"
   },
   {
     "id": "yandex",
     "name": "Yandex",
-    "group": "global",
+    "group": "russia",
     "host": "yastatic.net",
     "url": "https://yastatic.net/favicon.ico"
   },
@@ -492,15 +492,225 @@
   {
     "id": "soundcloud",
     "name": "SoundCloud",
-    "group": "global",
+    "group": "germany",
     "host": "soundcloud.com",
     "url": "https://soundcloud.com/favicon.ico"
   },
   {
     "id": "deezer",
     "name": "Deezer",
-    "group": "global",
+    "group": "france",
     "host": "www.deezer.com",
     "url": "https://www.deezer.com/favicon.ico"
+  },
+  {
+    "id": "kakao",
+    "name": "KakaoTalk",
+    "group": "korea",
+    "host": "www.kakaocorp.com",
+    "url": "https://www.kakaocorp.com/page/favicon.ico"
+  },
+  {
+    "id": "daum",
+    "name": "Daum",
+    "group": "korea",
+    "host": "www.daum.net",
+    "url": "https://www.daum.net/favicon.ico"
+  },
+  {
+    "id": "guardian",
+    "name": "The Guardian",
+    "group": "uk",
+    "host": "www.theguardian.com",
+    "url": "https://www.theguardian.com/favicon.ico"
+  },
+  {
+    "id": "sky",
+    "name": "Sky",
+    "group": "uk",
+    "host": "static.skyassets.com",
+    "url": "https://static.skyassets.com/favicons/favicon.ico"
+  },
+  {
+    "id": "dw",
+    "name": "Deutsche Welle",
+    "group": "germany",
+    "host": "www.dw.com",
+    "url": "https://www.dw.com/favicon.ico"
+  },
+  {
+    "id": "zdf",
+    "name": "ZDF",
+    "group": "germany",
+    "host": "www.zdfheute.de",
+    "url": "https://www.zdfheute.de/_next/static/media/favicon.1b2t3ozuo6pew.ico"
+  },
+  {
+    "id": "dailymotion",
+    "name": "Dailymotion",
+    "group": "france",
+    "host": "www.dailymotion.com",
+    "url": "https://www.dailymotion.com/favicon.ico"
+  },
+  {
+    "id": "shopify",
+    "name": "Shopify",
+    "group": "canada",
+    "host": "www.shopify.com",
+    "url": "https://www.shopify.com/favicon.ico"
+  },
+  {
+    "id": "cbc",
+    "name": "CBC",
+    "group": "canada",
+    "host": "www.cbc.ca",
+    "url": "https://www.cbc.ca/favicon.ico"
+  },
+  {
+    "id": "rogers",
+    "name": "Rogers",
+    "group": "canada",
+    "host": "www.rogers.com",
+    "url": "https://www.rogers.com/favicon.ico"
+  },
+  {
+    "id": "canva",
+    "name": "Canva",
+    "group": "australia",
+    "host": "static.canva.com",
+    "url": "https://static.canva.com/static/images/favicon.ico"
+  },
+  {
+    "id": "abcau",
+    "name": "ABC Australia",
+    "group": "australia",
+    "host": "www.abc.net.au",
+    "url": "https://www.abc.net.au/favicon.ico"
+  },
+  {
+    "id": "atlassian",
+    "name": "Atlassian",
+    "group": "australia",
+    "host": "www.atlassian.com",
+    "url": "https://www.atlassian.com/favicon.ico"
+  },
+  {
+    "id": "jio",
+    "name": "Jio",
+    "group": "india",
+    "host": "myjiostatic.cdn.jio.com",
+    "url": "https://myjiostatic.cdn.jio.com/jiostaticresources/v02/images/favicon.ico"
+  },
+  {
+    "id": "flipkart",
+    "name": "Flipkart",
+    "group": "india",
+    "host": "www.flipkart.com",
+    "url": "https://www.flipkart.com/favicon.ico"
+  },
+  {
+    "id": "zoho",
+    "name": "Zoho",
+    "group": "india",
+    "host": "www.zoho.com",
+    "url": "https://www.zoho.com/favicon.ico"
+  },
+  {
+    "id": "globo",
+    "name": "Globo",
+    "group": "brazil",
+    "host": "www.globo.com",
+    "url": "https://www.globo.com/favicon.ico"
+  },
+  {
+    "id": "uol",
+    "name": "UOL",
+    "group": "brazil",
+    "host": "conteudo.imguol.com.br",
+    "url": "https://conteudo.imguol.com.br/c/home/layout/vueland/icons/geral/favicon.ico"
+  },
+  {
+    "id": "ifood",
+    "name": "iFood",
+    "group": "brazil",
+    "host": "www.ifood.com.br",
+    "url": "https://www.ifood.com.br/favicon.ico"
+  },
+  {
+    "id": "vk",
+    "name": "VK",
+    "group": "russia",
+    "host": "vk.com",
+    "url": "https://vk.com/favicon.ico"
+  },
+  {
+    "id": "mailru",
+    "name": "Mail.ru",
+    "group": "russia",
+    "host": "mail.ru",
+    "url": "https://mail.ru/favicon.ico"
+  },
+  {
+    "id": "grab",
+    "name": "Grab",
+    "group": "singapore",
+    "host": "www.grab.com",
+    "url": "https://www.grab.com/favicon.ico"
+  },
+  {
+    "id": "shopee",
+    "name": "Shopee",
+    "group": "singapore",
+    "host": "shopee.sg",
+    "url": "https://shopee.sg/favicon.ico"
+  },
+  {
+    "id": "cna",
+    "name": "CNA",
+    "group": "singapore",
+    "host": "www.channelnewsasia.com",
+    "url": "https://www.channelnewsasia.com/sites/default/themes/mc_cna_theme/favicon.ico"
+  },
+  {
+    "id": "maybank",
+    "name": "Maybank",
+    "group": "malaysia",
+    "host": "www.maybank2u.com.my",
+    "url": "https://www.maybank2u.com.my/favicon.ico"
+  },
+  {
+    "id": "touchngo",
+    "name": "Touch ’n Go",
+    "group": "malaysia",
+    "host": "www.touchngo.com.my",
+    "url": "https://www.touchngo.com.my/images/favicon.gif"
+  },
+  {
+    "id": "thestar",
+    "name": "The Star",
+    "group": "malaysia",
+    "host": "www.thestar.com.my",
+    "url": "https://www.thestar.com.my/favicon.ico"
+  },
+  {
+    "id": "gojek",
+    "name": "Gojek",
+    "group": "indonesia",
+    "host": "gojekweb-asset-staging.go-jek.com",
+    "url": "https://gojekweb-asset-staging.go-jek.com/prime/static/prime/images/gojek_favicon.png"
+  },
+  {
+    "id": "tokopedia",
+    "name": "Tokopedia",
+    "group": "indonesia",
+    "host": "www.tokopedia.com",
+    "url": "https://www.tokopedia.com/favicon.ico"
+  },
+  {
+    "id": "traveloka",
+    "name": "Traveloka",
+    "group": "indonesia",
+    "host": "www.traveloka.com",
+    "url": "https://www.traveloka.com/favicon.ico"
   }
 ]

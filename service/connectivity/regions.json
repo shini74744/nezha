@@ -1,0 +1,114 @@
+[
+  {
+    "id": "china",
+    "country": "CN",
+    "zh": "中国",
+    "tw": "中國",
+    "en": "China"
+  },
+  {
+    "id": "usa",
+    "country": "US",
+    "zh": "美国",
+    "tw": "美國",
+    "en": "United States"
+  },
+  {
+    "id": "global",
+    "country": "",
+    "zh": "全球",
+    "tw": "全球",
+    "en": "Global"
+  },
+  {
+    "id": "japan",
+    "country": "JP",
+    "zh": "日本",
+    "tw": "日本",
+    "en": "Japan"
+  },
+  {
+    "id": "korea",
+    "country": "KR",
+    "zh": "韩国",
+    "tw": "韓國",
+    "en": "South Korea"
+  },
+  {
+    "id": "singapore",
+    "country": "SG",
+    "zh": "新加坡",
+    "tw": "新加坡",
+    "en": "Singapore"
+  },
+  {
+    "id": "malaysia",
+    "country": "MY",
+    "zh": "马来西亚",
+    "tw": "馬來西亞",
+    "en": "Malaysia"
+  },
+  {
+    "id": "indonesia",
+    "country": "ID",
+    "zh": "印度尼西亚",
+    "tw": "印度尼西亞",
+    "en": "Indonesia"
+  },
+  {
+    "id": "uk",
+    "country": "GB",
+    "zh": "英国",
+    "tw": "英國",
+    "en": "United Kingdom"
+  },
+  {
+    "id": "germany",
+    "country": "DE",
+    "zh": "德国",
+    "tw": "德國",
+    "en": "Germany"
+  },
+  {
+    "id": "france",
+    "country": "FR",
+    "zh": "法国",
+    "tw": "法國",
+    "en": "France"
+  },
+  {
+    "id": "canada",
+    "country": "CA",
+    "zh": "加拿大",
+    "tw": "加拿大",
+    "en": "Canada"
+  },
+  {
+    "id": "australia",
+    "country": "AU",
+    "zh": "澳大利亚",
+    "tw": "澳大利亞",
+    "en": "Australia"
+  },
+  {
+    "id": "india",
+    "country": "IN",
+    "zh": "印度",
+    "tw": "印度",
+    "en": "India"
+  },
+  {
+    "id": "brazil",
+    "country": "BR",
+    "zh": "巴西",
+    "tw": "巴西",
+    "en": "Brazil"
+  },
+  {
+    "id": "russia",
+    "country": "RU",
+    "zh": "俄罗斯",
+    "tw": "俄羅斯",
+    "en": "Russia"
+  }
+]

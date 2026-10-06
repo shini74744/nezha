@@ -95,6 +95,9 @@ func updateServer(c *gin.Context) (any, error) {
 	if sf.HideForDisplay != nil {
 		s.HideForDisplay = *sf.HideForDisplay
 	}
+	if sf.ConnectivityDisabled != nil {
+		s.ConnectivityDisabled = *sf.ConnectivityDisabled
+	}
 	s.EnableDDNS = sf.EnableDDNS
 	s.DDNSProfiles = sf.DDNSProfiles
 	s.OverrideDDNSDomains = sf.OverrideDDNSDomains
@@ -114,7 +117,7 @@ func updateServer(c *gin.Context) (any, error) {
 	if err := model.WithServerOperation(singleton.DB, model.ServerOperationActorFromContext(c), "edit", []uint64{id}, func(tx *gorm.DB) error {
 		// Never resurrect a concurrently deleted node or overwrite a new owner.
 		result := tx.Model(&model.Server{}).Where("id = ? AND uuid = ? AND user_id = ?", s.ID, s.UUID, s.UserID).
-			Select("name", "display_index", "note", "public_note", "hide_for_guest", "hide_for_display", "enable_ddns", "ddns_profiles_raw", "override_ddns_domains_raw").
+			Select("name", "display_index", "note", "public_note", "hide_for_guest", "hide_for_display", "connectivity_disabled", "enable_ddns", "ddns_profiles_raw", "override_ddns_domains_raw").
 			Updates(&s)
 		if result.Error != nil {
 			return result.Error

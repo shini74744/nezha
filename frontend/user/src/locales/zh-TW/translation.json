@@ -105,6 +105,7 @@
 		"backendUnavailableDescription": "頁面仍會正常顯示，但暫時無法載入監控資料。"
 	},
 	"connectivity": {
+		"retestOne": "重新檢測此項",
 		"noTargets": "暫無已啟用檢測點",
 		"sample": "第 {{index}} 次",
 		"samples": "已採樣 {{done}} / {{total}} 次",

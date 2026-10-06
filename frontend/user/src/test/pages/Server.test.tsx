@@ -437,7 +437,7 @@ describe("Servers page", () => {
 			expect(scrollTo).toHaveBeenCalledWith({
 				top: 345,
 				left: 0,
-				behavior: "auto",
+				behavior: "instant",
 			});
 		});
 	});
@@ -459,7 +459,7 @@ describe("Servers page", () => {
 		expect(scrollTo).not.toHaveBeenCalledWith({
 			top: 345,
 			left: 0,
-			behavior: "auto",
+			behavior: "instant",
 		});
 	});
 

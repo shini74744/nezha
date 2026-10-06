@@ -46,11 +46,7 @@ export default function ServerDetailOverview({
 			setHasHistory(true);
 		}
 
-		return () => {
-			if (previousPath) {
-				sessionStorage.removeItem("fromMainPage");
-			}
-		};
+		// The list consumes this marker after restoring its scroll position.
 	}, []);
 
 	const { lastData, connected } = useWebSocketContext();

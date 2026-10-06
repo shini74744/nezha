@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import type React from "react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Route, BrowserRouter as Router, Routes } from "react-router-dom";
+import { Route, BrowserRouter as Router, Routes, useMatch } from "react-router-dom";
 
 import { DashCommand } from "./components/DashCommand";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -17,12 +17,12 @@ import { fetchSetting } from "./lib/nezha-api";
 import { cn } from "./lib/utils";
 import ErrorPage from "./pages/ErrorPage";
 import Server from "./pages/Server";
+import { RetainedServerList } from "./components/RetainedServerList";
 import CardPreview from "./pages/CardPreview";
 
 const DoraemonApp = lazy(() => import("./themes/doraemon/App"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-const loadServerDetail = () => import("./pages/ServerDetail");
-const ServerDetail = lazy(loadServerDetail);
+import ServerDetail from "./pages/ServerDetail";
 
 // Route checker component
 const RouteChecker: React.FC = () => {
@@ -35,6 +35,7 @@ const toError = (error: unknown) => {
 };
 
 const MainApp: React.FC = () => {
+	const isServerList = !!useMatch({ path: "/", end: true });
 	const { data: settingData, error } = useQuery({
 		queryKey: ["setting"],
 		queryFn: () => fetchSetting(),
@@ -48,9 +49,6 @@ const MainApp: React.FC = () => {
  const cardPreview = window.parent!==window&&new URLSearchParams(window.location.search).get("card-preview")==="1";
 	const { backgroundImage: customBackgroundImage } = useBackground();
 
-	useEffect(() => {
-		loadServerDetail();
-	}, []);
 
 	useEffect(() => {
 		if (!cardPreview && settingData?.data?.config?.custom_code) {
@@ -122,10 +120,11 @@ const MainApp: React.FC = () => {
 					<RefreshToast />
 					<Header />
 					<DashCommand />
+					<RetainedServerList active={isServerList}><Server backendError={initialBackendError} /></RetainedServerList>
 					<Routes>
 						<Route
 							path="/"
-							element={<Server backendError={initialBackendError} />}
+							element={null}
 						/>
 						<Route
 							path="/server/:id"

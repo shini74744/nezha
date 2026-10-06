@@ -108,6 +108,7 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	// PAT bearer requests bypass — so the only callers gated are
 	// cookie-JWT POST/PATCH/PUT/DELETE, which is exactly the H6 surface.
 	auth := api.Group("", authMw, csrfMiddleware())
+	auth.POST("/server/:id/connectivity/:target", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startConnectivityTarget))
 	auth.POST("/server/:id/connectivity", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startConnectivity))
 
 	// 「自我管理」类端点 — 显式禁止 PAT 访问（避免 PAT 自我提权链）。
@@ -228,6 +229,8 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	auth.PATCH("/setting/dashboard-appearance", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateDashboardAppearance))
 	auth.GET("/setting/display", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getDisplaySettings))
 	auth.PATCH("/setting/display", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateDisplaySettings))
+	auth.GET("/setting/connectivity/automation", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getConnectivityAutomation))
+	auth.PUT("/setting/connectivity/automation", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateConnectivityAutomation))
 	auth.GET("/setting/connectivity", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getConnectivitySettings))
 	auth.PUT("/setting/connectivity", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateConnectivitySettings))
 	auth.GET("/setting/appearance", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getAppearance))

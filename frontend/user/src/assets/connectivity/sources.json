@@ -361,7 +361,188 @@
       "id": "deezer",
       "file": "deezer.png",
       "source": "https://www.deezer.com/favicon.ico"
+    },
+    {
+      "id": "kakao",
+      "file": "kakao.ico",
+      "source": "https://www.kakaocorp.com/page/favicon.ico",
+      "homepage": "https://www.kakaocorp.com"
+    },
+    {
+      "id": "daum",
+      "file": "daum.ico",
+      "source": "https://www.daum.net/favicon.ico",
+      "homepage": "https://www.daum.net"
+    },
+    {
+      "id": "guardian",
+      "file": "guardian.ico",
+      "source": "https://www.theguardian.com/favicon.ico",
+      "homepage": "https://www.theguardian.com"
+    },
+    {
+      "id": "sky",
+      "file": "sky.ico",
+      "source": "https://static.skyassets.com/favicons/favicon.ico",
+      "homepage": "https://www.sky.com"
+    },
+    {
+      "id": "dw",
+      "file": "dw.ico",
+      "source": "https://www.dw.com/favicon.ico",
+      "homepage": "https://www.dw.com"
+    },
+    {
+      "id": "zdf",
+      "file": "zdf.ico",
+      "source": "https://www.zdfheute.de/_next/static/media/favicon.1b2t3ozuo6pew.ico",
+      "homepage": "https://www.zdfheute.de"
+    },
+    {
+      "id": "dailymotion",
+      "file": "dailymotion.png",
+      "source": "https://www.dailymotion.com/favicon.ico",
+      "homepage": "https://www.dailymotion.com"
+    },
+    {
+      "id": "shopify",
+      "file": "shopify.ico",
+      "source": "https://www.shopify.com/favicon.ico",
+      "homepage": "https://www.shopify.com"
+    },
+    {
+      "id": "cbc",
+      "file": "cbc.ico",
+      "source": "https://www.cbc.ca/favicon.ico",
+      "homepage": "https://www.cbc.ca"
+    },
+    {
+      "id": "rogers",
+      "file": "rogers.ico",
+      "source": "https://www.rogers.com/favicon.ico",
+      "homepage": "https://www.rogers.com"
+    },
+    {
+      "id": "canva",
+      "file": "canva.ico",
+      "source": "https://static.canva.com/static/images/favicon.ico",
+      "homepage": "https://www.canva.com"
+    },
+    {
+      "id": "abcau",
+      "file": "abcau.ico",
+      "source": "https://www.abc.net.au/favicon.ico",
+      "homepage": "https://www.abc.net.au"
+    },
+    {
+      "id": "atlassian",
+      "file": "atlassian.ico",
+      "source": "https://www.atlassian.com/favicon.ico",
+      "homepage": "https://www.atlassian.com"
+    },
+    {
+      "id": "jio",
+      "file": "jio.svg",
+      "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/jio.svg",
+      "homepage": "https://www.jio.com"
+    },
+    {
+      "id": "flipkart",
+      "file": "flipkart.png",
+      "source": "https://www.flipkart.com/favicon.ico",
+      "homepage": "https://www.flipkart.com"
+    },
+    {
+      "id": "zoho",
+      "file": "zoho.ico",
+      "source": "https://www.zoho.com/favicon.ico",
+      "homepage": "https://www.zoho.com"
+    },
+    {
+      "id": "globo",
+      "file": "globo.ico",
+      "source": "https://www.globo.com/favicon.ico",
+      "homepage": "https://www.globo.com"
+    },
+    {
+      "id": "uol",
+      "file": "uol.ico",
+      "source": "https://conteudo.imguol.com.br/c/home/layout/vueland/icons/geral/favicon.ico",
+      "homepage": "https://www.uol.com.br"
+    },
+    {
+      "id": "ifood",
+      "file": "ifood.svg",
+      "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/ifood.svg",
+      "homepage": "https://www.ifood.com.br"
+    },
+    {
+      "id": "vk",
+      "file": "vk.png",
+      "source": "https://vk.com/favicon.ico",
+      "homepage": "https://vk.com"
+    },
+    {
+      "id": "mailru",
+      "file": "mailru.ico",
+      "source": "https://mail.ru/favicon.ico",
+      "homepage": "https://mail.ru"
+    },
+    {
+      "id": "grab",
+      "file": "grab.ico",
+      "source": "https://www.grab.com/favicon.ico",
+      "homepage": "https://www.grab.com"
+    },
+    {
+      "id": "shopee",
+      "file": "shopee.png",
+      "source": "https://shopee.sg/favicon.ico",
+      "homepage": "https://shopee.sg"
+    },
+    {
+      "id": "cna",
+      "file": "cna.ico",
+      "source": "https://www.channelnewsasia.com/sites/default/themes/mc_cna_theme/favicon.ico",
+      "homepage": "https://www.channelnewsasia.com"
+    },
+    {
+      "id": "maybank",
+      "file": "maybank.ico",
+      "source": "https://www.maybank2u.com.my/favicon.ico",
+      "homepage": "https://www.maybank2u.com.my"
+    },
+    {
+      "id": "touchngo",
+      "file": "touchngo.gif",
+      "source": "https://www.touchngo.com.my/images/favicon.gif",
+      "homepage": "https://www.touchngo.com.my"
+    },
+    {
+      "id": "thestar",
+      "file": "thestar.ico",
+      "source": "https://www.thestar.com.my/favicon.ico",
+      "homepage": "https://www.thestar.com.my"
+    },
+    {
+      "id": "gojek",
+      "file": "gojek.png",
+      "source": "https://gojekweb-asset-staging.go-jek.com/prime/static/prime/images/gojek_favicon.png",
+      "homepage": "https://www.gojek.com"
+    },
+    {
+      "id": "tokopedia",
+      "file": "tokopedia.ico",
+      "source": "https://www.tokopedia.com/favicon.ico",
+      "homepage": "https://www.tokopedia.com"
+    },
+    {
+      "id": "traveloka",
+      "file": "traveloka.ico",
+      "source": "https://www.traveloka.com/favicon.ico",
+      "homepage": "https://www.traveloka.com"
     }
   ],
-  "extensions": "24 additional international apps; official site favicons except Epic Games icon from Simple Icons (CC0). Brand trademarks belong to their respective owners."
+  "extensions": "24 additional international apps; official site favicons except Epic Games icon from Simple Icons (CC0). Brand trademarks belong to their respective owners.",
+  "regionalExpansion": "30 additional representative applications across 12 country groups; official site favicon assets except Jio/iFood (Simple Icons). Country groups describe brands/markets, not CDN server location. Existing custom catalogs are never overwritten."
 }

@@ -216,10 +216,13 @@ describe("ServerFlag", () => {
 			},
 		);
 
-		const { container } = render(<ServerFlag country_code="US" />);
+		const { container, rerender } = render(<><ServerFlag country_code="US" /><ServerFlag country_code="JP" /></>);
 
 		await waitFor(() => {
 			expect(container).toHaveTextContent("🇺🇸");
+			expect(canvasContext.fillText).toHaveBeenCalledTimes(1);
+			rerender(<><ServerFlag country_code="CN" /><ServerFlag country_code="US" /></>);
+			expect(canvasContext.fillText).toHaveBeenCalledTimes(1);
 		});
 		expect(container.querySelector(".fi-US")).not.toBeInTheDocument();
 	});

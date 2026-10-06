@@ -105,3 +105,18 @@ func TestConnectivityCacheNotSharedAcrossTransferOrReusedID(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "idle", got.State)
 }
+
+func TestConnectivityDisabledDeniesAllViewersAndManualProbes(t *testing.T) {
+	setupServerGroupVisibilityFixture(t)
+	server, _ := singleton.ServerShared.Get(1)
+	server.ConnectivityDisabled = true
+	for _, user := range []*model.User{nil, {Common: model.Common{ID: 1}, Role: model.RoleMember}, {Common: model.Common{ID: 10}, Role: model.RoleAdmin}} {
+		_, err := getConnectivity(connectivityContext("1", user))
+		require.Error(t, err)
+		_, err = startConnectivity(connectivityContext("1", user))
+		require.Error(t, err)
+	}
+	server.ConnectivityDisabled = false
+	_, err := getConnectivity(connectivityContext("1", nil))
+	require.NoError(t, err)
+}

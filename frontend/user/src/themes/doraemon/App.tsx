@@ -11,6 +11,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useWebSocketContext } from "@/hooks/use-websocket-context";
 import { fetchSetting } from "@/lib/nezha-api";
 import Servers, { type ServerPresentation } from "@/pages/Server";
+import { RetainedServerList } from "@/components/RetainedServerList";
 import { art } from "./assets";
 import { DoraemonCard, DoraemonInlineCard } from "./Card";
 import { DoraemonTrafficProvider } from "./Traffic";
@@ -19,8 +20,7 @@ import { DoraemonLoading, DoraemonScene } from "./Scene";
 import "./theme.css";
 import { beijingSky } from "./sky";
 
-const loadDetail = () => import("@/pages/ServerDetail");
-const Detail = lazy(loadDetail);
+import Detail from "@/pages/ServerDetail";
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const ErrorPage = lazy(() => import("@/pages/ErrorPage"));
 const presentation: ServerPresentation = {
@@ -51,12 +51,6 @@ export default function DoraemonApp() {
 			void i18n.changeLanguage(data.data.config.language);
 		}
 	}, [data?.data?.config?.language, i18n]);
-	useEffect(() => {
-		const timer = window.setTimeout(() => {
-			void loadDetail().catch(() => undefined);
-		}, 800);
-		return () => window.clearTimeout(timer);
-	}, []);
 	const { connected } = useWebSocketContext();
 	const [mode, setMode] = useState<SkyMode>(() => {
 		const s = localStorage.getItem("doraemon-sky");
@@ -177,24 +171,13 @@ export default function DoraemonApp() {
 								</section>
 							)}
 							<DashCommand showThemeShortcuts={false} />
-							<Routes>
-								<Route
-									path="/"
-									element={
-										<DoraemonTrafficProvider
-											appearance={data?.data?.config?.doraemon_appearance_config}
-											ready={!!data?.data?.config}
-										>
-											<Servers
-												presentation={presentation}
-                                                afterContent={pageBottom}
-												backendError={
-													!data && error ? new Error(String(error)) : null
-												}
-											/>
-										</DoraemonTrafficProvider>
-									}
-								/>
+							<RetainedServerList active={!!isServerList}>
+                                <DoraemonTrafficProvider appearance={data?.data?.config?.doraemon_appearance_config} ready={!!data?.data?.config}>
+                                    <Servers presentation={presentation} afterContent={pageBottom} backendError={!data && error ? new Error(String(error)) : null} />
+                                </DoraemonTrafficProvider>
+                            </RetainedServerList>
+                            <Routes>
+                                <Route path="/" element={null} />
 								<Route
 									path="/server/:id"
 									element={

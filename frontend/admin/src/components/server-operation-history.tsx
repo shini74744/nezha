@@ -47,6 +47,7 @@ const fields: Record<string, string> = {
     owner: "所属用户 ID",
     display_index: "显示排序",
     hide_for_guest: "对游客隐藏",
+    connectivity_disabled: "隐藏连通性",
     hide_for_display: "前台隐藏",
     enable_ddns: "启用 DDNS",
     ddns_profiles: "DDNS 配置 ID",

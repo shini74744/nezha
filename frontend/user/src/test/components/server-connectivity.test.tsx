@@ -185,7 +185,7 @@ describe("node connectivity", () => {
 });
 
 describe("expanded connectivity catalog", () => {
-	it("renders all four regions, all 72 packaged logos and sample indicators", async () => {
+	it("renders all supported regions, all 102 packaged logos and sample indicators", async () => {
 		const { default: catalog } = await import(
 			"../../../../../service/connectivity/catalog.json"
 		);
@@ -206,16 +206,16 @@ describe("expanded connectivity catalog", () => {
 		await screen.findByText("DeepSeek");
 		expect(
 			view.container.querySelectorAll("[data-connectivity-target]"),
-		).toHaveLength(72);
+		).toHaveLength(102);
 		expect(
 			view.container.querySelectorAll("[data-connectivity-group]"),
-		).toHaveLength(4);
+		).toHaveLength(16);
 		expect(
 			view.container.querySelectorAll("img[data-connectivity-icon]"),
-		).toHaveLength(72);
+		).toHaveLength(102);
 		expect(
 			view.container.querySelectorAll("[data-connectivity-sample]"),
-		).toHaveLength(216);
+		).toHaveLength(306);
 		for (const image of view.container.querySelectorAll(
 			"img[data-connectivity-icon]",
 		)) {
@@ -280,9 +280,10 @@ describe("fair queue progress", () => {
 			}),
 		);
 		const view = mount();
-		expect(await screen.findByText("connectivity.status.queued")).toBeVisible();
-		expect(screen.getByText("connectivity.status.running")).toBeVisible();
-		expect(screen.getByText(/connectivity\.resampleQueued/)).toBeVisible();
+		await screen.findByText("Telegram");
+        expect(screen.queryByText("connectivity.status.queued")).not.toBeInTheDocument();
+        expect(screen.queryByText("connectivity.status.running")).not.toBeInTheDocument();
+        expect(screen.queryByText(/connectivity\.resampleQueued/)).not.toBeInTheDocument();
 		expect(screen.getByText("connectivity.status.ok")).toBeVisible();
 		expect(screen.getByText("18")).toBeVisible();
 		expect(screen.getByText("connectivity.endedEarly")).toBeVisible();

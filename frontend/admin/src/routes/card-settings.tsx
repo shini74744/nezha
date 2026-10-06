@@ -1,4 +1,8 @@
 import { FetcherMethod, fetcher } from "@/api/api"
+import ConnectivityAutomationSettings from "@/components/ConnectivityAutomationSettings"
+import ConnectivityDragHandle from "@/components/ConnectivityDragHandle"
+import { reorderConnectivity } from "@/lib/connectivity-order"
+import { connectivityRegions } from "../../../shared/connectivity-regions"
 import ConnectivityIconPicker from "@/components/ConnectivityIconPicker"
 import { Button } from "@/components/ui/button"
 import {
@@ -13,7 +17,7 @@ import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { useAuth } from "@/hooks/useAuth"
 import { resolveConnectivityIcon } from "@/lib/connectivity-icons"
-import { ArrowDown, ArrowUp, Globe2, Pencil, Plus, RefreshCw, Save, Trash2 } from "lucide-react"
+import { Globe2, Pencil, Plus, RefreshCw, Save, Trash2 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { Navigate } from "react-router-dom"
 import { toast } from "sonner"
@@ -29,12 +33,7 @@ type Item = {
 }
 type State = { revision: string; items: Item[]; defaults: Item[]; max_targets: number }
 const endpoint = "/api/v1/setting/connectivity"
-const groups = [
-    ["china", "中国"],
-    ["japan", "日本"],
-    ["usa", "美国"],
-    ["global", "全球"],
-]
+const groups = connectivityRegions.map(region=>[region.id,region.zh])
 const selectStyle = "h-10 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm"
 function validate(item: Item, defaults: Item[] = []) {
     if (!item.name.trim() || Array.from(item.name.trim()).length > 60)
@@ -92,6 +91,8 @@ export default function CardSettings() {
         [group, setGroup] = useState("all"),
         [editor, setEditor] = useState<Item | null>(null)
     const [iconBlocked, setIconBlocked] = useState(false)
+    const [dragTarget, setDragTarget] = useState<string|null>(null)
+    const [orderNotice, setOrderNotice] = useState("")
     const request = useRef({ sequence: 0 })
     const dirty = !!saved && JSON.stringify(items) !== JSON.stringify(saved.items)
     const adopt = (value: State) => {
@@ -146,19 +147,17 @@ export default function CardSettings() {
             setBusy(false)
         }
     }
-    const move = (id: string, offset: number) => {
-        setItems((current) => {
-            const at = current.findIndex((row) => row.id === id),
-                peers = current
-                    .map((row, index) => ({ row, index }))
-                    .filter(({ row }) => row.group === current[at].group)
-            const pos = peers.findIndex(({ index }) => index === at),
-                other = peers[pos + offset]?.index
-            if (other === undefined) return current
-            const next = [...current]
-            ;[next[at], next[other]] = [next[other], next[at]]
-            return next
-        })
+    const reorder = (id: string, over: string) => {
+        if (busy || reading || search.trim()) return
+        setItems(current=>reorderConnectivity(current,id,over))
+        setOrderNotice("顺序已调整，点击保存配置后生效")
+    }
+    const move = (id:string, offset:number) => {
+        const row=items.find(item=>item.id===id)
+        if (!row) return
+        const peers=items.filter(item=>item.group===row.group)
+        const other=peers[peers.findIndex(item=>item.id===id)+offset]
+        if (other) reorder(id,other.id)
     }
     const filtered = items.filter(
         (row) =>
@@ -175,9 +174,7 @@ export default function CardSettings() {
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                     <h1 className="text-2xl font-semibold">卡片设置</h1>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                        连通性检测点 · 全站统一 · 默认主题与哆啦 A 梦共用
-                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">管理前台各类卡片的内容与显示。</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                     <Button
@@ -196,13 +193,21 @@ export default function CardSettings() {
                     </Button>
                 </div>
             </div>
+            <div role="tablist" aria-label="卡片分类" className="inline-flex rounded-md bg-muted p-1">
+                <button type="button" role="tab" id="connectivity-category" aria-selected="true" aria-controls="connectivity-settings-panel" className="rounded-sm bg-background px-4 py-2 text-sm font-medium shadow-sm">连通性</button>
+            </div>
+            <div role="tabpanel" id="connectivity-settings-panel" aria-labelledby="connectivity-category" className="space-y-5">
+            <ConnectivityAutomationSettings/>
+            <p className="text-sm text-muted-foreground">连通性检测点 · 全站统一 · 默认主题与哆啦 A 梦共用</p>
             <div className="rounded-lg border bg-card p-4 text-sm leading-relaxed">
-                前端只显示图标、名称、检测圆点与延迟，不显示网址。保存不会发起检测；正在执行的批次保持原清单，完成后使用新配置。排序在各地区内生效。
+                前端只显示图标、名称、检测圆点与延迟，不显示网址。保存不会发起检测；正在执行的批次保持原清单，完成后使用新配置。拖动左侧手柄调整同地区顺序（电脑、手机均可）；键盘聚焦手柄后按上下方向键也可调整。地区展示顺序根据节点地区自动排列。
                 <p className="mt-1 text-muted-foreground">
                     每项检测 3 次，3 秒未回包即标记超时。仅允许管理员配置可信 HTTPS
                     公网域名；节点自行解析 DNS，请勿填入密钥、私密链接或内部服务。
                 </p>
             </div>
+            <p className="sr-only" aria-live="polite">{orderNotice}</p>
+            {search.trim() && <p className="text-xs text-muted-foreground">搜索时暂停排序，请清空搜索后拖动。</p>}
             {error && (
                 <div
                     role="alert"
@@ -233,7 +238,7 @@ export default function CardSettings() {
                                     onClick={() => {
                                         if (
                                             window.confirm(
-                                                "恢复内置 72 项并清除当前自定义清单？保存配置后才生效。",
+                                                `恢复内置 ${saved.defaults.length} 项并清除当前自定义清单？保存配置后才生效。`,
                                             )
                                         )
                                             setItems(saved.defaults.map((row) => ({ ...row })))
@@ -241,6 +246,12 @@ export default function CardSettings() {
                                 >
                                     恢复默认
                                 </Button>
+                                <Button variant="outline" disabled={busy || !saved.defaults.some(row=>!items.some(item=>item.id===row.id))}
+                                    onClick={()=>{
+                                        const missing=saved.defaults.filter(row=>!items.some(item=>item.id===row.id))
+                                        if(items.length+missing.length>saved.max_targets){setError(`补充后超过 ${saved.max_targets} 项上限，请先删除不需要的项。`);return}
+                                        if(window.confirm(`补充 ${missing.length} 个缺少的内置检测点？保留现有项的设置和顺序；以前移除的内置项也会补回。保存配置后生效。`))setItems(current=>[...current,...missing.map(row=>({...row}))])
+                                    }}>补充内置检测点</Button>
                                 <Button
                                     disabled={busy || items.length >= saved.max_targets}
                                     onClick={() =>
@@ -288,8 +299,12 @@ export default function CardSettings() {
                                     <article
                                         key={row.id}
                                         data-checkpoint-id={row.id}
-                                        className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-3"
+                                        data-checkpoint-group={row.group}
+                                        data-drop-target={dragTarget===row.id || undefined}
+                                        className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-3 data-[drop-target]:ring-2 data-[drop-target]:ring-primary"
                                     >
+                                        <ConnectivityDragHandle id={row.id} name={row.name} group={row.group}
+                                            disabled={busy || !!search.trim()} onDrop={reorder} onStep={move} onTarget={setDragTarget}/>
                                         <Brand id={row.icon} />
                                         <div className="min-w-0 flex-1 basis-36">
                                             <h2 className="truncate text-sm font-semibold">
@@ -318,24 +333,6 @@ export default function CardSettings() {
                                                     )
                                                 }
                                             />
-                                            <Button
-                                                size="icon"
-                                                variant="outline"
-                                                aria-label={"上移 " + row.name}
-                                                disabled={busy || position === 0}
-                                                onClick={() => move(row.id, -1)}
-                                            >
-                                                <ArrowUp className="size-4" />
-                                            </Button>
-                                            <Button
-                                                size="icon"
-                                                variant="outline"
-                                                aria-label={"下移 " + row.name}
-                                                disabled={busy || position === peers.length - 1}
-                                                onClick={() => move(row.id, 1)}
-                                            >
-                                                <ArrowDown className="size-4" />
-                                            </Button>
                                             <Button
                                                 size="icon"
                                                 variant="outline"
@@ -503,6 +500,7 @@ export default function CardSettings() {
                     )}
                 </DialogContent>
             </Dialog>
+            </div>
         </section>
     )
 }

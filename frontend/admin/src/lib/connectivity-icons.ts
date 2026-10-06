@@ -1,6 +1,6 @@
 // Same packaged brands as the public cards; never load a remote favicon.
 const assets = {
-    ...import.meta.glob<string>("../../../user/src/assets/connectivity/*.{ico,png,webp}", {
+    ...import.meta.glob<string>("../../../user/src/assets/connectivity/*.{ico,png,webp,gif}", {
         eager: true,
         query: "?url",
         import: "default",
@@ -13,7 +13,7 @@ const assets = {
 }
 export const connectivityIcons: Record<string, string> = Object.fromEntries(
     Object.entries(assets).map(([path, url]) => [
-        path.slice(path.lastIndexOf("/") + 1).replace(/\.(ico|png|webp|svg)$/, ""),
+        path.slice(path.lastIndexOf("/") + 1).replace(/\.(ico|png|webp|svg|gif)$/, ""),
         url,
     ]),
 )

@@ -12,7 +12,7 @@ import (
 
 func TestCatalogDefaultsAndValidation(t *testing.T) {
 	items := DefaultCatalog()
-	require.Len(t, items, 72)
+	require.Len(t, items, 102)
 	require.NoError(t, ValidateCatalog(items))
 	require.NoError(t, ValidateCatalog([]CatalogItem{}))
 	bad := append([]CatalogItem{}, items...)
@@ -31,7 +31,7 @@ func TestCatalogDefaultsAndValidation(t *testing.T) {
 	items[0].Enabled = false
 	items[1], items[2] = items[2], items[1]
 	active := EnabledTargets(items)
-	require.Len(t, active, 71)
+	require.Len(t, active, len(items)-1)
 	require.Equal(t, items[1].ID, active[0].ID)
 	raw, _ := json.Marshal(active)
 	require.NotContains(t, string(raw), "https://")
