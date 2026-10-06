@@ -11,11 +11,12 @@ import (
 // Record contains private endpoint identities for safe cache reconciliation.
 // URLs never appear in public Snapshot JSON.
 type Record struct {
-	ID         uint64 `gorm:"primaryKey"`
-	Identity   string `gorm:"index:idx_connectivity_identity_time,priority:1;uniqueIndex:idx_connectivity_batch,priority:1"`
-	FinishedAt int64  `gorm:"index;index:idx_connectivity_identity_time,priority:2;uniqueIndex:idx_connectivity_batch,priority:2"`
-	Full       bool
-	Payload    string
+	ID          uint64 `gorm:"primaryKey"`
+	Identity    string `gorm:"index:idx_connectivity_identity_time,priority:1;uniqueIndex:idx_connectivity_batch,priority:1"`
+	FinishedAt  int64  `gorm:"index;index:idx_connectivity_identity_time,priority:2;uniqueIndex:idx_connectivity_batch,priority:2"`
+	ScheduledAt int64
+	Full        bool
+	Payload     string
 }
 
 func (Record) TableName() string { return "connectivity_records" }
@@ -66,7 +67,7 @@ func (s Store) Save(key string, snapshot Snapshot) error {
 	if err != nil {
 		return err
 	}
-	row := Record{Identity: key, FinishedAt: snapshot.FinishedAt, Full: snapshot.Full, Payload: string(raw)}
+	row := Record{Identity: key, FinishedAt: snapshot.FinishedAt, ScheduledAt: snapshot.ScheduledAt, Full: snapshot.Full, Payload: string(raw)}
 	return s.DB.Clauses(clause.OnConflict{DoNothing: true}).Create(&row).Error
 }
 func (s Store) Latest(key string, cutoff int64) (Snapshot, bool, error) {
@@ -94,7 +95,10 @@ func (s Store) Latest(key string, cutoff int64) (Snapshot, bool, error) {
 }
 func (s Store) LastFull(key string) (int64, error) {
 	var row Record
-	err := s.DB.Select("finished_at").Where("identity = ? AND full = ?", key, true).Order("finished_at DESC").Limit(1).Find(&row).Error
+	err := s.DB.Select("finished_at", "scheduled_at").Where("identity = ? AND full = ? AND scheduled_at > 0", key, true).Order("scheduled_at DESC").Limit(1).Find(&row).Error
+	if row.ScheduledAt > 0 {
+		return row.ScheduledAt, err
+	}
 	return row.FinishedAt, err
 }
 func (s Store) Prune(now time.Time, policy Policy) error {

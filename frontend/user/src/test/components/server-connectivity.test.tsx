@@ -383,3 +383,31 @@ describe("compact configurable connectivity cards", () => {
 		).not.toBeNull();
 	});
 });
+describe("latest completed default", () => {
+ const result = (delay: number) => ({...data().results[0],status:"ok" as const,phase:"complete" as const,delay_ms:delay,samples:[{status:"ok" as const,delay_ms:delay}]});
+ it.each([true,false])("keeps completed results during background tests, owner=%s", async(can_run) => {
+  const latest={state:"complete" as const,started_at:1000,finished_at:2000,rounds:3,results:[result(42)]};
+  const live=data({can_run,state:"running",started_at:3000,latest});
+  api.fetchConnectivity.mockResolvedValue(live);
+  const client=createTestQueryClient();
+  const view=render(<QueryClientProvider client={client}><ServerConnectivity serverId={7}/></QueryClientProvider>);
+  expect(await screen.findByText("42")).toBeVisible();
+  expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+  expect(screen.queryByText("connectivity.origin")).not.toBeInTheDocument();
+  expect(api.startConnectivity).not.toHaveBeenCalled();
+  client.setQueryData(["server-connectivity",7],data({can_run,state:"complete",finished_at:4000,results:[result(18)]}));
+  expect(await screen.findByText("18")).toBeVisible();
+  expect(screen.queryByText("42")).not.toBeInTheDocument();
+  view.unmount();
+ });
+ it("manual retest follows the new batch rather than the saved one",async()=>{
+  const completed=data({state:"complete",started_at:1000,finished_at:2000,results:[result(42)]});
+  api.fetchConnectivity.mockResolvedValue(completed);
+  api.startConnectivity.mockResolvedValue(data({state:"running",started_at:3000,latest:completed}));
+  mount();
+  expect(await screen.findByText("42")).toBeVisible();
+  fireEvent.click(screen.getByRole("button",{name:"connectivity.retest"}));
+  expect(await screen.findByRole("progressbar")).toBeVisible();
+  expect(screen.queryByText("42")).not.toBeInTheDocument();
+ });
+});

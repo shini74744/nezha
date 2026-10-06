@@ -46,17 +46,19 @@ type Result struct {
 	CheckedAt int64    `json:"checked_at,omitempty"`
 }
 type Snapshot struct {
-	Full       bool     `json:"-"`
-	State      string   `json:"state"`
-	StartedAt  int64    `json:"started_at,omitempty"`
-	FinishedAt int64    `json:"finished_at,omitempty"`
-	RetryAt    int64    `json:"retry_at,omitempty"`
-	Rounds     int      `json:"rounds"`
-	Results    []Result `json:"results"`
+	ScheduledAt int64    `json:"scheduled_at,omitempty"`
+	Full        bool     `json:"-"`
+	State       string   `json:"state"`
+	StartedAt   int64    `json:"started_at,omitempty"`
+	FinishedAt  int64    `json:"finished_at,omitempty"`
+	RetryAt     int64    `json:"retry_at,omitempty"`
+	Rounds      int      `json:"rounds"`
+	Results     []Result `json:"results"`
 }
 type Probe func(context.Context, Target) Sample
 type entry struct {
 	snapshot Snapshot
+	previous *Snapshot
 	touched  time.Time
 }
 type Manager struct {
@@ -129,7 +131,7 @@ func retainSamples(snapshot Snapshot, cutoff int64) Snapshot {
 // Start deduplicates requests for the same identity and never queues unbounded work.
 // Jobs intentionally outlive an individual page/request, so viewers share one run.
 func (m *Manager) Start(key string, probe Probe, selected ...[]Target) (Snapshot, error) {
-	return m.start(key, probe, selectedTargets(selected), "")
+	return m.start(key, probe, selectedTargets(selected), "", 0)
 }
 
 // StartTarget refreshes only one configured target, preserving other samples.
@@ -138,9 +140,12 @@ func (m *Manager) StartTarget(key, id string, probe Probe, targets []Target) (Sn
 	if id == "" {
 		return Snapshot{}, errors.New("invalid target")
 	}
-	return m.start(key, probe, targets, id)
+	return m.start(key, probe, targets, id, 0)
 }
-func (m *Manager) start(key string, probe Probe, selected []Target, id string) (Snapshot, error) {
+func (m *Manager) StartScheduled(key string, probe Probe, targets []Target, scheduledAt int64) (Snapshot, error) {
+	return m.start(key, probe, targets, "", scheduledAt)
+}
+func (m *Manager) start(key string, probe Probe, selected []Target, id string, scheduledAt int64) (Snapshot, error) {
 	targets := append([]Target(nil), selected...)
 	found := id == ""
 	for _, target := range targets {
@@ -190,6 +195,12 @@ func (m *Manager) start(key string, probe Probe, selected []Target, id string) (
 	if id != "" && m.entries[key] != nil {
 		s = reconcile(m.entries[key].snapshot, targets)
 	}
+	var previous *Snapshot
+	if old := m.entries[key]; old != nil && old.snapshot.State == "complete" {
+		copy := clone(old.snapshot)
+		previous = &copy
+	}
+	s.ScheduledAt = scheduledAt
 	s.State, s.Full = "running", id == ""
 	s.FinishedAt = 0
 	queue := initialQueue(targets)
@@ -205,7 +216,7 @@ func (m *Manager) start(key string, probe Probe, selected []Target, id string) (
 		}
 	}
 	s.StartedAt = now.UnixMilli()
-	e := &entry{snapshot: s, touched: now}
+	e := &entry{snapshot: s, previous: previous, touched: now}
 	m.entries[key] = e
 	m.active++
 	snapshot := clone(s)
@@ -310,6 +321,7 @@ func (m *Manager) run(key string, e *entry, probe Probe, targets []Target, queue
 	close(jobs)
 	wg.Wait()
 	m.mu.Lock()
+	e.previous = nil
 	e.snapshot.State = "complete"
 	e.snapshot.FinishedAt = m.now().UnixMilli()
 	e.snapshot.RetryAt = m.now().Add(m.cooldown).UnixMilli()
@@ -376,6 +388,7 @@ func reconcile(source Snapshot, current []Target) Snapshot {
 	}
 	if changed {
 		snapshot.State = "idle"
+		snapshot.ScheduledAt = 0
 		snapshot.StartedAt = 0
 		snapshot.FinishedAt = 0
 	}

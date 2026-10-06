@@ -84,7 +84,7 @@ func TestSingleTargetPreservesOtherResultsAndSharesLimits(t *testing.T) {
 	require.Empty(t, retainSamples(expired, time.Now().Add(-24*time.Hour).UnixMilli()).Results[0].Samples)
 }
 func TestAutomaticScheduleIsBoundedRespectsIntervalAndPolicy(t *testing.T) {
-	now := time.Unix(1000000, 0)
+	now := time.Date(2026, 10, 7, 12, 1, 0, 0, time.FixedZone("CST", 8*3600))
 	p := DefaultPolicy()
 	scheduler := Scheduler{}
 	nodes := []Candidate{{Key: "a", ID: 8}, {Key: "b", ID: 16}}
@@ -150,4 +150,36 @@ func TestStoredSingleResultDoesNotKeepExpiredSamples(t *testing.T) {
 	require.True(t, ok)
 	require.Empty(t, saved.Results[0].Samples)
 	require.Len(t, saved.Results[1].Samples, 1)
+}
+
+func TestScheduledSlotPersistsAndDrivesRestartDeadline(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	require.NoError(t, db.AutoMigrate(&Record{}, &Policy{}))
+	sqlDB, _ := db.DB()
+	defer sqlDB.Close()
+	slot := ClockSlot(time.Now(), 2).UnixMilli()
+	snapshot := empty(3, Targets()[:1])
+	snapshot.State = "complete"
+	snapshot.Full = true
+	snapshot.ScheduledAt = slot
+	snapshot.StartedAt = slot + 30000
+	snapshot.FinishedAt = slot + 127000
+	store := Store{DB: db}
+	require.NoError(t, store.Save("node", snapshot))
+	saved, ok, err := store.Latest("node", 0)
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, slot, saved.ScheduledAt)
+	require.Equal(t, snapshot.FinishedAt, saved.FinishedAt)
+	last, err := store.LastFull("node")
+	require.NoError(t, err)
+	require.Equal(t, slot, last)
+	// A newer manual result must not postpone the automatic clock.
+	snapshot.ScheduledAt = 0
+	snapshot.FinishedAt += 60000
+	require.NoError(t, store.Save("node", snapshot))
+	last, err = store.LastFull("node")
+	require.NoError(t, err)
+	require.Equal(t, slot, last)
 }

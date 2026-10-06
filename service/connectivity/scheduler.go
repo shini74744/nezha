@@ -29,7 +29,7 @@ func (s *Scheduler) Tick(now time.Time, p Policy, nodes []Candidate, lastFull fu
 	for _, node := range nodes {
 		known[node.Key] = true
 		if _, ok := s.next[node.Key]; !ok {
-			s.next[node.Key] = now.Add(time.Duration(node.ID%8) * 15 * time.Second)
+			s.next[node.Key] = ClockSlot(now, p.IntervalHours).Add(time.Duration(node.ID%8) * 15 * time.Second)
 		}
 	}
 	for key := range s.next {
@@ -53,7 +53,7 @@ func (s *Scheduler) Tick(now time.Time, p Policy, nodes []Candidate, lastFull fu
 		if err != nil {
 			return err
 		}
-		due := time.UnixMilli(last).Add(time.Duration(p.IntervalHours) * time.Hour)
+		due := NextClockSlot(time.UnixMilli(last), p.IntervalHours)
 		if last > 0 && now.Before(due) {
 			s.next[node.Key] = due
 			continue
@@ -68,7 +68,7 @@ func (s *Scheduler) Tick(now time.Time, p Policy, nodes []Candidate, lastFull fu
 		if err != nil {
 			return err
 		}
-		s.next[node.Key] = now.Add(time.Duration(p.IntervalHours) * time.Hour)
+		s.next[node.Key] = NextClockSlot(now, p.IntervalHours)
 		return nil // At most one new node per tick.
 	}
 	return nil

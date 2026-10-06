@@ -176,7 +176,7 @@ func StartConnectivityAutomation() {
 					if current.State == "running" || now.UnixMilli() < current.RetryAt {
 						return connectivity.ErrNotReady
 					}
-					_, err := connectivityManager.Start(node.Key, guardedConnectivityProbe(server, targets, true), targets)
+					_, err := connectivityManager.StartScheduled(node.Key, guardedConnectivityProbe(server, targets, true), targets, connectivity.ClockSlot(now, p.IntervalHours).UnixMilli())
 					return err
 				})
 				if err != nil {
