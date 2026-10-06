@@ -29,6 +29,8 @@ var (
 	failedStartedAt time.Time
 	latestRetryAt   time.Time
 	geoQueryIP      string
+	cachedIPv4      string
+	cachedIPv6      string
 	countryCode     string
 	geoIPChanged    = true
 	geoIPFetchLock  sync.Mutex
@@ -74,6 +76,10 @@ func FetchIP(config *model.AgentConfig, useIPv6CountryCode bool) *pb.GeoIP {
 
 	geoIPLock.Lock()
 	defer geoIPLock.Unlock()
+	// Country lookup chooses one address, but the report contains both. A
+	// change (including appearance/disappearance) in either family is reportable.
+	geoIPChanged = geoIPChanged || cachedIPv4 != ipv4 || cachedIPv6 != ipv6
+	cachedIPv4, cachedIPv6 = ipv4, ipv6
 	if ipv6 != "" && (useIPv6CountryCode || ipv4 == "") {
 		geoIPChanged = geoQueryIP != ipv6 || geoIPChanged
 		geoQueryIP = ipv6

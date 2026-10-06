@@ -21,3 +21,11 @@ If GitHub is unavailable, the operation fails without an upstream fallback. A SH
 
 Publishing: run `go test -mod=readonly ./...`, then `bash release/build.sh VERSION /absolute/output/path`. This builds all 18 supported OS/architecture packages and checksum assets. Create a v-prefixed semantic-version tag and a draft GitHub release, upload the zip/checksum assets, verify them, then publish. GitHub Actions is not configured because the current publishing credential does not have workflow permission.
 Internal Go module paths remain unchanged for source compatibility; they are not runtime download URLs.
+
+## v2.3.7 connectivity and dual-stack reporting
+
+- Independent HTTPS destinations no longer serialize their TCP/TLS handshakes behind the shared connection cache lock.
+- HTTP/1 and HTTP/2 dial and TLS handshake cancellation follows the originating request. Failed TLS sockets are closed.
+- Dashboard connectivity tasks (reserved ID bit 62) have a three-second request deadline including response-body reads. Ordinary service monitors retain the existing 30-second timeout.
+- IPv4 and IPv6 are tracked separately for IP-report change detection, including appearance and disappearance of either family. Failed reports remain dirty until acknowledged.
+- No connection credentials, UUIDs, network routes or firewall rules are changed by this release.

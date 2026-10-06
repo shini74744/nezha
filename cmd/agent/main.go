@@ -702,7 +702,16 @@ func handleIcmpPingTaskWithConfig(gates taskFeatureGates, task *pb.Task, result 
 	}
 }
 
+// Reserved dashboard connectivity task IDs. Ordinary service monitors retain
+// their existing timeout; connectivity attempts must actually stop at 3 seconds.
+const connectivityTaskMask uint64 = 1 << 62
+const connectivityRequestTimeout = 3 * time.Second
+
 func handleHttpGetTaskWithConfig(gates taskFeatureGates, task *pb.Task, result *pb.TaskResult) {
+	handleHttpGetTaskWithContext(context.Background(), gates, task, result)
+}
+
+func handleHttpGetTaskWithContext(parent context.Context, gates taskFeatureGates, task *pb.Task, result *pb.TaskResult) {
 	if gates.disableSendQuery {
 		result.Data = "This server has disabled query sending"
 		return
@@ -714,7 +723,18 @@ func handleHttpGetTaskWithConfig(gates taskFeatureGates, task *pb.Task, result *
 		result.Data = "invalid URL: only http and https schemes are supported"
 		return
 	}
-	resp, err := httpClient.Get(taskUrl)
+	ctx := parent
+	if task.GetId()&connectivityTaskMask != 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(parent, connectivityRequestTimeout)
+		defer cancel()
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, taskUrl, nil)
+	if err != nil {
+		result.Data = err.Error()
+		return
+	}
+	resp, err := httpClient.Do(req)
 	printf("HTTP-GET Task: %s", taskUrl)
 	if err == nil {
 		defer resp.Body.Close()

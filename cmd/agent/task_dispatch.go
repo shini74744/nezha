@@ -119,7 +119,7 @@ func doTaskWithSnapshot(
 	gates := taskFeatureGatesFrom(config)
 	switch task.GetType() {
 	case model.TaskTypeHTTPGet:
-		handleHttpGetTaskWithConfig(gates, task, result)
+		handleHttpGetTaskWithContext(parent, gates, task, result)
 	case model.TaskTypeICMPPing:
 		handleIcmpPingTaskWithConfig(gates, task, result)
 	case model.TaskTypeTCPPing:

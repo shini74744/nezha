@@ -45,6 +45,8 @@ type monitorMetricStateSnapshot struct {
 	failedStartedAt    time.Time
 	latestRetryAt      time.Time
 	geoQueryIP         string
+	cachedIPv4         string
+	cachedIPv6         string
 	countryCode        string
 	geoIPChanged       bool
 }
@@ -86,6 +88,7 @@ func captureMonitorTestState() monitorTestStateSnapshot {
 			hostAttempts: maps.Clone(hostDataFetchAttempts), statAttempts: maps.Clone(statDataFetchAttempts),
 			retryTimes: retryTimes, failedStartedAt: failedStartedAt, latestRetryAt: latestRetryAt,
 			geoQueryIP: geoQueryIP, countryCode: countryCode, geoIPChanged: geoIPChanged,
+			cachedIPv4: cachedIPv4, cachedIPv6: cachedIPv6,
 		},
 	}
 }
@@ -121,6 +124,7 @@ func (s monitorTestStateSnapshot) restore() {
 	statDataFetchAttempts = maps.Clone(s.metrics.statAttempts)
 	retryTimes, failedStartedAt, latestRetryAt = s.metrics.retryTimes, s.metrics.failedStartedAt, s.metrics.latestRetryAt
 	geoQueryIP, countryCode, geoIPChanged = s.metrics.geoQueryIP, s.metrics.countryCode, s.metrics.geoIPChanged
+	cachedIPv4, cachedIPv6 = s.metrics.cachedIPv4, s.metrics.cachedIPv6
 }
 
 func TestMonitorTestStateSnapshotRestoresEveryBarrierGlobal(t *testing.T) {
@@ -180,6 +184,7 @@ func seedMonitorMetricState(state monitorMetricStateSnapshot) {
 	statDataFetchAttempts = maps.Clone(state.statAttempts)
 	retryTimes, failedStartedAt, latestRetryAt = state.retryTimes, state.failedStartedAt, state.latestRetryAt
 	geoQueryIP, countryCode, geoIPChanged = state.geoQueryIP, state.countryCode, state.geoIPChanged
+	cachedIPv4, cachedIPv6 = state.cachedIPv4, state.cachedIPv6
 }
 
 func assertMonitorMetricState(t *testing.T, want monitorMetricStateSnapshot) {
@@ -192,7 +197,8 @@ func assertMonitorMetricState(t *testing.T, want monitorMetricStateSnapshot) {
 		!maps.Equal(got.hostAttempts, want.hostAttempts) || !maps.Equal(got.statAttempts, want.statAttempts) ||
 		got.retryTimes != want.retryTimes || !got.failedStartedAt.Equal(want.failedStartedAt) ||
 		!got.latestRetryAt.Equal(want.latestRetryAt) || got.geoQueryIP != want.geoQueryIP ||
-		got.countryCode != want.countryCode || got.geoIPChanged != want.geoIPChanged {
+		got.countryCode != want.countryCode || got.geoIPChanged != want.geoIPChanged ||
+		got.cachedIPv4 != want.cachedIPv4 || got.cachedIPv6 != want.cachedIPv6 {
 		t.Fatalf("restored monitor metric state = %+v, want %+v", got, want)
 	}
 }

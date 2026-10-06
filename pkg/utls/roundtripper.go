@@ -74,8 +74,16 @@ var (
 	errExpired       = errors.New("connection have expired")
 )
 
+type requestContextKey struct{}
+
 func (r *uTLSHTTPRoundTripperImpl) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.Header = r.headers
+	// Preserve the originating request context even when net/http detaches its
+	// connection-pool dial from request cancellation. This prevents timed-out
+	// connectivity probes from leaving TCP/TLS dials running in the background.
+	parent := req.Context()
+	req = req.Clone(context.WithValue(parent, requestContextKey{}, parent))
+	// Each request owns its headers; HTTP transports may mutate them concurrently.
+	req.Header = r.headers.Clone()
 
 	if req.URL.Scheme != "https" {
 		return r.backdropTransport.RoundTrip(req)
@@ -128,13 +136,24 @@ func getPendingConnectionID(dest string, alpnIsH2 bool) pendingConnKey {
 
 func (r *uTLSHTTPRoundTripperImpl) putConn(addr string, alpnIsH2 bool, conn net.Conn) {
 	connId := getPendingConnectionID(addr, alpnIsH2)
+	r.accessDialingConnection.Lock()
+	old := r.pendingConn[connId]
 	r.pendingConn[connId] = newUnclaimedConnection(conn, time.Minute)
+	r.accessDialingConnection.Unlock()
+	if old != nil {
+		if unused, err := old.claimConnection(); err == nil {
+			unused.Close()
+		}
+	}
 }
 
 func (r *uTLSHTTPRoundTripperImpl) getConn(addr string, alpnIsH2 bool) net.Conn {
 	connId := getPendingConnectionID(addr, alpnIsH2)
-	if conn, ok := r.pendingConn[connId]; ok {
-		delete(r.pendingConn, connId)
+	r.accessDialingConnection.Lock()
+	conn := r.pendingConn[connId]
+	delete(r.pendingConn, connId)
+	r.accessDialingConnection.Unlock()
+	if conn != nil {
 		if claimedConnection, err := conn.claimConnection(); err == nil {
 			return claimedConnection
 		}
@@ -143,9 +162,24 @@ func (r *uTLSHTTPRoundTripperImpl) getConn(addr string, alpnIsH2 bool) net.Conn 
 }
 
 func (r *uTLSHTTPRoundTripperImpl) dialOrGetTLSWithExpectedALPN(ctx context.Context, addr string, expectedH2 bool) (net.Conn, error) {
-	r.accessDialingConnection.Lock()
-	defer r.accessDialingConnection.Unlock()
-
+	if parent, ok := ctx.Value(requestContextKey{}).(context.Context); ok {
+		if err := parent.Err(); err != nil {
+			return nil, err
+		}
+		var cancel context.CancelFunc
+		if deadline, ok := parent.Deadline(); ok {
+			ctx, cancel = context.WithDeadline(ctx, deadline)
+		} else {
+			ctx, cancel = context.WithCancel(ctx)
+		}
+		stop := context.AfterFunc(parent, cancel)
+		defer func() { stop(); cancel() }()
+	}
+	// Only cache operations take the mutex. DNS, TCP and TLS must never block
+	// unrelated destinations behind a global connection lock.
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if r.getShouldConnectWithH1(addr) == expectedH2 {
 		return nil, errEAGAIN
 	}
@@ -216,8 +250,9 @@ func (r *uTLSHTTPRoundTripperImpl) dialTLS(ctx context.Context, addr string) (*u
 		}
 	}
 
-	err = uconn.Handshake()
+	err = uconn.HandshakeContext(ctx)
 	if err != nil {
+		uconn.Close()
 		return nil, err
 	}
 	return uconn, nil
@@ -228,8 +263,8 @@ func (r *uTLSHTTPRoundTripperImpl) init() {
 	max := 1 << 14
 
 	r.httpsH2Transport = &http2.Transport{
-		DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
-			return r.dialOrGetTLSWithExpectedALPN(context.Background(), addr, true)
+		DialTLSContext: func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
+			return r.dialOrGetTLSWithExpectedALPN(ctx, addr, true)
 		},
 		MaxReadFrameSize:          16384,
 		MaxDecoderHeaderTableSize: uint32(rand.Intn(max-min) + min),
