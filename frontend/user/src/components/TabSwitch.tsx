@@ -31,13 +31,13 @@ export default function TabSwitch({
 			>
 				{indicator && (
 					<div
-						className="active-indicator-fade-in absolute left-0 top-0 z-10 content-center bg-white shadow-lg shadow-black/5 dark:bg-stone-700 dark:shadow-white/5"
+						className="active-indicator-fade-in motion-reduce:transition-none! motion-reduce:animate-none absolute left-0 top-0 z-10 content-center bg-white shadow-lg shadow-black/5 dark:bg-stone-700 dark:shadow-white/5"
 						style={{
 							borderRadius: 46,
 							height: indicator.height,
 							transform: `translate(${indicator.x}px, ${indicator.y}px)`,
 							transition: indicator.shouldAnimate
-								? "transform 0.5s var(--timing), width 0.5s var(--timing), height 0.5s var(--timing)"
+								? "transform 150ms ease-out, width 150ms ease-out, height 150ms ease-out"
 								: "none",
 							width: indicator.width,
 						}}
@@ -60,7 +60,7 @@ export default function TabSwitch({
 							setCurrentTab(tab);
 						}}
 						className={cn(
-							"relative cursor-pointer rounded-3xl px-2.5 py-2 text-[13px] font-semibold transition-all duration-500   ease-in-out hover:text-stone-950  hover:dark:text-stone-50",
+							"relative cursor-pointer rounded-3xl px-2.5 py-2 text-[13px] font-semibold transition-colors duration-150 motion-reduce:transition-none ease-out hover:text-stone-950  hover:dark:text-stone-50",
 							currentTab === tab
 								? "text-black dark:text-white"
 								: "text-stone-400 dark:text-stone-500",
