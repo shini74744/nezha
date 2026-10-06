@@ -166,6 +166,8 @@
 	},
 	"tabSwitch": {
 		"Connectivity": "连通性",
+		"BGP": "BGP",
+		"Streaming": "流媒体",
 		"Detail": "详情",
 		"Network": "网络"
 	},

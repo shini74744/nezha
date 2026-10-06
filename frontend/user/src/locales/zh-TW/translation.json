@@ -159,6 +159,8 @@
 	},
 	"tabSwitch": {
 		"Connectivity": "連通性",
+		"BGP": "BGP",
+		"Streaming": "串流媒體",
 		"detail": "詳細資訊",
 		"network": "網路",
 		"Detail": "詳細資訊",

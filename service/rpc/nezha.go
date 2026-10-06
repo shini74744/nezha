@@ -137,6 +137,9 @@ func (s *NezhaHandler) RequestTask(stream pb.NezhaService_RequestTaskServer) err
 		if err != nil {
 			return err
 		}
+		if deliverMediaResult(result, clientID, stream) {
+			continue
+		}
 		if deliverConnectivityResult(result, clientID, stream) {
 			continue
 		}

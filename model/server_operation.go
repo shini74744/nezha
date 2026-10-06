@@ -85,6 +85,8 @@ func ServerOperationChanges(before, after *Server) []ServerOperationChange {
 	add("hide_for_guest", before.HideForGuest, after.HideForGuest)
 	add("hide_for_display", before.HideForDisplay, after.HideForDisplay)
 	add("connectivity_disabled", before.ConnectivityDisabled, after.ConnectivityDisabled)
+	add("bgp_disabled", before.BGPDisabled, after.BGPDisabled)
+	add("streaming_disabled", before.StreamingDisabled, after.StreamingDisabled)
 	add("enable_ddns", before.EnableDDNS, after.EnableDDNS)
 	add("ddns_profiles", before.DDNSProfiles, after.DDNSProfiles)
 	// Free-form fields can contain embedded passwords or signed URLs.

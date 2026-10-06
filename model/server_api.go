@@ -3,6 +3,8 @@ package model
 import "time"
 
 type StreamServer struct {
+	BGPDisabled          bool   `json:"bgp_disabled"`
+	StreamingDisabled    bool   `json:"streaming_disabled"`
 	ConnectivityDisabled bool   `json:"connectivity_disabled"`
 	HideForDisplay       bool   `json:"hide_for_display"` // 普通隐藏，不改变访问权限
 	ID                   uint64 `json:"id,omitempty"`
@@ -23,6 +25,8 @@ type StreamServerData struct {
 }
 
 type ServerForm struct {
+	BGPDisabled          *bool  `json:"bgp_disabled,omitempty" validate:"optional"`
+	StreamingDisabled    *bool  `json:"streaming_disabled,omitempty" validate:"optional"`
 	ConnectivityDisabled *bool  `json:"connectivity_disabled,omitempty" validate:"optional"` // nil preserves older clients
 	HideForDisplay       *bool  `json:"hide_for_display,omitempty" validate:"optional"`      // nil preserves older clients
 	Name                 string `json:"name,omitempty"`
