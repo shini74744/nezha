@@ -9,7 +9,38 @@ export interface BGPPath {
 	second?: ASNode;
 	count: number;
 }
+export interface BGPGraphNode extends ASNode {
+	layer: number;
+	role: "origin" | "direct" | "transit";
+	sample_count: number;
+	collector_count: number;
+	near_tier1?: boolean;
+	route_server?: boolean;
+}
+export interface BGPGraphEdge {
+	source: number;
+	target: number;
+	kind: "observed" | "supplemental";
+	provenance: string;
+	sample_count: number;
+	collector_count: number;
+}
+export interface BGPGraph {
+	version: number;
+	nodes: BGPGraphNode[];
+	edges: BGPGraphEdge[];
+	paths: { asns: number[]; count: number; collector_count: number }[];
+	observed_path_count: number;
+	included_path_count: number;
+	collector_count: number;
+	truncated: boolean;
+	supplemental_edges: BGPGraphEdge[];
+	supplemental_status: string;
+	annotation_status: string;
+	legacy?: boolean;
+}
 export interface BGPTopology {
+	graph?: BGPGraph;
 	family: string;
 	prefix?: string;
 	observed_at?: string;

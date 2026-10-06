@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -49,8 +50,11 @@ func (r rewriteTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 func TestBGPQueryFixedSourceAndPrefix(t *testing.T) {
 	requests := []string{}
+	var requestsMu sync.Mutex
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestsMu.Lock()
 		requests = append(requests, r.URL.Query().Get("resource"))
+		requestsMu.Unlock()
 		if strings.Contains(r.URL.Path, "as-overview") {
 			fmt.Fprint(w, "{\"status\":\"ok\",\"data\":{\"holder\":\"Google\"}}")
 			return

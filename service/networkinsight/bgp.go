@@ -73,6 +73,7 @@ type Route struct {
 type bgpData struct {
 	Resource  string
 	Timestamp string
+	QueryTime string  `json:"query_time"`
 	BGPState  []Route `json:"bgp_state"`
 }
 
@@ -202,9 +203,15 @@ func QueryBGP(ctx context.Context, ip, family string) Topology {
 		out.Status = "no_public_ip"
 		return out
 	}
-	var raw bgpData
-	if ripeGet(ctx, "bgp-state", ip, &raw) != nil {
-		return out
+	// Prefer the same near-real-time prefix observations as the reference graph.
+	raw, err := lookingGlassRoutes(ctx, ip)
+	if err != nil || len(raw.BGPState) == 0 {
+		if ripeGet(ctx, "bgp-state", ip, &raw) != nil {
+			return out
+		}
+		out.Source = "RIPE RIS / RIPEstat BGP State"
+	} else {
+		out.Source = "RIPE RIS / RIPEstat Looking Glass"
 	}
 	address, _ := netip.ParseAddr(ip)
 	address = address.Unmap()
@@ -221,6 +228,9 @@ func QueryBGP(ctx context.Context, ip, family string) Topology {
 		return out
 	}
 	out.ObservedAt = raw.Timestamp
+	if out.ObservedAt == "" {
+		out.ObservedAt = raw.QueryTime
+	}
 	out.Paths, out.Total = Aggregate(raw.BGPState, out.Prefix)
 	out.Status = "ok"
 	if out.Total == 0 {
@@ -230,14 +240,13 @@ func QueryBGP(ctx context.Context, ip, family string) Topology {
 	if len(out.Paths) > 40 {
 		out.Paths = out.Paths[:40]
 	}
+	out.Graph = BuildGraph(raw.BGPState, out.Prefix)
 	selected := map[uint32]string{}
-	for _, p := range out.Paths {
-		for _, n := range []*ASNode{&p.Origin, p.Direct, p.Second} {
-			if n != nil {
-				selected[n.ASN] = ""
-			}
-		}
+	for _, n := range out.Graph.Nodes {
+		selected[n.ASN] = ""
 	}
+	nameCtx, cancelNames := context.WithTimeout(ctx, 18*time.Second)
+	defer cancelNames()
 	sem := make(chan struct{}, 4)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -251,17 +260,23 @@ func QueryBGP(ctx context.Context, ip, family string) Topology {
 			defer wg.Done()
 			select {
 			case sem <- struct{}{}:
-			case <-ctx.Done():
+			case <-nameCtx.Done():
 				return
 			}
 			defer func() { <-sem }()
-			n := asName(ctx, asn)
+			n := asName(nameCtx, asn)
 			mu.Lock()
 			selected[asn] = n
 			mu.Unlock()
 		}(asn)
 	}
 	wg.Wait()
+	for i := range out.Graph.Nodes {
+		if name := selected[out.Graph.Nodes[i].ASN]; name != "" {
+			out.Graph.Nodes[i].Name = name
+		}
+	}
+	enrichGraph(ctx, out.Graph)
 	for i := range out.Paths {
 		for _, n := range []*ASNode{&out.Paths[i].Origin, out.Paths[i].Direct, out.Paths[i].Second} {
 			if n != nil && selected[n.ASN] != "" {

@@ -22,13 +22,14 @@ type Path struct {
 	Count  int     `json:"count"`
 }
 type Topology struct {
-	Family     string `json:"family"`
-	Prefix     string `json:"prefix,omitempty"`
-	ObservedAt string `json:"observed_at,omitempty"`
-	Total      int    `json:"total"`
-	Paths      []Path `json:"paths"`
-	Status     string `json:"status"`
-	Source     string `json:"source"`
+	Family     string    `json:"family"`
+	Prefix     string    `json:"prefix,omitempty"`
+	ObservedAt string    `json:"observed_at,omitempty"`
+	Total      int       `json:"total"`
+	Paths      []Path    `json:"paths"`
+	Status     string    `json:"status"`
+	Source     string    `json:"source"`
+	Graph      *BGPGraph `json:"graph,omitempty"`
 }
 type MediaResult struct {
 	ID     string `json:"id"`
