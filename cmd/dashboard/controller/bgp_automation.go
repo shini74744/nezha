@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/gin-gonic/gin"
+	"github.com/nezhahq/nezha/model"
 	"github.com/nezhahq/nezha/service/networkinsight"
 	"github.com/nezhahq/nezha/service/singleton"
 	"io"
@@ -17,6 +18,9 @@ type bgpPolicyState struct {
 	networkinsight.BGPPolicy
 	Revision string `json:"revision"`
 }
+
+// Keep the concrete response type available to Swagger generic resolution.
+type bgpPolicyResponse = model.CommonResponse[bgpPolicyState]
 
 func bgpPolicyRevision(p networkinsight.BGPPolicy) bgpPolicyState {
 	raw, _ := json.Marshal(p)
