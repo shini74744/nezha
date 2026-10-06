@@ -4,10 +4,10 @@ import {readFileSync} from "node:fs";
 const manifest = JSON.parse(readFileSync(new URL("../../../user/src/appearance/manifest.json", import.meta.url), "utf8")) as {key:string}[];
 test.use({ignoreHTTPSErrors:true});
 const catalog = JSON.parse(readFileSync(new URL("../../../../service/connectivity/catalog.json", import.meta.url), "utf8")) as {id:string; name:string; group:string; host:string}[];
-async function setup(page:Page,theme:string,light=false,offline=false,owner=true,language="zh-CN",wallpaper=false) {
+async function setup(page:Page,theme:string,light=false,offline=false,owner=true,language="zh-CN",wallpaper=false,countryCode="us",disabled=false,clickTab=true) {
  const origin="https://127.0.0.1:"+(theme==="doraemon"?"18478":"18477"),now=Date.now();
- const server=createServer({id:7,name:"连通性测试节点",last_active:offline?"0001-01-01T00:00:00Z":new Date(now).toISOString()});
- const state={posts:0,gets:0,external:[] as string[],override:null as any[]|null,mode:"idle",readError:false,postError:false};
+ const server=createServer({id:7,name:"连通性测试节点",country_code:countryCode,connectivity_disabled:disabled,last_active:offline?"0001-01-01T00:00:00Z":new Date(now).toISOString()});
+ const state={posts:0,postPaths:[] as string[],gets:0,external:[] as string[],override:null as any[]|null,mode:"idle",readError:false,postError:false};
  const results=()=>catalog.map(({id,name,group,host},i)=>({id,name,group,host,
   phase:state.mode==="idle"?undefined:state.mode==="running"?(i===0?"running":i===1?"complete":"queued"):"complete",
   status:state.mode==="idle"||(state.mode==="running"&&i!==1)?"pending":i===7?"http_error":i===8?"timeout":i===9?"agent_timeout":"ok",delay_ms:state.mode==="idle"||(state.mode==="running"&&i!==1)||i===8||i===9?undefined:35+i*12,
@@ -28,9 +28,9 @@ async function setup(page:Page,theme:string,light=false,offline=false,owner=true
   }
   if(!u.pathname.startsWith("/api/"))return route.continue();
   let data:any=[];
-  if(u.pathname.endsWith("/connectivity")){
+  if(/\/connectivity(?:\/[^/]+)?$/.test(u.pathname)){
    if(req.method()==="POST"){
-    state.posts++;expect(req.postData()).toBe(null);expect(req.headers()["x-csrf-token"]).toBe("mock-signed-token");
+    state.posts++;state.postPaths.push(u.pathname);expect(req.postData()).toBe(null);expect(req.headers()["x-csrf-token"]).toBe("mock-signed-token");
     if(state.postError)return route.fulfill({json:{success:false,error:"connectivity_busy"}});
     state.mode="running";
    }else{state.gets++;if(state.readError)return route.fulfill({json:{success:false,error:"test failure"}});}
@@ -42,32 +42,32 @@ async function setup(page:Page,theme:string,light=false,offline=false,owner=true
    data={id:1,role:0,username:"qa"};
   }
   if(u.pathname==="/api/v1/service")data={services:{},cycle_transfer_stats:{}};
-  if(u.pathname.endsWith("/last-report"))data={server_id:7,tsdb_enabled:true,history_days:30,last_report_at:now-3600000,snapshot:{at:now-3600000,host:server.host,state:server.state},metrics:{cpu:12},recent:{cpu:[{ts:now-3600000,value:12}]}};
+  if(u.pathname.endsWith("/last-report"))data={server_id:7,tsdb_enabled:true,history_days:30,last_report_at:now-3600000,snapshot:{at:now-3600000,host:server.host,state:server.state,country_code:countryCode},metrics:{cpu:12},recent:{cpu:[{ts:now-3600000,value:12}]}};
   if(u.pathname.endsWith("/metrics"))data={data_points:[]};
   return route.fulfill({json:{success:true,data}});
  });
  await page.goto(origin+"/server/7");
- await page.locator(".server-info-tab").getByText(language==="en-US"?"Connectivity":"连通性",{exact:true}).click();
+ if(clickTab) await page.locator(".server-info-tab").getByText(language==="en-US"?"Connectivity":"连通性",{exact:true}).click();
  return state;
 }
 for(const theme of ["default","doraemon"])for(const light of [false,true])for(const width of [320,390,768,1440]){
  test(`connectivity layout ${theme} ${light?"light":"dark"} ${width}`,async({page},info)=>{
   await page.setViewportSize({width,height:900});const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
   const state=await setup(page,theme,light),view=page.locator("[data-server-connectivity]");
-  await expect(view.locator("[data-connectivity-target]")).toHaveCount(72);
-  await expect(view.locator("[data-connectivity-group]")).toHaveCount(4);
-  await expect(view.locator("img[data-connectivity-icon]")).toHaveCount(72);
+  await expect(view.locator("[data-connectivity-target]")).toHaveCount(102);
+  await expect(view.locator("[data-connectivity-group]")).toHaveCount(16);
+  await expect(view.locator("img[data-connectivity-icon]")).toHaveCount(102);
   await expect.poll(() => view.locator("img[data-connectivity-icon]").evaluateAll((images) => images.every(img => (img as HTMLImageElement).complete && (img as HTMLImageElement).naturalWidth > 0))).toBe(true);
-  for (const region of [{id:"china",size:12},{id:"japan",size:7},{id:"usa",size:36},{id:"global",size:17}]) {
+  for (const region of [...new Set(catalog.map(row=>row.group))].map(id=>({id,size:catalog.filter(row=>row.group===id).length}))) {
    await expect(view.locator(`[data-connectivity-group="${region.id}"] [data-connectivity-target]`)).toHaveCount(region.size);
   }
   expect(state.posts).toBe(0);await expect(page.locator("[data-server-network]")).toHaveCount(0);
   await view.getByRole("button",{name:"开始检测",exact:true}).click();
   await expect(view.getByRole("button",{name:"检测中…",exact:true})).toBeDisabled();expect(state.posts).toBe(1);
   await expect(view.locator('[data-connectivity-phase="running"]')).toHaveCount(1);
-  await expect(view.getByText("正在检测",{exact:true})).toBeVisible();
-  await expect(view.getByText("排队中",{exact:true})).toHaveCount(70);
-  await expect(view.getByText(/已有结果 1 项 · 检测中 1 项 · 排队 70 项/)).toBeVisible();
+  await expect(view.getByText("正在检测",{exact:true})).toHaveCount(0);
+  await expect(view.getByText("排队中",{exact:true})).toHaveCount(0);
+  await expect(view.getByText(/排队 \d+ 项/)).toHaveCount(0);
   state.mode="complete";
   await expect(view.getByRole("button",{name:/秒后可重测/})).toBeDisabled({timeout:10000});
   await expect(view.getByText("(HTTP 403)")).toBeVisible();
@@ -95,7 +95,7 @@ test("guest and offline only read cache; reloading does not trigger probes",asyn
  const view=page.locator("[data-server-connectivity]");
  await expect(view.locator("[data-connectivity-controls]")).toHaveCount(0);
  await expect(view.getByRole("heading",{name:"节点连通性",exact:true})).toHaveCount(0);
- await expect(view.locator("[data-connectivity-target]")).toHaveCount(72);
+ await expect(view.locator("[data-connectivity-target]")).toHaveCount(102);
  await expect(view.getByRole("button",{name:/开始检测|重新检测/})).toHaveCount(0);
  await expect(view.getByText("(HTTP 403)")).toBeVisible();expect(state.posts).toBe(0);
 });
@@ -107,11 +107,11 @@ test("network/detail tabs still work with combined network; help and failure rec
  await expect(view).toHaveCount(0);await page.locator(".server-info-tab").getByText("详情",{exact:true}).click();await expect(page.locator(".server-charts")).toBeVisible();
  state.readError=true;await page.locator(".server-info-tab").getByText("连通性",{exact:true}).click();await expect(view.getByRole("alert")).toHaveText(/检测结果读取失败/);
  await expect(view.locator("[data-connectivity-target]")).toHaveCount(0);state.readError=false;await view.getByRole("button",{name:"重新加载"}).click();
- await expect(view.locator("[data-connectivity-target]")).toHaveCount(72);
-  await expect(view.locator("[data-connectivity-group]")).toHaveCount(4);
-  await expect(view.locator("img[data-connectivity-icon]")).toHaveCount(72);
+ await expect(view.locator("[data-connectivity-target]")).toHaveCount(102);
+  await expect(view.locator("[data-connectivity-group]")).toHaveCount(16);
+  await expect(view.locator("img[data-connectivity-icon]")).toHaveCount(102);
   await expect.poll(() => view.locator("img[data-connectivity-icon]").evaluateAll((images) => images.every(img => (img as HTMLImageElement).complete && (img as HTMLImageElement).naturalWidth > 0))).toBe(true);
-  for (const region of [{id:"china",size:12},{id:"japan",size:7},{id:"usa",size:36},{id:"global",size:17}]) {
+  for (const region of [...new Set(catalog.map(row=>row.group))].map(id=>({id,size:catalog.filter(row=>row.group===id).length}))) {
    await expect(view.locator(`[data-connectivity-group="${region.id}"] [data-connectivity-target]`)).toHaveCount(region.size);
   }
 });
@@ -140,7 +140,7 @@ for(const theme of ["default","doraemon"])for(const light of [false,true])for(co
  test(`guest results only ${theme} ${light?"light":"dark"} ${width}`,async({page},info)=>{
   await page.setViewportSize({width,height:900});
   const state=await setup(page,theme,light,false,false,"zh-CN",true),view=page.locator("[data-server-connectivity]");
-  await expect(view.locator("[data-connectivity-target]")).toHaveCount(72);
+  await expect(view.locator("[data-connectivity-target]")).toHaveCount(102);
   await expect(view.locator("[data-connectivity-controls]")).toHaveCount(0);
   await expect(view.getByRole("heading",{name:"节点连通性",exact:true})).toHaveCount(0);
   await expect(view.getByText(/仅管理员或节点所属用户/)).toHaveCount(0);
@@ -161,7 +161,7 @@ test("guest cache failure retains reload without exposing owner controls",async(
  await expect(view.getByRole("alert")).toHaveText(/检测结果读取失败/);
  await expect(view.locator("[data-connectivity-controls]")).toHaveCount(0);
  state.readError=false;await view.getByRole("button",{name:"重新加载"}).click();
- await expect(view.locator("[data-connectivity-target]")).toHaveCount(72);
+ await expect(view.locator("[data-connectivity-target]")).toHaveCount(102);
  await expect(view.getByRole("button")).toHaveCount(0);
  expect(state.posts).toBe(0);
 });
@@ -219,3 +219,43 @@ for(const theme of ["default","doraemon"])test(`overflow status pans and cached 
  expect(state.posts).toBe(0);
  expect(state.external.filter(url=>url.includes("not-requested")||url.includes("private.example"))).toEqual([]);
 });
+for(const theme of ["default","doraemon"]) {
+ for(const [code,first] of [["cn","china"],["us","usa"],["sg","singapore"],["my","malaysia"],["id","indonesia"],["gb","uk"],["kr","korea"],["","usa"]]) {
+  test(`node region priority ${theme} ${code||"unknown"}`,async({page})=>{
+   const state=await setup(page,theme,false,false,false,"zh-CN",false,code);
+   const groups=page.locator("[data-connectivity-group]");
+   await expect(groups.first()).toHaveAttribute("data-connectivity-group",first);
+   const order=await groups.evaluateAll(nodes=>nodes.map(n=>n.getAttribute("data-connectivity-group")));
+   expect(order.slice(0,first==="usa"?2:3)).toEqual(first==="usa"?["usa","global"]:[first,"usa","global"]);
+   expect(state.posts).toBe(0);
+  });
+ }
+ for(const offline of [false,true]) test(`disabled node hides connectivity ${theme} ${offline}`,async({page})=>{
+  const state=await setup(page,theme,false,offline,false,"zh-CN",false,"sg",true,false);
+  await expect(page.locator(".server-info-tab").getByText("详情",{exact:true})).toBeVisible();
+  await expect(page.locator(".server-info-tab").getByText("连通性",{exact:true})).toHaveCount(0);
+  expect(state.gets).toBe(0);expect(state.posts).toBe(0);
+ });
+ test(`single card authorized retry ${theme}`,async({page})=>{
+  const state=await setup(page,theme);
+  const card=page.locator('[data-connectivity-target="deepseek"]');
+  await expect(card).toHaveAttribute("role","button");
+  await card.click();
+  await expect.poll(()=>state.posts).toBe(1);
+  expect(state.postPaths).toEqual(["/api/v1/server/7/connectivity/deepseek"]);
+  await expect(card).toHaveAttribute("aria-disabled","true");
+  await card.click({force:true});expect(state.posts).toBe(1);
+ });
+ test(`details shell remains available with deferred requests ${theme}`,async({page})=>{
+  await setup(page,theme,false,false,false,"zh-CN",false,"sg",false,false);
+  let release:()=>void=()=>{};
+  const gate=new Promise<void>(resolve=>release=resolve);
+  await page.route("**/api/v1/server/7/connectivity",async route=>{await gate;await route.fulfill({json:{success:true,data:{server_id:7,online:true,can_run:false,state:"idle",rounds:3,results:[]}}})});
+  await page.locator(".server-info-tab").getByText("连通性",{exact:true}).click();
+  await expect(page.locator(".server-info-tab").getByText("网络",{exact:true})).toBeVisible();
+  await expect(page.locator(".server-name")).toContainText("连通性测试节点");
+  await expect(page.locator("[data-server-connectivity]")).toBeVisible();
+  await page.locator(".server-info-tab").getByText("详情",{exact:true}).click();
+  await expect(page.locator(".server-charts")).toBeVisible();release();
+ });
+}

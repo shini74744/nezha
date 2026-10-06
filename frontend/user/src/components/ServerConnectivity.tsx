@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CN, JP, US } from "country-flag-icons/react/3x2";
+import { CN, JP, US, KR, SG, MY, ID, GB, DE, FR, CA, AU, IN, BR, RU } from "country-flag-icons/react/3x2";
 import {
 	CircleHelp,
 	Globe2,
@@ -19,15 +19,12 @@ import {
 import { resolveConnectivityIcon } from "@/lib/connectivity-icons";
 import { cn } from "@/lib/utils";
 import ConnectivityMarquee from "./ConnectivityMarquee";
+import { orderedConnectivityRegions, connectivityRegionName } from "../../../shared/connectivity-regions";
 
-const regions = [
-	{ id: "china", Icon: CN },
-	{ id: "japan", Icon: JP },
-	{ id: "usa", Icon: US },
-	{ id: "global", Icon: Globe2 },
-] as const;
+const flagIcons: Record<string, typeof CN> = { CN, JP, US, KR, SG, MY, ID, GB, DE, FR, CA, AU, IN, BR, RU };
 
-export default function ServerConnectivity({ serverId }: { serverId: number }) {
+export default function ServerConnectivity({ serverId, countryCode }: { serverId: number; countryCode?: string }) {
+	const regions = orderedConnectivityRegions(countryCode).map(region => ({...region, Icon: flagIcons[region.country] || Globe2}));
 	const { t, i18n } = useTranslation();
 	const client = useQueryClient();
 	const key = ["server-connectivity", serverId];
@@ -43,7 +40,7 @@ export default function ServerConnectivity({ serverId }: { serverId: number }) {
 		refetchIntervalInBackground: false,
 	});
 	const mutation = useMutation({
-		mutationFn: () => startConnectivity(serverId),
+		mutationFn: (targetId?: string) => startConnectivity(serverId, targetId),
 		onSuccess: async (data) => {
 			await client.cancelQueries({ queryKey: key });
 			client.setQueryData(key, data);
@@ -65,12 +62,6 @@ export default function ServerConnectivity({ serverId }: { serverId: number }) {
 				? result.phase === "complete"
 				: !["pending", "running"].includes(result.status),
 		).length || 0;
-	const sampled =
-		data?.results.filter((result) => result.samples.length > 0).length || 0;
-	const active =
-		data?.results.filter((result) => result.phase === "running").length || 0;
-	const queued =
-		data?.results.filter((result) => result.phase === "queued").length || 0;
 	const formatDate = (value?: number) =>
 		value ? new Date(value).toLocaleString(i18n.language) : "—";
 	const error =
@@ -138,7 +129,7 @@ export default function ServerConnectivity({ serverId }: { serverId: number }) {
 										cooldown > 0 ||
 										query.isError
 									}
-									onClick={() => mutation.mutate()}
+									onClick={() => mutation.mutate(undefined)}
 									className="shrink-0 gap-2"
 								>
 									{running || mutation.isPending ? (
@@ -203,15 +194,6 @@ export default function ServerConnectivity({ serverId }: { serverId: number }) {
 													? t("connectivity.finished")
 													: t("connectivity.empty")}
 										</span>
-										{running && (
-											<span>
-												{t("connectivity.queueProgress", {
-													sampled,
-													active,
-													queued,
-												})}
-											</span>
-										)}
 										{data.started_at && (
 											<span>
 												{t("connectivity.time")}:{" "}
@@ -261,7 +243,7 @@ export default function ServerConnectivity({ serverId }: { serverId: number }) {
 					.filter(({ id }) =>
 						data.results.some((result) => result.group === id),
 					)
-					.map(({ id: group, Icon }) => (
+					.map(({ id: group, Icon, ...region }) => (
 						<div
 							key={group}
 							data-connectivity-group={group}
@@ -270,7 +252,7 @@ export default function ServerConnectivity({ serverId }: { serverId: number }) {
 							<div className="flex flex-wrap items-center justify-between gap-2">
 								<h3 className="flex items-center gap-2 text-sm font-semibold">
 									<Icon className="h-4 w-6 shrink-0" aria-hidden />
-									{t(`connectivity.${group}`)}
+									{connectivityRegionName({id: group, ...region}, i18n.language)}
 								</h3>
 								<span className="text-xs text-muted-foreground">
 									{t("connectivity.reachableCount", {
@@ -293,6 +275,8 @@ export default function ServerConnectivity({ serverId }: { serverId: number }) {
 											key={result.id}
 											result={result}
 											rounds={data.rounds}
+                                            onRetest={data.can_run ? () => mutation.mutate(result.id) : undefined}
+                                            disabled={!data.online || running || mutation.isPending || cooldown > 0}
 										/>
 									))}
 							</div>
@@ -304,9 +288,13 @@ export default function ServerConnectivity({ serverId }: { serverId: number }) {
 function ConnectivityCard({
 	result,
 	rounds,
+    onRetest,
+    disabled,
 }: {
 	result: ConnectivityResult;
 	rounds: number;
+    onRetest?: () => void;
+    disabled?: boolean;
 }) {
 	const { t } = useTranslation();
 	const [failedIcon, setFailedIcon] = useState<string>();
@@ -340,26 +328,22 @@ function ConnectivityCard({
 				? "text-muted-foreground"
 				: "text-red-700 dark:text-red-300";
 	const detail = [
-		t(`connectivity.status.${status}`),
+		!waiting ? t(`connectivity.status.${status}`) : "",
 		codes.length ? `HTTP ${codes.join("/")}` : "",
-		result.samples.length > 0 && result.phase && result.phase !== "complete"
-			? t(
-					result.phase === "running"
-						? "connectivity.sampling"
-						: "connectivity.resampleQueued",
-				)
-			: "",
 		result.phase === "complete" && result.samples.length < rounds
-			? t("connectivity.endedEarly")
-			: "",
-	]
-		.filter(Boolean)
-		.join(" · ");
+			? t("connectivity.endedEarly") : "",
+	].filter(Boolean).join(" · ");
 	return (
 		<Card
 			data-connectivity-target={result.id}
 			data-connectivity-phase={result.phase}
-			className="min-w-0 rounded-xl shadow-none"
+			className={cn("min-w-0 rounded-xl shadow-none", onRetest && !disabled && "cursor-pointer hover:ring-1 hover:ring-primary focus-visible:outline focus-visible:outline-2")}
+            role={onRetest ? "button" : undefined}
+            tabIndex={onRetest ? 0 : undefined}
+            aria-disabled={onRetest ? disabled : undefined}
+            aria-label={onRetest ? `${result.name} · ${t("connectivity.retestOne", {defaultValue:"重新检测此项"})}` : undefined}
+            onClick={() => {if (!disabled) onRetest?.()}}
+            onKeyDown={event=>{if(event.target===event.currentTarget && (event.key==="Enter"||event.key===" ")){event.preventDefault();if(!disabled)onRetest?.()}}}
 		>
 			<CardContent className="grid min-h-[54px] grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-2 px-3 py-2">
 				<span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-white/95 p-0.5">
@@ -425,15 +409,7 @@ function ConnectivityCard({
 							})}
 						</div>
 						<ConnectivityMarquee className={stateColor} text={detail}>
-							{!positive
-								? t(`connectivity.status.${status}`)
-								: result.phase && result.phase !== "complete"
-									? t(
-											result.phase === "running"
-												? "connectivity.sampling"
-												: "connectivity.resampleQueued",
-										)
-									: null}
+							{!positive && !waiting ? t(`connectivity.status.${status}`) : null}
 							{codes.length > 0 && (
 								<span className="ml-1">(HTTP {codes.join("/")})</span>
 							)}

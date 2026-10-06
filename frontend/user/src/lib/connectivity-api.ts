@@ -22,7 +22,7 @@ export interface ConnectivitySample {
 export interface ConnectivityResult {
 	id: string;
 	name: string;
-	group: "china" | "japan" | "usa" | "global";
+	group: string;
 	host: string;
 	icon?: string;
 	phase?: "queued" | "running" | "complete";
@@ -56,6 +56,7 @@ export async function fetchConnectivity(
 }
 export async function startConnectivity(
 	serverId: number,
+	targetId?: string,
 ): Promise<ConnectivityData> {
 	const raw =
 		document.cookie
@@ -68,7 +69,7 @@ export async function startConnectivity(
 	} catch {
 		/* Server will safely reject invalid cookies. */
 	}
-	const response = await fetch(`/api/v1/server/${serverId}/connectivity`, {
+	const response = await fetch(`/api/v1/server/${serverId}/connectivity${targetId ? "/" + encodeURIComponent(targetId) : ""}`, {
 		method: "POST",
 		headers: { "X-CSRF-Token": csrf },
 	});

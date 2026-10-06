@@ -242,15 +242,16 @@ func filterServersForViewer(servers []*model.Server, viewerUserID uint64, viewer
 			publicHost = publicHost.Filter()
 		}
 		out = append(out, model.StreamServer{
-			ID:             server.ID,
-			Name:           server.Name,
-			PublicNote:     utils.IfOr(withPublicNote, server.PublicNote, ""),
-			DisplayIndex:   server.DisplayIndex,
-			HideForDisplay: server.HideForDisplay,
-			Host:           publicHost,
-			State:          runtime.State,
-			CountryCode:    countryCode,
-			LastActive:     runtime.LastActive,
+			ID:                   server.ID,
+			Name:                 server.Name,
+			PublicNote:           utils.IfOr(withPublicNote, server.PublicNote, ""),
+			DisplayIndex:         server.DisplayIndex,
+			HideForDisplay:       server.HideForDisplay,
+			ConnectivityDisabled: server.ConnectivityDisabled,
+			Host:                 publicHost,
+			State:                runtime.State,
+			CountryCode:          countryCode,
+			LastActive:           runtime.LastActive,
 		})
 	}
 	return out

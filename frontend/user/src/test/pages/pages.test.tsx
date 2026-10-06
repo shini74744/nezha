@@ -118,7 +118,7 @@ describe("ServerDetail", () => {
 		);
 
 		expect(screen.getByTestId("detail-overview")).toHaveTextContent("7");
-		expect(screen.getByTestId("detail-chart")).toHaveTextContent("7");
+		expect(await screen.findByTestId("detail-chart")).toHaveTextContent("7");
 		expect(screen.queryByTestId("network-chart")).not.toBeInTheDocument();
 
 		await user.click(screen.getByRole("button", { name: "Network" }));

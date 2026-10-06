@@ -39,12 +39,14 @@ type Sample struct {
 }
 type Result struct {
 	Target
-	Status  string   `json:"status"`
-	Phase   string   `json:"phase,omitempty"`
-	Samples []Sample `json:"samples"`
-	DelayMS *float64 `json:"delay_ms,omitempty"`
+	Status    string   `json:"status"`
+	Phase     string   `json:"phase,omitempty"`
+	Samples   []Sample `json:"samples"`
+	DelayMS   *float64 `json:"delay_ms,omitempty"`
+	CheckedAt int64    `json:"checked_at,omitempty"`
 }
 type Snapshot struct {
+	Full       bool     `json:"-"`
 	State      string   `json:"state"`
 	StartedAt  int64    `json:"started_at,omitempty"`
 	FinishedAt int64    `json:"finished_at,omitempty"`
@@ -69,6 +71,7 @@ type Manager struct {
 	rounds     int
 	workers    int
 	timeout    time.Duration
+	onComplete func(string, Snapshot)
 }
 
 var ErrBusy = errors.New("connectivity_busy")
@@ -98,17 +101,56 @@ func (m *Manager) Get(key string, selected ...[]Target) Snapshot {
 	defer m.mu.Unlock()
 	if e := m.entries[key]; e != nil {
 		if e.snapshot.State == "running" || m.now().Sub(e.touched) < m.ttl {
-			return reconcile(e.snapshot, selectedTargets(selected))
+			return retainSamples(reconcile(e.snapshot, selectedTargets(selected)), m.now().Add(-m.ttl).UnixMilli())
 		}
 		delete(m.entries, key)
 	}
 	return empty(m.rounds, selectedTargets(selected))
 }
 
+func retainSamples(snapshot Snapshot, cutoff int64) Snapshot {
+	for i := range snapshot.Results {
+		r := &snapshot.Results[i]
+		at := r.CheckedAt
+		if at == 0 {
+			at = snapshot.FinishedAt
+		}
+		if at > 0 && at < cutoff {
+			r.Samples = []Sample{}
+			r.DelayMS = nil
+			r.Status = "pending"
+			r.Phase = ""
+			r.CheckedAt = 0
+		}
+	}
+	return snapshot
+}
+
 // Start deduplicates requests for the same identity and never queues unbounded work.
 // Jobs intentionally outlive an individual page/request, so viewers share one run.
 func (m *Manager) Start(key string, probe Probe, selected ...[]Target) (Snapshot, error) {
-	targets := append([]Target(nil), selectedTargets(selected)...)
+	return m.start(key, probe, selectedTargets(selected), "")
+}
+
+// StartTarget refreshes only one configured target, preserving other samples.
+// Full and single-target runs share node deduplication, cooldown and global limits.
+func (m *Manager) StartTarget(key, id string, probe Probe, targets []Target) (Snapshot, error) {
+	if id == "" {
+		return Snapshot{}, errors.New("invalid target")
+	}
+	return m.start(key, probe, targets, id)
+}
+func (m *Manager) start(key string, probe Probe, selected []Target, id string) (Snapshot, error) {
+	targets := append([]Target(nil), selected...)
+	found := id == ""
+	for _, target := range targets {
+		if target.ID == id {
+			found = true
+		}
+	}
+	if !found {
+		return Snapshot{}, errors.New("connectivity_target_not_found")
+	}
 	if len(targets) == 0 {
 		return empty(m.rounds, targets), errors.New("connectivity_no_targets")
 	}
@@ -145,9 +187,22 @@ func (m *Manager) Start(key string, probe Probe, selected ...[]Target) (Snapshot
 		delete(m.entries, oldest)
 	}
 	s := empty(m.rounds, targets)
-	s.State = "running"
+	if id != "" && m.entries[key] != nil {
+		s = reconcile(m.entries[key].snapshot, targets)
+	}
+	s.State, s.Full = "running", id == ""
+	s.FinishedAt = 0
+	queue := initialQueue(targets)
+	if id != "" {
+		queue = nil
+	}
 	for i := range s.Results {
-		s.Results[i].Phase = "queued"
+		if id == "" || s.Results[i].ID == id {
+			s.Results[i] = Result{Target: targets[i], Status: "pending", Phase: "queued", Samples: []Sample{}}
+			if id != "" {
+				queue = append(queue, i)
+			}
+		}
 	}
 	s.StartedAt = now.UnixMilli()
 	e := &entry{snapshot: s, touched: now}
@@ -155,7 +210,7 @@ func (m *Manager) Start(key string, probe Probe, selected ...[]Target) (Snapshot
 	m.active++
 	snapshot := clone(s)
 	m.mu.Unlock()
-	go m.run(e, probe, targets)
+	go m.run(key, e, probe, targets, queue)
 	return snapshot, nil
 }
 
@@ -190,7 +245,7 @@ func stopSampling(status string) bool {
 	return false
 }
 
-func (m *Manager) run(e *entry, probe Probe, targets []Target) {
+func (m *Manager) run(key string, e *entry, probe Probe, targets []Target, queue []int) {
 	ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
 	defer cancel()
 	type completion struct {
@@ -213,7 +268,6 @@ func (m *Manager) run(e *entry, probe Probe, targets []Target) {
 			}
 		}()
 	}
-	queue := initialQueue(targets)
 	active := 0
 	deadline := ctx.Done()
 	for len(queue) > 0 || active > 0 {
@@ -231,6 +285,7 @@ func (m *Manager) run(e *entry, probe Probe, targets []Target) {
 			m.mu.Lock()
 			r := &e.snapshot.Results[done.index]
 			r.Samples = append(r.Samples, done.sample)
+			r.CheckedAt = m.now().UnixMilli()
 			summarize(r) // Surface partial responses immediately, not after all rounds.
 			r.Phase = "complete"
 			if ctx.Err() == nil && len(r.Samples) < m.rounds && !stopSampling(done.sample.Status) {
@@ -244,6 +299,7 @@ func (m *Manager) run(e *entry, probe Probe, targets []Target) {
 			for _, i := range queue {
 				r := &e.snapshot.Results[i]
 				r.Phase, r.Status = "complete", "batch_timeout"
+				r.CheckedAt = m.now().UnixMilli()
 				// Never fabricate samples for probes that were not dispatched.
 			}
 			m.mu.Unlock()
@@ -254,12 +310,16 @@ func (m *Manager) run(e *entry, probe Probe, targets []Target) {
 	close(jobs)
 	wg.Wait()
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	e.snapshot.State = "complete"
 	e.snapshot.FinishedAt = m.now().UnixMilli()
 	e.snapshot.RetryAt = m.now().Add(m.cooldown).UnixMilli()
 	e.touched = m.now()
 	m.active--
+	callback, snapshot := m.onComplete, clone(e.snapshot)
+	m.mu.Unlock()
+	if callback != nil {
+		callback(key, snapshot)
+	}
 }
 func summarize(r *Result) {
 	r.Status = r.Samples[0].Status
@@ -320,4 +380,32 @@ func reconcile(source Snapshot, current []Target) Snapshot {
 		snapshot.FinishedAt = 0
 	}
 	return snapshot
+}
+func (m *Manager) SetCompletionHandler(fn func(string, Snapshot)) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.onComplete = fn
+}
+func (m *Manager) Restore(key string, snapshot Snapshot) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.entries[key] != nil || snapshot.State != "complete" {
+		return
+	}
+	if len(m.entries) >= m.maxEntries {
+		return
+	}
+	m.entries[key] = &entry{snapshot: clone(snapshot), touched: time.UnixMilli(snapshot.FinishedAt)}
+}
+func (m *Manager) SetRetention(retention time.Duration) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.ttl = retention
+}
+
+func (m *Manager) HasCached(key string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	e := m.entries[key]
+	return e != nil && (e.snapshot.State == "running" || m.now().Sub(e.touched) < m.ttl)
 }

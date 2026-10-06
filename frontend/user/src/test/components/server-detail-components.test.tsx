@@ -138,6 +138,7 @@ describe("ServerDetailOverview", () => {
 		expect(screen.getByText("/")).toBeInTheDocument();
 
 		unmount();
-		expect(sessionStorage.getItem("fromMainPage")).toBeNull();
+		// The destination list, not detail cleanup, consumes the restore marker.
+		expect(sessionStorage.getItem("fromMainPage")).toBe("true");
 	});
 });

@@ -1,6 +1,6 @@
 import {NativeSpeed,NativeTraffic} from "@/appearance/widgets";
 import {useFeature} from "@/appearance/context";
-import { memo } from "react";
+import { memo, useCallback, useLayoutEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import ServerUsageBar from "@/components/ServerUsageBar";
@@ -23,12 +23,13 @@ import { Card } from "./ui/card";
 function ServerCard({
 	now,
 	serverInfo,
+	onOpen,
 }: {
+	onOpen: (id: number) => void;
 	now: number;
 	serverInfo: NezhaServer;
 }) {
 	const { t } = useTranslation();
-	const navigate = useNavigate();
 const brand=useFeature("branding");
 	const {
 		name,
@@ -46,8 +47,7 @@ const brand=useFeature("branding");
 	} = formatNezhaInfo(now, serverInfo);
 
 	const cardClick = () => {
-		saveMainPageScrollPosition();
-		navigate(`/server/${serverInfo.id}`);
+		onOpen(serverInfo.id);
 	};
 
 
@@ -220,4 +220,16 @@ const brand=useFeature("branding");
 	);
 }
 
-export default memo(ServerCard);
+const CardContent = memo(ServerCard);
+// Keep location subscriptions out of the expensive card contents. A route
+// change updates this tiny adapter, not every metric, icon and billing row.
+export default memo(function NavigableCard(props: { now: number; serverInfo: NezhaServer }) {
+ const navigate = useNavigate();
+ const navigateRef = useRef(navigate);
+ useLayoutEffect(() => { navigateRef.current = navigate; }, [navigate]);
+ const onOpen = useCallback((id: number) => {
+  saveMainPageScrollPosition();
+  navigateRef.current(`/server/${id}`);
+ }, []);
+ return <CardContent {...props} onOpen={onOpen} />;
+});

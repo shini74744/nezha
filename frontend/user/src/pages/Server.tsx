@@ -7,7 +7,7 @@ import {
 	ViewColumnsIcon,
 } from "@heroicons/react/20/solid";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type ComponentProps, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState, type ComponentType, type ComponentProps, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import GlobalMap from "@/components/GlobalMap";
 import GroupSwitch from "@/components/GroupSwitch";
@@ -141,10 +141,9 @@ export default function Servers({
 	const { lastData: rawData, inventoryData, connected, showDisplayHidden, setShowDisplayHidden } = useWebSocketContext();
 	const lastData = inventoryData ?? rawData;
 	const { status, setStatus } = useStatus();
-	const [showMap, setShowMap] = useState<string>("0");
-	const [inline, setInline] = useState<string>("0");
-	const hasRestoredScroll = useRef(false);
-	const [currentGroup, setCurrentGroup] = useState<string>("All");
+	const [showMap, setShowMap] = useState<string>(() => presentation ? "0" : window.ForceShowMap ? "1" : localStorage.getItem(preference("showMap")) || "0");
+	const [inline, setInline] = useState<string>(() => window.innerWidth < 768 ? "0" : window.ForceCardInline ? "1" : localStorage.getItem(preference("inline")) || "0");
+	const [currentGroup, setCurrentGroup] = useState<string>(() => sessionStorage.getItem(preference("selectedGroup")) || "All");
 	const nezhaWsData = lastData;
 
 	const customBackgroundImage =
@@ -158,19 +157,14 @@ export default function Servers({
 		const scrollTop = savedPosition ? Number(savedPosition) : Number.NaN;
 
 		if (
-			hasRestoredScroll.current ||
 			!isFromMainPage ||
 			!Number.isFinite(scrollTop)
 		) {
 			return;
 		}
 
-		hasRestoredScroll.current = true;
-		requestAnimationFrame(() => {
-			requestAnimationFrame(() => {
-				window.scrollTo({ top: scrollTop, left: 0, behavior: "auto" });
-			});
-		});
+		window.scrollTo({ top: scrollTop, left: 0, behavior: "instant" });
+		sessionStorage.removeItem("fromMainPage");
 	}, []);
 
 	const handleTagChange = (newGroup: string) => {
@@ -219,7 +213,7 @@ export default function Servers({
 		setCurrentGroup(savedGroup);
 	}, []);
 
-	useEffect(() => {
+	useLayoutEffect(() => {
 		if (nezhaWsData) {
 			restoreScrollPosition();
 		}

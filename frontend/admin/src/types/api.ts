@@ -554,6 +554,7 @@ export interface ModelServerOwner {
 }
 
 export interface ModelServer {
+    connectivity_disabled?: boolean
     /** 普通隐藏，仅影响前台默认展示，不是访问权限 */
     hide_for_display?: boolean
     created_at: string
@@ -590,6 +591,7 @@ export interface ModelServerConfigForm {
 }
 
 export interface ModelServerForm {
+    connectivity_disabled?: boolean
     hide_for_display?: boolean
     /** DDNS配置 */
     ddns_profiles?: number[]

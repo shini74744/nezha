@@ -87,9 +87,7 @@ func ValidateCatalog(items []CatalogItem) error {
 		if strings.TrimSpace(item.Name) != item.Name || item.Name == "" || utf8.RuneCountInString(item.Name) > 60 || strings.ContainsFunc(item.Name, unicode.IsControl) {
 			return errors.New("名称须为 1–60 字符，不能含控制字符")
 		}
-		switch item.Group {
-		case "china", "japan", "usa", "global":
-		default:
+		if !ValidRegion(item.Group) {
 			return errors.New("检测点地区无效")
 		}
 		// Preserve shipped endpoints (including Cloudflare's fixed public IP).

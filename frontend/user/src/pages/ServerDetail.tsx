@@ -1,28 +1,30 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
-import ServerNetworkSection from "@/components/ServerNetworkSection";
-import ServerDetailChart from "@/components/ServerDetailChart";
+const ServerNetworkSection = lazy(() => import("@/components/ServerNetworkSection"));
+const ServerDetailChart = lazy(() => import("@/components/ServerDetailChart"));
 import ServerDetailOverview from "@/components/ServerDetailOverview";
 import TabSwitch from "@/components/TabSwitch";
-import ServerConnectivity from "@/components/ServerConnectivity";
+const ServerConnectivity = lazy(() => import("@/components/ServerConnectivity"));
 import { Separator } from "@/components/ui/separator";
 import { useWebSocketContext } from "@/hooks/use-websocket-context";
 import { formatNezhaInfo } from "@/lib/utils";
-import { OfflineServerDetail } from "@/components/OfflineServerDetail";
+const OfflineServerDetail = lazy(() => import("@/components/OfflineServerDetail").then(module => ({default:module.OfflineServerDetail})));
+function SectionLoading() {return <div data-detail-section-loading role="status" className="rounded-xl border bg-card/70 p-5 text-sm text-muted-foreground">正在加载…</div>;}
 
 export default function ServerDetail() {
 	useEffect(() => {
 		window.scrollTo({ top: 0, left: 0, behavior: "instant" });
 	}, []);
 
-	const tabs = ["Detail", "Network", "Connectivity"];
-	const [currentTab, setCurrentTab] = useState(tabs[0]);
+	const [selectedTab, setCurrentTab] = useState("Detail");
 
 	const { id: server_id } = useParams();
 	const { lastData } = useWebSocketContext();
 	const server = lastData?.servers.find(s => s.id === Number(server_id));
+	const tabs = server?.connectivity_disabled ? ["Detail", "Network"] : ["Detail", "Network", "Connectivity"];
+	const currentTab = tabs.includes(selectedTab) ? selectedTab : "Detail";
 	if (server && lastData && !formatNezhaInfo(lastData.now, server).online) {
-		return <OfflineServerDetail key={server.id} server={server} now={lastData.now} initialTab={currentTab} />;
+		return <Suspense fallback={<div className="mx-auto w-full max-w-5xl server-info"><ServerDetailOverview server_id={server_id!}/><SectionLoading/></div>}><OfflineServerDetail key={server.id} server={server} now={lastData.now} initialTab={currentTab} /></Suspense>;
 	}
 
 	if (!server_id) {
@@ -48,9 +50,9 @@ export default function ServerDetail() {
 				<ServerDetailSummary server_id={Number(server_id)} />
 			</section> */}
 
-			{currentTab === tabs[0] && <ServerDetailChart server_id={server_id} />}
-			{currentTab !== "Connectivity" && <ServerNetworkSection server_id={Number(server_id)} standalone={currentTab === tabs[1]} />}
-			{currentTab === "Connectivity" && <ServerConnectivity key={server_id} serverId={Number(server_id)} />}
+			{currentTab === tabs[0] && <Suspense fallback={<SectionLoading/>}><ServerDetailChart server_id={server_id} /></Suspense>}
+			{currentTab !== "Connectivity" && <Suspense fallback={<SectionLoading/>}><ServerNetworkSection server_id={Number(server_id)} standalone={currentTab === tabs[1]} /></Suspense>}
+			{currentTab === "Connectivity" && <Suspense fallback={<SectionLoading/>}><ServerConnectivity key={server_id} serverId={Number(server_id)} countryCode={server?.country_code} /></Suspense>}
 		</div>
 	);
 }

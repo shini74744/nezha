@@ -112,6 +112,7 @@
 		"backendUnavailableDescription": "页面仍会正常显示，但暂时无法加载监控数据。"
 	},
 	"connectivity": {
+		"retestOne": "重新检测此项",
 		"noTargets": "暂无已启用检测点",
 		"sample": "第 {{index}} 次",
 		"samples": "已采样 {{done}} / {{total}} 次",

@@ -176,6 +176,7 @@ func main() {
 	grpcHandler := rpc.ServeRPC()
 	httpHandler := controller.ServeWeb(frontendDist)
 	controller.InitUpgrader()
+	controller.StartConnectivityAutomation()
 
 	muxHandler := newHTTPandGRPCMux(httpHandler, grpcHandler)
 	muxServerHTTP := &http.Server{

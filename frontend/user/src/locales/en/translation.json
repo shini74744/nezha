@@ -111,6 +111,7 @@
 		"backendUnavailableDescription": "The page is still available, but data cannot be loaded right now."
 	},
 	"connectivity": {
+		"retestOne": "Retest this application",
 		"noTargets": "No enabled connectivity targets",
 		"sample": "Sample {{index}}",
 		"samples": "{{done}} / {{total}} samples",

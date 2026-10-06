@@ -42,7 +42,9 @@ function valueText(value:number|undefined,unit:string) {
  return Number.isInteger(value)?String(value):value.toFixed(2);
 }
 export function OfflineServerDetail({server,now,initialTab="Detail"}:{server:NezhaServer;now:number;initialTab?:string}) {
- const [tab,setTab]=useState(initialTab),[period,setPeriod]=useState<"last"|MetricPeriod>("last");
+ const [selectedTab,setTab]=useState(initialTab),[period,setPeriod]=useState<"last"|MetricPeriod>("last");
+ const tabs=server.connectivity_disabled?["Detail","Network"]:["Detail","Network","Connectivity"];
+ const tab=tabs.includes(selectedTab)?selectedTab:"Detail";
  const member=useQuery({queryKey:["login-user"],queryFn:fetchLoginUser,retry:0,staleTime:30000});
  const viewer=member.isError?0:member.data?.data?.id||0;
  const query=useQuery({
@@ -68,7 +70,7 @@ export function OfflineServerDetail({server,now,initialTab="Detail"}:{server:Nez
     <p>{!report?.tsdb_enabled?"历史存储未启用。":report.history_days===1?"游客仅可查看最近 1 天的历史；登录后可查询最近 30 天。":"最近 30 天内未找到记录，或记录已超过配置的保留期限。"}未保存的数据不能补回。</p>
    </div>:null}
   <section className="flex items-center my-2 w-full">
-   <Separator className="flex-1"/><div className="flex justify-center w-full max-w-sm"><TabSwitch tabs={["Detail","Network","Connectivity"]} currentTab={tab} setCurrentTab={setTab}/></div><Separator className="flex-1"/>
+   <Separator className="flex-1"/><div className="flex justify-center w-full max-w-sm"><TabSwitch tabs={tabs} currentTab={tab} setCurrentTab={setTab}/></div><Separator className="flex-1"/>
   </section>
   {tab==="Detail" && (report?.tsdb_enabled||saved)?<section>
     <PeriodSelector selectedPeriod={activePeriod==="last"?"realtime":activePeriod} onPeriodChange={p=>setPeriod(p==="realtime"?"last":p)} isLogin={!!viewer} isTsdbEnabled={!!report?.tsdb_enabled} offline/>
@@ -78,7 +80,7 @@ export function OfflineServerDetail({server,now,initialTab="Detail"}:{server:Nez
     </div>
    </section>:null}
   {tab!=="Connectivity" && <ServerNetworkSection server_id={server.id} standalone={tab==="Network"}/>}
-  {tab==="Connectivity" && <ServerConnectivity key={server.id} serverId={server.id}/>}
+  {tab==="Connectivity" && <ServerConnectivity key={server.id} serverId={server.id} countryCode={server.country_code || saved?.country_code}/>}
  </div>;
 }
 function MetricHeader({group,report}:{group:typeof groups[number];report:LastReport}) {

@@ -37,7 +37,7 @@ func connectivityServer(c *gin.Context) (*model.Server, error) {
 		return nil, errors.New("invalid server ID")
 	}
 	server, ok := singleton.ServerShared.Get(id)
-	if !ok || !userCanViewServer(c, server) {
+	if !ok || !userCanViewServer(c, server) || server.ConnectivityDisabled {
 		return nil, errors.New("server not found")
 	}
 	return server, nil
@@ -61,7 +61,7 @@ func getConnectivity(c *gin.Context) (*connectivityResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	snapshot := connectivityManager.Get(key, targets)
+	snapshot := connectivityCached(key, targets)
 	current, err := connectivityServer(c)
 	if err != nil || connectivityKey(current) != key {
 		return nil, errors.New("server changed; reload")
@@ -97,14 +97,31 @@ func startConnectivity(c *gin.Context) (*connectivityResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	probe := rpc.ConnectivityProbe(server, targets)
+	_ = connectivityCached(key, targets)
+	probe := guardedConnectivityProbe(server, targets, false)
 	current, err := connectivityServer(c)
 	if err != nil || connectivityKey(current) != key || !canRunConnectivity(c, current) {
 		return nil, errors.New("server changed; reload")
 	}
-	_, err = connectivityManager.Start(key, probe, targets)
+	if target := c.Param("target"); target != "" {
+		_, err = connectivityManager.StartTarget(key, target, probe, targets)
+	} else {
+		_, err = connectivityManager.Start(key, probe, targets)
+	}
 	if err != nil {
 		return nil, err
 	}
 	return getConnectivity(c)
+}
+
+// @Summary Retest one configured application from this node
+// @Description Owner/admin only. Shares full-batch cooldown and concurrency limits.
+// @Tags auth required
+// @Security BearerAuth
+// @Param id path uint true "Server ID"
+// @Param target path string true "Enabled catalog target ID"
+// @Success 200 {object} model.CommonResponse[connectivityResponse]
+// @Router /server/{id}/connectivity/{target} [post]
+func startConnectivityTarget(c *gin.Context) (*connectivityResponse, error) {
+	return startConnectivity(c)
 }
