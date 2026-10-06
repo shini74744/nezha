@@ -186,6 +186,15 @@
 	width: 34px;
 	height: 34px;
 }
+.bgp-scope {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 16px;
+	justify-content: space-between;
+	color: var(--bgp-muted);
+	font-size: 11px;
+	margin-bottom: 8px;
+}
 .bgp-viewport {
 	position: relative;
 	height: 720px;

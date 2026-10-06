@@ -72,6 +72,118 @@ export function graphFor(topology: BGPTopology): BGPGraph {
 		legacy: true,
 	};
 }
+// Display-only projection. Keep the original paths, counts and annotations intact:
+// selection and percentages still refer to the saved observation, not this subset.
+export function coreGraph(graph: BGPGraph): BGPGraph {
+	const maxNodes = 32,
+		maxPerLayer = 8;
+	const layers = new Map<number, number>();
+	for (const node of graph.nodes)
+		layers.set(node.layer, (layers.get(node.layer) ?? 0) + 1);
+	if (
+		graph.nodes.length <= maxNodes &&
+		[...layers.values()].every((n) => n <= maxPerLayer)
+	)
+		return graph;
+
+	const byASN = new Map(graph.nodes.map((n) => [n.asn, n]));
+	const observed = new Set(
+		graph.edges.filter((e) => e.kind === "observed").map(edgeKey),
+	);
+	const kept = new Set(
+		graph.nodes.filter((n) => n.role === "origin").map((n) => n.asn),
+	);
+	const occupied = new Map<number, number>();
+	for (const asn of kept) {
+		const layer = byASN.get(asn)?.layer ?? 0;
+		occupied.set(layer, (occupied.get(layer) ?? 0) + 1);
+	}
+	const comparePath = (a: number[], b: number[]) => {
+		for (let i = 0; i < Math.min(a.length, b.length); i++)
+			if (a[i] !== b[i]) return a[i] - b[i];
+		return a.length - b.length;
+	};
+	// Index only actual contiguous prefixes. Hidden intermediate ASNs are never
+	// bypassed by a fabricated edge, even when their nearest layer differs.
+	const prefixes = new Map<
+		number,
+		{ asns: number[]; count: number; collectors: number }[]
+	>();
+	for (const path of graph.paths) {
+		if (byASN.get(path.asns[0])?.role !== "origin") continue;
+		const seen = new Set<number>();
+		for (let i = 0; i < path.asns.length; i++) {
+			const asn = path.asns[i];
+			if (
+				!byASN.has(asn) ||
+				seen.has(asn) ||
+				(i > 0 &&
+					!observed.has(edgeKey({ source: path.asns[i - 1], target: asn })))
+			)
+				break;
+			seen.add(asn);
+			const list = prefixes.get(asn) ?? [];
+			list.push({
+				asns: path.asns.slice(0, i + 1),
+				count: path.count,
+				collectors: path.collector_count,
+			});
+			prefixes.set(asn, list);
+		}
+	}
+	const candidates = graph.nodes
+		.filter((n) => n.role !== "origin")
+		.sort(
+			(a, b) =>
+				b.sample_count - a.sample_count ||
+				b.collector_count - a.collector_count ||
+				a.layer - b.layer ||
+				a.asn - b.asn,
+		);
+	const add = (node: BGPGraphNode) => {
+		if (kept.has(node.asn)) return;
+		const choices = (prefixes.get(node.asn) ?? [])
+			.map((p) => ({
+				...p,
+				missing: p.asns.filter((asn) => !kept.has(asn)),
+			}))
+			.sort(
+				(a, b) =>
+					a.missing.length - b.missing.length ||
+					b.count - a.count ||
+					b.collectors - a.collectors ||
+					comparePath(a.asns, b.asns),
+			);
+		for (const prefix of choices) {
+			if (kept.size + prefix.missing.length > maxNodes) continue;
+			const next = new Map(occupied);
+			for (const asn of prefix.missing) {
+				const layer = byASN.get(asn)?.layer ?? 0;
+				next.set(layer, (next.get(layer) ?? 0) + 1);
+			}
+			// Origins are always retained; the per-layer limit applies to branches.
+			if (
+				prefix.missing.some(
+					(asn) => (next.get(byASN.get(asn)?.layer ?? 0) ?? 0) > maxPerLayer,
+				)
+			)
+				continue;
+			for (const asn of prefix.missing) kept.add(asn);
+			for (const [layer, count] of next) occupied.set(layer, count);
+			return;
+		}
+	};
+	const origins = kept.size;
+	for (const node of candidates) if (node.sample_count >= 2) add(node);
+	// Sparse observations still get a useful connected preview, without claiming
+	// that a one-sample branch is a well-established upstream.
+	if (kept.size === origins) for (const node of candidates) add(node);
+	return {
+		...graph,
+		nodes: graph.nodes.filter((n) => kept.has(n.asn)),
+		edges: graph.edges.filter((e) => kept.has(e.source) && kept.has(e.target)),
+	};
+}
 export interface PlacedNode extends BGPGraphNode {
 	x: number;
 	y: number;

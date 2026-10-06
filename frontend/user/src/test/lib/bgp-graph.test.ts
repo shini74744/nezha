@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	coreGraph,
 	graphFor,
 	layoutGraph,
 	selectedPaths,
@@ -124,5 +125,149 @@ describe("BGP observation graph", () => {
 			paths: [...old.paths, { origin: as(30), count: 1 }],
 		});
 		expect(converted.nodes.find((n) => n.asn === 30)?.role).toBe("origin");
+	});
+});
+
+describe("BGP core projection", () => {
+	const dense = (single = false) =>
+		graphFor({
+			...old,
+			total: 600,
+			paths: Array.from({ length: 80 }, (_, i) => ({
+				origin: as(10),
+				direct: as(100 + (i % 12)),
+				second: as(1000 + i),
+				count: single ? 1 : i < 12 ? 20 - i : 1,
+			})),
+		});
+	it("leaves small graphs and empty snapshots unchanged", () => {
+		const small = graph();
+		expect(coreGraph(small)).toBe(small);
+		const empty = graphFor({ ...old, paths: [] });
+		expect(coreGraph(empty)).toBe(empty);
+	});
+	it("bounds dense layers, folds one-sample tails and preserves original denominators", () => {
+		const g = dense(),
+			before = JSON.stringify(g),
+			core = coreGraph(g);
+		expect(core.nodes.length).toBeLessThanOrEqual(32);
+		expect(core.nodes.length).toBeGreaterThan(2);
+		for (const layer of new Set(core.nodes.map((n) => n.layer)))
+			expect(
+				core.nodes.filter((n) => n.layer === layer).length,
+			).toBeLessThanOrEqual(8);
+		expect(core.nodes.some((n) => n.asn === 1000)).toBe(true);
+		expect(core.nodes.some((n) => n.asn === 1079)).toBe(false);
+		expect(core.observed_path_count).toBe(g.observed_path_count);
+		expect(core.included_path_count).toBe(g.included_path_count);
+		expect(core.paths).toBe(g.paths);
+		expect(JSON.stringify(g)).toBe(before);
+		for (const edge of core.edges) expect(g.edges).toContain(edge);
+		for (const node of core.nodes) {
+			expect(g.nodes).toContain(node);
+			expect(
+				g.paths.some((p) => {
+					const i = p.asns.indexOf(node.asn);
+					return (
+						i >= 0 &&
+						p.asns
+							.slice(0, i + 1)
+							.every((asn) => core.nodes.some((n) => n.asn === asn))
+					);
+				}),
+			).toBe(true);
+		}
+	});
+	it("makes deterministic choices independent of response array ordering", () => {
+		const g = dense();
+		const reversed = {
+			...g,
+			nodes: [...g.nodes].reverse(),
+			edges: [...g.edges].reverse(),
+			paths: [...g.paths].reverse(),
+		};
+		const ids = (value: BGPGraph) =>
+			coreGraph(value)
+				.nodes.map((n) => n.asn)
+				.sort((a, b) => a - b);
+		expect(ids(g)).toEqual(ids(reversed));
+	});
+	it("keeps a useful sparse preview and preserves every origin", () => {
+		const g = dense(true);
+		g.nodes.push({
+			...as(9999),
+			layer: 0,
+			role: "origin",
+			sample_count: 1,
+			collector_count: 1,
+		});
+		const core = coreGraph(g);
+		expect(core.nodes.some((n) => n.asn === 9999)).toBe(true);
+		expect(core.nodes.length).toBeGreaterThan(2);
+		const star = graphFor({
+			...old,
+			paths: Array.from({ length: 50 }, (_, i) => ({
+				origin: as(10),
+				direct: as(200 + i),
+				count: 1,
+			})),
+		});
+		expect(coreGraph(star).nodes).toHaveLength(9);
+	});
+	it("does not jump over missing intermediate nodes or missing observed edges", () => {
+		const g = dense();
+		g.nodes.push({
+			...as(999),
+			layer: 4,
+			role: "transit",
+			sample_count: 600,
+			collector_count: 20,
+		});
+		g.paths.unshift({ asns: [10, 888, 999], count: 600, collector_count: 20 });
+		g.paths.unshift({ asns: [10, 999], count: 600, collector_count: 20 });
+		const core = coreGraph(g);
+		expect(core.nodes.some((n) => n.asn === 999)).toBe(false);
+		expect(core.edges.some((e) => e.source === 10 && e.target === 999)).toBe(
+			false,
+		);
+	});
+	it("caps total nodes on a deep graph and preserves route-server filtering semantics", () => {
+		const g = dense(),
+			base = graphFor(old);
+		g.nodes = [base.nodes[0]];
+		g.edges = [];
+		g.paths = [];
+		for (let branch = 0; branch < 8; branch++) {
+			const asns = [10];
+			for (let layer = 1; layer <= 8; layer++) {
+				const asn = 100 + branch * 10 + layer;
+				g.nodes.push({
+					...as(asn),
+					role: layer === 1 ? "direct" : "transit",
+					layer,
+					sample_count: 20 - branch,
+					collector_count: 2,
+					route_server: asn === 102,
+				});
+				g.edges.push({
+					source: asns[asns.length - 1],
+					target: asn,
+					kind: "observed",
+					provenance: "test",
+					sample_count: 20 - branch,
+					collector_count: 2,
+				});
+				asns.push(asn);
+			}
+			g.paths.push({ asns, count: 20 - branch, collector_count: 2 });
+		}
+		const core = coreGraph(g);
+		expect(core.nodes).toHaveLength(32);
+		const hidden = layoutGraph(core, false, false);
+		expect(hidden.nodes.some((n) => n.asn === 102)).toBe(false);
+		expect(hidden.edges.some((e) => e.source === 101 && e.target === 103)).toBe(
+			false,
+		);
+		expect(selectedPaths(g, 103, null).nodes.has(102)).toBe(true);
 	});
 });
