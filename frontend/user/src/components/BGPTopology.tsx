@@ -127,23 +127,67 @@ function Observation({
 	useEffect(() => {
 		const el = viewportElement;
 		if (!el) return;
+		let width = el.clientWidth,
+			height = el.clientHeight;
+		setSize({ width, height });
+		fitRef.current(true);
 		const observer = new ResizeObserver(() => {
-			setSize({ width: el.clientWidth, height: el.clientHeight });
+			// The first notification can arrive after a wheel/drag or portal remount.
+			// Refit only on a real size change, never discard the user's current view.
+			if (width === el.clientWidth && height === el.clientHeight) return;
+			width = el.clientWidth;
+			height = el.clientHeight;
+			setSize({ width, height });
 			fitRef.current(true);
 		});
 		observer.observe(el);
-		fitRef.current(true);
 		return () => observer.disconnect();
 	}, [viewportElement, geometry]);
 	useEffect(() => {
 		if (selected !== null && !byASN.has(selected)) setSelected(null);
 	}, [selected, byASN]);
-	const zoom = (factor: number, x = size.width / 2, y = size.height / 2) =>
-		setView((v) => {
-			const scale = clamp(v.scale * factor, 0.02, 2.5),
-				ratio = scale / v.scale;
-			return { scale, x: x - (x - v.x) * ratio, y: y - (y - v.y) * ratio };
-		});
+	const zoom = useCallback(
+		(factor: number, x = size.width / 2, y = size.height / 2) =>
+			setView((v) => {
+				const scale = clamp(v.scale * factor, 0.02, 2.5),
+					ratio = scale / v.scale;
+				return { scale, x: x - (x - v.x) * ratio, y: y - (y - v.y) * ratio };
+			}),
+		[size.width, size.height],
+	);
+	useEffect(() => {
+		if (!viewportElement) return;
+		const onWheel = (event: WheelEvent) => {
+			if (
+				!event.cancelable ||
+				!Number.isFinite(event.deltaY) ||
+				event.deltaY === 0
+			)
+				return;
+			const rect = viewportElement.getBoundingClientRect();
+			// Browsers may latch a wheel gesture to its first element after the pointer leaves.
+			if (
+				event.clientX < rect.left ||
+				event.clientX >= rect.right ||
+				event.clientY < rect.top ||
+				event.clientY >= rect.bottom
+			)
+				return;
+			// A non-passive native listener cancels page scrolling only inside the canvas.
+			// Bind to the actual element so fullscreen portal remounts work as well.
+			event.preventDefault();
+			const unit =
+				event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? rect.height : 1;
+			const delta = clamp(event.deltaY * unit, -120, 120);
+			zoom(
+				Math.exp(-delta * 0.002),
+				event.clientX - rect.left - viewportElement.clientLeft,
+				event.clientY - rect.top - viewportElement.clientTop,
+			);
+		};
+		viewportElement.addEventListener("wheel", onWheel, { passive: false });
+		return () => viewportElement.removeEventListener("wheel", onWheel);
+	}, [viewportElement, zoom]);
 	const clear = () => {
 		setSelected(null);
 		setSelectedEdge(null);
@@ -192,7 +236,7 @@ function Observation({
 				? "#ed9b45"
 				: colored
 					? a.role === "origin"
-						? "#5ecbff"
+						? "var(--bgp-origin-edge)"
 						: sourceColor(a.asn)
 					: "#8594ae";
 		const dim =
@@ -375,7 +419,7 @@ function Observation({
 			className="bgp-viewport"
 			data-bgp-graph
 			role="application"
-			aria-label="BGP 观测拓扑，拖动平移，加减键缩放，Home 键适应画布"
+			aria-label="BGP 观测拓扑，滚轮缩放，拖动平移，加减键缩放，Home 键适应画布"
 			// biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard pan/zoom control for the graph viewport.
 			tabIndex={0}
 			onKeyDown={(e) => {
@@ -750,7 +794,7 @@ function Observation({
 							<p>点击任意 ASN 节点：高亮经过该 AS 的观测路径，再点一次取消。</p>
 							<p>
 								节点可用 Tab 聚焦、Enter
-								或空格选中。画布支持拖动、双指缩放、方向键及加减键。
+								或空格选中。画布支持鼠标滚轮缩放、拖动、双指缩放、方向键及加减键。
 							</p>
 						</div>
 						<div>

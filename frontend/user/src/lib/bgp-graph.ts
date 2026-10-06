@@ -171,5 +171,5 @@ export function selectedPaths(
 }
 export function sourceColor(asn: number) {
 	// Golden-angle hues distinguish neighbouring ASNs and remain stable over time.
-	return `hsl(${(asn * 137.508) % 360} 85% 60%)`;
+	return `hsl(${(asn * 137.508) % 360} 75% var(--bgp-edge-lightness, 60%))`;
 }

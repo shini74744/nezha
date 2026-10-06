@@ -442,3 +442,111 @@ for(const width of [320,390,768,1440]) test("observation graph interactions and 
  expect(state.posts).toEqual([]);expect(state.external).toEqual([]);expect(reads).toBe(1);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });
+
+for (const theme of ["default", "doraemon"])
+    for (const light of [false, true])
+        test("BGP wheel zoom keeps pointer anchored " + theme + " " + light, async ({ page }, info) => {
+            await page.setViewportSize({ width: 1440, height: 1100 })
+            const errors: string[] = []
+            page.on("pageerror", e => errors.push(e.message))
+            page.on("console", m => { if (m.type() === "error" && /passive.*event|preventDefault/i.test(m.text())) errors.push(m.text()) })
+            const state = await setup(page, theme, light, false)
+            await page.locator(".server-info-tab").getByText("BGP", { exact: true }).click()
+            const viewport = page.locator("[data-bgp-graph]")
+            const view = () => page.locator(".bgp-world").evaluate(el => {
+                const m = new DOMMatrix(getComputedStyle(el).transform)
+                return { scale: m.a, x: m.e, y: m.f, scroll: window.scrollY }
+            })
+            async function wheel(delta: number) {
+                await viewport.scrollIntoViewIfNeeded()
+                const rect = (await viewport.boundingBox())!
+                const x = rect.width * .36, y = rect.height * .42
+                const before = await view()
+                await viewport.evaluate(el => el.addEventListener("wheel", event => {
+                    const e = event as WheelEvent, r = el.getBoundingClientRect()
+                    el.setAttribute("data-wheel-point", JSON.stringify({ x: e.clientX - r.left - el.clientLeft, y: e.clientY - r.top - el.clientTop }))
+                }, { once: true }))
+                await page.mouse.move(rect.x + x, rect.y + y)
+                await page.mouse.wheel(0, delta)
+                await expect.poll(async () => (await view()).scale).not.toBe(before.scale)
+                const after = await view()
+                expect(delta < 0 ? after.scale > before.scale : after.scale < before.scale).toBe(true)
+                expect(Math.abs(after.scroll - before.scroll)).toBeLessThan(1)
+                const point = JSON.parse((await viewport.getAttribute("data-wheel-point"))!)
+                expect(Math.abs((point.x - before.x) / before.scale - (point.x - after.x) / after.scale)).toBeLessThan(.01)
+                expect(Math.abs((point.y - before.y) / before.scale - (point.y - after.y) / after.scale)).toBeLessThan(.01)
+            }
+            await expect(viewport).toBeVisible()
+            const activeContrast = await page.locator('.bgp-segments button[aria-pressed="true"]').first().evaluate(el => {
+                const style = getComputedStyle(el)
+                const luminance = (rgb: string) => {
+                    const channels = rgb.match(/[0-9.]+/g)!.slice(0, 3).map(Number).map(n => n / 255).map(n => n <= .04045 ? n / 12.92 : ((n + .055) / 1.055) ** 2.4)
+                    return channels[0] * .2126 + channels[1] * .7152 + channels[2] * .0722
+                }
+                const a = luminance(style.color), b = luminance(style.backgroundColor)
+                return (Math.max(a, b) + .05) / (Math.min(a, b) + .05)
+            })
+            expect(activeContrast).toBeGreaterThanOrEqual(4.5)
+            await wheel(-120)
+            await wheel(120)
+            await page.getByRole("button", { name: "适应画布", exact: true }).click()
+            const node = page.locator('[data-bgp-asn="17676"]')
+            await node.hover()
+            const beforeNode = await view()
+            await page.mouse.wheel(0, -120)
+            await expect.poll(async () => (await view()).scale).toBeGreaterThan(beforeNode.scale)
+            expect(Math.abs((await view()).scroll - beforeNode.scroll)).toBeLessThan(1)
+            // Native wheel units, safety limits, and fullscreen listener reattachment.
+            await viewport.evaluate(el => { const r = el.getBoundingClientRect(); for (let i = 0; i < 40; i++) el.dispatchEvent(new WheelEvent("wheel", { clientX: r.left + 100, clientY: r.top + 100, deltaY: -3, deltaMode: 1, bubbles: true, cancelable: true })) })
+            await expect.poll(async () => (await view()).scale).toBe(2.5)
+            await viewport.evaluate(el => { const r = el.getBoundingClientRect(); for (let i = 0; i < 50; i++) el.dispatchEvent(new WheelEvent("wheel", { clientX: r.left + 100, clientY: r.top + 100, deltaY: 1, deltaMode: 2, bubbles: true, cancelable: true })) })
+            await expect.poll(async () => (await view()).scale).toBe(.02)
+            await page.getByRole("button", { name: "适应画布", exact: true }).click()
+            await page.getByRole("button", { name: "全屏显示", exact: true }).click()
+            await expect(page.getByRole("dialog")).toBeVisible()
+            await wheel(-120)
+            await page.keyboard.press("Escape")
+            await expect(page.getByRole("dialog")).toHaveCount(0)
+            await wheel(-120)
+            await page.locator(".bgp-heading").scrollIntoViewIfNeeded()
+            const beforeOutside = await view()
+            await page.locator(".bgp-heading").hover()
+            await page.mouse.wheel(0, 140)
+            await expect.poll(async () => (await view()).scroll).toBeGreaterThan(beforeOutside.scroll)
+            expect((await view()).scale).toBe(beforeOutside.scale)
+            await page.locator('[data-network-insight="bgp"]').screenshot({ path: info.outputPath("wheel-themed.png") })
+            expect(state.posts).toEqual([])
+            expect(errors).toEqual([])
+        })
+
+for (const theme of ["default", "doraemon"])
+    test("BGP themed mobile touch pan and pinch " + theme, async ({ browser }, info) => {
+        const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, ignoreHTTPSErrors: true })
+        try {
+            const page = await context.newPage(), errors: string[] = []
+            page.on("pageerror", e => errors.push(e.message))
+            await setup(page, theme, true, false)
+            await page.locator(".server-info-tab").getByText("BGP", { exact: true }).click()
+            const viewport = page.locator("[data-bgp-graph]"), world = page.locator(".bgp-world")
+            await viewport.scrollIntoViewIfNeeded()
+            const rect = (await viewport.boundingBox())!, session = await context.newCDPSession(page)
+            const before = await world.getAttribute("style")
+            await session.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: rect.x + 60, y: rect.y + 70 }] })
+            await session.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: rect.x + 95, y: rect.y + 95 }] })
+            await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] })
+            await expect(world).not.toHaveAttribute("style", before!)
+            const scale = await page.locator("output[aria-label='缩放比例']").textContent()
+            await session.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ id: 1, x: rect.x + 80, y: rect.y + 80 }, { id: 2, x: rect.x + 180, y: rect.y + 80 }] })
+            await session.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ id: 1, x: rect.x + 55, y: rect.y + 80 }, { id: 2, x: rect.x + 205, y: rect.y + 80 }] })
+            await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] })
+            await expect(page.locator("output[aria-label='缩放比例']")).not.toHaveText(scale!)
+            await page.getByRole("button", { name: "适应画布", exact: true }).click()
+            const lightColor = await viewport.evaluate(el => getComputedStyle(el).backgroundColor)
+            await page.locator('[data-network-insight="bgp"]').screenshot({ path: info.outputPath("mobile-light.png") })
+            await page.evaluate(() => document.documentElement.classList.add("dark"))
+            await expect.poll(() => viewport.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(lightColor)
+            await page.locator('[data-network-insight="bgp"]').screenshot({ path: info.outputPath("mobile-dark.png") })
+            expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
+            expect(errors).toEqual([])
+        } finally { await context.close() }
+    })
