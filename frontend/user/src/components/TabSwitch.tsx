@@ -6,10 +6,12 @@ export default function TabSwitch({
 	tabs,
 	currentTab,
 	setCurrentTab,
+	onTabIntent,
 }: {
 	tabs: string[];
 	currentTab: string;
 	setCurrentTab: (tab: string) => void;
+	onTabIntent?: (tab: string) => void;
 }) {
 	const { t } = useTranslation();
 	const { containerRef, enableIndicatorAnimation, indicator, setItemRef } =
@@ -50,10 +52,14 @@ export default function TabSwitch({
 						role="button"
 						tabIndex={0}
 						aria-pressed={currentTab === tab}
+						onPointerEnter={() => onTabIntent?.(tab)}
+						onPointerDown={() => onTabIntent?.(tab)}
+						onFocus={() => onTabIntent?.(tab)}
 						onKeyDown={(event) => {
-							if (event.key === "Enter" || event.key === " ") { event.preventDefault(); if (currentTab !== tab) enableIndicatorAnimation(); setCurrentTab(tab); }
+							if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onTabIntent?.(tab); if (currentTab !== tab) enableIndicatorAnimation(); setCurrentTab(tab); }
 						}}
 						onClick={() => {
+							onTabIntent?.(tab);
 							if (currentTab !== tab) {
 								enableIndicatorAnimation();
 							}

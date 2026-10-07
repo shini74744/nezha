@@ -80,6 +80,7 @@ export async function insightRequest(
 	kind: InsightKind,
 	method: "GET" | "POST" = "GET",
 	signal?: AbortSignal,
+	priority?: RequestPriority,
 ): Promise<InsightData> {
 	let csrf = "";
 	try {
@@ -93,6 +94,7 @@ export async function insightRequest(
 	const response = await fetch(`/api/v1/server/${id}/${kind}`, {
 		method,
 		signal,
+		priority,
 		cache: "no-store",
 		headers: method === "POST" ? { "X-CSRF-Token": csrf } : undefined,
 	});

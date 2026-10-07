@@ -14,9 +14,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
 	type ConnectivityResult,
-	fetchConnectivity,
 	startConnectivity,
 } from "@/lib/connectivity-api";
+import { connectivityQueryOptions } from "@/lib/detail-result-query";
 import { resolveConnectivityIcon } from "@/lib/connectivity-icons";
 import { cn } from "@/lib/utils";
 import ConnectivityMarquee from "./ConnectivityMarquee";
@@ -33,10 +33,7 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 	const [help, setHelp] = useState(false);
 	const [manualRun, setManualRun] = useState<string>();
 	const query = useQuery({
-		queryKey: key,
-		queryFn: ({ signal }) => fetchConnectivity(serverId, signal),
-		staleTime: 0,
-		retry: 1,
+		...connectivityQueryOptions(serverId),
 		refetchInterval: (state) =>
 			state.state.data?.state === "running" ? 1500 : 15000,
 		refetchIntervalInBackground: false,

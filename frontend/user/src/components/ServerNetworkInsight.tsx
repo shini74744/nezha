@@ -1,5 +1,5 @@
 import { formatDetectionTime } from "@/lib/detection-time";
-import { memo, useState } from "react";
+import { Suspense, memo, useState } from "react";
 import SnapshotTimeline from "./SnapshotTimeline";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleHelp, RefreshCw, Tv } from "lucide-react";
@@ -17,7 +17,8 @@ import {
 	PopoverContent,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import BGPTopology from "./BGPTopology";
+import { PreloadedBGPTopology as BGPTopology } from "@/lib/detail-modules";
+import { insightQueryOptions } from "@/lib/detail-result-query";
 
 export const mediaStatus: Record<string, string> = {
 	untested: "暂无记录",
@@ -93,15 +94,14 @@ function ServerNetworkInsight({
 	const viewer = member.isError ? 0 : member.data?.data?.id || 0;
 	const key = ["network-insight", serverId, kind, viewer];
 	const query = useQuery({
-		queryKey: key,
-		queryFn: ({ signal }) => insightRequest(serverId, kind, "GET", signal),
-		retry: 1,
-		staleTime: 0,
+		...insightQueryOptions(serverId, kind, viewer),
+		enabled: !member.isPending,
 		refetchInterval: (q) => (q.state.data?.state === "running" ? 2500 : 30000),
 	});
 	const run = useMutation({
 		mutationFn: () => insightRequest(serverId, kind, "POST"),
-		onSuccess: (data) => {
+		onSuccess: async (data) => {
+			await client.cancelQueries({ queryKey: key });
 			client.setQueryData(key, data);
 			setHistoryAt(0);
 		},
@@ -242,7 +242,7 @@ function ServerNetworkInsight({
 					)}
 					{topology ? (
 						<>
-							<BGPTopology topology={topology} />
+							<Suspense fallback={<p role="status" className="py-10 text-center text-sm text-muted-foreground">正在加载路由拓扑…</p>}><BGPTopology topology={topology} /></Suspense>
 							{topology.observed_at && (
 								<p className="text-[11px] text-muted-foreground mt-2">
 									数据源观测时间：{topology.observed_at.replace("T", " ")} UTC
