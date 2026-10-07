@@ -16,6 +16,7 @@ var connectivityManager = connectivity.NewManager()
 
 type connectivityResponse struct {
 	connectivity.Snapshot
+	FullBatch         bool                   `json:"full_batch"`
 	CanBypassCooldown bool                   `json:"can_bypass_cooldown"`
 	Latest            *connectivity.Snapshot `json:"latest,omitempty"`
 	ServerID          uint64                 `json:"server_id"`
@@ -68,7 +69,7 @@ func getConnectivity(c *gin.Context) (*connectivityResponse, error) {
 	if err != nil || connectivityKey(current) != key {
 		return nil, errors.New("server changed; reload")
 	}
-	response := &connectivityResponse{Snapshot: snapshot, ServerID: current.ID, Online: rpc.ConnectivityOnline(current), CanRun: canRunConnectivity(c, current)}
+	response := &connectivityResponse{Snapshot: snapshot, FullBatch: snapshot.Full, ServerID: current.ID, Online: rpc.ConnectivityOnline(current), CanRun: canRunConnectivity(c, current)}
 	response.CanBypassCooldown = response.CanRun && callerIsAdmin(c)
 	if snapshot.State == "running" {
 		if latest, ok := connectivityManager.LatestCompleted(key, targets); ok {

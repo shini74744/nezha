@@ -689,7 +689,7 @@ export const NetworkChartClient = React.memo(function NetworkChart({
 								{t("monitor.clearSelections", "Clear")} ({activeCharts.length})
 							</button>
 						)}
-						<ChartContainer
+						<ChartContainer deferMount
 							config={chartConfig}
 							className={cn(
 								"aspect-auto h-105 sm:h-62.5 w-full transition-opacity",

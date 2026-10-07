@@ -3,6 +3,7 @@
 import * as React from "react";
 import * as RechartsPrimitive from "recharts";
 import { cn } from "@/lib/utils";
+import ChartMountBoundary from "../ChartMountBoundary";
 
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const;
@@ -64,14 +65,16 @@ const ChartContainer = React.forwardRef<
 	HTMLDivElement,
 	React.ComponentProps<"div"> & {
 		config: ChartConfig;
+		deferMount?: boolean;
 		children: React.ComponentProps<
 			typeof RechartsPrimitive.ResponsiveContainer
 		>["children"];
 	}
->(({ id, className, children, config, ...props }, ref) => {
+>(({ id, className, children, config, deferMount = false, ...props }, ref) => {
 	const uniqueId = React.useId();
 	const chartId = `chart-${id || uniqueId.replace(/:/g, "")}`;
 	const useResponsiveContainer = shouldUseResponsiveContainer(children);
+	const content = useResponsiveContainer ? <RechartsPrimitive.ResponsiveContainer>{children}</RechartsPrimitive.ResponsiveContainer> : children;
 
 	return (
 		<ChartContext.Provider value={{ config }}>
@@ -85,13 +88,7 @@ const ChartContainer = React.forwardRef<
 				{...props}
 			>
 				<ChartStyle id={chartId} config={config} />
-				{useResponsiveContainer ? (
-					<RechartsPrimitive.ResponsiveContainer>
-						{children}
-					</RechartsPrimitive.ResponsiveContainer>
-				) : (
-					children
-				)}
+				{deferMount ? <ChartMountBoundary>{content}</ChartMountBoundary> : content}
 			</div>
 		</ChartContext.Provider>
 	);

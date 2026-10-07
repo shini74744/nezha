@@ -1,5 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ServerConnectivity from "@/components/ServerConnectivity";
 import { createTestQueryClient } from "@/test/utils";
@@ -430,4 +430,28 @@ it.each([false,true])("has no per-second redraw timer for visitors or cooldown-e
  const view=mount();await screen.findByText("Google");
  expect(timer.mock.calls.filter(call=>call[1]===1000)).toHaveLength(0);
  view.unmount();timer.mockRestore();
+});
+
+it.each([false,true])("only full-batch retests show the overall progress bar (full=%s)",async(full_batch)=>{
+ const previous=data({state:"complete",started_at:1000,finished_at:2000,can_bypass_cooldown:true,results:[
+  {...data().results[0],status:"ok",phase:"complete",delay_ms:42,samples:[{status:"ok",delay_ms:42}]},
+  {...data().results[0],id:"apple",name:"Apple",status:"ok",phase:"complete",delay_ms:18,samples:[{status:"ok",delay_ms:18}]},
+ ]});
+ const live=data({...previous,state:"running",started_at:3000,finished_at:undefined,full_batch,latest:previous,results:[
+  {...previous.results[0],status:"pending",phase:"running",delay_ms:undefined,samples:[]},
+  full_batch?{...previous.results[1],status:"pending",phase:"queued",delay_ms:undefined,samples:[]}:previous.results[1],
+ ]});
+ api.fetchConnectivity.mockResolvedValue(previous);
+ api.startConnectivity.mockResolvedValue(live);
+ const client=createTestQueryClient();
+ const view=render(<QueryClientProvider client={client}><ServerConnectivity serverId={7}/></QueryClientProvider>);
+ await screen.findByText("42");
+ fireEvent.click(full_batch?screen.getByRole("button",{name:"connectivity.retest"}):screen.getByRole("button",{name:/Google ·/}));
+ await waitFor(()=>expect(api.startConnectivity).toHaveBeenCalledWith(7,full_batch?undefined:"google"));
+ await waitFor(()=>expect(view.container.querySelector('[data-connectivity-target="google"]')).toHaveAttribute("data-connectivity-phase","running"));
+ expect(!!screen.queryByRole("progressbar")).toBe(full_batch);
+ if(!full_batch){expect(screen.getByText("18")).toBeVisible();expect(screen.queryByText("connectivity.progress")).toBeNull();}
+ act(()=>{client.setQueryData(["server-connectivity",7],{...live,state:"complete",finished_at:4000,latest:undefined,results:previous.results});});
+ expect(await screen.findByText("42")).toBeVisible();
+ expect(screen.queryByRole("progressbar")).toBeNull();
 });

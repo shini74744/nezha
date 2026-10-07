@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -159,4 +160,40 @@ func TestConnectivityLatestCompletedIncludedForViewersDuringRefresh(t *testing.T
 	got, err := getConnectivity(connectivityContext("1", nil))
 	require.NoError(t, err)
 	require.Nil(t, got.Latest)
+}
+
+func TestConnectivityResponseIdentifiesFullAndSingleRetests(t *testing.T) {
+	for _, full := range []bool{true, false} {
+		t.Run(map[bool]string{true: "full", false: "single"}[full], func(t *testing.T) {
+			setupServerGroupVisibilityFixture(t)
+			old := connectivityManager
+			m := connectivity.NewManager()
+			connectivityManager = m
+			defer func() { connectivityManager = old }()
+			server, _ := singleton.ServerShared.Get(1)
+			targets, err := configuredConnectivityTargets()
+			require.NoError(t, err)
+			target := ""
+			if !full {
+				target = targets[0].ID
+			}
+			gate, done := make(chan struct{}), make(chan struct{})
+			m.SetCompletionHandler(func(string, connectivity.Snapshot) { close(done) })
+			_, err = m.StartImmediate(connectivityKey(server), target, func(context.Context, connectivity.Target) connectivity.Sample {
+				<-gate
+				return connectivity.Sample{Status: "ok"}
+			}, targets)
+			require.NoError(t, err)
+			defer func() { close(gate); <-done }()
+			got, err := getConnectivity(connectivityContext("1", nil))
+			require.NoError(t, err)
+			require.Equal(t, "running", got.State)
+			require.Equal(t, full, got.FullBatch)
+			raw, err := json.Marshal(got)
+			require.NoError(t, err)
+			var wire map[string]interface{}
+			require.NoError(t, json.Unmarshal(raw, &wire))
+			require.Equal(t, full, wire["full_batch"])
+		})
+	}
 }
