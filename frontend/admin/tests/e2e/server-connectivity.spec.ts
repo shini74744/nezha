@@ -176,7 +176,7 @@ for(const theme of ["default","doraemon"])for(const light of [false,true])for(co
   expect(state.posts).toBe(0);
  });
 }
-for(const theme of ["default","doraemon"])for(const light of [false,true])for(const offline of [false,true])for(const width of [320,1440]){
+for(const theme of ["default","doraemon"])for(const light of [false,true])for(const offline of [false,true])for(const width of [320,767,768,1440]){
  test(`compact source buttons ${theme} ${light?"light":"dark"} ${offline?"offline":"online"} ${width}`,async({page},info)=>{
   await page.setViewportSize({width,height:900});
   const state=await setup(page,theme,light,offline,false,"zh-CN",true),view=page.locator("[data-server-connectivity]");
@@ -186,6 +186,8 @@ for(const theme of ["default","doraemon"])for(const light of [false,true])for(co
   const sourceBox=await source.boundingBox(),tabsBox=await page.locator(".server-info-tab").boundingBox();
   expect(sourceBox!.y).toBeGreaterThanOrEqual(tabsBox!.y+tabsBox!.height);
   expect(sourceBox!.height).toBe(32);
+  const belowGap=await view.evaluate(el=>el.querySelector("[data-connectivity-group]")!.getBoundingClientRect().top-el.querySelector("[data-connectivity-source]")!.getBoundingClientRect().bottom);
+  expect(belowGap).toBe(width<768?8:16);
   const buttons=source.getByRole("button");
   for(let i=0;i<2;i++){
    const button=buttons.nth(i);
@@ -202,6 +204,15 @@ for(const theme of ["default","doraemon"])for(const light of [false,true])for(co
   expect(colors[0]).not.toBe(colors[1]);
   const left=await buttons.nth(0).boundingBox(),right=await buttons.nth(1).boundingBox();
   expect(left!.x+left!.width+8).toBeLessThanOrEqual(right!.x);
+  for(const box of [left!,right!]){
+   expect(Math.abs(box.y-sourceBox!.y-(width>=768?-16:0))).toBeLessThanOrEqual(1);
+   expect(box.y+box.height).toBeLessThanOrEqual(sourceBox!.y+sourceBox!.height+1);
+   if(width>=768)expect(box.x+box.width<=tabsBox!.x || box.x>=tabsBox!.x+tabsBox!.width).toBe(true);
+  }
+  for(const control of [...await buttons.all(),...await page.locator(".server-info-tab").getByRole("button").all()]){
+   await control.scrollIntoViewIfNeeded();
+   expect(await control.evaluate(el=>{const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))})).toBe(true);
+  }
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
   await page.locator(".server-info-tab").scrollIntoViewIfNeeded();
   await page.screenshot({path:info.outputPath("source-buttons.png")});
