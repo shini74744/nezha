@@ -5,6 +5,7 @@ import {safeLogoSource} from "../../../shared/other-routes";
 import type {LogoValue} from "../../../shared/logo";
 export default function ProviderLogo({value,mobileSlot=false,offline=false}:{value?:LogoValue;mobileSlot?:boolean;offline?:boolean}){
  const src=safeLogoSource(value?.logo),[failed,setFailed]=useState(""),ref=useRef<HTMLSpanElement>(null);
+// biome-ignore lint/correctness/useExhaustiveDependencies: Re-measure when the logo image or its fallback mounts, not only when placement changes.
  useLayoutEffect(()=>{const box=ref.current,card=box?.closest<HTMLElement>("[data-server-card]"),heading=box?.parentElement;if(!box||!card||!heading)return;let frame=0,disposed=false;
   const measure=()=>{if(disposed)return;const c=card.getBoundingClientRect(),h=heading.getBoundingClientRect(),progress=heading.querySelector<HTMLElement>("[data-expiry-progress]"),name=heading.querySelector<HTMLElement>("[data-server-name]"),anchor=progress?.getBoundingClientRect().width?progress:name;
    let anchorWidth=70;

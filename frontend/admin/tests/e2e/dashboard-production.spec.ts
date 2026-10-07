@@ -13,6 +13,7 @@ test("built dashboard and background settings render on desktop and mobile",asyn
  await page.screenshot({path:"test-results/dashboard-built-mobile.png"});
  await page.setViewportSize({width:1280,height:900});
  await page.goto(origin+"/dashboard/settings/appearance");
+ await page.getByRole("button",{name:"背景图片与视频",exact:true}).click();
  await page.getByLabel("电脑背景地址",{exact:true}).scrollIntoViewIfNeeded();
  await page.screenshot({path:"test-results/background-built-desktop.png"});
  await expect(page.getByLabel("电脑背景地址",{exact:true})).toBeVisible();

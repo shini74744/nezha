@@ -17,7 +17,8 @@ for(const inline of ["0","1"])test("offline notes retain legacy layout, view "+i
   if(u.pathname==="/api/v1/setting")return route.fulfill({json:{success:true,data:{config:{language:"zh-CN",custom_code:"",appearance_config:JSON.stringify(config)}}}});
   if(u.pathname==="/api/v1/server-group")return route.fulfill({json:{success:true,data:[]}});
   if(u.pathname==="/api/v1/profile")return route.fulfill({json:{success:false}});
-  if(u.pathname.includes("/service"))return route.fulfill({json:{success:true,data:{services:{},cycle_transfer_stats:{"7":{name:"quota",max:1000,from:"2026-09-01",to:"2026-10-01",transfer:{"11":200,"12":6000,"13":0}}}}}});
+  if(u.pathname==="/api/v1/server-traffic")return route.fulfill({json:{success:true,data:{"11":{name:"quota",max:1000,used:200,from:"2026-09-01",to:"2026-10-01"},"12":{name:"quota",max:1000,used:6000,from:"2026-09-01",to:"2026-10-01"},"13":{name:"quota",max:1000,used:0,from:"2026-09-01",to:"2026-10-01"}}}});
+   if(u.pathname.includes("/service"))return route.fulfill({json:{success:true,data:{services:{},cycle_transfer_stats:{"7":{name:"quota",max:1000,from:"2026-09-01",to:"2026-10-01",transfer:{"11":200,"12":6000,"13":0}}}}}});
   if(u.origin!==origin)return route.abort();
   return route.continue();
  }); for(const width of [1366,1920,390]){

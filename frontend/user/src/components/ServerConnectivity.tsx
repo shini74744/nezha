@@ -48,6 +48,7 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 	const [localServer, setLocalServer] = useState<number>();
 	const localMode = localServer === serverId;
 	const browser = useBrowserConnectivity(serverId);
+// biome-ignore lint/correctness/useExhaustiveDependencies: Changing nodes must leave local mode even when the callback does not read the new ID.
 	useEffect(() => setLocalServer(undefined), [serverId]);
 	const query = useQuery({
 		...connectivityQueryOptions(serverId),

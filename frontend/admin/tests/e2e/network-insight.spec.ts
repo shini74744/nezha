@@ -770,7 +770,21 @@ test("snapshot timeline scroll and selection "+theme+" "+width,async({page},info
  await expect(buttons.last()).toHaveAttribute("aria-pressed","true");
  await buttons.first().focus(); await page.keyboard.press("Enter");
  await expect(page.getByText("200 条观测路径",{exact:true})).toBeVisible();
- await nav.hover(); // Wait for focus-induced page scrolling to settle before wheel input.
+ // Keyboard focus may start smooth page scrolling in the themed layout. Send
+ // native wheel input only after the timeline is stationary under the pointer.
+ await nav.scrollIntoViewIfNeeded();
+ await expect.poll(()=>nav.evaluate(async el=>{
+  const before=el.getBoundingClientRect();
+  await new Promise(resolve=>setTimeout(resolve,180));
+  const after=el.getBoundingClientRect();
+  return Math.abs(after.top-before.top)<0.5 && Math.abs(after.left-before.left)<0.5;
+ })).toBe(true);
+ await nav.hover();
+ await expect(nav.evaluate(el=>{
+  const rect=el.getBoundingClientRect();
+  const hit=document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2);
+  return !!hit && el.contains(hit);
+ })).resolves.toBe(true);
  await page.mouse.wheel(220,0);
  await expect.poll(()=>nav.evaluate(el=>el.scrollLeft)).toBeGreaterThan(20);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);

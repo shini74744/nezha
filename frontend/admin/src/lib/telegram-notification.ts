@@ -122,7 +122,7 @@ export function updateTelegram(
             Number(n.request_method) === 1 ? n.request_body : JSON.stringify(body, null, 2),
     }
 }
-export function useFormattedSpeedVariables(text: string) {
+export function formatSpeedVariables(text: string) {
     return text
         .replace(/#SERVER\.NETINSPEED#/g, "#SERVER.SPEEDIN#")
         .replace(/#SERVER\.NETOUTSPEED#/g, "#SERVER.SPEEDOUT#")

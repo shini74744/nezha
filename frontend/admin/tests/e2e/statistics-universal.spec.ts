@@ -7,7 +7,7 @@ for(const [index,theme] of ["nazhua","aobobo","nezha-pixel","nezha-ascii"].entri
  // Aobobo's WebGL globe is software-rendered on the headless build host.
  test.setTimeout(theme === "aobobo" ? 90000 : 45000);
  const origin="https://127.0.0.1:"+(5191+index),now=Date.now(),servers=[createServer({id:1,name:"测试服务器",last_active:new Date(now).toISOString()})];
- let failing=false,empty=false,reads=0;
+ let failing=false,empty=false;
  await page.setViewportSize({width,height:800});
  await page.routeWebSocket("**/api/v1/ws/server",ws=>ws.send(JSON.stringify({now,servers,online:1})));
  await page.route("**/*",async r=>{
@@ -18,7 +18,7 @@ for(const [index,theme] of ["nazhua","aobobo","nezha-pixel","nezha-ascii"].entri
  if(path==="/api/v1/setting")data={config:{site_name:"主题统计验证",language:"zh-CN"},version:"test"};
  if(path==="/api/v1/profile")return r.fulfill({json:{success:false}});
  if(path==="/api/v1/service"){
-  reads++;if(failing)return r.fulfill({status:503,json:{success:false}});
+  if(failing)return r.fulfill({status:503,json:{success:false}});
   data=empty?{services:{},cycle_transfer_stats:{}}:{services:{"1":{service_name:"重庆电信-上海移动国际网络长名称显示验证",up:Array(30).fill(100),down:Array(30).fill(0),delay:Array(30).fill(32)}},cycle_transfer_stats:{"1":{name:"月流量统计",from:"2026-10-01",to:"2026-11-01",max:1024**4,server_name:{"1":"香港家宽母鸡1-香港海创前置长名称网络节点测试"},transfer:{"1":1.67*1024**4},next_update:{"1":"2026-10-04T23:30:45+08:00"}}}};
  }
  return r.fulfill({json:{success:true,data}});

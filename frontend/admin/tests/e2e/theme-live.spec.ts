@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test"
-test("isolated release login loads all five real embedded themes without reloading", async ({ page, baseURL }) => {
+test("isolated release login lists all six embedded theme options", async ({ page, baseURL }) => {
     test.skip(process.env.E2E_REAL_BACKEND !== "1", "Explicit isolated backend opt-in required")
     expect(baseURL).toBe("http://127.0.0.1:18476")
     await page.addInitScript(() => localStorage.setItem("language", "zh-CN"))
@@ -9,11 +9,11 @@ test("isolated release login loads all five real embedded themes without reloadi
     await page.locator('button[type="submit"]').click()
     await expect(page).toHaveURL(/\/dashboard$/)
     await page.locator('header [aria-haspopup="menu"]').last().click()
-    await page.getByRole("menuitem", { name: /设置/ }).click()
+    await page.getByRole("menuitem", { name: "系统设置", exact: true }).click()
     const select = page.getByRole("combobox", { name: "主题", exact: true })
     await expect(select).toContainText("Official")
     await select.click()
-    await expect(page.getByRole("option")).toHaveCount(5)
-    for (const name of ["Official", "Nezha-Pixel", "Nazhua", "Aobobo", "Nezha-ASCII"]) await expect(page.getByRole("option", { name: new RegExp(name) })).toBeVisible()
+    await expect(page.getByRole("option")).toHaveCount(6)
+    for (const name of ["Official", "Nezha-Pixel", "Nazhua", "Aobobo", "Nezha-ASCII", "哆啦 A 梦"]) await expect(page.getByRole("option", { name: new RegExp(name) })).toBeVisible()
     await page.screenshot({ path: "test-results/themes-restored-live.png" })
 })

@@ -12,7 +12,7 @@ scope.own(() => {
 const hadGameClass = document.body.classList.contains("ASTEROIDSYEAH");
 scope.own(() => {
   if (!hadGameClass) document.body.classList.remove("ASTEROIDSYEAH");
-  document.querySelectorAll(".ASTEROIDSYEAHENEMY").forEach(node => node.classList.remove("ASTEROIDSYEAHENEMY"));
+  document.querySelectorAll(".ASTEROIDSYEAHENEMY").forEach(node => { node.classList.remove("ASTEROIDSYEAHENEMY"); });
 });
 window.ASTEROIDSPLAYERS = [];
 function Asteroids() {
@@ -21,7 +21,7 @@ function Asteroids() {
   };
   class Vector {
     constructor(x, y) {
-      if (typeof x === "Object") {
+      if (x !== null && typeof x === "object") {
         this.x = x.x;
         this.y = x.y;
       } else {
@@ -201,12 +201,13 @@ function Asteroids() {
   this.totalEnemies = 0;
   this.particles = [];
   function updateEnemyIndex() {
-    for (let enemy of that.enemies) {
+    for (const enemy of that.enemies) {
       enemy.classList.remove("ASTEROIDSYEAHENEMY");
     }
     const all = document.body.getElementsByTagName("*");
     that.enemies = [];
-    for (let i = 0, el; el = all[i]; i++) {
+    for (let i = 0; i < all.length; i++) {
+      const el = all[i];
       if (!ignoredTypes.includes(el.tagName.toUpperCase()) && el.prefix !== "g_vml_" && hasOnlyTextualChildren(el) && el.className !== "ASTEROIDSYEAH" && el.offsetHeight > 0) {
         el.aSize = size(el);
         that.enemies.push(el);
@@ -220,8 +221,8 @@ function Asteroids() {
   }
   ;
   updateEnemyIndex();
-  let createFlames;
-  (function () {
+  let createFlames: () => void;
+  (() => {
     const rWidth = playerWidth,
       rIncrease = playerWidth * 0.1,
       yWidth = playerWidth * 0.6,
@@ -229,7 +230,7 @@ function Asteroids() {
       halfR = rWidth / 2,
       halfY = yWidth / 2,
       halfPlayerHeight = playerHeight / 2;
-    createFlames = function () {
+    createFlames = () => {
       that.flame.r = [[-1 * halfPlayerHeight, -1 * halfR]];
       that.flame.y = [[-1 * halfPlayerHeight, -1 * halfY]];
       for (let x = 0; x < rWidth; x += rIncrease) {
@@ -274,7 +275,7 @@ function Asteroids() {
   }
   ;
   function applyVisibility(vis) {
-    for (let p of window.ASTEROIDSPLAYERS) {
+    for (const p of window.ASTEROIDSPLAYERS) {
       scope.styleOf(p.gameContainer).visibility = vis;
     }
   }
@@ -352,7 +353,7 @@ function Asteroids() {
     right: "0px",
     zIndex: "10000"
   });
-  scope.listen(this.canvas, "mousedown", function (e) {
+  scope.listen(this.canvas, "mousedown", (e) => {
     const message = scope.createElement("span");
     scope.styleOf(message).position = "absolute";
     scope.styleOf(message).color = "red";
@@ -362,13 +363,13 @@ function Asteroids() {
     const y = e.pageY || e.clientY + document.documentElement.scrollTop;
     scope.styleOf(message).left = x - message.offsetWidth / 2 + "px";
     scope.styleOf(message).top = y - message.offsetHeight / 2 + "px";
-    scope.setTimeout(function () {
+    scope.setTimeout(() => {
       try {
         scope.detach(message.parentNode, message);
       } catch (e) {}
     }, 1000);
   }, false);
-  const eventResize = function () {
+  const eventResize = () => {
     scope.styleOf(that.canvas).display = "none";
     w = document.documentElement.clientWidth;
     h = document.documentElement.clientHeight;
@@ -410,7 +411,7 @@ function Asteroids() {
     this.points = document.getElementById("ASTEROIDS-POINTS");
   }
   setScore();
-  const eventKeydown = function (event) {
+  const eventKeydown = (event) => {
     that.keysPressed[event.key] = true;
     switch (event.key) {
       case " ":
@@ -426,7 +427,7 @@ function Asteroids() {
     }
   };
   scope.listen(document, "keydown", eventKeydown, false);
-  const eventKeypress = function (event) {
+  const eventKeypress = (event) => {
     if (["ArrowUp", "ArrowDown", "ArrowRight", "ArrowLeft", " ", "w", "a", "s", "d"].includes(event.key)) {
       if (event.preventDefault) event.preventDefault();
       if (event.stopPropagation) event.stopPropagation();
@@ -436,7 +437,7 @@ function Asteroids() {
     }
   };
   scope.listen(document, "keypress", eventKeypress, false);
-  const eventKeyup = function (event) {
+  const eventKeyup = (event) => {
     that.keysPressed[event.key] = false;
     if (["ArrowUp", "ArrowDown", "ArrowRight", "ArrowLeft", " ", "b", "w", "a", "s", "d"].includes(event.key)) {
       if (event.preventDefault) event.preventDefault();
@@ -484,9 +485,7 @@ function Asteroids() {
       this.fill();
     }
   };
-  const randomParticleColor = function () {
-    return ["red", "yellow"][random(0, 1)];
-  };
+  const randomParticleColor = () => ["red", "yellow"][random(0, 1)];
   this.ctx.drawParticles = function (particles) {
     const oldColor = this.fillStyle;
     for (let i = 0; i < particles.length; i++) {
@@ -605,7 +604,6 @@ function Asteroids() {
         addParticles(this.bullets[i].pos);
         this.dying.push(murdered);
         this.bullets.splice(i, 1);
-        continue;
       }
     }
     if (this.dying.length) {
@@ -623,7 +621,6 @@ function Asteroids() {
       if (nowTime - this.particles[i].cameAlive > 1000) {
         this.particles.splice(i, 1);
         forceChange = true;
-        continue;
       }
     }
     if (forceChange || this.bullets.length !== 0 || this.particles.length !== 0 || !this.pos.is(this.lastPos) || this.vel.len() > 0) {

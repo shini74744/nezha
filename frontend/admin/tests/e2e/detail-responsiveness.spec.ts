@@ -64,7 +64,9 @@ for(const theme of ["default","doraemon"])for(const effects of [false,true])test
  const tabs=page.locator(".server-info-tab")
  await expect(page.locator(".server-charts [data-chart]")).toHaveCount(6,{timeout:15000})
  const times:any[]=[]
- await cdp.send("Profiler.enable");await cdp.send("Profiler.start")
+ // Diagnostic CPU sampling is opt-in; normal regression timings must not include its overhead.
+ const captureProfile=process.env.DETAIL_CPU_PROFILE==="1"
+ if(captureProfile){await cdp.send("Profiler.enable");await cdp.send("Profiler.start")}
  for(const label of ["网络","BGP","流媒体","连通性","详情","网络","BGP","流媒体","详情"]) {
   const tab=tabs.getByRole("button",{name:label,exact:true})
   const result=await tab.evaluate(async el=>{
@@ -76,10 +78,12 @@ for(const theme of ["default","doraemon"])for(const effects of [false,true])test
   // Completion budget matches other dense charts under 4x CPU; input latency
   // remains independently bounded below and in the native-event tests.
   if(label==="网络")await expect(page.locator("[data-server-network] .recharts-line-curve")).toHaveCount(18,{timeout:15000}).catch(async error=>{
-   const {profile}=await cdp.send("Profiler.stop")
-   await info.attach("failed-network-profile",{body:JSON.stringify(profile),contentType:"application/json"})
-   const counts=new Map<number,number>();for(const id of profile.samples||[])counts.set(id,(counts.get(id)||0)+1)
-   console.log("FAILED_NETWORK_HOT",JSON.stringify(profile.nodes.map((n:any)=>({...n.callFrame,hits:counts.get(n.id)||0})).sort((a:any,b:any)=>b.hits-a.hits).slice(0,20)))
+   if(captureProfile){
+    const {profile}=await cdp.send("Profiler.stop")
+    await info.attach("failed-network-profile",{body:JSON.stringify(profile),contentType:"application/json"})
+    const counts=new Map<number,number>();for(const id of profile.samples||[])counts.set(id,(counts.get(id)||0)+1)
+    console.log("FAILED_NETWORK_HOT",JSON.stringify(profile.nodes.map((n:any)=>({...n.callFrame,hits:counts.get(n.id)||0})).sort((a:any,b:any)=>b.hits-a.hits).slice(0,20)))
+   }
    throw error
   })
   if(label==="详情")await expect(page.locator(".server-charts [data-chart]")).toHaveCount(6,{timeout:15000})
@@ -87,15 +91,15 @@ for(const theme of ["default","doraemon"])for(const effects of [false,true])test
   if(label==="流媒体")await expect(page.locator("[data-media-card]")).toHaveCount(6,{timeout:15000})
   times.push({label,...result});state.tick()
  }
- const {profile}=await cdp.send("Profiler.stop")
- await info.attach("cpu-profile",{body:JSON.stringify(profile),contentType:"application/json"})
- const hits=new Map<number,number>();for(const id of profile.samples||[])hits.set(id,(hits.get(id)||0)+1)
- const hot=profile.nodes.map((n:any)=>({name:n.callFrame.functionName,url:n.callFrame.url,hits:hits.get(n.id)||0})).sort((a:any,b:any)=>b.hits-a.hits).slice(0,20)
- console.log("DENSE_RESPONSE",JSON.stringify({theme,effects,times,hot}))
+ if(captureProfile){
+  const {profile}=await cdp.send("Profiler.stop")
+  await info.attach("cpu-profile",{body:JSON.stringify(profile),contentType:"application/json"})
+ }
+ console.log("DENSE_RESPONSE",JSON.stringify({theme,effects,times,captureProfile}))
  // Separate event turns model a user clicking before the previous pane finishes.
  await page.evaluate(async()=>{
   for(const label of ["网络","BGP","详情","连通性","流媒体","网络","BGP"]) {
-   const button=[...document.querySelectorAll<HTMLElement>(".server-info-tab [role=button]")].find(e=>e.textContent===label)!
+   const button=[...document.querySelectorAll<HTMLElement>(".server-info-tab button")].find(e=>e.textContent===label)!
    button.click();await new Promise(r=>setTimeout(r,25))
   }
  })
@@ -177,7 +181,8 @@ for(const theme of ["default","doraemon"])test("detail tabs respect reduced moti
 // Native input is sent from the browser process while the renderer is mounting
 // charts. Locator.click() would wait for renderer stability and hide this stall.
 for (const theme of ["default","doraemon"]) for (const delay of [0,80,200]) for (const warm of [false,true]) test("native first-entry input "+theme+" delay="+delay+" warm="+warm,async({page},info)=>{
- test.setTimeout(60000)
+ // Warm cases include two full visits at 4x CPU plus artifact capture; the input budget below remains 250 ms.
+ test.setTimeout(90000)
  await page.setViewportSize({width:1440,height:950})
  const cdp=await page.context().newCDPSession(page)
  await cdp.send("Emulation.setCPUThrottlingRate",{rate:4})
@@ -209,7 +214,7 @@ for (const theme of ["default","doraemon"]) for (const delay of [0,80,200]) for 
   document.addEventListener("pointerdown",e=>{if((e.target as Element).closest(".server-info-tab"))w.entryMeasurements.input.push({start:e.timeStamp,handled:performance.now(),delay:performance.now()-e.timeStamp})},true)
   let found=false
   const observer=new MutationObserver(()=>{
-   const button=[...document.querySelectorAll<HTMLElement>(".server-info-tab [role=button]")].find(el=>el.textContent==="BGP")
+   const button=[...document.querySelectorAll<HTMLElement>(".server-info-tab button")].find(el=>el.textContent==="BGP")
    if(!button)return
    if(!found){found=true;const b=button.getBoundingClientRect();w.entryMeasurements.tabs=performance.now();void w.sendNativeTab({x:b.x+b.width/2,y:b.y+b.height/2})}
    if(button.getAttribute("aria-pressed")==="true"){observer.disconnect();requestAnimationFrame(()=>requestAnimationFrame(()=>{w.entryMeasurements.paint=performance.now()}))}
@@ -217,19 +222,19 @@ for (const theme of ["default","doraemon"]) for (const delay of [0,80,200]) for 
   observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:["aria-pressed"]})
   w.entryMeasurements.start=performance.now()
  })
- await cdp.send("Profiler.enable");await cdp.send("Profiler.start")
+ // Keep CPU sampling out of the native-input latency measurement: under CPU
+ // throttling the profiler itself substantially changes scheduling latency.
  await card.evaluate(el=>(el as HTMLElement).click())
  await expect(page.locator(".server-info-tab").getByRole("button",{name:"BGP",exact:true})).toHaveAttribute("aria-pressed","true",{timeout:20000})
  await sent
  await expect(page.locator("[data-bgp-graph]")).toBeVisible()
- const {profile}=await cdp.send("Profiler.stop")
- await info.attach("entry-profile",{body:JSON.stringify(profile),contentType:"application/json"})
  const measurements=await page.evaluate(()=>(window as any).entryMeasurements)
+ await info.attach("entry-measurements",{body:JSON.stringify(measurements),contentType:"application/json"})
  console.log("NATIVE_ENTRY",JSON.stringify({theme,delay,warm,...measurements}))
- const counts=new Map<number,number>();for(const id of profile.samples||[])counts.set(id,(counts.get(id)||0)+1)
- console.log("ENTRY_HOT",JSON.stringify(profile.nodes.map((n:any)=>({name:n.callFrame.functionName,url:n.callFrame.url,hits:counts.get(n.id)||0})).sort((a:any,b:any)=>b.hits-a.hits).slice(0,12)))
  expect(measurements.input).toHaveLength(1)
  expect(measurements.input[0].delay).toBeLessThan(250)
+ // Screenshot encoding is not part of the measured interaction.
+ await cdp.send("Emulation.setCPUThrottlingRate",{rate:1})
  await page.screenshot({path:info.outputPath("native-entry.png")})
  expect(state.posts).toEqual([])
 })

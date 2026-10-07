@@ -55,7 +55,7 @@ const MainApp: React.FC = () => {
 			InjectContext(settingData?.data?.config?.custom_code);
 			setIsCustomCodeInjected(true);
 		}
-	}, [settingData?.data?.config?.custom_code]);
+	}, [settingData?.data?.config?.custom_code, cardPreview]);
 
 	// 检测是否强制指定了主题颜色
 	const forceTheme =

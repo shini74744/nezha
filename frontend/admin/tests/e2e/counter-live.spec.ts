@@ -1,4 +1,16 @@
 import {test,expect} from "@playwright/test";
+import {defaults} from "./appearance-fixture";
+async function counterFixture(page:any,hideControls=false){
+ await page.route("**/api/v1/setting",async (route:any)=>{
+  const response=await route.fetch(),body=await response.json();
+  const config=defaults();config.enabled=true;
+  for(const feature of Object.values(config.features))feature.enabled=false;
+  config.features.counter={...config.features.counter,enabled:true,imageUrl:"https://counter.test/counter.svg",desktopWidth:240,desktopHeight:60,mobileWidth:170,mobileHeight:42.5,mobileTop:8};
+  config.features.hideControls={...config.features.hideControls,enabled:hideControls,search:true,language:true,theme:true};
+  body.data.config={...body.data.config,site_name:"哪吒云监控",custom_code:"",appearance_config:JSON.stringify(config)};
+  await route.fulfill({json:body});
+ });
+}
 async function safe(page:any){
  return page.evaluate(()=>{
   const n=document.querySelector(".footer-background") as HTMLElement;
@@ -15,6 +27,7 @@ test("counter scales in free space and never covers header contents",async({page
  test.skip(process.env.E2E_REAL_BACKEND!=="1","Requires isolated backend");
  expect(baseURL).toBe("http://127.0.0.1:18476");test.setTimeout(60000);
  const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
+ await counterFixture(page);
  await page.route("https://counter.test/**",r=>r.fulfill({contentType:"image/svg+xml",body:'<svg xmlns="http://www.w3.org/2000/svg" width="240" height="60"><rect width="240" height="60" fill="#35786a"/><text x="18" y="40" fill="white" font-size="30">0012345</text></svg>'}));
  await page.goto("/");const image=page.locator(".footer-background");
  await expect(image).toHaveCount(1);const measurements:any[]=[];
@@ -44,14 +57,7 @@ test("counter scales in free space and never covers header contents",async({page
 
 test("mobile counter fits the gap between brand and online badge",async({page,baseURL})=>{
  expect(baseURL).toBe("http://127.0.0.1:18476");
- await page.route("**/api/v1/setting",async route=>{
-  const response=await route.fetch(),body=await response.json();
-  body.data.config.site_name="哪吒云监控";
-  const c=JSON.parse(body.data.config.appearance_config);
-  c.features.hideControls={enabled:true,search:true,language:true,theme:true};
-  body.data.config.appearance_config=JSON.stringify(c);
-  await route.fulfill({json:body});
- });
+ await counterFixture(page,true);
  await page.route("https://counter.test/**",r=>r.fulfill({contentType:"image/svg+xml",body:'<svg xmlns="http://www.w3.org/2000/svg" width="240" height="60"><rect width="240" height="60" fill="#35786a"/></svg>'}));
  await page.setViewportSize({width:390,height:844});await page.goto("/");
  const image=page.locator(".footer-background");

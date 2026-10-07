@@ -233,7 +233,7 @@ export default function ServerPage() {
                                 return
                             }
 
-                            let resp: ModelServerTaskResponse = {}
+                            let resp: ModelServerTaskResponse
                             try {
                                 resp = await forceUpdateServer(id)
                             } catch (e) {

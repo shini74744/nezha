@@ -51,7 +51,7 @@ function network() {
 	};
 }
 async function finishAll(net: ReturnType<typeof network>) {
- for (let i=0; i<30 && net.active; i++) await act(async()=>net.calls.slice().forEach(call=>call.done()));
+ for (let i=0; i<30 && net.active; i++) await act(async()=>net.calls.slice().forEach(call=>{call.done();}));
  expect(net.active).toBe(0);
 }
 describe("browser single-target scheduling", () => {

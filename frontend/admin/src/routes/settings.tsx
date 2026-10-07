@@ -108,7 +108,7 @@ export default function SettingsPage() {
                 clear_frontend_password: false,
             })
         }
-    }, [config?.config, form])
+    }, [config?.config, config?.frontend_templates, form])
 
     if (authLoading) {
         return null

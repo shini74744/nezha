@@ -48,7 +48,8 @@ func Seed(db *gorm.DB, dir string) error {
 		return e
 	}
 	seen := map[string]bool{}
-	for _, s := range servers {
+	for i := range servers {
+		s := &servers[i]
 		var n map[string]any
 		if json.Unmarshal([]byte(s.PublicNote), &n) != nil {
 			continue

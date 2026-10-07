@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -12,14 +11,18 @@ import (
 
 func TestBatchDeleteNotificationCapsRequestBody(t *testing.T) {
 	body := append(bytes.Repeat([]byte{' '}, notificationBatchDeleteMaxBodyBytes+1), '[', ']')
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/batch-delete/notification", bytes.NewReader(body))
+	reader := &requestBodyReadCounter{Reader: bytes.NewReader(body)}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/batch-delete/notification", reader)
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 
 	_, err := batchDeleteNotification(c)
-	if err == nil || !strings.Contains(err.Error(), "request body too large") {
-		t.Fatalf("oversized request body was not rejected by MaxBytesReader: %v", err)
+	if err == nil {
+		t.Fatal("oversized request body was not rejected")
+	}
+	if reader.read != notificationBatchDeleteMaxBodyBytes+1 {
+		t.Fatalf("body must stop at the cap plus one overflow byte: read=%d cap=%d", reader.read, notificationBatchDeleteMaxBodyBytes)
 	}
 }

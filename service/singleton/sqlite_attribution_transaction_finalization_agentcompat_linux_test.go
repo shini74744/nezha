@@ -15,6 +15,7 @@ import (
 func sqliteAttributionHeldTransaction(t *testing.T, value string, transactionContext context.Context) (*sqliteAttributionConnection, driver.Tx, SQLiteHoldSession, string) {
 	t.Helper()
 	resetSQLiteAttributionForTest()
+	t.Cleanup(resetSQLiteAttributionForTest)
 	databasePath := sqliteAttributionTestDatabasePath(t)
 	rawConnection, err := sqliteAttributionDriver{}.Open(databasePath)
 	if err != nil {

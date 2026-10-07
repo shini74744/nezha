@@ -1,13 +1,13 @@
 import type {Feature} from "../config";
 import type {CustomCharacter} from "../mascot-config";
-import {FeatureScope} from "../scope";
+import type {FeatureScope} from "../scope";
 export async function sakana(scope:FeatureScope,f:Feature){
  if(screen.width<768)return; // Preserve the original Live2D mobile guard.
  const {default:SakanaWidget}=await import("sakana-widget");
  if(!scope.active)return;
  const custom=(f.customCharacters||[]) as CustomCharacter[],builtin=SakanaWidget.getCharacter("chisato")!;
  const roles=[{id:"chisato",key:"chisato",name:"千束 Chisato"},{id:"takina",key:"takina",name:"泷奈 Takina"},...custom.map((r,i)=>({...r,key:"nz-custom-"+i}))];
- custom.forEach((r,i)=>SakanaWidget.registerCharacter("nz-custom-"+i,{...builtin,image:new URL(r.imageUrl).href.replace(/'/g,"%27")}));
+ custom.forEach((r,i)=>{SakanaWidget.registerCharacter("nz-custom-"+i,{...builtin,image:new URL(r.imageUrl).href.replace(/'/g,"%27")});});
  const host=scope.createElement("div");host.id="nz-sakana-widget";
  Object.assign(host.style,{position:"fixed",left:"0",right:"auto",bottom:"0",zIndex:"9990",width:"min("+f.size+"px, calc(100vw - 24px))",height:"min("+f.size+"px, calc(100vw - 24px))"});
  document.body.append(host);
@@ -37,7 +37,7 @@ export async function sakana(scope:FeatureScope,f:Feature){
  scope.own(()=>{
   if(probe){probe.onerror=null;probe.removeAttribute("src")}
   if(host.firstElementChild?.childElementCount)widget.unmount();
-  custom.forEach((_,i)=>SakanaWidget.registerCharacter("nz-custom-"+i,builtin));
+  custom.forEach((_,i)=>{SakanaWidget.registerCharacter("nz-custom-"+i,builtin);});
  });
  if(f.autoMotion&&!matchMedia("(prefers-reduced-motion: reduce)").matches)widget.triggerAutoMode();
 }

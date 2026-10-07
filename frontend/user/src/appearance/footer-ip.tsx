@@ -25,6 +25,7 @@ export function NativeFooterIP() {
   update();
   return ()=>{clearTimeout(timer);observer.disconnect();removeEventListener("scroll",update);removeEventListener("resize",update)};
  },[f.enabled,mobile,ready]);
+// biome-ignore lint/correctness/useExhaustiveDependencies: Notify layout consumers whenever footer visibility or configured height changes.
  useEffect(()=>{
   dispatchEvent(new Event("nz-footer-ip-change"));
   return ()=>{requestAnimationFrame(()=>dispatchEvent(new Event("nz-footer-ip-change")))};

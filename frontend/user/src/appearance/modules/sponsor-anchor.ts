@@ -1,4 +1,4 @@
-import { FeatureScope } from "../scope";
+import type { FeatureScope } from "../scope";
 
 // Keep the capsule inside the actual free space between view/group and sort controls.
 export function anchorSponsor(scope: FeatureScope, wrap: HTMLElement) {

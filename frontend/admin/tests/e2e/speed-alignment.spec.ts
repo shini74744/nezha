@@ -3,7 +3,7 @@ import fs from "node:fs"
 
 import { createServer } from "../../../user/src/test/fixtures"
 
-test.use({ ignoreHTTPSErrors: true })
+test.use({ baseURL: "https://127.0.0.1:18476", ignoreHTTPSErrors: true })
 const definitions = JSON.parse(
     fs.readFileSync(new URL("../../../user/src/appearance/manifest.json", import.meta.url), "utf8"),
 )

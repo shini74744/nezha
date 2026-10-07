@@ -17,6 +17,7 @@ export function useStableDetailViewport(scope: string | number, tab: string) {
   element.style.minHeight = floor.current ? floor.current + "px" : "";
  }, []);
 
+// biome-ignore lint/correctness/useExhaustiveDependencies: Apply the pending scroll preservation after every tab switch, including equal-height panels.
  useLayoutEffect(() => {
   if (previousScope.current !== scope) {
    previousScope.current = scope;

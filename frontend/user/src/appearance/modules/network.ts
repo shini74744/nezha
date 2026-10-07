@@ -2,7 +2,7 @@
 // Migrated source for the built-in network feature; resources are owned by FeatureScope.
 export function network(scope, config) {
 const window = scope.window; const document = scope.document;
-(function () {
+(() => {
   var _0x58d316 = !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   if (!_0x58d316) {
     return;
@@ -28,11 +28,11 @@ const window = scope.window; const document = scope.document;
   }
   function _0x533f11() {
     _0x1f1a1f.clearRect(0, 0, _0x145ce2, _0x1a8ee4);
-    var _0xc7811d;
-    var _0x4ea916;
-    var _0x493483;
-    var _0x51acf8;
-    _0x5efe24.forEach(function (_0x21a71c, _0x1fc94c) {
+    let _0xc7811d: number;
+    let _0x4ea916: number;
+    let _0x493483: number;
+    let _0x51acf8: number;
+    _0x5efe24.forEach((_0x21a71c, _0x1fc94c) => {
       _0x21a71c.x += _0x21a71c.vx;
       _0x21a71c.y += _0x21a71c.vy;
       if (_0x21a71c.x > _0x145ce2 || _0x21a71c.x < 0) {
@@ -70,13 +70,13 @@ const window = scope.window; const document = scope.document;
   const _0x1df04c = _0x2a7625();
   const _0x51a74c = scope.createElement("canvas");
   const _0x1f1a1f = _0x51a74c.getContext("2d");
-  let _0x145ce2;
-  let _0x1a8ee4;
+  let _0x145ce2: number;
+  let _0x1a8ee4: number;
   _0x51a74c.id = "canvas-nest";
   scope.styleOf(_0x51a74c).cssText = "position:fixed;top:0;left:0;width:100%;height:100%;z-index:" + _0x1df04c.z + ";opacity:" + _0x1df04c.o + ";pointer-events:none";
   document.body.insertBefore(_0x51a74c, document.body.firstChild);
-  let _0x5efe24 = [];
-  let _0x59a8c2;
+  const _0x5efe24 = [];
+  let _0x59a8c2: Array<{x:number|null;y:number|null;max:number}>;
   const _0xe4b10e = {
     x: null,
     y: null,
@@ -85,11 +85,11 @@ const window = scope.window; const document = scope.document;
   const _0x4d75d0 = Math.random;
   _0x168c11();
   scope.listen(window, "resize", _0x168c11);
-  scope.listen(window, "mousemove", function (_0x1b32ef) {
+  scope.listen(window, "mousemove", (_0x1b32ef) => {
     _0xe4b10e.x = _0x1b32ef.clientX;
     _0xe4b10e.y = _0x1b32ef.clientY;
   });
-  scope.listen(window, "mouseout", function () {
+  scope.listen(window, "mouseout", () => {
     _0xe4b10e.x = null;
     _0xe4b10e.y = null;
   });

@@ -113,6 +113,18 @@ describe("interactive app controls", () => {
 		expect(screen.getByText("command-open")).toBeInTheDocument();
 	});
 
+	it("requires distinct illustration activations and ignores held-key repeats", async () => {
+		const toggle = vi.fn();
+		render(<StatusProvider><ServerOverview total={1} online={1} offline={0} up={0} down={0} upSpeed={0} downSpeed={0} onToggleDisplayHidden={toggle}/></StatusProvider>);
+		const button = screen.getByRole("button", {name:"页面插画"});
+		button.focus();
+		const user = userEvent.setup();
+		for (let i = 0; i < 8; i++) expect(fireEvent.keyDown(button, {key:"Enter", repeat:true})).toBe(false);
+		expect(toggle).not.toHaveBeenCalled();
+		await user.keyboard("{Enter}{Enter}{Enter}{Enter}{Enter}");
+		expect(toggle).toHaveBeenCalledOnce();
+	});
+
 	it("lets overview cards update the global status filter", () => {
 		render(
 			<StatusProvider>

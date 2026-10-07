@@ -50,7 +50,7 @@ func TestAppearancePersistedWithoutPublicArchive(t *testing.T) {
 func TestAppearanceSaveRetainsAuthenticationSecretsOnRestart(t *testing.T) {
 	t.Setenv(JWTSecretEnvKey, "")
 	target := filepath.Join(t.TempDir(), "config.yaml")
-	c := Config{filePath: target}
+	c := &Config{filePath: target}
 	c.JWTSecretKey = "synthetic-signing-key"
 	c.AgentSecretKey = "synthetic-agent-key"
 	c.FrontendPasswordHash = "synthetic-password-hash"
@@ -61,7 +61,7 @@ func TestAppearanceSaveRetainsAuthenticationSecretsOnRestart(t *testing.T) {
 		require.Equal(t, c.JWTSecretKey, loaded.JWTSecretKey)
 		require.Equal(t, c.AgentSecretKey, loaded.AgentSecretKey)
 		require.Equal(t, c.FrontendPasswordHash, loaded.FrontendPasswordHash)
-		c = loaded
+		c = &loaded
 	}
 	public, err := json.Marshal(c)
 	require.NoError(t, err)

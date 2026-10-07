@@ -12,6 +12,7 @@ import (
 
 func TestSQLiteDriverAdapterRecordsExplicitInsert_when_AttributionEnabled(t *testing.T) {
 	resetSQLiteAttributionForTest()
+	t.Cleanup(resetSQLiteAttributionForTest)
 	databasePath := filepath.Join(t.TempDir(), "dashboard.sqlite")
 	database, err := openSQLiteAttributionTestDB(databasePath)
 	if err != nil {
@@ -44,6 +45,7 @@ func TestSQLiteDriverAdapterRecordsExplicitInsert_when_AttributionEnabled(t *tes
 
 func TestSQLiteDriverAdapterRecordsPreparedExplicitInsert_when_AttributionEnabled(t *testing.T) {
 	resetSQLiteAttributionForTest()
+	t.Cleanup(resetSQLiteAttributionForTest)
 	databasePath := filepath.Join(t.TempDir(), "dashboard.sqlite")
 	database, err := openSQLiteAttributionTestDB(databasePath)
 	if err != nil {
@@ -114,6 +116,7 @@ func openSQLiteAttributionTestDB(path string) (*sql.DB, error) {
 func openSQLiteAttributionTestDatabase(t *testing.T) *sql.DB {
 	t.Helper()
 	resetSQLiteAttributionForTest()
+	t.Cleanup(resetSQLiteAttributionForTest)
 	database, err := openSQLiteAttributionTestDB(sqliteAttributionTestDatabasePath(t))
 	if err != nil {
 		t.Fatal(err)
@@ -201,4 +204,31 @@ func sqliteAttributionTrackerWriteEvidence() sqliteAttributionWriteEvidence {
 		}
 	}
 	return sqliteAttributionWriteEvidence{}
+}
+
+func TestSQLiteAttributionFixtureRestoresGlobalState(t *testing.T) {
+	resetSQLiteAttributionForTest()
+	t.Cleanup(resetSQLiteAttributionForTest)
+	t.Run("instrumented fixture", func(t *testing.T) {
+		openSQLiteAttributionTestDatabase(t)
+		enableSQLiteAttribution()
+		if !sqliteAttributionEnabled.Load() {
+			t.Fatal("fixture did not enable attribution")
+		}
+	})
+	if sqliteAttributionEnabled.Load() {
+		t.Fatal("attribution leaked from the completed fixture")
+	}
+	db, err := openSQLiteAttributionTestDB(sqliteAttributionTestDatabasePath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	if _, err := db.Exec("CREATE TABLE after_fixture (id INTEGER PRIMARY KEY)"); err != nil {
+		t.Fatalf("a following ordinary database cannot initialize: %v", err)
+	}
 }

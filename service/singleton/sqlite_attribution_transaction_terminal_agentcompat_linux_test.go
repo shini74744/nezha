@@ -76,6 +76,7 @@ func sqliteAttributionTransactionWithAmbiguousWrite(t *testing.T, databasePath, 
 func TestSQLiteAttributionUnselectedCommitPersistsImmediately(t *testing.T) {
 	// Given
 	resetSQLiteAttributionForTest()
+	t.Cleanup(resetSQLiteAttributionForTest)
 	enableSQLiteAttribution()
 	databasePath := sqliteAttributionTestDatabasePath(t)
 	session, err := sqliteAttributionTracker.Load().ArmSQLiteHold(SQLiteJournalIdentity{})
@@ -117,6 +118,7 @@ func TestSQLiteAttributionUnselectedCommitPersistsImmediately(t *testing.T) {
 func TestSQLiteAttributionFutureAmbiguityRollsBackEveryParticipatingCommit(t *testing.T) {
 	// Given
 	resetSQLiteAttributionForTest()
+	t.Cleanup(resetSQLiteAttributionForTest)
 	enableSQLiteAttribution()
 	firstPath := sqliteAttributionTestDatabasePath(t)
 	secondPath := sqliteAttributionTestDatabasePath(t)

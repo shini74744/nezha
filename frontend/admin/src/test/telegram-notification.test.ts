@@ -4,7 +4,7 @@ import {
     previewTelegram,
     telegramDefaults,
     updateTelegram,
-    useFormattedSpeedVariables,
+    formatSpeedVariables,
     validateTelegram,
 } from "@/lib/telegram-notification"
 import { describe, expect, it } from "vitest"
@@ -116,7 +116,7 @@ describe("Telegram visual editor", () => {
 })
 
 it("converts legacy raw speed variables without changing other template content", () => {
-    const text = useFormattedSpeedVariables(
+    const text = formatSpeedVariables(
         "🚀 ↓#SERVER.NETINSPEED# | ↑#SERVER.NETOUTSPEED# #SERVER.NAME#",
     )
     expect(text).toBe("🚀 ↓#SERVER.SPEEDIN# | ↑#SERVER.SPEEDOUT# #SERVER.NAME#")

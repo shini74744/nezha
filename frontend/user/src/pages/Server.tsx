@@ -113,7 +113,7 @@ export default function Servers({
  const CardView=presentation?.Card ?? ServerCard;
  const InlineCardView=presentation?.InlineCard ?? ServerCardInline;
  const MapView=presentation?.Map ?? GlobalMap;
- const preference=(key:string)=>(presentation?.storagePrefix ?? "")+key;
+ const preference=useCallback((key:string)=>(presentation?.storagePrefix ?? "")+key,[presentation?.storagePrefix]);
 	const { t } = useTranslation();
 	const { sortType, sortOrder, setSortOrder } = useSort();
 	const { data: groupData, error: groupError } = useQuery({
@@ -195,7 +195,7 @@ export default function Servers({
 		return () => {
 			window.removeEventListener("resize", checkInlineSettings);
 		};
-	}, []);
+	}, [preference]);
 
 	useEffect(() => {
 		// The Doraemon map is opt-in on each visit; old saved/forced state must not open it.
@@ -206,12 +206,12 @@ export default function Servers({
 		} else if (showMapState !== null) {
 			setShowMap(showMapState);
 		}
-	}, []);
+	}, [preference, presentation]);
 
 	useEffect(() => {
 		const savedGroup = sessionStorage.getItem(preference("selectedGroup")) || "All";
 		setCurrentGroup(savedGroup);
-	}, []);
+	}, [preference]);
 
 	useLayoutEffect(() => {
 		if (nezhaWsData) {

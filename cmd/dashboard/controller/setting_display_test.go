@@ -29,7 +29,20 @@ func TestDisplaySettingIsolatedRoundTrip(t *testing.T) {
 	templates := []model.FrontendTemplate{{Path: "user-dist"}}
 	require.NoError(t, config.Read(file, templates))
 	singleton.Conf = &singleton.ConfigClass{Config: config}
-	oldConfig := *config
+	// Snapshot serialized fields instead of copying Config's live atomic flags.
+	snapshot := func() map[string]any {
+		raw, err := json.Marshal(config)
+		require.NoError(t, err)
+		var fields map[string]any
+		require.NoError(t, json.Unmarshal(raw, &fields))
+		delete(fields, "show_network_in_detail")
+		delete(fields, "statistics_split")
+		fields["private_fields"] = []string{config.JWTSecretKey, config.FrontendPasswordHash, config.ConnectivityConfig, config.DashboardAppearanceLegacyCode, config.AppearanceLegacyCode}
+		fields["mcp_runtime"] = config.MCPEnabled()
+		fields["jwt_ip_runtime"] = config.JWTIPChangeAllowed()
+		return fields
+	}
+	oldConfig := snapshot()
 	value, err := getDisplaySettings(displayContext("GET", ""))
 	require.NoError(t, err)
 	require.Equal(t, displaySettings{true, false}, value) // Preserve the previous split statistics and combined network.
@@ -49,10 +62,7 @@ func TestDisplaySettingIsolatedRoundTrip(t *testing.T) {
 		require.NoError(t, reloaded.Read(file, templates))
 		require.Equal(t, step.want.StatisticsSplit, resolveOptionalBool(reloaded.StatisticsSplit, true))
 		require.Equal(t, !step.want.DetailNetworkSplit, reloaded.ShowNetworkInDetail)
-		next := *config
-		next.ShowNetworkInDetail = oldConfig.ShowNetworkInDetail
-		next.StatisticsSplit = oldConfig.StatisticsSplit
-		require.Equal(t, oldConfig, next, "unrelated config must not change")
+		require.Equal(t, oldConfig, snapshot(), "unrelated config must not change")
 	}
 	for _, body := range []string{`{}`, `{"statistics_split":null}`, `{"statistics_split":"true"}`, `{"statistics_split":true,"site_name":"changed"}`, `{"detail_network_split":true} {}`, strings.Repeat(" ", 300) + `{"statistics_split":true}`} {
 		_, err := updateDisplaySettings(displayContext("PATCH", body))

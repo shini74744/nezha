@@ -9,6 +9,7 @@ export const terminalCommandsURL = "/api/v1/terminal-commands"
 
 // A literal newline/escape/tab can execute or alter shell input while pasting.
 export function terminalCommandError(command: string): string {
+    // eslint-disable-next-line no-control-regex -- Reject control characters before shell input.
     if (/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/u.test(command)) {
         return "请输入单行命令，不支持换行或控制字符"
     }

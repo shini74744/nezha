@@ -1,7 +1,7 @@
 import { ChartBarSquareIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { type StatisticsView } from "@/hooks/use-statistics-view";
+import type { StatisticsView } from "@/hooks/use-statistics-view";
 import { cn } from "@/lib/utils";
 import {
 	DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,

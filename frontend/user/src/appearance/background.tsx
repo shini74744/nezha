@@ -1,4 +1,4 @@
-import {useEffect,useRef,useState} from "react";
+import {useCallback,useEffect,useMemo,useRef,useState} from "react";
 import {useFeature} from "./context";
 import {FeatureScope} from "./scope";
 import {publishBackgroundSound} from "./background-sound";
@@ -6,8 +6,10 @@ import {setBackgroundPeakCut} from "./background-state";
 import {matchesRegion,selectBackground,type Media} from "./background-config";
 type Selection={items:Media[];key:string;label:string;index:number};
 export function NativeBackground(){
- const f=useFeature("background"),sound=useFeature("video"),video=useRef<HTMLVideoElement>(null);
+ const rawBackground=useFeature("background"),sound=useFeature("video"),video=useRef<HTMLVideoElement>(null);
  const [selection,setSelection]=useState<Selection>(),[asVideo,setAsVideo]=useState(false),[muted,setMuted]=useState(true),[notice,setNotice]=useState("");
+ const backgroundKey=JSON.stringify(rawBackground);
+ const f=useMemo(()=>JSON.parse(backgroundKey) as typeof rawBackground,[backgroundKey]);
  const media=selection?.items[selection.index];
  useEffect(()=>{
   setSelection(undefined);setNotice("");setBackgroundPeakCut(false);
@@ -39,20 +41,21 @@ export function NativeBackground(){
    update();
   })();
   return()=>{scope.dispose();setBackgroundPeakCut(false)};
- },[f.enabled,JSON.stringify(f)]);
+ },[f]);
+ // biome-ignore lint/correctness/useExhaustiveDependencies: Each new source or schedule restarts muted playback, including sources with the same media type.
  useEffect(()=>{setAsVideo(media?.type==="video");setMuted(true)},[media?.src,media?.type,selection?.key]);
  const next=()=>setSelection(s=>s?{...s,index:s.index+1}:s);
  const failImage=()=>media?.type==="auto"?setAsVideo(true):next();
- const toggleSound=async()=>{
+ const toggleSound=useCallback(async()=>{
   const target=video.current;if(!target)return;
   const nextMuted=!target.muted;target.muted=nextMuted;setMuted(nextMuted);
   try{await target.play()}catch{target.muted=true;if(video.current===target)setMuted(true)}
- };
+ },[]);
  useEffect(()=>{
   if(!sound.enabled){if(video.current)video.current.muted=true;setMuted(true)}
   if(!f.enabled||!asVideo||!media||!sound.enabled||!sound.showControl||!sound.toggleMuteOnControlClick)return;
   return publishBackgroundSound({muted,toggle:toggleSound});
- },[f.enabled,asVideo,media?.src,muted,sound.enabled,sound.showControl,sound.toggleMuteOnControlClick]);
+ },[f.enabled,asVideo,media,muted,sound.enabled,sound.showControl,sound.toggleMuteOnControlClick,toggleSound]);
  if(!f.enabled||!media)return null;
  return <>
   <style data-nz-background-cards>{`html:not(.dark) .bg-card{background-color:rgba(255,255,255,${f.lightOpacity});backdrop-filter:blur(${f.lightBlur}px);-webkit-backdrop-filter:blur(${f.lightBlur}px);border-color:rgba(255,255,255,.3)}.dark .bg-card{background-color:rgba(13,11,9,${f.darkOpacity});backdrop-filter:blur(${f.darkBlur}px);border-color:rgba(13,11,9,.1)}`}</style>

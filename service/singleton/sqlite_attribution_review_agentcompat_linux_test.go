@@ -41,6 +41,7 @@ func TestSQLiteAttributionLifecycleFieldsUseOneConnectionMutex(t *testing.T) {
 func TestSQLiteAttributionBeginRollsBackRawTransactionWhenTrackerRejects(t *testing.T) {
 	// Given
 	resetSQLiteAttributionForTest()
+	t.Cleanup(resetSQLiteAttributionForTest)
 	rawConnection, err := sqliteAttributionDriver{}.Open(sqliteAttributionTestDatabasePath(t))
 	if err != nil {
 		t.Fatal(err)
@@ -76,6 +77,7 @@ func TestSQLiteAttributionBeginRollsBackRawTransactionWhenTrackerRejects(t *test
 func TestSQLiteAttributionDirectQueryPreservesSQLiteColumnTypes(t *testing.T) {
 	// Given
 	resetSQLiteAttributionForTest()
+	t.Cleanup(resetSQLiteAttributionForTest)
 	databasePath := sqliteAttributionTestDatabasePath(t)
 	attributed, err := openSQLiteAttributionTestDB(databasePath)
 	if err != nil {
@@ -133,6 +135,7 @@ func TestSQLiteAttributionDirectQueryPreservesSQLiteColumnTypes(t *testing.T) {
 func TestSQLiteAttributionFailsClosedWhenSQLiteRepreparesAfterSchemaChange(t *testing.T) {
 	// Given
 	resetSQLiteAttributionForTest()
+	t.Cleanup(resetSQLiteAttributionForTest)
 	databasePath := sqliteAttributionTestDatabasePath(t)
 	rawConnection, err := sqliteAttributionDriver{}.Open(databasePath)
 	if err != nil {
@@ -200,6 +203,7 @@ func TestSQLiteAttributionFailsClosedWhenSQLiteRepreparesAfterSchemaChange(t *te
 func TestSQLiteAttributionUpdateHookRejectsAuxiliaryDatabase(t *testing.T) {
 	// Given
 	resetSQLiteAttributionForTest()
+	t.Cleanup(resetSQLiteAttributionForTest)
 	rawConnection, err := sqliteAttributionDriver{}.Open(sqliteAttributionTestDatabasePath(t))
 	if err != nil {
 		t.Fatal(err)

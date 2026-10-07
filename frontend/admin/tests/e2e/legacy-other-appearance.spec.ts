@@ -2,6 +2,7 @@ import {test,expect} from "@playwright/test";
 import fs from "node:fs";
 import {createServer} from "../../../user/src/test/fixtures";
 const origin="https://127.0.0.1:18486";
+test.use({baseURL:origin,ignoreHTTPSErrors:true});
 const defs=JSON.parse(fs.readFileSync(new URL("../../../user/src/appearance/manifest.json",import.meta.url),"utf8"));
 for(const scenario of [{width:1366,mobile:false},{width:390,mobile:false},{width:1920,mobile:true}]){
  test("legacy footer IP "+JSON.stringify(scenario),async({browser,baseURL})=>{

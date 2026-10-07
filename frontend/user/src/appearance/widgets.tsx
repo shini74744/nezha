@@ -158,6 +158,7 @@ export { NativeTraffic } from "./traffic";
 export function NativeFooter() {
 	const f = useFeature("footer"),
 		tick = useTick(f.enabled ? 6000 : 0);
+// biome-ignore lint/correctness/useExhaustiveDependencies: The timer deliberately refreshes the decorative colors without changing the footer text.
 	const letters = useMemo(
 		() =>
 			Array.from(String(f.text)).map((c) => ({
@@ -180,7 +181,7 @@ export function NativeFooter() {
 			document.head.append(link);
 			return link;
 		});
-		return () => links.forEach((link) => link.remove());
+		return () => links.forEach((link) => { link.remove(); });
 	}, [f.enabled]);
 	return (
 		<footer className="mx-auto w-full max-w-5xl px-4 pb-4 text-sm">

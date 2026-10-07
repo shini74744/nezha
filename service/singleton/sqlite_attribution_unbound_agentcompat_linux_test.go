@@ -31,6 +31,7 @@ func TestSQLiteAttributionRejectsDirectUnboundExecBeforeInsert(t *testing.T) {
 func TestSQLiteAttributionRejectsLegacyDriverQueryBeforeInsert(t *testing.T) {
 	// Given
 	resetSQLiteAttributionForTest()
+	t.Cleanup(resetSQLiteAttributionForTest)
 	connection, err := sqliteAttributionDriver{}.Open(sqliteAttributionTestDatabasePath(t))
 	if err != nil {
 		t.Fatal(err)
@@ -58,6 +59,7 @@ func TestSQLiteAttributionRejectsLegacyDriverQueryBeforeInsert(t *testing.T) {
 func TestSQLiteAttributionRejectsPreparedLegacyDriverQueryBeforeInsert(t *testing.T) {
 	// Given
 	resetSQLiteAttributionForTest()
+	t.Cleanup(resetSQLiteAttributionForTest)
 	connection, err := sqliteAttributionDriver{}.Open(sqliteAttributionTestDatabasePath(t))
 	if err != nil {
 		t.Fatal(err)

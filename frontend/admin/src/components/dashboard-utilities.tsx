@@ -3,9 +3,9 @@ import {useDashboardFeature} from "./dashboard-appearance";
 export type ParsedIP={token:string;ip:string;v4:boolean;port:boolean};
 export function parseDashboardIPs(text:string):ParsedIP[]{
  const result:ParsedIP[]=[],seen=new Set<string>();
- for(const token of text.split(/[\s,\/|;]+/).filter(Boolean)){
+ for(const token of text.split(/[\s,/|;]+/).filter(Boolean)){
   const v4=token.match(/^((?:\d{1,3}\.){3}\d{1,3})(?::(\d+))?$/);
-  let ip="",port=false,isV4=false;
+  let ip:string,port:boolean,isV4=false;
   if(v4){if(v4[1].split(".").some(n=>Number(n)>255)||v4[2]&&Number(v4[2])>65535)continue;ip=v4[1];port=!!v4[2];isV4=true}
   else {const m=token.match(/^\[([^\]]+)\](?::(\d+))?$/);ip=m?.[1]||token;port=!!m?.[2];if(m?.[2]&&Number(m[2])>65535)continue;if((ip.match(/:/g)||[]).length<2)continue;try{new URL("http://["+ip+"]/")}catch{continue}}
   if(seen.has(token))continue;seen.add(token);result.push({token,ip,v4:isV4,port});

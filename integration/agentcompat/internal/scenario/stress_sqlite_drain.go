@@ -5,6 +5,7 @@ package scenario
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/nezhahq/nezha/integration/agentcompat/internal/client"
 	processharness "github.com/nezhahq/nezha/integration/agentcompat/internal/process"
@@ -83,5 +84,26 @@ func observeStressDashboardSQLiteJournal(path string) func(context.Context, proc
 			return ErrStressSQLiteJournalNotDrained
 		}
 		return nil
+	}
+}
+
+// The selected transaction drain cannot drain subsequent asynchronous MCP audit
+// writes. Require a complete journal-free baseline window, within a fixed bound.
+// Never retry resource-count failures or combine samples from different windows.
+func sampleStressQuietWindow(ctx context.Context, sample func(context.Context) (processharness.Window, error)) (processharness.Window, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	for {
+		window, err := sample(ctx)
+		if !errors.Is(err, ErrStressSQLiteJournalNotDrained) {
+			return window, err
+		}
+		timer := time.NewTimer(25 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return window, errors.Join(err, ctx.Err())
+		case <-timer.C:
+		}
 	}
 }

@@ -28,6 +28,7 @@ func loadTerminalCommandCipher(path string, hasRows bool) (cipher.AEAD, error) {
 		if _, err = rand.Read(key); err != nil {
 			return nil, err
 		}
+		// #nosec G304 -- Startup-only key path derived from the operator-configured DB directory; never request input. O_EXCL prevents replacing an existing file.
 		file, createErr := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 		if createErr != nil {
 			return nil, createErr
@@ -48,6 +49,7 @@ func loadTerminalCommandCipher(path string, hasRows bool) (cipher.AEAD, error) {
 	} else if !info.Mode().IsRegular() || info.Mode().Perm()&0077 != 0 {
 		return nil, errors.New("terminal command key must be a regular private file (0600)")
 	}
+	// #nosec G304 -- Startup-only key path; existing files must pass the regular/private-file checks above.
 	key, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err

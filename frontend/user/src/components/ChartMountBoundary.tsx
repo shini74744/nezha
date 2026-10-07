@@ -11,8 +11,9 @@ function drain() {
  scheduled = true;
  requestAnimationFrame(() => setTimeout(() => {
   scheduled = false;
-  let job: MountJob | undefined;
-  while ((job = queue.shift())) {
+  while (queue.length) {
+   const job = queue.shift();
+   if (!job) break;
    if (job.cancelled) continue;
    active = job;
    job.start();

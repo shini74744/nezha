@@ -54,7 +54,7 @@ test("admin can revoke an API token via UI revoke button", async ({ page }) => {
     await expect(row).toBeVisible()
 
     page.once("dialog", (dialog) => dialog.accept())
-    await row.getByRole("button", { name: /Revoke|撤销/ }).click()
+    await row.getByRole("button", { name: /Revoke|吊销/ }).click()
 
     await expect(row).toHaveCount(0)
 

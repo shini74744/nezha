@@ -39,10 +39,10 @@ if (!document.querySelector(".js-cursor-container")) {
     particles.push(particle);
   }
   function updateParticles() {
-    for (var i = 0; i < particles.length; i++) {
+    for (let i = 0; i < particles.length; i++) {
       particles[i].update();
     }
-    for (var i = particles.length - 1; i >= 0; i--) {
+    for (let i = particles.length - 1; i >= 0; i--) {
       if (particles[i].lifeSpan < 0) {
         particles[i].die();
         particles.splice(i, 1);

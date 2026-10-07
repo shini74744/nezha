@@ -186,7 +186,8 @@ func PermanentlyDeleteServersMatching(ids []uint64, expected map[uint64]ServerDe
 		return err
 	}
 	if expected != nil {
-		for _, server := range servers {
+		for i := range servers {
+			server := &servers[i]
 			identity, ok := expected[server.ID]
 			if !ok || identity.UUID != server.UUID || identity.UserID != server.UserID {
 				return fmt.Errorf("server identity or ownership changed; refresh and retry")

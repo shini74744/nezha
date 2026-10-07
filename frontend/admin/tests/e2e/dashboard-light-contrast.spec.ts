@@ -159,13 +159,13 @@ for (const width of [320, 390, 454]) test("mobile settings compact grid and visi
     await page.goto("/dashboard/settings")
     const nav = page.locator(".settings-navigation")
     const tabs = nav.getByRole("tab")
-    await expect(tabs).toHaveCount(8)
+    await expect(tabs).toHaveCount(9)
     const boxes = await tabs.evaluateAll(els => els.map(el => {
         const { x, y, width, height } = el.getBoundingClientRect()
         return { x, y, width, height }
     }))
-    expect(new Set(boxes.map(b => b.y)).size).toBe(4)
-    for (let i = 0; i < 8; i += 2) {
+    expect(new Set(boxes.map(b => b.y)).size).toBe(5)
+    for (let i = 0; i + 1 < boxes.length; i += 2) {
         expect(boxes[i].y).toBe(boxes[i+1].y)
         expect(boxes[i].height).toBeGreaterThanOrEqual(44)
     }

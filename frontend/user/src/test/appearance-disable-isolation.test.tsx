@@ -13,7 +13,7 @@ const keys=Object.keys(defaults().features);
 function State({name}:{name:string}){return <output data-feature={name}>{String(useFeature(name).enabled)}</output>}
 describe("independent appearance switches",()=>{
  it.each(keys)("disabling %s does not change the other feature switches",name=>{
-  const config=defaults();config.enabled=true;Object.values(config.features).forEach(f=>f.enabled=true);
+  const config=defaults();config.enabled=true;Object.values(config.features).forEach(f=>{f.enabled=true;});
   const tree=()=> <AppearanceProvider raw={JSON.stringify(config)}>{keys.map(key=><State key={key} name={key}/>)}</AppearanceProvider>;
   const view=render(tree());config.features[name].enabled=false;view.rerender(tree());
   for(const node of view.container.querySelectorAll("output"))expect(node.textContent).toBe(node.getAttribute("data-feature")===name?"false":"true");
@@ -21,7 +21,7 @@ describe("independent appearance switches",()=>{
   for(const node of view.container.querySelectorAll("output"))expect(node.textContent).toBe("false");
  });
  it.each(["master","all","individual"])("removes mounted enhancements and restores default fallbacks: %s",mode=>{
-  const config=defaults();config.enabled=true;Object.values(config.features).forEach(f=>f.enabled=false);
+  const config=defaults();config.enabled=true;Object.values(config.features).forEach(f=>{f.enabled=false;});
   for(const key of ["nameColor","background","footer","footerIP","speed"])config.features[key].enabled=true;
   Object.assign(config.features.background,{regionEnabled:false,scheduleRules:[],desktopMedia:[{type:"image",src:"https://example.test/bg.png"}],mobileMedia:[{type:"image",src:"https://example.test/bg.png"}]});
   const client=new QueryClient({defaultOptions:{queries:{retry:false}}});
@@ -32,7 +32,7 @@ describe("independent appearance switches",()=>{
   expect(view.container.querySelector(".nz-media")).not.toBeNull();expect(view.container.querySelector(".nz-name-online")).not.toBeNull();
   expect(view.container.querySelector(".nz-footer-fit")).not.toBeNull();expect(view.container.querySelector("[data-native-footer-ip]")).not.toBeNull();
   if(mode==="master")config.enabled=false;
-  else if(mode==="all")Object.values(config.features).forEach(f=>f.enabled=false);
+  else if(mode==="all")Object.values(config.features).forEach(f=>{f.enabled=false;});
   else {
    config.features.nameColor.enabled=false;view.rerender(tree());
    expect(view.container.querySelector(".nz-name-online")).toBeNull();expect(view.container.querySelector(".nz-media")).not.toBeNull();

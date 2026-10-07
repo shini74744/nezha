@@ -3,7 +3,7 @@
 import { mixClockColor } from "../greeting-clock";
 export function clock(scope, config) {
 const window = scope.window; const document = scope.document;
-(function () {
+(() => {
   // Colors are validated and merged with the legacy defaults by config.ts.
   let lastTime = {
     h: null,

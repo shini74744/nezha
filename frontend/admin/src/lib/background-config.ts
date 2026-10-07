@@ -11,7 +11,7 @@ export function inferMediaType(src:string):Media["type"] {
   const url=new URL(src), path=url.pathname.toLowerCase(), format=url.searchParams.get("format")||url.searchParams.get("type")||"";
   if(/\.(mp4|webm|ogv|mov|m4v)$/.test(path)||/^(mp4|webm|video)$/i.test(format))return "video";
   if(/\.(png|jpe?g|gif|webp|avif|svg|bmp)$/.test(path)||/^(image|jpg|png|webp)$/i.test(format))return "image";
- }catch{}
+ }catch{/* A malformed URL has no reliable media type; keep automatic detection. */}
  return "auto";
 }
 export function upgradeBackground(merged:any, raw:any={}) {

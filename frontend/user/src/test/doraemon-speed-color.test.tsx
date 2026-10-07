@@ -15,7 +15,7 @@ import { doraemonDefaults } from "../../../shared/doraemon-appearance";
 describe("shared network rate colors", () => {
  it.each([0,125_000,1_000_000,10_485_760,31_457_280,104_857_600,237_500_000])("preserves existing rate curves for %s bytes/s",bytes=>{
   for(const overview of [false,true]){
-   const strength=overview?Math.min(Math.pow(bytes/104857600,.4),1):Math.min(Math.log10(bytes+1)/Math.log10(31457281),1);
+   const strength=overview?Math.min((bytes/104857600) ** .4,1):Math.min(Math.log10(bytes+1)/Math.log10(31457281),1);
    const p=Math.round((1-strength)*(overview?200:255));
    expect(speedColor(bytes,"up",overview)).toBe("rgb(255,"+p+","+p+")");
    expect(speedColor(bytes,"down",overview)).toBe("rgb("+p+","+p+",255)");

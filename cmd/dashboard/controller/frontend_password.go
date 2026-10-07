@@ -15,6 +15,7 @@ import (
 	"github.com/nezhahq/nezha/service/singleton"
 )
 
+// #nosec G101 -- Public cookie name only; the credential is a runtime HMAC, not this identifier.
 const frontendPasswordCookie = "nz-frontend-auth"
 
 type frontendPasswordForm struct {

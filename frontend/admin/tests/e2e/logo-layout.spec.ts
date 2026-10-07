@@ -78,7 +78,7 @@ for(const width of [360,390,430,1366])for(const online of [true,false])test("mob
 
 for(const width of [390,1366])test("provider groups and live card preview "+width,async({page})=>{
  test.setTimeout(90000);const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));await page.setViewportSize({width,height:950});
- const now=Date.now();let groups:any[]=[],entries:any[]=[{id:"provider-test",kind:"provider",name:"香港常用云",regions:[],aliases:"HK Cloud",groupId:"",logo:asset,version:1}];
+ const now=Date.now();let groups:any[]=[];const entries:any[]=[{id:"provider-test",kind:"provider",name:"香港常用云",regions:[],aliases:"HK Cloud",groupId:"",logo:asset,version:1}];
  let server:any={id:11,host:{version:"2.3.5"},name:"卡片实时调整",display_index:0,user_id:1,uuid:"fixture",public_note:JSON.stringify({keep:1,billingDataMod:{startDate:"2026-09-01T00:00:00+08:00",endDate:"2027-09-01T00:00:00+08:00"},planDataMod:{providerLogo:{logo:asset,logoLibraryId:"provider-test",logoLibraryName:"香港常用云"}}}),note:"",enable_ddns:false,hide_for_guest:false};let saves=0;
  await page.routeWebSocket("**/api/v1/ws/server",ws=>ws.send(JSON.stringify({now,online:1,servers:[createServer({id:11,name:server.name,last_active:new Date(now).toISOString()})]})));
  await page.route("**/api/v1/**",async r=>{const path=new URL(r.request().url()).pathname,method=r.request().method();let data:any=[];

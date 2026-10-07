@@ -2,7 +2,7 @@
 // Migrated source for the built-in fragments feature; resources are owned by FeatureScope.
 export function fragments(scope, config) {
 const window = scope.window; const document = scope.document;
-(function () {
+(() => {
   const _0x24e8cf = scope.createElement("style");
   _0x24e8cf.textContent = "\n    \n\n    .fragment {\n      position: fixed;\n      width: 10px;\n      height: 10px;\n      clip-path: polygon(0 0, 100% 0, 100% 100%);\n      transform-origin: center;\n      animation: shatter 1.5s ease-out forwards;\n      pointer-events: none;\n      z-index: 9988;\n      background-color: rgba(255, 255, 255, 0.8);\n    }\n\n    @keyframes shatter {\n      0% {\n        transform: translate(0, 0) scale(1);\n        opacity: 1;\n      }\n      100% {\n        transform: translate(var(--dx), var(--dy)) rotate(var(--angle)) scale(0.5);\n        opacity: 0;\n      }\n    }\n\n    #backToTop {\n      position: fixed;\n      bottom: 30px;\n      right: 30px;\n      z-index: 1000;\n      background-color: transparent;\n      color: white;\n      border: none;\n      border-radius: 50%;\n      width: 60px;\n      height: 60px;\n      font-size: 24px;\n      cursor: pointer;\n      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);\n      transition: opacity 0.3s, transform 0.3s;\n      display: none;\n    }\n\n    #backToTop:hover {\n      transform: scale(1.1);\n    }\n\n    #backToTop::before {\n      content: \"\uD83D\uDE80\";\n      font-size: 24px;\n      display: block;\n      line-height: 60px;\n      text-align: center;\n    }\n  ";
   scope.append(document.head, _0x24e8cf);

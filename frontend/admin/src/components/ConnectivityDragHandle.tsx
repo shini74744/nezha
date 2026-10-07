@@ -12,7 +12,7 @@ export default function ConnectivityDragHandle({id,name,group,disabled,onDrop,on
     const drag=useRef<{pointer:number;x:number;y:number;startX:number;startY:number;moved:boolean;over:string|null;frame:number}|null>(null)
     const cleanup=()=>{if(drag.current)cancelAnimationFrame(drag.current.frame);drag.current=null}
     useEffect(()=>()=>cleanup(),[])
-    useEffect(()=>{if(disabled){cleanup();onTarget(null)}},[disabled])
+    useEffect(()=>{if(disabled){cleanup();onTarget(null)}},[disabled,onTarget])
     const hit=()=>{
         const state=drag.current;if(!state)return
         const row=document.elementFromPoint(state.x,state.y)?.closest<HTMLElement>("[data-checkpoint-id]")

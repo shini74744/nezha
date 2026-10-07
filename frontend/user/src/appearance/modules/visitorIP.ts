@@ -6,7 +6,6 @@ config = {...manifest.find(d=>d.key==="visitorIP").defaults,...config};
 const cacheSource = JSON.stringify([config.ipApiUrls,config.fallbackUrl]);
 const window = scope.window; const document = scope.document;
 (() => {
-  'use strict';
 
   const _0x230cf0 = "nezha-ip-bar-style";
   const _0x23f6f7 = "ip-bar";
@@ -94,7 +93,7 @@ const window = scope.window; const document = scope.document;
       });
       return _0x350a2e;
     } finally {
-      _0x2003ca.forEach(_0x243d2e => scope.clearTimeout(_0x243d2e));
+      _0x2003ca.forEach(_0x243d2e => { scope.clearTimeout(_0x243d2e); });
     }
   };
   const _0x299555 = async (_0x5942e7, _0x5142fb = 1500) => {
@@ -145,7 +144,7 @@ const window = scope.window; const document = scope.document;
     } catch {
       return null;
     } finally {
-      _0x55a32c.forEach(_0xf37c08 => scope.clearTimeout(_0xf37c08));
+      _0x55a32c.forEach(_0xf37c08 => { scope.clearTimeout(_0xf37c08); });
     }
   };
   const _0x5b6e5e = _0x561ab2 => {
@@ -388,7 +387,7 @@ const window = scope.window; const document = scope.document;
       }
       return;
     }
-    let _0x2d2955 = _0x5b6e5e(_0x1caf45);
+    const _0x2d2955 = _0x5b6e5e(_0x1caf45);
     if (_0x26bcbe && _0x29b349 && ((config.showASN && !_0x2d2955.asn) || (config.showOrganization && !_0x2d2955.org) || (config.showRegion && !_0x2d2955.loc))) {
       try {
         const _0x5b80b4 = await _0x3f7906(_0x29b349, config.fallbackTimeout);

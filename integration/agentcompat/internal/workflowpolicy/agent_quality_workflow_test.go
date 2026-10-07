@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/nezhahq/nezha/integration/agentcompat/internal/testpaths"
 	"github.com/nezhahq/nezha/integration/agentcompat/internal/workflowpolicy"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -46,7 +47,7 @@ type agentQualityStep struct {
 
 func TestPolicy_AgentQualityWorkflow(t *testing.T) {
 	// Given
-	path := filepath.Join("..", "..", "..", "..", "..", "agent", ".github", "workflows", "test.yml")
+	path := agentWorkflowPath(t)
 	data, err := os.ReadFile(path)
 	require.NoError(t, err)
 	require.NoError(t, workflowpolicy.Verify(data, workflowpolicy.RepositoryAgent))
@@ -99,4 +100,19 @@ func requireWorkflowCommands(t *testing.T, steps []agentQualityStep, commands ..
 		}
 	}
 	require.ElementsMatch(t, commands, actualCommands)
+}
+
+// Use the same explicit source override as the Agent harness instead of assuming
+// every checkout is named "agent" beside the Dashboard repository.
+func agentWorkflowPath(t *testing.T) string {
+	t.Helper()
+	source, err := testpaths.AgentSource(repositoryRoot(t))
+	require.NoError(t, err)
+	return filepath.Join(source, ".github", "workflows", "test.yml")
+}
+
+func TestPolicy_AgentWorkflowUsesConfiguredCheckout(t *testing.T) {
+	source := t.TempDir()
+	t.Setenv("AGENT_SOURCE", source)
+	require.Equal(t, filepath.Join(source, ".github", "workflows", "test.yml"), agentWorkflowPath(t))
 }

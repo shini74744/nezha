@@ -41,7 +41,8 @@ func listServerExpiry(c *gin.Context) (expiryPage, error) {
 	for _, d := range ledger {
 		byUUID[d.UUID] = append(byUUID[d.UUID], d)
 	}
-	for _, s := range servers {
+	for i := range servers {
+		s := &servers[i]
 		row := expiryRow{ID: s.ID, Name: s.Name, ServerBilling: model.ParseServerBilling(s.PublicNote, now), Delivery: []model.ServerExpiryDelivery{}}
 		for _, d := range byUUID[s.UUID] {
 			if d.ExpiresAt == row.ExpiresAt {

@@ -47,6 +47,7 @@ func TestSQLiteAttributionErrorsDoNotExposeDatabasePath(t *testing.T) {
 func TestSQLiteAttributionAcceptsOnDiskFileURIAndRejectsInMemoryDSN(t *testing.T) {
 	// Given
 	resetSQLiteAttributionForTest()
+	t.Cleanup(resetSQLiteAttributionForTest)
 	databasePath := filepath.Join(t.TempDir(), "dashboard.sqlite")
 
 	// When

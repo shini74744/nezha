@@ -1,5 +1,5 @@
-import { test, expect } from "@playwright/test";
-test("isolated built release saves custom greetings/colors and renders them on the default frontend",async({page,baseURL})=>{
+import { test, expect } from "./isolated-appearance";
+test("isolated built release saves custom greetings/colors and renders them on the default frontend",async({page,baseURL,isolatedAppearance})=>{
   test.setTimeout(60000);
   test.skip(process.env.E2E_REAL_BACKEND!=="1","Requires an explicitly isolated backend");
   expect(baseURL).toBe("http://127.0.0.1:18476");
@@ -10,6 +10,7 @@ test("isolated built release saves custom greetings/colors and renders them on t
   await page.locator('input[name="password"]').fill("admin");
   await page.locator('button[type="submit"]').click();
   await expect(page).toHaveURL(/\/dashboard$/);
+  await isolatedAppearance(config => { config.enabled = false });
   await page.goto("/dashboard/settings/appearance");
   await page.getByRole("button",{name:"分时段问候",exact:true}).click();
   for(let index=7;index>1;index--)await page.getByRole("button",{name:"删除问候时段 "+index,exact:true}).click();
@@ -26,7 +27,7 @@ test("isolated built release saves custom greetings/colors and renders them on t
   for(const toggle of await page.locator('section > div:first-child > [role="switch"]:visible').all())if(!["分时段问候","时钟渐变"].includes((await toggle.getAttribute("aria-label"))||"")&&await toggle.isChecked())await toggle.click();
   await page.getByRole("switch",{name:"启用内置美化",exact:true}).click();
   await page.getByRole("button",{name:"保存美化设置",exact:true}).click();
-  await expect(page.getByText("美化设置已保存，请刷新默认主题前台查看")).toBeVisible();
+  await expect(page.getByText("默认主题美化设置已保存，仅影响该主题")).toBeVisible();
   await page.reload();
   await page.getByRole("button",{name:"时钟渐变",exact:true}).click();
   await expect(page.getByLabel("小时结束色",{exact:true})).toHaveValue("#123456");
