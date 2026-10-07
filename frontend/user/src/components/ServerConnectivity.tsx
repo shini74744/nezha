@@ -81,6 +81,7 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 	const displayResults = localMode ? browser.run?.results || [] : data?.results || [];
 	const displayRounds = localMode ? BROWSER_PROBE_ROUNDS : data?.rounds || 3;
 	const localRunning = browser.run?.state === "running";
+	const localBusy = localMode && localRunning;
 	const localCompleted = browser.run?.results.filter(result => result.phase === "complete").length || 0;
 	const startLocal = () => {
 		if (!data || query.isError) return;
@@ -122,12 +123,17 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 							<div className="h-full rounded-full bg-primary transition-[width] motion-reduce:transition-none" style={{ width: `${browser.run.results.length ? localCompleted / browser.run.results.length * 100 : 0}%` }} />
 						</div>
 					)}
-					<button type="button" aria-pressed={localMode}
-						className={cn("inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full md:relative md:-top-4 border border-foreground/20 bg-background/90 px-2 sm:px-3 text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none col-start-2 row-start-1 sm:col-start-3", localMode && "border-primary bg-primary text-primary-foreground font-semibold hover:bg-primary/90")}
+					<button type="button" aria-pressed={localMode} aria-label={t("connectivity.localLatency")} aria-busy={localBusy} data-local-latency-button
+						className={cn("inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full md:relative md:-top-4 border border-foreground/20 bg-background/90 px-2 sm:px-3 text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none transition-[color,background-color,border-color,opacity] duration-150 active:opacity-70 col-start-2 row-start-1 sm:col-start-3", localMode && "border-primary bg-primary text-primary-foreground font-semibold hover:bg-primary/90")}
 						title={localMode ? t(localRunning ? "connectivity.testing" : "connectivity.localRetest") : undefined}
 						onClick={() => { setLocalServer(serverId); if (localMode || !browser.run) startLocal(); }}>
-						<Gauge className="size-3.5 shrink-0" aria-hidden />
-						{t("connectivity.localLatency")}
+						{localBusy
+							? <LoaderCircle className="size-3.5 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden />
+							: <Gauge className="size-3.5 shrink-0" aria-hidden />}
+						<span className="grid" aria-hidden>
+							<span className={cn("col-start-1 row-start-1", localBusy && "invisible")}>{t("connectivity.localLatency")}</span>
+							<span className={cn("col-start-1 row-start-1", !localBusy && "invisible")}>{t("connectivity.testing")}</span>
+						</span>
 					</button>
 				</div>
 			)}
@@ -163,7 +169,7 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 			{data?.can_run && !localMode && (
 				<Card data-connectivity-controls className="min-w-0">
 					<CardContent className="px-4 py-2 sm:px-5 space-y-1">
-						<div data-connectivity-header className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
+						<div data-connectivity-header className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
 							<div className="min-w-0">
 								<h2 className="flex items-center gap-2 text-base font-semibold">
 									<Globe2 className="size-4 shrink-0" aria-hidden />
@@ -210,7 +216,7 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 										query.isError
 									}
 									onClick={() => mutation.mutate(undefined)}
-									className="col-start-2 row-start-1 h-8 shrink-0 gap-2 sm:col-start-3"
+									className="col-start-2 row-start-1 h-8 shrink-0 gap-2 sm:col-start-3 sm:row-span-2"
 								>
 									{running || mutation.isPending ? (
 										<LoaderCircle
@@ -229,63 +235,65 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 												: t("connectivity.retest")}
 								</Button>
 							)}
+							<div data-connectivity-summary className={cn("col-span-2 min-w-0 sm:row-start-2", showingBatchProgress ? "row-start-3" : "row-start-2")}>
+								{query.isPending ? (
+									<p role="status" className="text-sm text-muted-foreground">
+										{t("connectivity.loading")}
+									</p>
+								) : query.isError ? (
+									<p role="alert" className="text-sm">
+										{t("connectivity.readFailed")}{" "}
+										<button
+											type="button"
+											className="underline underline-offset-4"
+											onClick={() => query.refetch()}
+										>
+											{t("connectivity.reload")}
+										</button>
+									</p>
+								) : (
+									data && (
+										<>
+											{!data.online && (
+												<p className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
+													<WifiOff className="size-4 shrink-0" aria-hidden />
+													{t("connectivity.offline")}
+												</p>
+											)}
+											<div
+												className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground"
+												role="status"
+												aria-live="polite"
+											>
+												<span>
+													{showingBatchProgress
+														? t("connectivity.progress", {
+																done: completed,
+																total: data.results.length,
+															})
+														: showingProgress ? t("connectivity.testing") : data.state === "complete"
+															? t("connectivity.finished")
+															: t("connectivity.empty")}
+												</span>
+												{data.started_at && (
+													<span>
+														{t(data.scheduled_at ? "connectivity.scheduledTime" : "connectivity.time")}:{" "}
+														<span title={formatDate(data.finished_at || data.started_at)}>{data.scheduled_at ? formatDetectionTime(data.scheduled_at, true) : formatDate(data.finished_at || data.started_at)}</span>
+													</span>
+												)}
+												<span>
+													{t("connectivity.rounds", { count: data.rounds })}
+												</span>
+											</div>
+										</>
+									)
+								)}
+							</div>
 						</div>
 						{help && (
 							<div className="rounded-lg bg-muted/60 p-3 text-xs leading-relaxed text-muted-foreground">
 								{t("connectivity.help")}
 							</div>
-						)}
-						{query.isPending ? (
-							<p role="status" className="text-sm text-muted-foreground">
-								{t("connectivity.loading")}
-							</p>
-						) : query.isError ? (
-							<p role="alert" className="text-sm">
-								{t("connectivity.readFailed")}{" "}
-								<button
-									type="button"
-									className="underline underline-offset-4"
-									onClick={() => query.refetch()}
-								>
-									{t("connectivity.reload")}
-								</button>
-							</p>
-						) : (
-							data && (
-								<>
-									{!data.online && (
-										<p className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
-											<WifiOff className="size-4 shrink-0" aria-hidden />
-											{t("connectivity.offline")}
-										</p>
-									)}
-									<div
-										className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground"
-										role="status"
-										aria-live="polite"
-									>
-										<span>
-											{showingBatchProgress
-												? t("connectivity.progress", {
-														done: completed,
-														total: data.results.length,
-													})
-												: showingProgress ? t("connectivity.testing") : data.state === "complete"
-													? t("connectivity.finished")
-													: t("connectivity.empty")}
-										</span>
-										{data.started_at && (
-											<span>
-												{t(data.scheduled_at ? "connectivity.scheduledTime" : "connectivity.time")}:{" "}
-												<span title={formatDate(data.finished_at || data.started_at)}>{data.scheduled_at ? formatDetectionTime(data.scheduled_at, true) : formatDate(data.finished_at || data.started_at)}</span>
-											</span>
-										)}
-										<span>
-											{t("connectivity.rounds", { count: data.rounds })}
-										</span>
-									</div>
-								</>
-							)
 						)}
 						{mutation.isError && (
 							<p role="alert" className="text-sm text-destructive">

@@ -84,7 +84,7 @@ for(const theme of ["default","doraemon"])for(const light of [false,true])for(co
   await expect(progress).toBeVisible();
   const p=await progress.boundingBox(),h=await view.locator("[data-connectivity-header] h2").boundingBox(),b=await view.getByRole("button",{name:"检测中…",exact:true}).boundingBox();
   expect(p!.width).toBeGreaterThan(20);
-  if(width>=640){expect(p!.x).toBeGreaterThanOrEqual(h!.x+h!.width);expect(p!.x+p!.width).toBeLessThanOrEqual(b!.x);expect(Math.abs(p!.y+p!.height/2-(b!.y+b!.height/2))).toBeLessThan(2);}
+  if(width>=640){expect(p!.x).toBeGreaterThanOrEqual(h!.x+h!.width);expect(p!.x+p!.width).toBeLessThanOrEqual(b!.x);expect(Math.abs(p!.y+p!.height/2-(h!.y+h!.height/2))).toBeLessThan(2);}
   else expect(p!.y).toBeGreaterThanOrEqual(Math.max(h!.y+h!.height,b!.y+b!.height));
   const helpGap=await view.locator("[data-connectivity-header] h2").evaluate(el=>el.querySelector("button svg")!.getBoundingClientRect().left-el.querySelector("span")!.getBoundingClientRect().right);
   expect(helpGap).toBeLessThanOrEqual(5);
@@ -549,5 +549,59 @@ for(const theme of ["default","doraemon"])for(const width of [320,1440]){
   }
   await page.screenshot({path:info.outputPath("compact-owner-header.png")});
   expect(state.posts).toBe(0);expect(state.localRequests).toHaveLength(0);
+ });
+}
+
+for(const theme of ["default","doraemon"])for(const width of [320,1440])for(const language of ["zh-CN","en-US"]){
+ test(`local button feedback ${theme} ${width} ${language}`,async({page},info)=>{
+  await page.setViewportSize({width,height:900});
+  const state=await setup(page,theme,true,false,false,language,true);
+  state.override=[{id:"google",name:"Google",host:"www.example.com",group:"global",status:"ok",phase:"complete",samples:[{status:"ok",delay_ms:42}],delay_ms:42}];
+  state.mode="complete";state.localMock=true;state.localDelay=1200;
+  await page.reload();await page.locator(".server-info-tab").getByRole("button",{name:language==="en-US"?"Connectivity":"连通性",exact:true}).click();
+  const button=page.locator("[data-local-latency-button]"),label=language==="en-US"?"Local latency":"本地延迟",testing=language==="en-US"?"Testing…":"检测中…";
+  await expect(button).toHaveAttribute("aria-busy","false");
+  await button.hover();await page.mouse.down();
+  await expect.poll(()=>button.evaluate(el=>Number(getComputedStyle(el).opacity))).toBeLessThan(0.95);
+  await page.mouse.up();
+  await expect(button).toHaveAttribute("aria-busy","true");
+  await expect(button.getByText(testing,{exact:true})).toBeVisible();
+  await expect(button.locator("svg")).toHaveCount(1);
+  await expect(button.locator("svg")).toHaveClass(/animate-spin/);
+  const busy=await button.boundingBox();
+  await page.locator("[data-connectivity-source]").screenshot({path:info.outputPath("local-button-busy.png"),animations:"allow"});
+  await expect(button).toHaveAttribute("aria-busy","false");
+  await expect(button.getByText(label,{exact:true})).toBeVisible();
+  const idle=await button.boundingBox();
+  expect(idle!.width).toBe(busy!.width);expect(idle!.height).toBe(32);expect(idle!.height).toBe(busy!.height);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await page.emulateMedia({reducedMotion:"reduce"});
+  await button.focus();await button.press("Enter");
+  await expect(button).toHaveAttribute("aria-busy","true");
+  await expect(button.locator("svg")).toHaveCSS("animation-name","none");
+  await button.press("Enter");
+  await expect(button).toHaveAttribute("aria-busy","false");
+  expect(state.localRequests).toHaveLength(2);expect(state.posts).toBe(0);
+ });
+}
+for(const theme of ["default","doraemon"])for(const width of [320,390,768,1440]){
+ test(`compact connectivity header ${theme} ${width}`,async({page},info)=>{
+  await page.setViewportSize({width,height:900});
+  const state=await setup(page,theme,true,false,true,"zh-CN",true);
+  state.mode="complete";state.canBypass=true;
+  await page.reload();await page.locator(".server-info-tab").getByRole("button",{name:"连通性",exact:true}).click();
+  const controls=page.locator("[data-connectivity-controls]"),button=controls.getByRole("button",{name:"重新检测",exact:true});
+  await expect(button).toBeEnabled();
+  const card=await controls.boundingBox(),b=await button.boundingBox(),h=await controls.locator("h2").boundingBox(),summary=await controls.locator("[data-connectivity-summary]").boundingBox();
+  expect(summary!.y-h!.y-h!.height).toBeLessThanOrEqual(width>=640?2:6);
+  if(width>=640){
+   expect(card!.height).toBeLessThanOrEqual(60);
+   expect(Math.abs(b!.y+b!.height/2-card!.y-card!.height/2)).toBeLessThanOrEqual(1);
+  }
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await controls.screenshot({path:info.outputPath("compact-complete-header.png")});
+  await button.click();await expect(controls.getByRole("progressbar")).toBeVisible();
+  await controls.screenshot({path:info.outputPath("compact-running-header.png")});
+  expect(state.posts).toBe(1);
  });
 }

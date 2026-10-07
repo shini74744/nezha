@@ -1,5 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ServerConnectivity from "@/components/ServerConnectivity";
 import { createTestQueryClient } from "@/test/utils";
@@ -488,6 +488,9 @@ describe("visitor local latency", () => {
 				await screen.findByText("connectivity.localFinished");
 				expect(fetcher).toHaveBeenCalledTimes(count);
 				expect(local).toHaveAttribute("aria-pressed", "true");
+				expect(local).toHaveAttribute("aria-busy", "false");
+				expect(local.querySelector("svg")).not.toHaveClass("animate-spin");
+				expect(within(local).getByText("connectivity.localLatency")).not.toHaveClass("invisible");
 			}
 			expect(api.startConnectivity).not.toHaveBeenCalled();
 			expect(storage).not.toHaveBeenCalled();
@@ -511,8 +514,14 @@ describe("visitor local latency", () => {
 		try {
 			const view = mount(); await screen.findByText("Google");
 			const local = screen.getByRole("button", { name: "connectivity.localLatency" });
+			expect(local).toHaveAttribute("aria-busy", "false");
 			fireEvent.click(local); fireEvent.click(local);
 			expect(fetcher).toHaveBeenCalledTimes(1);
+			expect(local).toHaveAttribute("aria-busy", "true");
+			expect(local).toHaveAttribute("title", "connectivity.testing");
+			expect(local.querySelector("svg")).toHaveClass("animate-spin", "motion-reduce:animate-none");
+			expect(within(local).getByText("connectivity.testing")).not.toHaveClass("invisible");
+			expect(within(local).getByText("connectivity.localLatency")).toHaveClass("invisible");
 			fireEvent.click(screen.getByRole("button", { name: "connectivity.serverLatency" }));
 			expect(signal.aborted).toBe(true);
 			view.unmount();
