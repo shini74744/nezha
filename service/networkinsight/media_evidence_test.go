@@ -5,12 +5,24 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 )
+
+func mediaFixtureContext(t *testing.T) (context.Context, context.CancelFunc) {
+	t.Helper()
+	timeout := 3 * time.Second
+	if runtime.GOOS == "windows" {
+		// Git-for-Windows starts many native shell processes for these local fixtures.
+		// This bounds the test harness, not MediaCommand's per-request timeout.
+		timeout = 15 * time.Second
+	}
+	return context.WithTimeout(context.Background(), timeout)
+}
 
 // Configure PATH inside the POSIX shell, including on Git-for-Windows.
 // Resolve the fake executable before running any probe so a broken fixture
@@ -95,7 +107,7 @@ esac
 			require.NotContains(t, command, " -k ")
 			require.NotContains(t, command, "&email=")
 			require.NotContains(t, command, "password=")
-			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			ctx, cancel := mediaFixtureContext(t)
 			defer cancel()
 			log := filepath.Join(dir, "calls")
 			cmd := mediaFixtureCommand(ctx, dir, command, "NZ_BODY="+tc.body, "NZ_SCENARIO="+tc.scenario, "NZ_LOG=calls")

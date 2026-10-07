@@ -56,7 +56,7 @@ Agent 源码位置通过 `AGENT_SOURCE` 提供给工作流契约检查；启动�
 
 该提交的 GitHub Linux、macOS、Linux race / quality 与真实 Agent 压测通过，CodeQL 工作流完成且保留历史告警 #1。Windows 普通测试失败：配置文件测试错误要求 Unix mode、Logo 测试未关闭数据库导致临时目录清理失败、媒体 shell 夹具的 PATH 构造未兼容 Git-for-Windows；此外快捷命令密钥加载对已有文件使用 Unix mode 判断，在 Windows 可能阻止重启。
 
-前三类测试夹具现已修正，并在 Linux 上通过关联包普通与 race 复测；媒体夹具还增加了 mock 缺失时提前失败的检查，禁止误调用真实 curl。Windows 密钥加载实际行为未改动，不能通过跳过其测试宣称问题解决。阿里仍未部署，需明确处理该兼容性问题并完成 GitHub 验收。
+前三类测试夹具现已修正，并在 Linux 上通过关联包普通与 race 复测；媒体夹具还增加了 mock 缺失时提前失败的检查，禁止误调用真实 curl。`459c22b` 的 Windows CI 已验证配置写入、Logo 清理与各平台媒体判断通过，但三请求清理用例在输出全部结果后约 3.19 秒退出，仍有 3 秒夹具预算不足的问题。Git-for-Windows 的多进程 shell 夹具现单独使用 15 秒上限，其他平台仍为 3 秒，并显式核对 context 状态；生产探测超时与结果断言未改变，关联包再经 3 次 race 复测通过。Windows 密钥加载实际行为未改动，不能通过跳过其测试宣称问题解决。阿里仍未部署，需明确处理该兼容性问题并完成 GitHub 验收。
 
 ## 第三方代码的静态检查范围
 
