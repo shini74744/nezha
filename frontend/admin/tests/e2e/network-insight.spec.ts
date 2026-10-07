@@ -47,6 +47,7 @@ async function setup(
     owner = true,
     disabled = false,
     offline = false,
+    holdFirstFrame = false,
 ) {
     const base = origin(theme),
         now = Date.now(),
@@ -82,7 +83,7 @@ async function setup(
     await page.routeWebSocket("**/api/v1/ws/server", (ws) => {
         let frame = 0
         state.tick = () => ws.send(JSON.stringify({ now: now + frame++ * 1000, servers: [server], online: offline ? 0 : 1 }))
-        state.tick()
+        if (!holdFirstFrame) state.tick()
     })
     await page.route("**/*", (route) => {
         const req = route.request(),
@@ -878,4 +879,41 @@ for(const theme of ["default","doraemon"])for(const width of [320,390,768,1440])
  expect(gaps.header).toBe(8);expect(gaps.family).toBe(8);expect(gaps.timeline).toBe(8);expect(gaps.inside).toBe(13);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
  await panel.screenshot({path:info.outputPath("compact-bgp.png")});
+});
+for (const theme of ["default","doraemon"]) for (const width of [390,1440]) test("overview before stable tabs "+theme+" "+width,async({page},info)=>{
+ await page.setViewportSize({width,height:900});
+ const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
+ const state=await setup(page,theme,true,true,false,false,true);
+ await expect(page.locator("[data-detail-initializing]")).toBeVisible();
+ await expect(page.locator(".server-info-tab")).toHaveCount(0);
+ await page.waitForTimeout(250);
+ await expect(page.locator(".server-info-tab")).toHaveCount(0);
+ state.tick();
+ await expect(page.locator(".server-detail-overview .server-name")).toContainText("网络检测节点");
+ await expect(page.locator(".server-info-tab")).toBeVisible();
+ const first=await page.locator(".server-info-tab").boundingBox();
+ state.tick();await page.waitForTimeout(350);
+ const next=await page.locator(".server-info-tab").boundingBox();
+ expect(Math.abs(next!.y-first!.y)).toBeLessThanOrEqual(1);
+ await page.locator(".server-info-tab").getByRole("button",{name:"BGP",exact:true}).click();
+ await expect(page.locator("[data-bgp-graph]")).toBeVisible();
+ const switched=await page.locator(".server-info-tab").boundingBox();
+ expect(Math.abs(switched!.y-first!.y)).toBeLessThanOrEqual(1);
+ await page.screenshot({path:info.outputPath("stable-first-frame.png")});
+ expect(errors).toEqual([]);
+});
+for (const theme of ["default","doraemon"]) test("streaming registration labels "+theme,async({page})=>{
+ await page.setViewportSize({width:390,height:900});
+ await setup(page,theme,true,false);
+ await page.route("**/api/v1/server/7/streaming*",route=>route.fulfill({json:{success:true,data:{
+  server_id:7,online:true,can_run:false,state:"complete",available_families:["IPv4","IPv6"],results:[
+   {id:"spotify",name:"Spotify",icon:"spotify",family:"IPv4",status:"registration_available",region:"JP"},
+   {id:"spotify",name:"Spotify",icon:"spotify",family:"IPv6",status:"registration_restricted",region:"CN"},
+  ],history:[],
+ }}}));
+ await page.locator(".server-info-tab").getByRole("button",{name:"流媒体",exact:true}).click();
+ await expect(page.locator('[data-media-status="registration_available"]')).toHaveText(/可注册\s*· JP/);
+ await expect(page.locator('[data-media-status="registration_restricted"]')).toHaveText(/注册受限\s*· CN/);
+ await expect(page.locator('[data-media-status="unlocked"]')).toHaveCount(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });

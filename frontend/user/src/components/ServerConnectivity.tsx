@@ -1,3 +1,4 @@
+import { averageConnectivityDelay, validSampleDelay } from "@/lib/connectivity-latency";
 import { useBrowserConnectivity } from "@/hooks/use-browser-connectivity";
 import { BROWSER_PROBE_ROUNDS } from "@/lib/browser-connectivity";
 import { formatDetectionTime } from "@/lib/detection-time";
@@ -8,6 +9,7 @@ import {
 	Globe2,
 	Gauge,
 	Server,
+	Square,
 	LoaderCircle,
 	RefreshCw,
 	WifiOff,
@@ -35,6 +37,13 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 	const key = ["server-connectivity", serverId];
 	const [now, setNow] = useState(Date.now());
 	const [help, setHelp] = useState(false);
+	const [sampleHover, setSampleHover] = useState(false);
+	useEffect(() => {
+		const media = window.matchMedia("(min-width: 768px) and (hover: hover) and (pointer: fine)");
+		const update = () => setSampleHover(media.matches);
+		update(); media.addEventListener("change", update);
+		return () => media.removeEventListener("change", update);
+	}, []);
 	const [manualRun, setManualRun] = useState<string>();
 	const [localServer, setLocalServer] = useState<number>();
 	const localMode = localServer === serverId;
@@ -110,21 +119,31 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 			aria-label={t("tabSwitch.Connectivity")}
 		>
 			{data && !query.isError && (
-				<div data-connectivity-source className="grid min-w-0 grid-cols-[auto_auto] items-center justify-between gap-x-3 gap-y-1.5 text-sm sm:grid-cols-[auto_minmax(0,1fr)_auto]">
+				<div data-connectivity-source className="relative grid h-8 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 text-sm md:-top-4">
 					<button type="button" aria-pressed={!localMode}
-						className={cn("inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full md:relative md:-top-4 border border-foreground/20 bg-background/90 px-2 sm:px-3 text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none", "col-start-1 row-start-1", !localMode && "border-primary bg-primary text-primary-foreground font-semibold hover:bg-primary/90")}
+						className={cn("inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-foreground/20 bg-background/90 px-2 sm:px-3 text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none", "col-start-1 row-start-1", !localMode && "border-primary bg-primary text-primary-foreground font-semibold hover:bg-primary/90")}
 						onClick={() => { setLocalServer(undefined); browser.stop(); }}>
 						<Server className="size-3.5 shrink-0" aria-hidden />
 						{t("connectivity.serverLatency")}
 					</button>
-					{localMode && localRunning && browser.run?.fullBatch && (
-						<div role="progressbar" aria-label={t("connectivity.localLatency")} aria-valuemin={0} aria-valuemax={browser.run.results.length} aria-valuenow={localCompleted}
-							className="col-span-2 row-start-2 h-1.5 min-w-0 overflow-hidden rounded-full bg-muted sm:col-span-1 sm:col-start-2 sm:row-start-1">
-							<div className="h-full rounded-full bg-primary transition-[width] motion-reduce:transition-none" style={{ width: `${browser.run.results.length ? localCompleted / browser.run.results.length * 100 : 0}%` }} />
-						</div>
-					)}
+					<div data-local-connectivity={localMode && browser.run ? true : undefined} className="relative col-start-2 row-start-1 flex h-8 min-w-0 items-center justify-between gap-1 pb-1 text-xs">
+						{localMode && browser.run && <>
+							<p role="status" className="min-w-0 truncate tabular-nums" title={t(browser.run.cancelled ? "connectivity.localCancelled" : localRunning ? "connectivity.progress" : "connectivity.localFinished", { done: localCompleted, total: browser.run.results.length })}>
+								<span className="hidden sm:inline">{t(browser.run.cancelled ? "connectivity.localCancelled" : localRunning ? "connectivity.progress" : "connectivity.localFinished", { done: localCompleted, total: browser.run.results.length })}</span>
+								<span className="sm:hidden">{localCompleted}/{browser.run.results.length}</span>
+							</p>
+							{localRunning && <button type="button" onClick={browser.stop} aria-label={t("connectivity.localStop")} title={t("connectivity.localStop")}
+								className="inline-flex size-7 shrink-0 items-center justify-center gap-1 rounded-full hover:bg-accent focus-visible:outline focus-visible:outline-2 sm:w-auto sm:px-2">
+								<Square className="size-3 shrink-0" aria-hidden /><span className="hidden sm:inline">{t("connectivity.localStop")}</span>
+							</button>}
+							{localRunning && browser.run.fullBatch && <div role="progressbar" aria-label={t("connectivity.localLatency")} aria-valuemin={0} aria-valuemax={browser.run.results.length} aria-valuenow={localCompleted}
+								className="absolute inset-x-0 bottom-0 h-1 min-w-0 overflow-hidden rounded-full bg-muted">
+								<div className="h-full rounded-full bg-primary transition-[width] motion-reduce:transition-none" style={{ width: `${browser.run.results.length ? localCompleted / browser.run.results.length * 100 : 0}%` }} />
+							</div>}
+						</>}
+					</div>
 					<button type="button" aria-pressed={localMode} aria-label={t("connectivity.localLatency")} aria-busy={localBusy} data-local-latency-button
-						className={cn("inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full md:relative md:-top-4 border border-foreground/20 bg-background/90 px-2 sm:px-3 text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none transition-[color,background-color,border-color,opacity] duration-150 active:opacity-70 col-start-2 row-start-1 sm:col-start-3", localMode && "border-primary bg-primary text-primary-foreground font-semibold hover:bg-primary/90")}
+						className={cn("inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-foreground/20 bg-background/90 px-2 sm:px-3 text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none transition-[color,background-color,border-color,opacity] duration-150 active:opacity-70 col-start-3 row-start-1", localMode && "border-primary bg-primary text-primary-foreground font-semibold hover:bg-primary/90")}
 						title={localMode ? t(localRunning ? "connectivity.testing" : "connectivity.localRetest") : undefined}
 						onClick={() => { setLocalServer(serverId); if (localMode || !browser.run) startLocal(); }}>
 						{localBusy
@@ -134,18 +153,6 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 							<span className={cn("col-start-1 row-start-1", localBusy && "invisible")}>{t("connectivity.localLatency")}</span>
 							<span className={cn("col-start-1 row-start-1", !localBusy && "invisible")}>{t("connectivity.testing")}</span>
 						</span>
-					</button>
-				</div>
-			)}
-			{localMode && data && !query.isError && (
-				<div data-local-connectivity className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
-					{browser.run && <p role="status">
-						{t(browser.run.cancelled ? "connectivity.localCancelled" : localRunning ? "connectivity.progress" : "connectivity.localFinished", { done: localCompleted, total: browser.run.results.length })}
-					</p>}
-					<button type="button" className="ml-auto inline-flex min-h-6 shrink-0 items-center gap-1 rounded px-1 hover:text-foreground focus-visible:outline focus-visible:outline-2"
-						disabled={!data.results.length} onClick={() => localRunning ? browser.stop() : startLocal()}>
-						{localRunning ? <LoaderCircle className="size-3 animate-spin" aria-hidden /> : <RefreshCw className="size-3" aria-hidden />}
-						{t(localRunning ? "connectivity.localStop" : "connectivity.localRetest")}
 					</button>
 				</div>
 			)}
@@ -346,6 +353,7 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 											key={result.id}
 											result={result}
 											rounds={displayRounds}
+											sampleHover={sampleHover}
                                             onRetest={localMode ? () => browser.retry(result.id) : data.can_run ? () => mutation.mutate(result.id) : undefined}
                                             disabled={!localMode && (!data.online || running || mutation.isPending || cooldown > 0)}
 										/>
@@ -359,11 +367,13 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 function ConnectivityCard({
 	result,
 	rounds,
+	sampleHover,
     onRetest,
     disabled,
 }: {
 	result: ConnectivityResult;
 	rounds: number;
+	sampleHover: boolean;
     onRetest?: () => void;
     disabled?: boolean;
 }) {
@@ -389,7 +399,8 @@ function ConnectivityCard({
 			result.samples.map((sample) => sample.http_status).filter(Boolean),
 		),
 	];
-	const delay = result.delay_ms;
+	// Derive old cached records from their samples too, without rewriting history.
+	const delay = result.samples.length ? averageConnectivityDelay(result.samples) : result.delay_ms;
 	const hasDelay = delay !== undefined && Number.isFinite(delay) && delay >= 0;
 	const stateColor = hasDelay || positive
 		? "text-emerald-700 dark:text-emerald-300"
@@ -462,11 +473,9 @@ function ConnectivityCard({
 									<span
 										key={index}
 										data-connectivity-sample
-										title={
-											t("connectivity.sample", { index: index + 1 }) +
-											": " +
-											t(`connectivity.status.${hasDelay && sample?.status === "http_error" ? "ok" : sample?.status || "pending"}`)
-										}
+										title={sampleHover ? t("connectivity.sample", { index: index + 1 }) + ": " +
+											t(`connectivity.status.${sample?.status === "http_error" && validSampleDelay(sample) !== undefined ? "ok" : sample?.status || "pending"}`) +
+											(validSampleDelay(sample) !== undefined ? ` · ${validSampleDelay(sample)!.toFixed(2)} ms` : "") : undefined}
 										className={cn(
 											"size-1.5 rounded-full",
 											!sample

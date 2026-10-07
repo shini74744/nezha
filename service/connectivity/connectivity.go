@@ -5,7 +5,7 @@ package connectivity
 import (
 	"context"
 	"errors"
-	"sort"
+	"math"
 	"sync"
 	"time"
 )
@@ -347,15 +347,16 @@ func summarize(r *Result) {
 		if s.Status != r.Status {
 			r.Status = "unstable"
 		}
-		if s.DelayMS != nil {
+		if s.DelayMS != nil && (s.Status == "ok" || s.Status == "http_error") &&
+			!math.IsNaN(*s.DelayMS) && !math.IsInf(*s.DelayMS, 0) && *s.DelayMS >= 0 {
 			delays = append(delays, *s.DelayMS)
 		}
 	}
+	r.DelayMS = nil
 	if len(delays) > 0 {
-		sort.Float64s(delays)
-		value := delays[len(delays)/2]
-		if len(delays)%2 == 0 {
-			value = (delays[len(delays)/2-1] + value) / 2
+		value := 0.0
+		for _, delay := range delays {
+			value += delay / float64(len(delays))
 		}
 		r.DelayMS = &value
 	}

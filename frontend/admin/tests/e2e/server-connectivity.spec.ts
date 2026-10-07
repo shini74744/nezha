@@ -432,11 +432,11 @@ for(const theme of ["default","doraemon"])for(const width of [320,390,768,1440])
  expect(await progress.evaluate(el=>!!el.closest("[data-connectivity-source]"))).toBe(true);
  const p=await progress.boundingBox(),l=await source.getByRole("button",{name:"服务器延迟",exact:true}).boundingBox(),r=await source.getByRole("button",{name:"本地延迟",exact:true}).boundingBox();
  if(width>=640){expect(p!.x).toBeGreaterThanOrEqual(l!.x+l!.width);expect(p!.x+p!.width).toBeLessThanOrEqual(r!.x);}
- else expect(p!.y).toBeGreaterThanOrEqual(l!.y+l!.height);
+ else {expect(p!.x).toBeGreaterThanOrEqual(l!.x+l!.width);expect(p!.x+p!.width).toBeLessThanOrEqual(r!.x);}
  const localStatusBox=await view.locator("[data-local-connectivity]").boundingBox();
- expect(p!.y+p!.height).toBeLessThanOrEqual(localStatusBox!.y);
+ expect(p!.y+p!.height).toBeLessThanOrEqual(localStatusBox!.y+localStatusBox!.height+1);
  await expect(view.getByText(/当前浏览器访问|仅本页可见|每项 1 次/)).toHaveCount(0);
- await expect(view.getByText(/本地检测完成/)).toBeVisible();
+ await expect(view.locator("[data-local-connectivity] [role=status]")).toHaveAttribute("title",/本地检测完成/);
  await expect(view.locator('[data-connectivity-target="google"] [data-connectivity-delay]')).not.toHaveText("—");
  await expect(view.locator('[data-connectivity-target="redirect"] [data-connectivity-delay]')).not.toHaveText("—");
  await expect(view.locator('[data-connectivity-target="blocked"]')).toContainText("浏览器限制或网络不可达");
@@ -458,19 +458,19 @@ for(const theme of ["default","doraemon"])for(const width of [320,390,768,1440])
  await expect(view.locator('[data-connectivity-target="google"] [data-connectivity-delay]')).toHaveText("42ms");
  await source.getByRole("button",{name:"本地延迟",exact:true}).click();
  expect(state.localRequests).toHaveLength(15);
- await view.getByRole("button",{name:"重新检测本地延迟",exact:true}).click();
- await expect(view.getByText(/本地检测完成/)).toBeVisible();
+ await source.getByRole("button",{name:"本地延迟",exact:true}).click();
+ await expect(view.locator("[data-local-connectivity] [role=status]")).toHaveAttribute("title",/本地检测完成/);
  expect(state.localRequests).toHaveLength(30);
  const localButton=source.getByRole("button",{name:"本地延迟",exact:true});
  await expect(localButton).toHaveAttribute("title","重新检测本地延迟");
  await localButton.click();await localButton.click();
  await expect.poll(()=>state.localRequests.length).toBe(45);
- await expect(view.getByText(/本地检测完成/)).toBeVisible();
+ await expect(view.locator("[data-local-connectivity] [role=status]")).toHaveAttribute("title",/本地检测完成/);
  expect(state.localRequests).toHaveLength(45);
  await expect(localButton).toHaveAttribute("aria-pressed","true");
  await localButton.focus();await localButton.press("Enter");
  await expect.poll(()=>state.localRequests.length).toBe(60);
- await expect(view.getByText(/本地检测完成/)).toBeVisible();
+ await expect(view.locator("[data-local-connectivity] [role=status]")).toHaveAttribute("title",/本地检测完成/);
  expect(state.localRequests).toHaveLength(60);
  expect(await page.evaluate(()=>(window as any).__storageWrites)).toEqual([]);
  await page.reload();await page.locator(".server-info-tab").getByRole("button",{name:"连通性",exact:true}).click();
@@ -490,7 +490,7 @@ for(const theme of ["default","doraemon"])test("local cancellation and rapid nav
  await expect(view.getByRole("button",{name:"停止检测",exact:true})).toBeVisible();
  await view.screenshot({path:info.outputPath("local-dark-running.png")});
  await view.getByRole("button",{name:"停止检测",exact:true}).click();
- await expect(view.getByText("本地检测已停止",{exact:true})).toBeVisible();
+ await expect(view.locator("[data-local-connectivity] [role=status]")).toHaveAttribute("title","本地检测已停止");
  expect(state.localRequests).toHaveLength(6);
  await local.click();
  await expect.poll(()=>state.localRequests.length).toBe(12);
@@ -512,7 +512,7 @@ for(const theme of ["default","doraemon"])for(const width of [390,1440])test("vi
  await page.reload();await page.locator(".server-info-tab").getByText("连通性",{exact:true}).click();
  const view=page.locator("[data-server-connectivity]"),a=view.locator('[data-connectivity-target="a"]'),b=view.locator('[data-connectivity-target="b"]');
  await view.getByRole("button",{name:"本地延迟",exact:true}).click();
- await expect(view.getByText(/本地检测完成/)).toBeVisible();
+ await expect(view.locator("[data-local-connectivity] [role=status]")).toHaveAttribute("title",/本地检测完成/);
  expect(state.localRequests).toHaveLength(10);
  const untouched=await b.locator("[data-connectivity-delay]").innerText();
  state.localDelay=140;
@@ -522,7 +522,7 @@ for(const theme of ["default","doraemon"])for(const width of [390,1440])test("vi
  await a.click();
  await expect.poll(()=>state.localRequests.length).toBeGreaterThanOrEqual(12);
  await expect(a).toHaveAttribute("data-connectivity-phase","complete");
- await expect(view.getByText(/本地检测完成/)).toBeVisible();
+ await expect(view.locator("[data-local-connectivity] [role=status]")).toHaveAttribute("title",/本地检测完成/);
  expect(state.localRequests).toHaveLength(16);
  await a.focus();await page.keyboard.press("Enter");
  await expect.poll(()=>state.localRequests.length).toBeGreaterThanOrEqual(17);
@@ -624,11 +624,58 @@ for(const theme of ["default","doraemon"])for(const width of [320,1440])test("lo
  await expect.poll(completed).toBeGreaterThan(0);
  await expect(card).toHaveAttribute("data-connectivity-phase","running");
  await card.screenshot({path:info.outputPath("local-five-progress.png")});
- await expect(view.getByText(/本地检测完成/)).toBeVisible();
+ await expect(view.locator("[data-local-connectivity] [role=status]")).toHaveAttribute("title",/本地检测完成/);
  expect(await completed()).toBe(5);expect(state.localRequests).toHaveLength(5);
  await card.screenshot({path:info.outputPath("local-five-complete.png")});
  await view.getByRole("button",{name:"服务器延迟",exact:true}).click();
  await expect(card.locator("[data-connectivity-sample]")).toHaveCount(3);
  expect(await card.innerHTML()).toBe(initialServer);
  expect(state.posts).toBe(0);
+});
+for(const theme of ["default","doraemon"])for(const width of [320,390,768,1440])test("local header stays compact "+theme+" "+width,async({page},info)=>{
+ await page.setViewportSize({width,height:900});
+ const state=await setup(page,theme,true,false,false,"zh-CN",true,"jp");
+ state.localMock=true;state.localDelay=2000;
+ const view=page.locator("[data-server-connectivity]");
+ const group=view.locator("[data-connectivity-group]").first();
+ const source=view.locator("[data-connectivity-source]");
+ const local=source.getByRole("button",{name:"本地延迟",exact:true});
+ await source.scrollIntoViewIfNeeded();
+ const groupTop=()=>group.evaluate(el=>el.getBoundingClientRect().top+window.scrollY);
+ const before=await groupTop();
+ await local.click();
+ await expect(source.getByRole("progressbar")).toBeVisible();
+ const during=await groupTop();
+ expect(Math.abs(during-before)).toBeLessThanOrEqual(1);
+ const row=await source.boundingBox(),status=await source.locator("[role=status]").boundingBox();
+ expect(row!.height).toBe(32);
+ expect(status!.y).toBeGreaterThanOrEqual(row!.y);
+ expect(status!.y+status!.height).toBeLessThanOrEqual(row!.y+row!.height);
+ const stop=source.getByRole("button",{name:"停止检测",exact:true});
+ const a=await source.getByRole("button",{name:"服务器延迟",exact:true}).boundingBox(),b=await local.boundingBox(),c=await stop.boundingBox();
+ expect(c!.x).toBeGreaterThanOrEqual(a!.x+a!.width);expect(c!.x+c!.width).toBeLessThanOrEqual(b!.x);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ await page.screenshot({path:info.outputPath("compact-local-running.png")});
+ await stop.click();
+ const stopped=await groupTop();expect(Math.abs(stopped-before)).toBeLessThanOrEqual(1);
+});
+for(const theme of ["default","doraemon"])for(const width of [390,1440])test("average latency and desktop-only sample hover "+theme+" "+width,async({page},info)=>{
+ await page.setViewportSize({width,height:900});
+ const state=await setup(page,theme,true,false,false);
+ state.mode="complete";state.override=[{id:"google",name:"平均值样例",host:"www.example.com",group:"global",status:"ok",phase:"complete",samples:[10,20,120].map(delay_ms=>({status:"ok",delay_ms})),delay_ms:20}];
+ await page.reload();await page.locator(".server-info-tab").getByRole("button",{name:"连通性",exact:true}).click();
+ const view=page.locator("[data-server-connectivity]"),card=view.locator("[data-connectivity-target]"),dots=card.locator("[data-connectivity-sample]");
+ await expect(card.locator("[data-connectivity-delay]")).toHaveText("50ms");
+ if(width>=768){
+  await dots.nth(0).hover();await expect(dots.nth(0)).toHaveAttribute("title",/10[.]00 ms/);
+  await expect(dots.nth(1)).toHaveAttribute("title",/20[.]00 ms/);
+  await expect(dots.nth(2)).toHaveAttribute("title",/120[.]00 ms/);
+ }else{await expect(dots.locator("[title]")).toHaveCount(0);expect(await dots.evaluateAll(nodes=>nodes.every(n=>!n.hasAttribute("title")))).toBe(true);}
+ state.localMock=true;state.localDelay=20;
+ await view.getByRole("button",{name:"本地延迟",exact:true}).click();
+ await expect(card).toHaveAttribute("data-connectivity-phase","complete");
+ await expect(dots).toHaveCount(5);
+ if(width>=768) await expect(dots.nth(0)).toHaveAttribute("title",/[0-9]+[.][0-9]{2} ms/);
+ else expect(await dots.evaluateAll(nodes=>nodes.every(n=>!n.hasAttribute("title")))).toBe(true);
+ await card.screenshot({path:info.outputPath("average-latency.png")});
 });
