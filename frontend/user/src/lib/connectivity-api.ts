@@ -40,6 +40,7 @@ export interface ConnectivitySnapshot {
 	results: ConnectivityResult[];
 }
 export interface ConnectivityData extends ConnectivitySnapshot {
+	full_batch?: boolean;
 	server_id: number;
 	online: boolean;
 	can_run: boolean;

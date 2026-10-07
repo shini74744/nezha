@@ -7,12 +7,12 @@ const catalog = JSON.parse(readFileSync(new URL("../../../../service/connectivit
 async function setup(page:Page,theme:string,light=false,offline=false,owner=true,language="zh-CN",wallpaper=false,countryCode="us",disabled=false,clickTab=true) {
  const origin="https://127.0.0.1:"+(theme==="doraemon"?"18478":"18477"),now=Date.now();
  const server=createServer({id:7,name:"连通性测试节点",country_code:countryCode,connectivity_disabled:disabled,last_active:offline?"0001-01-01T00:00:00Z":new Date(now).toISOString()});
- const state={posts:0,postPaths:[] as string[],gets:0,external:[] as string[],override:null as any[]|null,latest:undefined as any,canBypass:false,mode:"idle",readError:false,postError:false};
+ const state={posts:0,postPaths:[] as string[],gets:0,external:[] as string[],override:null as any[]|null,latest:undefined as any,canBypass:false,fullBatch:true,mode:"idle",readError:false,postError:false};
  const results=()=>catalog.map(({id,name,group,host},i)=>({id,name,group,host,
   phase:state.mode==="idle"?undefined:state.mode==="running"?(i===0?"running":i===1?"complete":"queued"):"complete",
   status:state.mode==="idle"||(state.mode==="running"&&i!==1)?"pending":i===7?"http_error":i===8?"timeout":i===9?"agent_timeout":"ok",delay_ms:state.mode==="idle"||(state.mode==="running"&&i!==1)||i===8||i===9?undefined:35+i*12,
   samples:state.mode==="idle"||(state.mode==="running"&&i!==1)?[]:Array.from({length:3},()=>({status:i===7?"http_error":i===8?"timeout":i===9?"agent_timeout":"ok",http_status:i===7?403:undefined,delay_ms:i===8||i===9?undefined:35+i*12}))}));
- const response=()=>({server_id:7,online:!offline,can_run:owner,can_bypass_cooldown:owner&&state.canBypass,state:state.mode,latest:state.latest,rounds:3,started_at:state.mode==="idle"?undefined:now-2000,finished_at:state.mode==="complete"?now:undefined,retry_at:state.mode==="complete"?now+60000:undefined,results:state.override??results()});
+ const response=()=>({full_batch:state.fullBatch,server_id:7,online:!offline,can_run:owner,can_bypass_cooldown:owner&&state.canBypass,state:state.mode,latest:state.latest,rounds:3,started_at:state.mode==="idle"?undefined:now-2000,finished_at:state.mode==="complete"?now:undefined,retry_at:state.mode==="complete"?now+60000:undefined,results:state.override??results()});
  await page.addInitScript(({light,language})=>{
   localStorage.setItem("language",language);localStorage.setItem("vite-ui-theme",light?"light":"dark");localStorage.setItem("doraemon-ui-theme",light?"light":"dark");localStorage.setItem("doraemon-sky",light?"light":"dark");
  },{light,language});
@@ -32,6 +32,7 @@ async function setup(page:Page,theme:string,light=false,offline=false,owner=true
    if(req.method()==="POST"){
     state.posts++;state.postPaths.push(u.pathname);expect(req.postData()).toBe(null);expect(req.headers()["x-csrf-token"]).toBe("mock-signed-token");
     if(state.postError)return route.fulfill({json:{success:false,error:"connectivity_busy"}});
+    state.fullBatch=u.pathname.endsWith("/connectivity");
     state.mode="running";
    }else{state.gets++;if(state.readError)return route.fulfill({json:{success:false,error:"test failure"}});}
    return route.fulfill({json:{success:true,data:response()}});
@@ -308,4 +309,30 @@ for (const theme of ["default","doraemon"]) test("administrator bypass cooldown 
  await view.locator('[data-connectivity-target="deepseek"]').click();
  await expect.poll(()=>state.posts).toBe(2);
  expect(state.postPaths[1]).toMatch(/\/deepseek$/);
+});
+for(const theme of ["default","doraemon"])for(const width of [390,1440])test("compact controls and single retry "+theme+" "+width,async({page},info)=>{
+ await page.setViewportSize({width,height:900});
+ const state=await setup(page,theme,true,false,true,"zh-CN",true,"hk");
+ state.canBypass=true;state.mode="complete";
+ await page.locator(".server-info-tab").getByRole("button",{name:"详情",exact:true}).click();
+ await page.locator(".server-info-tab").getByRole("button",{name:"连通性",exact:true}).click();
+ const view=page.locator("[data-server-connectivity]"),controls=view.locator("[data-connectivity-controls]");
+ const button=view.getByRole("button",{name:"重新检测",exact:true});
+ await expect(button).toBeEnabled();
+ const height=await controls.evaluate(el=>el.getBoundingClientRect().height);
+ expect(height).toBeLessThanOrEqual(width===390?120:80);
+ await controls.scrollIntoViewIfNeeded();
+ await page.screenshot({path:info.outputPath("compact-controls.png")});
+ await view.locator('[data-connectivity-target="google"]').click();
+ await expect(button).toHaveCount(0);
+ await expect(view.getByRole("button",{name:"检测中…",exact:true})).toBeDisabled();
+ await expect(view.getByRole("progressbar")).toHaveCount(0);
+ await expect(view.getByText(/已完成.*项/)).toHaveCount(0);
+ expect(state.postPaths).toEqual(["/api/v1/server/7/connectivity/google"]);
+ state.mode="complete";
+ await expect(view.getByRole("button",{name:"重新检测",exact:true})).toBeEnabled({timeout:10000});
+ await view.getByRole("button",{name:"重新检测",exact:true}).click();
+ await expect(view.getByRole("progressbar")).toBeVisible();
+ expect(state.postPaths[1]).toBe("/api/v1/server/7/connectivity");
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });

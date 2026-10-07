@@ -210,7 +210,7 @@ describe("NetworkChart", () => {
 		expect(screen.getByText("2 monitor.monitorCount")).toBeInTheDocument();
 		expect(screen.getByText("Alpha")).toBeInTheDocument();
 		expect(screen.getByText("Beta")).toBeInTheDocument();
-		expect(screen.getByTestId("composed-chart")).toHaveAttribute(
+		expect(await screen.findByTestId("composed-chart")).toHaveAttribute(
 			"data-points",
 			"12",
 		);

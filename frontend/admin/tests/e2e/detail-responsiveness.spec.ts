@@ -2,10 +2,10 @@ import {expect,test,type Page} from "@playwright/test"
 import {createServer} from "../../../user/src/test/fixtures"
 import manifest from "../../../user/src/appearance/manifest.json" with {type:"json"}
 test.use({ignoreHTTPSErrors:true})
-async function setup(page:Page,theme:string,effects:boolean,combined=false) {
+async function setup(page:Page,theme:string,effects:boolean,combined=false,initialPath="/server/7") {
  const origin="https://127.0.0.1:"+(theme==="default"?"18477":"18478"), now=Date.now()
  const servers=Array.from({length:119},(_,i)=>createServer({id:i+1,name:"响应测试节点 "+(i+1),country_code:"hk",last_active:new Date(now).toISOString()}))
- const appearance={version:1,enabled:effects,features:Object.fromEntries(manifest.map(d=>[d.key,{...d.defaults,enabled:!["live2d","analytics","visitorIP","footerIP"].includes(d.key)}]))}
+ const appearance={version:1,enabled:effects,features:{...Object.fromEntries(manifest.map(d=>[d.key,{...d.defaults,enabled:!["live2d","analytics","visitorIP","footerIP"].includes(d.key)}])),background:{enabled:effects,desktopMedia:[{type:"image",src:origin+"/entry-wallpaper.svg"}],mobileMedia:[{type:"image",src:origin+"/entry-wallpaper.svg"}],nightEnabled:false,lightOpacity:0.82,darkOpacity:0.82}}}
  const monitors=Array.from({length:18},(_,i)=>({monitor_id:i+1,monitor_name:"监控 "+i,display_index:0,server_id:7,server_name:servers[6].name,
   created_at:Array.from({length:1440},(_,j)=>now-(1440-j)*60000),avg_delay:Array.from({length:1440},(_,j)=>80+i*10+Math.sin(j)*20),packet_loss:Array(1440).fill(0)}))
  const topology={family:"IPv4",status:"ok",total:322,source:"RIPE RIS",paths:Array.from({length:24},(_,i)=>({origin:{asn:4760,name:"Origin"},direct:{asn:3491,name:"Transit"},second:{asn:1299+i,name:"Peer "+i},count:30-i}))}
@@ -15,6 +15,7 @@ async function setup(page:Page,theme:string,effects:boolean,combined=false) {
  await page.route("**/*",async route=>{
   const req=route.request(),u=new URL(req.url())
   if(u.origin!==origin)return route.abort()
+  if(u.pathname==="/entry-wallpaper.svg")return route.fulfill({contentType:"image/svg+xml",body:'<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="950"><defs><linearGradient id="b"><stop stop-color="#bae6fd"/><stop offset=".5" stop-color="#d9f99d"/><stop offset="1" stop-color="#fce7f3"/></linearGradient></defs><rect width="1440" height="950" fill="url(#b)"/><path d="M0 800L1440 160M0 860L1440 220" stroke="#65a30d" stroke-width="32"/></svg>'})
   if(!u.pathname.startsWith("/api/"))return route.continue()
   state.reads[u.pathname]=(state.reads[u.pathname]||0)+1
   if(req.method()==="POST")state.posts.push(u.pathname)
@@ -29,7 +30,7 @@ async function setup(page:Page,theme:string,effects:boolean,combined=false) {
   else if(u.pathname.endsWith("/metrics"))data={data_points:[]}
   return route.fulfill({json:{success:true,data}})
  })
- await page.goto(origin+"/server/7")
+ await page.goto(origin+initialPath)
  return state
 }
 for(const theme of ["default","doraemon"])for(const effects of [false,true])test("dense rapid detail response "+theme+" effects="+effects,async({page},info)=>{
@@ -140,4 +141,65 @@ for(const theme of ["default","doraemon"])test("detail tabs respect reduced moti
  await page.locator(".server-info-tab").getByRole("button",{name:"BGP",exact:true}).click()
  await expect(page.locator("[data-bgp-graph]")).toBeVisible()
  expect(await page.locator(".server-info-tab .active-indicator-fade-in").evaluate(el=>getComputedStyle(el).transitionProperty)).toBe("none")
+})
+
+
+// Native input is sent from the browser process while the renderer is mounting
+// charts. Locator.click() would wait for renderer stability and hide this stall.
+for (const theme of ["default","doraemon"]) for (const delay of [0,80,200]) for (const warm of [false,true]) test("native first-entry input "+theme+" delay="+delay+" warm="+warm,async({page},info)=>{
+ test.setTimeout(60000)
+ await page.setViewportSize({width:1440,height:950})
+ const cdp=await page.context().newCDPSession(page)
+ await cdp.send("Emulation.setCPUThrottlingRate",{rate:4})
+ const state=await setup(page,theme,true,true,"/")
+ const card=theme==="doraemon"?page.getByRole("link",{name:"查看服务器 响应测试节点 7",exact:true}):page.getByText("响应测试节点 7",{exact:true}).first()
+ await card.scrollIntoViewIfNeeded()
+ for(let i=0;i<30;i++)state.tick()
+ // Drain the incoming frame burst before measuring the navigation itself.
+ await page.waitForTimeout(1500)
+ if(warm){
+  await card.evaluate(el=>(el as HTMLElement).click())
+  await expect(page.locator(".server-charts .recharts-surface")).toHaveCount(6,{timeout:20000})
+  await expect(page.locator("[data-server-network] .recharts-line-curve")).toHaveCount(18,{timeout:20000})
+  await page.goBack()
+  await card.scrollIntoViewIfNeeded()
+ }
+ let sent:Promise<void>|undefined
+ await page.exposeFunction("sendNativeTab",({x,y}:{x:number,y:number})=>{
+  sent=(async()=>{
+   await new Promise(r=>setTimeout(r,delay))
+   const timestamp=Date.now()/1000
+   await cdp.send("Input.dispatchMouseEvent",{type:"mousePressed",x,y,button:"left",clickCount:1,timestamp})
+   await cdp.send("Input.dispatchMouseEvent",{type:"mouseReleased",x,y,button:"left",clickCount:1,timestamp:Date.now()/1000})
+  })()
+ })
+ await page.evaluate(()=>{
+  const w=window as any;w.entryMeasurements={tasks:[],input:[],paint:0}
+  new PerformanceObserver(list=>{for(const e of list.getEntries())w.entryMeasurements.tasks.push({start:e.startTime,duration:e.duration})}).observe({type:"longtask"})
+  document.addEventListener("pointerdown",e=>{if((e.target as Element).closest(".server-info-tab"))w.entryMeasurements.input.push({start:e.timeStamp,handled:performance.now(),delay:performance.now()-e.timeStamp})},true)
+  let found=false
+  const observer=new MutationObserver(()=>{
+   const button=[...document.querySelectorAll<HTMLElement>(".server-info-tab [role=button]")].find(el=>el.textContent==="BGP")
+   if(!button)return
+   if(!found){found=true;const b=button.getBoundingClientRect();w.entryMeasurements.tabs=performance.now();void w.sendNativeTab({x:b.x+b.width/2,y:b.y+b.height/2})}
+   if(button.getAttribute("aria-pressed")==="true"){observer.disconnect();requestAnimationFrame(()=>requestAnimationFrame(()=>{w.entryMeasurements.paint=performance.now()}))}
+  })
+  observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:["aria-pressed"]})
+  w.entryMeasurements.start=performance.now()
+ })
+ await cdp.send("Profiler.enable");await cdp.send("Profiler.start")
+ await card.evaluate(el=>(el as HTMLElement).click())
+ await expect(page.locator(".server-info-tab").getByRole("button",{name:"BGP",exact:true})).toHaveAttribute("aria-pressed","true",{timeout:20000})
+ await sent
+ await expect(page.locator("[data-bgp-graph]")).toBeVisible()
+ const {profile}=await cdp.send("Profiler.stop")
+ await info.attach("entry-profile",{body:JSON.stringify(profile),contentType:"application/json"})
+ const measurements=await page.evaluate(()=>(window as any).entryMeasurements)
+ console.log("NATIVE_ENTRY",JSON.stringify({theme,delay,warm,...measurements}))
+ const counts=new Map<number,number>();for(const id of profile.samples||[])counts.set(id,(counts.get(id)||0)+1)
+ console.log("ENTRY_HOT",JSON.stringify(profile.nodes.map((n:any)=>({name:n.callFrame.functionName,url:n.callFrame.url,hits:counts.get(n.id)||0})).sort((a:any,b:any)=>b.hits-a.hits).slice(0,12)))
+ expect(measurements.input).toHaveLength(1)
+ expect(measurements.input[0].delay).toBeLessThan(250)
+ await page.screenshot({path:info.outputPath("native-entry.png")})
+ expect(state.posts).toEqual([])
 })

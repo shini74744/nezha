@@ -256,8 +256,8 @@ describe("ServerDetailChart", () => {
 		expect(screen.getByText("serverDetailChart.download")).toBeInTheDocument();
 		expect(screen.getByText("TCP")).toBeInTheDocument();
 		expect(screen.getByText("UDP")).toBeInTheDocument();
-		expect(screen.getAllByTestId("area-chart").length).toBeGreaterThan(0);
-		expect(screen.getAllByTestId("line-chart").length).toBeGreaterThan(0);
+		await waitFor(() => expect(screen.getAllByTestId("area-chart")).toHaveLength(5));
+		await waitFor(() => expect(screen.getAllByTestId("line-chart")).toHaveLength(2));
 
 		await user.click(screen.getByText("serverDetailChart.period7d"));
 
@@ -269,6 +269,7 @@ describe("ServerDetailChart", () => {
 		renderWithQuery(<ServerDetailChart server_id="7" />);
 		expect(await screen.findByText("3.00M/s")).toBeInTheDocument();
 		expect(screen.getByText("4.00M/s")).toBeInTheDocument();
+		await waitFor(() => expect(screen.getAllByTestId("line-chart")).toHaveLength(2));
 		expect(
 			screen
 				.getAllByTestId("y-axis")
@@ -295,6 +296,7 @@ describe("ServerDetailChart", () => {
 		expect((await screen.findAllByText("25.2 Mbps")).length).toBeGreaterThan(0);
 		expect(screen.getByText("33.6 Mbps")).toBeInTheDocument();
 		expect(screen.queryByText("3.00M/s")).not.toBeInTheDocument();
+		await waitFor(() => expect(screen.getAllByTestId("line-chart")).toHaveLength(2));
 		expect(
 			screen
 				.getAllByTestId("chart-tooltip")

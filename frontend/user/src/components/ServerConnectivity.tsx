@@ -57,6 +57,7 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 	const showingLatest = running && !!live.latest && manualRun !== `${serverId}:${live.started_at}`;
 	const data = live && showingLatest ? { ...live, ...live.latest, retry_at: live.retry_at } : live;
 	const showingProgress = running && !showingLatest;
+	const showingBatchProgress = showingProgress && live?.full_batch !== false;
 	const cooldown = live?.can_bypass_cooldown ? 0 : Math.max(0, Math.ceil(((data?.retry_at || 0) - now) / 1000));
 	const retryAt = live?.can_run && !live.can_bypass_cooldown ? live.retry_at : undefined;
 	useEffect(() => {
@@ -109,7 +110,7 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 			)}
 			{data?.can_run && (
 				<Card data-connectivity-controls className="min-w-0">
-					<CardContent className="px-4 py-3 sm:px-5 sm:py-3 space-y-2">
+					<CardContent className="px-4 py-2 sm:px-5 space-y-1">
 						<div className="flex flex-wrap items-center justify-between gap-3">
 							<div className="min-w-0">
 								<h2 className="flex items-center gap-2 text-base font-semibold">
@@ -140,7 +141,7 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 										query.isError
 									}
 									onClick={() => mutation.mutate(undefined)}
-									className="shrink-0 gap-2"
+									className="h-8 shrink-0 gap-2"
 								>
 									{running || mutation.isPending ? (
 										<LoaderCircle
@@ -195,12 +196,12 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 										aria-live="polite"
 									>
 										<span>
-											{showingProgress
+											{showingBatchProgress
 												? t("connectivity.progress", {
 														done: completed,
 														total: data.results.length,
 													})
-												: data.state === "complete"
+												: showingProgress ? t("connectivity.testing") : data.state === "complete"
 													? t("connectivity.finished")
 													: t("connectivity.empty")}
 										</span>
@@ -214,7 +215,7 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 											{t("connectivity.rounds", { count: data.rounds })}
 										</span>
 									</div>
-									{showingProgress && (
+									{showingBatchProgress && (
 										<div
 											role="progressbar"
 											aria-label={t("connectivity.testing")}

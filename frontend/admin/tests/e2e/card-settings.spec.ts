@@ -294,6 +294,9 @@ for (const width of [390, 1440])
                 .evaluateAll((nodes) => nodes.map((n) => n.getAttribute("data-checkpoint-id")))
         const before = await ids()
         const handle = page.getByRole("button", { name: "拖动排序 Grab", exact: true })
+        // Keep both rows away from edge auto-scroll before recording coordinates.
+        // The compact settings card can otherwise leave CNA across the viewport edge.
+        await page.locator('[data-checkpoint-id="cna"]').evaluate((row) => row.scrollIntoView({ block: "center" }))
         await handle.scrollIntoViewIfNeeded()
         const from = await handle.boundingBox(),
             to = await page.locator('[data-checkpoint-id="cna"]').boundingBox()
@@ -351,7 +354,7 @@ test("touch drag and explicit missing-default merge preserve custom choices", as
         enabled: false,
     })
 })
-for (const width of [390, 1440])
+for (const width of [320, 390, 768, 1440])
     for (const theme of ["light", "dark"])
         test("independent BGP settings " + theme + " " + width, async ({ page }, info) => {
             await page.setViewportSize({ width, height: 900 })
@@ -359,6 +362,11 @@ for (const width of [390, 1440])
             const connectivitySettings = page.getByRole("region", { name: "自动检测设置", exact: true })
             await expect(connectivitySettings.locator("p")).toHaveCount(0)
             await expect(connectivitySettings.getByRole("button", { name: /说明$/ })).toHaveCount(2)
+            await expect(connectivitySettings.getByRole("spinbutton").first()).toHaveValue("2")
+            const compactBox = await connectivitySettings.boundingBox()
+            expect(compactBox!.height).toBeLessThanOrEqual(width >= 1024 ? 110 : 230)
+            expect(compactBox!.width).toBeLessThanOrEqual(1024)
+            await connectivitySettings.screenshot({path:info.outputPath("connectivity-auto-compact.png")})
             const targetHelp = page.getByRole("button", { name: "连通性检测点说明", exact: true })
             await targetHelp.click()
             await expect(page.locator("[data-setting-help]")).toHaveText(/不要填写密码、令牌、私密链接或内网地址/)
@@ -376,6 +384,13 @@ for (const width of [390, 1440])
             await expect(settings.locator("p")).toHaveCount(0)
             await expect(settings.getByRole("button", { name: /说明$/ })).toHaveCount(2)
             await settings.screenshot({ path: info.outputPath("bgp-auto-compact.png") })
+            expect((await settings.boundingBox())!.height).toBeLessThanOrEqual(width >= 1024 ? 110 : 230)
+            if(width>=1024){
+                for(const input of await settings.getByRole("spinbutton").all())expect((await input.boundingBox())!.width).toBeLessThanOrEqual(100)
+                const boxes=await settings.locator('input,button[role="switch"]').evaluateAll(nodes=>nodes.map(el=>{const b=el.getBoundingClientRect();return {y:b.y,height:b.height}}))
+                boxes.push((await settings.getByRole("button",{name:"保存自动检测设置",exact:true}).boundingBox())!)
+                expect(Math.max(...boxes.map(b=>b.y+b.height/2))-Math.min(...boxes.map(b=>b.y+b.height/2))).toBeLessThan(4)
+            }
             for (const label of ["BGP 自动检测与记录", "BGP 自动检测"]) {
                 const help = settings.getByRole("button", { name: label + "说明", exact: true })
                 await help.focus()

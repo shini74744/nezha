@@ -554,7 +554,7 @@ function GpuChart({
 							/>
 						</section>
 					</div>
-					<ChartContainer
+					<ChartContainer deferMount
 						config={chartConfig}
 						className="aspect-auto h-[130px] w-full"
 					>
@@ -747,7 +747,7 @@ function CpuChart({
 							/>
 						</section>
 					</div>
-					<ChartContainer
+					<ChartContainer deferMount
 						config={chartConfig}
 						className="aspect-auto h-[130px] w-full"
 					>
@@ -942,7 +942,7 @@ function ProcessChart({
 							<p className="text-xs text-end w-10 font-medium">{process}</p>
 						</section>
 					</div>
-					<ChartContainer
+					<ChartContainer deferMount
 						config={chartConfig}
 						className="aspect-auto h-[130px] w-full"
 					>
@@ -1244,7 +1244,7 @@ function MemChart({
 							</div>
 						</section>
 					</div>
-					<ChartContainer
+					<ChartContainer deferMount
 						config={chartConfig}
 						className="aspect-auto h-[130px] w-full"
 					>
@@ -1471,7 +1471,7 @@ function DiskChart({
 							</div>
 						</section>
 					</div>
-					<ChartContainer
+					<ChartContainer deferMount
 						config={chartConfig}
 						className="aspect-auto h-[130px] w-full"
 					>
@@ -1764,7 +1764,7 @@ function NetworkChart({
 							</div>
 						</section>
 					</div>
-					<ChartContainer
+					<ChartContainer deferMount
 						config={chartConfig}
 						className="aspect-auto h-[130px] w-full"
 					>
@@ -2046,7 +2046,7 @@ function ConnectChart({
 							</div>
 						</section>
 					</div>
-					<ChartContainer
+					<ChartContainer deferMount
 						config={chartConfig}
 						className="aspect-auto h-[130px] w-full"
 					>

@@ -54,7 +54,7 @@ export default function ConnectivityAutomationSettings({
     }
     return (
         <section
-            className="rounded-lg border bg-card p-4 space-y-3"
+            className="w-full max-w-5xl rounded-lg border bg-card px-4 py-3 space-y-2"
             aria-label={bgp ? "BGP 自动检测设置" : "自动检测设置"}
         >
             <div className="flex items-center gap-1">
@@ -74,8 +74,8 @@ export default function ConnectivityAutomationSettings({
             )}
             {draft ? (
                 <>
-                    <div className="grid gap-4 sm:grid-cols-3">
-                        <div className="flex items-center justify-between gap-3 text-sm">
+                    <div className="grid grid-cols-2 items-center gap-x-4 gap-y-3 sm:flex sm:flex-wrap">
+                        <div className="col-span-2 flex items-center justify-between gap-3 text-sm sm:mr-2 sm:justify-start">
                             <span className="inline-flex items-center gap-1">
                                 自动检测
                                 <SettingHelp label={bgp ? "BGP 自动检测" : "自动检测"}>
@@ -89,10 +89,11 @@ export default function ConnectivityAutomationSettings({
                                 onCheckedChange={(enabled) => setDraft({ ...draft, enabled })}
                             />
                         </div>
-                        <label className="text-sm space-y-1">
+                        <label className="flex min-w-0 flex-col gap-1 text-sm sm:flex-row sm:items-center sm:gap-2">
                             <span>检测间隔（小时）</span>
                             <Input
                                 aria-label={bgp ? "BGP 检测间隔（小时）" : "检测间隔（小时）"}
+                                className="h-9 w-full sm:w-20"
                                 type="number"
                                 min={1}
                                 max={24}
@@ -103,10 +104,11 @@ export default function ConnectivityAutomationSettings({
                                 }
                             />
                         </label>
-                        <label className="text-sm space-y-1">
+                        <label className="flex min-w-0 flex-col gap-1 text-sm sm:flex-row sm:items-center sm:gap-2">
                             <span>记录保留（天）</span>
                             <Input
                                 aria-label={bgp ? "BGP 记录保留（天）" : "记录保留（天）"}
+                                className="h-9 w-full sm:w-20"
                                 type="number"
                                 min={1}
                                 max={30}
@@ -117,9 +119,9 @@ export default function ConnectivityAutomationSettings({
                                 }
                             />
                         </label>
-                    </div>
-                    <div className="flex justify-end">
                         <Button
+                            size="sm"
+                            className="col-span-2 h-9 justify-self-end sm:ml-auto"
                             disabled={
                                 busy || invalid || JSON.stringify(saved) === JSON.stringify(draft)
                             }
