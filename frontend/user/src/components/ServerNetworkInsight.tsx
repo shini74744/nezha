@@ -124,7 +124,7 @@ function ServerNetworkInsight({
 			className="rounded-2xl border bg-card/80 backdrop-blur-sm p-4 sm:p-5 text-card-foreground min-w-0"
 			data-network-insight={kind}
 		>
-			<header className="flex flex-wrap items-center justify-between gap-3 mb-4">
+			<header className={cn("flex flex-wrap items-center justify-between gap-3", kind === "bgp" ? "mb-2" : "mb-4")}>
 				<div className="flex items-center gap-2 min-w-0">
 					<h2 className="font-semibold text-base">{title}</h2>
 					<Popover>
@@ -181,7 +181,7 @@ function ServerNetworkInsight({
 			)}
 			{data && kind === "bgp" && (
 				<>
-					<div className="flex flex-wrap items-center gap-3 mb-3">
+					<div data-bgp-family className="flex flex-wrap items-center gap-3 mb-2">
 						<div className="inline-flex rounded-full bg-muted p-1">
 							{families.map((f) => (
 								<button
