@@ -186,8 +186,8 @@ for(const theme of ["default","doraemon"])for(const light of [false,true])for(co
   const sourceBox=await source.boundingBox(),tabsBox=await page.locator(".server-info-tab").boundingBox();
   expect(sourceBox!.y).toBeGreaterThanOrEqual(tabsBox!.y+tabsBox!.height);
   expect(sourceBox!.height).toBe(32);
-  const belowGap=await view.evaluate(el=>el.querySelector("[data-connectivity-group]")!.getBoundingClientRect().top-el.querySelector("[data-connectivity-source]")!.getBoundingClientRect().bottom);
-  expect(belowGap).toBe(width<768?8:16);
+  const belowGap=await view.evaluate(el=>el.querySelector("[data-connectivity-group]")!.getBoundingClientRect().top-Math.max(...[...el.querySelectorAll("[data-connectivity-source] button")].map(button=>button.getBoundingClientRect().bottom)));
+  expect(belowGap).toBe(8);
   const buttons=source.getByRole("button");
   for(let i=0;i<2;i++){
    const button=buttons.nth(i);
@@ -433,6 +433,8 @@ for(const theme of ["default","doraemon"])for(const width of [320,390,768,1440])
  const p=await progress.boundingBox(),l=await source.getByRole("button",{name:"服务器延迟",exact:true}).boundingBox(),r=await source.getByRole("button",{name:"本地延迟",exact:true}).boundingBox();
  if(width>=640){expect(p!.x).toBeGreaterThanOrEqual(l!.x+l!.width);expect(p!.x+p!.width).toBeLessThanOrEqual(r!.x);}
  else expect(p!.y).toBeGreaterThanOrEqual(l!.y+l!.height);
+ const localStatusBox=await view.locator("[data-local-connectivity]").boundingBox();
+ expect(p!.y+p!.height).toBeLessThanOrEqual(localStatusBox!.y);
  await expect(view.getByText(/当前浏览器访问|仅本页可见|每项 1 次/)).toHaveCount(0);
  await expect(view.getByText(/本地检测完成/)).toBeVisible();
  await expect(view.locator('[data-connectivity-target="google"] [data-connectivity-delay]')).not.toHaveText("—");
@@ -519,3 +521,21 @@ for(const theme of ["default","doraemon"])for(const width of [390,1440])test("vi
  await expect(a.locator("[data-connectivity-delay]")).toHaveText("42ms");
  await expect(a).not.toHaveAttribute("role","button");
 });
+
+for(const theme of ["default","doraemon"])for(const width of [320,1440]){
+ test(`owner source buttons compact content gap ${theme} ${width}`,async({page},info)=>{
+  await page.setViewportSize({width,height:900});
+  const state=await setup(page,theme,true,false,true,"zh-CN",true);
+  const view=page.locator("[data-server-connectivity]"),source=view.locator("[data-connectivity-source]");
+  const controls=view.locator("[data-connectivity-controls]");
+  await expect(controls).toBeVisible();
+  const gap=await view.evaluate(el=>el.querySelector("[data-connectivity-controls]")!.getBoundingClientRect().top-Math.max(...[...el.querySelectorAll("[data-connectivity-source] button")].map(button=>button.getBoundingClientRect().bottom)));
+  expect(gap).toBe(8);
+  for(const button of await source.getByRole("button").all()){
+   await button.scrollIntoViewIfNeeded();
+   expect(await button.evaluate(el=>{const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))})).toBe(true);
+  }
+  await page.screenshot({path:info.outputPath("compact-owner-header.png")});
+  expect(state.posts).toBe(0);expect(state.localRequests).toHaveLength(0);
+ });
+}
