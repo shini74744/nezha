@@ -831,3 +831,32 @@ for(const theme of ["default","doraemon"])for(const width of [390,1440])test("sn
  await expect(page.getByText("查看节点对各平台的访问与解锁情况，实际播放以平台结果为准。",{exact:true})).toBeVisible();
  await expect(page.getByText(/需节点支持 sh|允许 Agent 执行固定命令/)).toHaveCount(0);
 });
+
+for(const theme of ["default","doraemon"])for(const width of [320,1440]){
+ test(`streaming follows available protocols ${theme} ${width}`,async({page},info)=>{
+  await page.setViewportSize({width,height:900});
+  const state=await setup(page,theme,true,false);
+  let families=["IPv4"];
+  const results=["netflix","youtube","disneyplus","bbc","tvb","spotify"].flatMap(id=>["IPv4","IPv6"].map(family=>({
+   id,name:id,icon:id,family,status:family==="IPv4"?"unlocked":"network_error",region:family==="IPv4"?"JP":""
+  })));
+  await page.route("**/api/v1/server/7/streaming",route=>{
+   expect(route.request().method()).toBe("GET");
+   return route.fulfill({json:{success:true,data:{server_id:7,online:false,can_run:false,state:"complete",available_families:families,results}}});
+  });
+  for(const available of [["IPv4"],["IPv4","IPv6"],["IPv6"]]){
+   families=available;
+   await page.reload();
+   await page.locator(".server-info-tab").getByRole("button",{name:"流媒体",exact:true}).click();
+   const view=page.locator('[data-network-insight="streaming"]');
+   await expect(view.locator("[data-media-card]")).toHaveCount(6);
+   for(const family of ["IPv4","IPv6"]){
+    await expect(view.getByText(family,{exact:true})).toHaveCount(families.includes(family)?6:0);
+   }
+   await expect(view.getByText("网络不可达",{exact:true})).toHaveCount(families.includes("IPv6")?6:0);
+   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+   await view.screenshot({path:info.outputPath("streaming-"+families.join("-")+".png")});
+  }
+  expect(state.posts).toEqual([]);
+ });
+}

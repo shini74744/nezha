@@ -136,3 +136,51 @@ describe("network insight render isolation", () => {
 		).toBe(true);
 	});
 });
+
+describe("streaming protocol availability", () => {
+ const media = () => ({
+  server_id: 7, online: true, can_run: false, state: "complete",
+  available_families: ["IPv4"],
+  results: ["IPv4", "IPv6"].map(family => ({
+   id: "netflix", name: "Netflix", icon: "netflix", family,
+   status: family === "IPv4" ? "unlocked" : "network_error",
+  })),
+ });
+ function mountStreaming(data = media()) {
+  api.insightRequest.mockResolvedValue(data);
+  const client = createTestQueryClient();
+  render(<QueryClientProvider client={client}><ServerNetworkInsight serverId={7} kind="streaming" /></QueryClientProvider>);
+  return client;
+ }
+ it("hides unavailable IPv6 but preserves dual-stack failures and follows disappearance/recovery", async () => {
+  const client = mountStreaming();
+  await screen.findByText("Netflix");
+  expect(screen.getByText("IPv4")).toBeVisible();
+  expect(screen.queryByText("IPv6")).not.toBeInTheDocument();
+  expect(screen.queryByText("网络不可达")).not.toBeInTheDocument();
+  for (const available_families of [["IPv4","IPv6"], ["IPv4"], ["IPv6"], ["IPv4","IPv6"]]) {
+   await act(async () => { client.setQueryData(["network-insight",7,"streaming",0], {...media(), available_families}); });
+   await waitFor(() => {
+    for (const family of ["IPv4","IPv6"]) {
+     expect(!!screen.queryByText(family)).toBe(available_families.includes(family));
+    }
+   });
+   expect(!!screen.queryByText("网络不可达")).toBe(available_families.includes("IPv6"));
+   expect(screen.getByText("Netflix")).toBeVisible();
+  }
+  expect(api.insightRequest.mock.calls.every(call => call[2] === "GET")).toBe(true);
+ });
+ it.each(["idle","running","complete"])("filters IPv6 for %s and offline records", async state => {
+  mountStreaming({...media(), state, online: false});
+  await screen.findByText("Netflix");
+  expect(screen.getByText("IPv4")).toBeVisible();
+  expect(screen.queryByText("IPv6")).not.toBeInTheDocument();
+ });
+ it("keeps the BGP legacy fallback when availability has not been supplied", async () => {
+  const data: any = media();
+  delete data.available_families;
+  mountStreaming(data);
+  await screen.findByText("Netflix");
+  expect(screen.getByText("IPv6")).toBeVisible();
+ });
+});

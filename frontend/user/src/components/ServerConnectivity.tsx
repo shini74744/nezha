@@ -111,7 +111,7 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 			{data && !query.isError && (
 				<div data-connectivity-source className="grid min-w-0 grid-cols-[auto_auto] items-center justify-between gap-x-3 gap-y-1.5 text-sm sm:grid-cols-[auto_minmax(0,1fr)_auto]">
 					<button type="button" aria-pressed={!localMode}
-						className={cn("inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-foreground/20 bg-background/90 px-2 sm:px-3 text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none", "col-start-1 row-start-1", !localMode && "font-semibold ring-1 ring-primary/35")}
+						className={cn("inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-foreground/20 bg-background/90 px-2 sm:px-3 text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none", "col-start-1 row-start-1", !localMode && "border-primary bg-primary text-primary-foreground font-semibold hover:bg-primary/90")}
 						onClick={() => { setLocalServer(undefined); browser.stop(); }}>
 						<Server className="size-3.5 shrink-0" aria-hidden />
 						{t("connectivity.serverLatency")}
@@ -123,7 +123,7 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 						</div>
 					)}
 					<button type="button" aria-pressed={localMode}
-						className={cn("inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-foreground/20 bg-background/90 px-2 sm:px-3 text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none col-start-2 row-start-1 sm:col-start-3", localMode && "font-semibold ring-1 ring-primary/35")}
+						className={cn("inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-foreground/20 bg-background/90 px-2 sm:px-3 text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none col-start-2 row-start-1 sm:col-start-3", localMode && "border-primary bg-primary text-primary-foreground font-semibold hover:bg-primary/90")}
 						onClick={() => { setLocalServer(serverId); if (!browser.run) startLocal(); }}>
 						<Gauge className="size-3.5 shrink-0" aria-hidden />
 						{t("connectivity.localLatency")}
