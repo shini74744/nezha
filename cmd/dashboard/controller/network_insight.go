@@ -112,8 +112,8 @@ func readInsight(c *gin.Context, kind string) (*insightResponse, error) {
 	}
 	insightJobs.Unlock()
 	out := &insightResponse{Snapshot: snap, ServerID: s.ID, CanRun: canRunConnectivity(c, s), CanViewIP: callerIsAdmin(c), Online: rpc.ConnectivityOnline(s)}
+	out.AvailableFamilies = insightAvailableFamilies(ips, snap)
 	if kind == "bgp" {
-		out.AvailableFamilies = bgpAvailableFamilies(ips, snap)
 		var rows []networkinsight.Record
 		if err = singleton.DB.Where("identity = ? AND kind = ? AND finished_at >= ?", identity, kind, cutoff).Order("finished_at DESC").Limit(12).Find(&rows).Error; err != nil {
 			return nil, err
@@ -144,7 +144,7 @@ func readInsight(c *gin.Context, kind string) (*insightResponse, error) {
 
 // Only disclose protocol availability, never addresses. The identity includes
 // both current IPs, so a removed IPv6 cannot reuse an older dual-stack snapshot.
-func bgpAvailableFamilies(ips model.IP, snap networkinsight.Snapshot) []string {
+func insightAvailableFamilies(ips model.IP, snap networkinsight.Snapshot) []string {
 	available := map[string]bool{
 		"IPv4": networkinsight.PublicIP(ips.IPv4Addr),
 		"IPv6": networkinsight.PublicIP(ips.IPv6Addr),

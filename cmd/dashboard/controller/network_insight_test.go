@@ -226,8 +226,8 @@ func TestBGPFamiliesFollowLiveIPDisappearanceAndRecovery(t *testing.T) {
 			require.Empty(t, got.History)
 		}
 	}
-	require.Equal(t, []string{"IPv6"}, bgpAvailableFamilies(model.IP{IPv6Addr: "2606:4700:4700::1111"}, networkinsight.Snapshot{}))
-	require.Equal(t, []string{"IPv4"}, bgpAvailableFamilies(model.IP{}, networkinsight.Snapshot{Topologies: []networkinsight.Topology{{Family: "IPv6", Status: "no_public_ip"}}}))
+	require.Equal(t, []string{"IPv6"}, insightAvailableFamilies(model.IP{IPv6Addr: "2606:4700:4700::1111"}, networkinsight.Snapshot{}))
+	require.Equal(t, []string{"IPv4"}, insightAvailableFamilies(model.IP{}, networkinsight.Snapshot{Topologies: []networkinsight.Topology{{Family: "IPv6", Status: "no_public_ip"}}}))
 }
 
 func TestInsightAutomaticSlotDeduplicatesAfterManualRecordAndRestart(t *testing.T) {
@@ -275,4 +275,63 @@ func TestInsightOnlyAdminBypassesCooldownWithoutBypassingCapacity(t *testing.T) 
 	require.EqualError(t, err, "检测繁忙，请稍后重试")
 	require.EqualError(t, launchInsight(server, "bgp", true, true), "请稍后重试")
 	require.Empty(t, insightJobs.values)
+}
+
+func TestStreamingSharesBGPFamilyAvailabilityWithoutChangingResults(t *testing.T) {
+	setupInsight(t)
+	server, _ := singleton.ServerShared.Get(1)
+	row := model.ServerIPHistory{ServerUUID: server.UUID}
+	require.NoError(t, singleton.DB.Create(&row).Error)
+	for _, ips := range []model.IP{
+		{IPv4Addr: "1.1.1.1"},
+		{IPv4Addr: "1.1.1.1", IPv6Addr: "2606:4700:4700::1111"},
+		{IPv4Addr: "1.1.1.1", IPv6Addr: "fe80::1"},
+		{IPv6Addr: "2606:4700:4700::2222"},
+		{IPv4Addr: "1.1.1.1"},
+		{IPv4Addr: "1.1.1.1", IPv6Addr: "2606:4700:4700::3333"},
+	} {
+		row.CurrentIP = ips
+		require.NoError(t, singleton.DB.Save(&row).Error)
+		identity, _, err := insightIdentity(server)
+		require.NoError(t, err)
+		snap := networkinsight.Snapshot{State: "complete", FinishedAt: time.Now().UnixMilli(), Results: networkinsight.EmptyMedia()}
+		raw, err := json.Marshal(snap)
+		require.NoError(t, err)
+		record := networkinsight.Record{Identity: identity, Kind: "streaming", FinishedAt: snap.FinishedAt, Payload: string(raw)}
+		require.NoError(t, singleton.DB.Create(&record).Error)
+		for _, running := range []bool{false, true} {
+			if running {
+				live := cloneInsight(snap)
+				live.State = "running"
+				insightJobs.Lock()
+				insightJobs.values[identity+"streaming"] = live
+				insightJobs.Unlock()
+			}
+			media, err := readInsight(connectivityContext("1", nil), "streaming")
+			require.NoError(t, err)
+			bgp, err := readInsight(connectivityContext("1", nil), "bgp")
+			require.NoError(t, err)
+			require.Equal(t, bgp.AvailableFamilies, media.AvailableFamilies)
+			require.Equal(t, networkinsight.PublicIP(ips.IPv6Addr), containsFamily(media.AvailableFamilies, "IPv6"))
+			require.Equal(t, snap.Results, media.Results)
+			body, err := json.Marshal(media)
+			require.NoError(t, err)
+			require.NotContains(t, string(body), "2606:4700")
+			require.NotContains(t, string(body), "1.1.1.1")
+			insightJobs.Lock()
+			delete(insightJobs.values, identity+"streaming")
+			insightJobs.Unlock()
+		}
+		var saved networkinsight.Record
+		require.NoError(t, singleton.DB.First(&saved, record.ID).Error)
+		require.Equal(t, string(raw), saved.Payload)
+	}
+}
+func containsFamily(families []string, family string) bool {
+	for _, value := range families {
+		if value == family {
+			return true
+		}
+	}
+	return false
 }

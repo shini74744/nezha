@@ -116,7 +116,8 @@ function ServerNetworkInsight({
 		: ["IPv4", "IPv6"];
 	const selectedFamily = families.includes(family) ? family : families[0];
 	const topology = snapshot?.topologies?.find((t) => t.family === selectedFamily);
-	const names = [...new Set((data?.results || []).map((r) => r.id))];
+	const mediaResults = (data?.results || []).filter((r) => families.includes(r.family));
+	const names = [...new Set(mediaResults.map((r) => r.id))];
 	const title = kind === "bgp" ? "BGP 路由拓扑" : "流媒体解锁";
 	return (
 		<section
@@ -253,7 +254,7 @@ function ServerNetworkInsight({
 			{data && kind === "streaming" && (
 				<div className="grid grid-cols-1 min-[380px]:grid-cols-2 lg:grid-cols-3 gap-3">
 					{names.map((id) => {
-						const entries = (data.results || []).filter((r) => r.id === id);
+						const entries = mediaResults.filter((r) => r.id === id);
 						const first = entries[0];
 						if (!first) return null;
 						const icon = resolveConnectivityIcon(first.icon);

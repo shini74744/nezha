@@ -182,7 +182,7 @@ for(const theme of ["default","doraemon"])for(const light of [false,true])for(co
   const state=await setup(page,theme,light,offline,false,"zh-CN",true),view=page.locator("[data-server-connectivity]");
   await expect(view.locator("[data-connectivity-target]")).toHaveCount(catalog.length);
   const source=view.locator("[data-connectivity-source]");
-  await expect.poll(async()=>source.evaluate(el=>el.getBoundingClientRect().top-document.querySelector(".server-info-tab")!.getBoundingClientRect().bottom)).toBeLessThanOrEqual(6);
+  await expect.poll(async()=>source.evaluate(el=>el.getBoundingClientRect().top-document.querySelector(".server-info-tab")!.getBoundingClientRect().bottom)).toBeLessThanOrEqual(2);
   const sourceBox=await source.boundingBox(),tabsBox=await page.locator(".server-info-tab").boundingBox();
   expect(sourceBox!.y).toBeGreaterThanOrEqual(tabsBox!.y+tabsBox!.height);
   expect(sourceBox!.height).toBe(32);
@@ -195,6 +195,11 @@ for(const theme of ["default","doraemon"])for(const light of [false,true])for(co
    expect(style.background).not.toBe("rgba(0, 0, 0, 0)");expect(style.color).not.toBe(style.background);
    await button.focus();await expect(button).toBeFocused();
   }
+  await expect(buttons.nth(0)).toHaveAttribute("aria-pressed","true");
+  await expect(buttons.nth(0)).toHaveClass(/bg-primary text-primary-foreground/);
+  await expect(buttons.nth(1)).not.toHaveClass(/text-primary-foreground/);
+  const colors=await buttons.evaluateAll(nodes=>nodes.map(el=>getComputedStyle(el).backgroundColor));
+  expect(colors[0]).not.toBe(colors[1]);
   const left=await buttons.nth(0).boundingBox(),right=await buttons.nth(1).boundingBox();
   expect(left!.x+left!.width+8).toBeLessThanOrEqual(right!.x);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
@@ -408,6 +413,8 @@ for(const theme of ["default","doraemon"])for(const width of [320,390,768,1440])
  await page.evaluate(()=>{(window as any).__storageWrites=[];const original=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){(window as any).__storageWrites.push([k,v]);return original.call(this,k,v)}});
  await source.getByRole("button",{name:"本地延迟",exact:true}).click();
  await expect(view.locator("[data-local-connectivity]")).toBeVisible();
+ await expect(source.getByRole("button",{name:"本地延迟",exact:true})).toHaveClass(/bg-primary text-primary-foreground/);
+ await expect(source.getByRole("button",{name:"服务器延迟",exact:true})).not.toHaveClass(/text-primary-foreground/);
  await expect(view.getByRole("button",{name:"停止检测",exact:true})).toBeVisible();
  const progress=source.getByRole("progressbar");
  await expect(progress).toBeVisible();

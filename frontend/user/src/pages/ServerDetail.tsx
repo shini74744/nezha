@@ -70,7 +70,7 @@ export default function ServerDetail() {
 				<ServerDetailSummary server_id={Number(server_id)} />
 			</section> */}
 
-			<div ref={viewportRef} data-detail-viewport className={`detail-viewport flex flex-col gap-4 min-w-0${currentTab === "Connectivity" ? " -mt-5" : ""}`}>
+			<div ref={viewportRef} data-detail-viewport className={`detail-viewport flex flex-col gap-4 min-w-0${currentTab === "Connectivity" ? " -mt-6" : ""}`}>
 			{currentTab !== "Network" && <DetailPanel key={server_id + ":" + currentTab}>
 			{currentTab === tabs[0] && <Suspense fallback={<SectionLoading/>}><ServerDetailChart server_id={server_id} /></Suspense>}
 			{(currentTab === "BGP" || currentTab === "Streaming") && <Suspense fallback={<SectionLoading/>}><ServerNetworkInsight key={server_id+currentTab} serverId={Number(server_id)} kind={currentTab === "BGP" ? "bgp" : "streaming"}/></Suspense>}
