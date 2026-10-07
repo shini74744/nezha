@@ -172,3 +172,35 @@ func callIndex(calls []string, wanted string) int {
 	}
 	return len(calls)
 }
+
+func TestStressQuietWindowWaitsOnlyForTransientJournal(t *testing.T) {
+	calls := 0
+	_, err := sampleStressQuietWindow(t.Context(), func(context.Context) (processharness.Window, error) {
+		calls++
+		if calls == 1 {
+			return processharness.Window{}, ErrStressSQLiteJournalNotDrained
+		}
+		return processharness.Window{}, nil
+	})
+	require.NoError(t, err)
+	require.Equal(t, 2, calls)
+
+	resourceErr := errors.New("resource count increased")
+	calls = 0
+	_, err = sampleStressQuietWindow(t.Context(), func(context.Context) (processharness.Window, error) {
+		calls++
+		return processharness.Window{}, resourceErr
+	})
+	require.ErrorIs(t, err, resourceErr)
+	require.Equal(t, 1, calls)
+}
+
+func TestStressQuietWindowDoesNotIgnorePersistentJournal(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	_, err := sampleStressQuietWindow(ctx, func(context.Context) (processharness.Window, error) {
+		cancel()
+		return processharness.Window{}, ErrStressSQLiteJournalNotDrained
+	})
+	require.ErrorIs(t, err, context.Canceled)
+	require.ErrorIs(t, err, ErrStressSQLiteJournalNotDrained)
+}

@@ -58,6 +58,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
 	>([]);
 	// A page-session display preference only; never persisted as authorization.
 	const [showDisplayHidden, setShowDisplayHidden] = useState(false);
+// biome-ignore lint/correctness/useExhaustiveDependencies: Reset the page-session visibility choice whenever authentication changes.
 	useEffect(() => { setShowDisplayHidden(false); }, [authenticated]);
 	const inventoryData = useMemo(() => lastData ? {...lastData, servers: lastData.servers.filter(server => authenticated || showDisplayHidden || !server.hide_for_display)} : null, [lastData, showDisplayHidden, authenticated]);
 	const displayHiddenCount = lastData?.servers.filter(server => server.hide_for_display).length ?? 0;

@@ -68,9 +68,12 @@ func runMCPFilesystemOperations(ctx context.Context, assertions *AssertionSet, f
 	if err := os.Mkdir(permissionDirectory.String(), 0o500); err != nil {
 		return err
 	}
-	permissionResponse, permissionErr := permission.filesystem.write(ctx, mcpFilesystemWrite{relative: "permission-denied/file.txt", content: "denied", encoding: "utf8", mode: "0600"})
-	permissionDeniedObserved := permissionErr == nil && permissionResponse.StructuredContent.Error == "permission denied"
-	assertions.Record("fs.write Agent filesystem permission denial is typed", permission.processContract && permissionDeniedObserved, fmt.Sprintf("%s; uid=%d gid=%d process_contract=%t", permissionResponse.StructuredContent.Error, permission.uid, permission.gid, permission.processContract))
+	_, permissionErr := permission.filesystem.write(ctx, mcpFilesystemWrite{relative: "permission-denied/file.txt", content: "denied", encoding: "utf8", mode: "0600"})
+	permissionDeniedObserved := toolFailureContains(permissionErr, "permission denied")
+	auditErr := waitPermissionAgentAudit(ctx, dashboardInstance.DatabasePath(), permission.filesystem.serverID)
+	agentRPCResponse := auditErr == nil
+	assertions.Record("fs.write Agent filesystem permission denial is typed", permission.processContract && permissionDeniedObserved && agentRPCResponse,
+		fmt.Sprintf("%s; uid=%d gid=%d agent_handler=%t; process_contract=%t agent_rpc_response=%t", errorText(errors.Join(permissionErr, auditErr)), permission.uid, permission.gid, agentRPCResponse, permission.processContract, agentRPCResponse))
 	if err := os.Remove(permissionDirectory.String()); err != nil {
 		return err
 	}

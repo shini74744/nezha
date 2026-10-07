@@ -158,7 +158,7 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
     }, [data, form])
 
     const onSubmit = async (values: any) => {
-        let resp: ModelServerTaskResponse = {}
+        let resp: ModelServerTaskResponse
         try {
             values.nic_allowlist = values.nic_allowlist_raw
                 ? JSON.parse(values.nic_allowlist_raw)

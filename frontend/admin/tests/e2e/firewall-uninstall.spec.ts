@@ -83,7 +83,9 @@ for (const width of [360, 1366])
             await page.getByRole("tab", { name: "认证防火墙", exact: true }).click()
             const panel = page.getByRole("tabpanel", { name: "认证防火墙", exact: true })
             await expect(panel).toContainText("离线后删除的节点")
-            await expect(panel).toContainText("不会自动封禁正常节点")
+            await page.getByRole("button", { name: "认证防火墙说明", exact: true }).click()
+            await expect(page.getByText(/不会自动封禁正常节点/)).toBeVisible()
+            await page.keyboard.press("Escape")
             await expect(panel).toContainText("UUID 已拉黑")
             expect(
                 await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),

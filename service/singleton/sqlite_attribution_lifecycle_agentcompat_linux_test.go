@@ -131,6 +131,7 @@ func TestSQLiteAttributionDirectReadQueryClosesOwnedStatement(t *testing.T) {
 func TestSQLiteAttributionCommitClosesRetainedJournalDescriptor(t *testing.T) {
 	// Given
 	resetSQLiteAttributionForTest()
+	t.Cleanup(resetSQLiteAttributionForTest)
 	rawConnection, err := sqliteAttributionDriver{}.Open(sqliteAttributionTestDatabasePath(t))
 	if err != nil {
 		t.Fatal(err)

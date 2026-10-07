@@ -17,7 +17,8 @@ test("built frontend integrates native effects, server data and SPA navigation",
   if(u.pathname==="/api/v1/setting")return route.fulfill({json:{success:true,data:{config:{language:"zh-CN",site_name:"原生美化联合测试",custom_code:"",appearance_config:JSON.stringify(config)},version:"smoke"}}});
   if(u.pathname==="/api/v1/server-group")return route.fulfill({json:{success:true,data:[]}});
   if(u.pathname==="/api/v1/profile")return route.fulfill({json:{success:false,error:"not logged in"}});
-  if(u.pathname.includes("/service"))return route.fulfill({json:{success:true,data:{services:{},cycle_transfer_stats:{"1":{name:"quota",max:1000,from:"2026-09-01",to:"2026-10-01",transfer:{"11":100,"12":900}}}}}});
+  if(u.pathname==="/api/v1/server-traffic")return route.fulfill({json:{success:true,data:{"11":{name:"quota",max:1000,used:100,from:"2026-09-01",to:"2026-10-01"},"12":{name:"quota",max:1000,used:900,from:"2026-09-01",to:"2026-10-01"}}}});
+   if(u.pathname.includes("/service"))return route.fulfill({json:{success:true,data:{services:{},cycle_transfer_stats:{"1":{name:"quota",max:1000,from:"2026-09-01",to:"2026-10-01",transfer:{"11":100,"12":900}}}}}});
   if(route.request().resourceType()==="image"&&(u.origin!==origin||u.pathname==="/fixture.png"))return route.fulfill({contentType:"image/png",body:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aK5sAAAAASUVORK5CYII=","base64")});
   if(u.origin!==origin)return route.fulfill({json:{org:"AS123 Example",ip:"203.0.113.5",country:"JP",city:"Tokyo",content:"native quote"}});
   return route.continue();
@@ -25,6 +26,10 @@ test("built frontend integrates native effects, server data and SPA navigation",
  await page.goto(origin);await expect(page.getByText("Native QA 11",{exact:true})).toBeVisible({timeout:15000});
  await expect(page.locator(".nz-name-online")).toHaveCount(2);await expect(page.locator("[data-native-traffic='11']")).toBeVisible();
  await page.screenshot({path:"test-results/native-production.png",fullPage:true});
- await page.getByText("Native QA 11",{exact:true}).click();await expect(page).toHaveURL(/\/server\/11$/);await expect(page.locator(".nz-name-online")).toHaveCount(1);
+ await page.getByText("Native QA 11",{exact:true}).click();await expect(page).toHaveURL(/\/server\/11$/);
+ // The visited list stays mounted in React Activity; only the detail name is visible.
+ await expect(page.locator(".nz-name-online:visible")).toHaveCount(1);
+ await expect(page.locator(".nz-name-online:visible")).toHaveText("Native QA 11");
+ await expect(page.getByText("Native QA 12",{exact:true})).toBeHidden();
  expect(errors).toEqual([]);expect(forbidden).toEqual([]);
 });

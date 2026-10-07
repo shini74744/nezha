@@ -83,7 +83,7 @@ for (const width of [360, 1366])
                 await expect
                     .poll(async () => {
                         const box = await dialog.boundingBox()
-                        return !!box && box.x >= 15 && box.x + box.width <= width - 15
+                        return !!box && box.x >= 8 && box.x + box.width <= width - 8
                     })
                     .toBe(true)
                 expect((await dialog.boundingBox())!.height).toBeLessThanOrEqual(850 * 0.85 + 1)

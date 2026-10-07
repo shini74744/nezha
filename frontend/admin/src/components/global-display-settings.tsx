@@ -43,6 +43,7 @@ export function GlobalDisplaySettings() {
     useEffect(() => {
         void load()
         return () => {
+            // eslint-disable-next-line react-hooks/exhaustive-deps -- This is a request generation counter, not a DOM ref; invalidate its latest value on unmount.
             request.current++
         }
     }, [])

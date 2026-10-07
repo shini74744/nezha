@@ -124,12 +124,12 @@ func StartConnectivityAutomation() {
 	connectivityAutomationOnce.Do(func() {
 		connectivityManager.SetCompletionHandler(func(key string, snapshot connectivity.Snapshot) {
 			id, _ := strconv.ParseUint(strings.Split(key, ":")[0], 10, 64)
-			server, ok := singleton.ServerShared.Get(id)
-			if !ok || server.ConnectivityDisabled || connectivityKey(server) != key {
-				return
-			}
-			if err := (connectivity.Store{DB: singleton.DB}).Save(key, snapshot); err != nil {
-				log.Printf("NEZHA>> connectivity persist failed: %v", err)
+			err := persistConnectivityRecord(context.Background(), singleton.DB, key, snapshot, func() bool {
+				server, ok := singleton.ServerShared.Get(id)
+				return ok && !server.ConnectivityDisabled && connectivityKey(server) == key
+			})
+			if err != nil && !errors.Is(err, errDetectionIdentityChanged) {
+				log.Printf("NEZHA>> connectivity persist failed: server=%d finished_at=%d error=%v", id, snapshot.FinishedAt, err)
 			}
 		})
 		go func() {

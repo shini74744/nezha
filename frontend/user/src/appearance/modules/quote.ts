@@ -2,7 +2,7 @@
 // Migrated source for the built-in quote feature; resources are owned by FeatureScope.
 export function quote(scope, config) {
 const window = scope.window; const document = scope.document;
-(function () {
+(() => {
   function _0xe79106(_0x95675b) {
     let _0x40425f = document.getElementById("message");
     if (!_0x40425f) {
@@ -24,7 +24,7 @@ const window = scope.window; const document = scope.document;
     }
     _0x95675b(_0x40425f);
   }
-  _0xe79106(function (_0x490a30) {
+  _0xe79106((_0x490a30) => {
     function _0x56b709() {
       const _0x23fab3 = navigator.userAgent;
       const _0x465f74 = ["Android", "iPhone", "iPad", "iPod", "Windows Phone", "Mobi", "Mobile"];

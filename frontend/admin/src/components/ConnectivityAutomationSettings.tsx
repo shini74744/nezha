@@ -2,7 +2,7 @@ import { FetcherMethod, fetcher } from "@/api/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import SettingHelp from "./SettingHelp"
 
 type Policy = { enabled: boolean; interval_hours: number; retention_days: number; revision: string }
@@ -17,7 +17,7 @@ export default function ConnectivityAutomationSettings({
         [draft, setDraft] = useState<Policy>()
     const [busy, setBusy] = useState(false),
         [error, setError] = useState("")
-    const load = async () => {
+    const load = useCallback(async () => {
         setError("")
         try {
             const p = await fetcher<Policy>(FetcherMethod.GET, endpoint)
@@ -26,10 +26,10 @@ export default function ConnectivityAutomationSettings({
         } catch {
             setError("读取自动检测设置失败")
         }
-    }
+    }, [endpoint])
     useEffect(() => {
         void load()
-    }, [kind])
+    }, [load])
     const invalid =
         !draft ||
         !Number.isInteger(draft.interval_hours) ||

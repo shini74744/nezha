@@ -90,6 +90,7 @@ func TestSQLiteAttributionRecordsPreparedExplicitReturningEvidence(t *testing.T)
 func TestSQLiteAttributionAllowsGORMReturningWhenDisabled(t *testing.T) {
 	// Given
 	resetSQLiteAttributionForTest()
+	t.Cleanup(resetSQLiteAttributionForTest)
 	database, err := gorm.Open(openSQLiteDialector(sqliteAttributionTestDatabasePath(t)), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)

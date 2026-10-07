@@ -114,7 +114,7 @@ func changeLogoLibrary(c *gin.Context, form *model.LogoLibraryEntry, remove bool
 	if singleton.ServerIDReassignmentInProgress.Load() {
 		return nil, errors.New("服务器 ID 正在调整，请稍后重试")
 	}
-	var changed []model.Server
+	var changed []*model.Server
 	var saved model.LogoLibraryEntry
 	e := singleton.DB.Transaction(func(tx *gorm.DB) error {
 		var old model.LogoLibraryEntry
@@ -151,7 +151,8 @@ func changeLogoLibrary(c *gin.Context, form *model.LogoLibraryEntry, remove bool
 		if e := tx.Find(&servers).Error; e != nil {
 			return e
 		}
-		for _, s := range servers {
+		for i := range servers {
+			s := &servers[i]
 			raw, e := logolibrary.RewriteNote(s.PublicNote, map[string]model.LogoLibraryEntry{saved.ID: saved}, saved.ID, remove)
 			if e != nil {
 				return e
@@ -178,7 +179,7 @@ func changeLogoLibrary(c *gin.Context, form *model.LogoLibraryEntry, remove bool
 		for i := range changed {
 			if old, ok := singleton.ServerShared.Get(changed[i].ID); ok && old != nil {
 				changed[i].CopyFromRunningServer(old)
-				singleton.ServerShared.Update(&changed[i], "")
+				singleton.ServerShared.Update(changed[i], "")
 			}
 		}
 	}

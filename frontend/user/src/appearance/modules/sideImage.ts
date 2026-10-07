@@ -2,7 +2,7 @@
 // Migrated source for the built-in sideImage feature; resources are owned by FeatureScope.
 export function sideImage(scope, config) {
 const window = scope.window; const document = scope.document;
-(function () {
+(() => {
   function _0x4baf1e() {
     return /Mobi|Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
   }
@@ -23,8 +23,8 @@ const window = scope.window; const document = scope.document;
   if (!_0x4baf1e()) {
     scope.append(document.body, _0x239d90);
     let _0x4c36a4 = false;
-    let _0x38fd9d;
-    let _0x37eac7;
+    let _0x38fd9d: number;
+    let _0x37eac7: number;
     const _0x198346 = 300;
     const _0x1bd03b = 500;
     const _0x1477c5 = 200;

@@ -119,7 +119,9 @@ func captureStressResources(ctx context.Context, fixture *heldSessionSetRealFixt
 	if spec.Phase == stressResourceBaseline {
 		windowSpec.ObserveSample = observeStressDashboardSQLiteJournal(fixture.dashboard.DatabasePath() + "-journal")
 	}
-	baseline, err := processharness.SampleWindow(ctx, windowSpec)
+	baseline, err := sampleStressQuietWindow(ctx, func(sampleContext context.Context) (processharness.Window, error) {
+		return processharness.SampleWindow(sampleContext, windowSpec)
+	})
 	if err != nil {
 		return nil, err
 	}

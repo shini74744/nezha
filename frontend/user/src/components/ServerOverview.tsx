@@ -175,20 +175,17 @@ const brand=useFeature("branding");
 						</section>
 					</section>
 					{!disableAnimatedMan && (
-						<img
-							className="absolute right-3 top-[-85px] z-50 w-20 scale-90 group-hover:opacity-50 md:scale-100 transition-all"
-							alt={"animated-man"}
-                            role="button"
-                            tabIndex={0}
+                        <button
+                            type="button"
+                            className="absolute right-3 top-[-85px] z-50 w-20 scale-90 group-hover:opacity-50 md:scale-100 transition-all"
                             aria-label="页面插画"
                             aria-pressed={displayHiddenExpanded}
-                            draggable={false}
                             style={{touchAction:"manipulation",cursor:"pointer"}}
                             onClick={tapIllustration}
-                            onKeyDown={e=>{if(!e.repeat && (e.key==="Enter" || e.key===" ")){e.preventDefault();tapIllustration();}}}
-							src={customIllustration}
-							loading="eager"
-						/>
+                            onKeyDown={event => { if (event.repeat && (event.key === "Enter" || event.key === " ")) event.preventDefault(); }}
+                        >
+                            <img className="w-full" alt="animated-man" draggable={false} src={customIllustration} loading="eager" />
+                        </button>
 					)}
 				</CardContent>
 			</Card>

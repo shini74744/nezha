@@ -42,7 +42,7 @@ test("login refreshes guest settings before displaying the theme selector", asyn
     await page.locator('button[type="submit"]').click()
     await expect(page).toHaveURL(/\/dashboard$/)
     await page.locator('header [aria-haspopup="menu"]').last().click()
-    await page.getByRole("menuitem", { name: /设置/ }).click()
+    await page.getByRole("menuitem", { name: "系统设置", exact: true }).click()
     await expectThemes(page)
 })
 

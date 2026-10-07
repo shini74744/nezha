@@ -83,7 +83,8 @@ func TestBatchVisibilityRejectsWholeBatch(t *testing.T) {
 			require.Error(t, err)
 			var servers []model.Server
 			require.NoError(t, singleton.DB.Find(&servers).Error)
-			for _, s := range servers {
+			for i := range servers {
+				s := &servers[i]
 				require.False(t, s.HideForDisplay)
 				running, _ := singleton.ServerShared.Get(s.ID)
 				require.False(t, running.HideForDisplay)

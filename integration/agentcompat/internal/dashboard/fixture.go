@@ -23,6 +23,9 @@ func (dashboard *Dashboard) prepareFixture(ctx context.Context, config StartConf
 		return err
 	}
 	dashboard.databasePath = filepath.Join(dashboard.workspace.Root(), "dashboard.sqlite")
+	if err := prepareIsolatedDatabase(dashboard.databasePath); err != nil {
+		return fmt.Errorf("prepare isolated dashboard database: %w", err)
+	}
 	dashboard.binaryPath, err = dashboard.workspace.Build(ctx, workspace.BuildSpec{Name: "dashboard", SourceDir: config.SourceDir, Package: "./cmd/dashboard", Tags: []string{"agentcompat"}})
 	if err != nil {
 		return err

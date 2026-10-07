@@ -58,8 +58,11 @@ for(const theme of ["default","doraemon"])for(const width of [390,1440])test("re
  await page.screenshot({path:info.outputPath("returned-list.png")});
  // A second trip must restore the new position, not the previous position.
  delayed=false;await cards.nth(75).scrollIntoViewIfNeeded();
- const secondTop=await page.evaluate(()=>scrollY);
+ // Physical clicks can scroll the target into view; preserve the position at navigation, not before Playwright's actionability scroll.
+ await page.evaluate(()=>document.addEventListener("click",()=>{(window as any).__secondNavigationTop=scrollY},{capture:true,once:true}));
  if(theme==="default")await cards.nth(75).click();else await cards.nth(75).getByRole("link",{name:"查看服务器 导航测试 76",exact:true}).click();
+ const secondTop=await page.evaluate(()=>(window as any).__secondNavigationTop as number);
+ expect(secondTop).toBeGreaterThan(top+100);
  await expect(page.locator(".server-info")).toBeVisible();
  await page.locator(".server-info .server-name").click();
  await expect(cards.nth(75)).toBeVisible();

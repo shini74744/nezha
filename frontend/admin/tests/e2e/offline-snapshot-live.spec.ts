@@ -25,7 +25,7 @@ for(const width of [390,1366])test("full offline snapshot matches online host an
  await expect(page.getByText("AMD Ryzen 9 9950X 4 Virtual Core",{exact:true})).toBeVisible();
  const details=page.locator(".server-info");
  for(const label of ["2.3.5","x86_64","8.00 GiB","100.00 GiB","ubuntu - 24.04"])await expect(details.getByText(label,{exact:true})).toBeVisible();
- await page.screenshot({path:"test-results/snapshot-online-"+width+".png",fullPage:true});
+ await page.screenshot({path:"test-results/snapshot-online-"+width+".png",fullPage:true,animations:"disabled",timeout:10000});
  offline=true;send();
  await expect(page.locator("[data-offline-summary]")).toBeVisible();
  for(const label of ["2.3.5","x86_64","8.00 GiB","100.00 GiB","ubuntu - 24.04","AMD Ryzen 9 9950X 4 Virtual Core"])await expect(page.locator("[data-offline-summary]").getByText(label,{exact:true})).toBeVisible();
@@ -38,8 +38,10 @@ for(const width of [390,1366])test("full offline snapshot matches online host an
  await expect(page.getByRole("button",{name:"1 天",exact:true})).toBeDisabled();
  await expect(page.locator("[data-offline-summary] time")).toHaveAttribute("datetime",new Date(at).toISOString());
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
- await page.screenshot({path:"test-results/snapshot-offline-"+width+".png",fullPage:true});
+ // Verify a fresh document before capture; full-page capture temporarily changes the viewport.
  await page.reload();await expect(details.getByText("25.00 GiB / 100.00 GiB",{exact:true})).toBeVisible();
  await expect(details.getByText("未知",{exact:true})).toHaveCount(0);
+ await expect(page.locator("[data-recorded-chart] .recharts-surface")).toHaveCount(7);
+ await page.screenshot({path:"test-results/snapshot-offline-"+width+".png",fullPage:true,animations:"disabled",timeout:10000});
  expect(errors).toEqual([]);
 });

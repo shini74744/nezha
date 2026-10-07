@@ -17,6 +17,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type insightResponse struct {
@@ -50,11 +52,14 @@ func insightServer(c *gin.Context, kind string) (*model.Server, error) {
 	return s, nil
 }
 func insightIdentity(s *model.Server) (string, model.IP, error) {
+	return insightIdentityFromDB(singleton.DB, s)
+}
+func insightIdentityFromDB(db *gorm.DB, s *model.Server) (string, model.IP, error) {
 	var row model.ServerIPHistory
-	if singleton.DB == nil {
+	if db == nil {
 		return "", model.IP{}, errors.New("database unavailable")
 	}
-	if err := singleton.DB.Where("server_uuid = ?", s.UUID).Limit(1).Find(&row).Error; err != nil {
+	if err := db.Where("server_uuid = ?", s.UUID).Limit(1).Find(&row).Error; err != nil {
 		return "", model.IP{}, err
 	}
 	raw := fmt.Sprintf("%s:%s:%s", connectivityKey(s), row.CurrentIP.IPv4Addr, row.CurrentIP.IPv6Addr)
@@ -332,17 +337,32 @@ func launchInsight(s *model.Server, kind string, automatic bool, bypassCooldown 
 			}
 			wg.Wait()
 		}
-		if !valid() {
-			return
-		}
 		snap.State = "complete"
 		snap.FinishedAt = time.Now().UnixMilli()
 		raw, e := json.Marshal(snap)
 		if e != nil {
 			return
 		}
-		if e = singleton.DB.Create(&networkinsight.Record{Identity: identity, Kind: kind, FinishedAt: snap.FinishedAt, ScheduledAt: snap.ScheduledAt, Payload: string(raw)}).Error; e != nil {
-			log.Printf("NEZHA>> network insight persistence failed: %v", e)
+		record := networkinsight.Record{Identity: identity, Kind: kind, FinishedAt: snap.FinishedAt, ScheduledAt: snap.ScheduledAt, Payload: string(raw)}
+		e = persistNetworkInsightRecord(context.Background(), singleton.DB, record, func(db *gorm.DB) error {
+			current, ok := singleton.ServerShared.Get(s.ID)
+			if !ok || !insightEnabled(current, kind) {
+				return errDetectionIdentityChanged
+			}
+			if automatic && ((kind == "bgp" && !bgpAutoEnabled.Load()) || (kind != "bgp" && !connectivityAutoEnabled.Load())) {
+				return errDetectionIdentityChanged
+			}
+			got, _, err := insightIdentityFromDB(db, current)
+			if err != nil {
+				return err
+			}
+			if got != identity {
+				return errDetectionIdentityChanged
+			}
+			return nil
+		})
+		if e != nil && !errors.Is(e, errDetectionIdentityChanged) {
+			log.Printf("NEZHA>> network insight persistence failed: server=%d kind=%s finished_at=%d error=%v", s.ID, kind, snap.FinishedAt, e)
 		}
 	}()
 	return nil

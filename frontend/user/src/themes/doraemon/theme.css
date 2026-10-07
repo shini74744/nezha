@@ -1895,18 +1895,22 @@ html:not(.dark) .dora-traffic .nz-traffic-info > span {
    Daytime mixes in a dark base so zero/slow rates stay legible on white cards. */
 .dora-theme [data-dora-rate-color="up"] {
  color:#991b1b;
+ /* biome-ignore lint/suspicious/noDuplicateProperties: Preserve the preceding solid-color fallback for browsers without color-mix. */
  color:color-mix(in srgb,var(--dora-rate-color) 25%,#7f1d1d);
 }
 .dora-theme [data-dora-rate-color="down"] {
  color:#1e3a8a;
+ /* biome-ignore lint/suspicious/noDuplicateProperties: Preserve the preceding solid-color fallback for browsers without color-mix. */
  color:color-mix(in srgb,var(--dora-rate-color) 25%,#1e3a8a);
 }
 .dark .dora-theme [data-dora-rate-color="up"] {
  color:#fca5a5;
+ /* biome-ignore lint/suspicious/noDuplicateProperties: Preserve the preceding solid-color fallback for browsers without color-mix. */
  color:color-mix(in srgb,var(--dora-rate-color) 40%,white);
 }
 .dark .dora-theme [data-dora-rate-color="down"] {
  color:#a5b4fc;
+ /* biome-ignore lint/suspicious/noDuplicateProperties: Preserve the preceding solid-color fallback for browsers without color-mix. */
  color:color-mix(in srgb,var(--dora-rate-color) 40%,white);
 }
 .dora-theme [data-dora-rate-color] .dora-rate-unit { color:inherit; }

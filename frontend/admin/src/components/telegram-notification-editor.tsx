@@ -10,7 +10,7 @@ import {
     telegramPresets,
     telegramVariables,
     updateTelegram,
-    useFormattedSpeedVariables,
+    formatSpeedVariables,
     validateTelegram,
 } from "@/lib/telegram-notification"
 import type { ModelAlertRule } from "@/types"
@@ -227,7 +227,7 @@ export function TelegramNotificationEditor({
                                     variant="outline"
                                     size="sm"
                                     onClick={() =>
-                                        patch("text", useFormattedSpeedVariables(draft.text))
+                                        patch("text", formatSpeedVariables(draft.text))
                                     }
                                 >
                                     改用 Mbps 网速

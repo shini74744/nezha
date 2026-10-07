@@ -86,6 +86,9 @@ func InitFrontendTemplates() error {
 
 // InitDBFromPath 从给出的文件路径中加载数据库
 func InitDBFromPath(path string) error {
+	if err := prepareSQLiteFiles(path); err != nil {
+		return err
+	}
 	var err error
 	DB, err = gorm.Open(openSQLiteDialector(path), &gorm.Config{
 		CreateBatchSize: 200,

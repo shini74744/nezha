@@ -10,7 +10,7 @@ type ActiveIndicator = {
 
 export function useActiveIndicator<T>(items: T[], activeItem: T) {
 	const containerRef = useRef<HTMLDivElement>(null);
-	const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+	const itemRefs = useRef<(HTMLElement | null)[]>([]);
 	const hasMeasuredRef = useRef(false);
 	const shouldAnimateNextRef = useRef(false);
 	const [indicator, setIndicator] = useState<ActiveIndicator | null>(null);
@@ -20,7 +20,7 @@ export function useActiveIndicator<T>(items: T[], activeItem: T) {
 	}, []);
 
 	const setItemRef = useCallback(
-		(index: number) => (node: HTMLDivElement | null) => {
+		(index: number) => (node: HTMLElement | null) => {
 			itemRefs.current[index] = node;
 		},
 		[],

@@ -10,6 +10,7 @@ export default function SnapshotTimeline({
 }) {
 	const viewport = useRef<HTMLElement>(null);
 	const [edges, setEdges] = useState({ left: false, right: false });
+// biome-ignore lint/correctness/useExhaustiveDependencies: Snapshot children can change the scroll edges without resizing the viewport.
 	useEffect(() => {
 		const el = viewport.current;
 		if (!el) return;

@@ -50,6 +50,7 @@ func (statement *sqliteAttributionQueryProbeStmt) Query([]driver.Value) (driver.
 func TestSQLiteAttributionDirectQueryClosesOwnedStatementWhenPreStepRejects(t *testing.T) {
 	// Given
 	resetSQLiteAttributionForTest()
+	t.Cleanup(resetSQLiteAttributionForTest)
 	rawConnection, err := sqliteAttributionDriver{}.Open(sqliteAttributionTestDatabasePath(t))
 	if err != nil {
 		t.Fatal(err)
@@ -90,6 +91,7 @@ func TestSQLiteAttributionDirectQueryClosesOwnedStatementWhenPreStepRejects(t *t
 
 func TestSQLiteAttributionDirectQueryRejectsUnboundWriteThroughPublicConnection(t *testing.T) {
 	resetSQLiteAttributionForTest()
+	t.Cleanup(resetSQLiteAttributionForTest)
 	probe := &sqliteAttributionQueryProbeStmt{}
 	var connection *sqliteAttributionConnection
 	connection = &sqliteAttributionConnection{

@@ -52,7 +52,7 @@ test("independent settings save, native branding, disable cleanup and layout",as
 });
 test("old code static import preserves all provided parameters and archives source",async({page})=>{
  const {updates}=await setup(page);const old:any={};
- for(const [key,f]of Object.entries(provided.features) as any){if(key==="utilities")continue;const {enabled,...rest}=f;old[key]=rest}
+ for(const [key,f]of Object.entries(provided.features) as any){if(key==="utilities")continue;const {enabled:_enabled,...rest}=f;old[key]=rest}
  old.externalScripts=["https://cdn.jsdelivr.net/gh/shini74744/xjs@main/26.4.18htping.js","https://cdn.jsdelivr.net/gh/shini74744/xjs@main/26.4.18shijianhuansuan.js"];
  const source="<script>window.NZ_DASHBOARD_CONFIG="+JSON.stringify(old)+";</script>";
  await page.getByText("读取以前的仪表板自定义代码",{exact:true}).click();await page.getByLabel("原仪表板自定义代码").fill(source);
@@ -86,7 +86,7 @@ for(const width of [390,1366])test("dashboard sections collapse independently an
  for(const d of manifest){
   const section=page.locator("section").filter({has:page.getByRole("button",{name:d.title,exact:true})}).last();
   await section.getByText("点击展开设置；右侧开关独立控制此功能。",{exact:true}).click();
-  for(const [key,label]of Object.entries(d.labels))await expect(section.getByLabel(label as string,{exact:true})).toBeVisible();
+  for(const label of Object.values(d.labels))await expect(section.getByLabel(label as string,{exact:true})).toBeVisible();
   await page.getByRole("button",{name:d.title,exact:true}).click();
  }
  const font=page.getByRole("button",{name:"字体",exact:true});await font.focus();await page.keyboard.press("Enter");

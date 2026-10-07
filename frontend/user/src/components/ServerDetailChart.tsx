@@ -159,13 +159,12 @@ export function PeriodSelector({
 					const isLocked = isLockedByTsdb || isLockedByLogin;
 
 					const periodItem = (
-						<div
+						<button
+							type="button"
 							ref={setItemRef(index)}
-							role="button"
 							aria-disabled={isLocked}
 							aria-pressed={selectedPeriod === period.value}
 							tabIndex={isLocked ? -1 : 0}
-							onKeyDown={e => { if (!isLocked && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); enableIndicatorAnimation(); onPeriodChange(period.value); } }}
 							onClick={() => {
 								if (!isLocked) {
 									if (selectedPeriod !== period.value) {
@@ -182,13 +181,13 @@ export function PeriodSelector({
 								isLocked && "cursor-not-allowed opacity-40 grayscale",
 							)}
 						>
-							<div className="relative z-20 flex items-center gap-1.5">
+							<span className="relative z-20 flex items-center gap-1.5">
 								{period.value === "realtime" && (
 									<span className={cn("inline-flex rounded-full h-1.5 w-1.5", offline ? "bg-red-500" : "bg-emerald-500 dark:bg-emerald-400")}></span>
 								)}
 								{period.label}
-							</div>
-						</div>
+							</span>
+						</button>
 					);
 
 					if (isLockedByTsdb || isLockedByLogin) {

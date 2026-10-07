@@ -134,7 +134,21 @@ for (const width of [360, 1366])
                 await expect
                     .poll(async () => {
                         const box = await dialog.boundingBox()
-                        return !!box && box.x >= 15 && box.x + box.width <= width - 15
+                        // During scroll locking clientWidth can include the stable gutter.
+                        // Measure the same fixed-position containing block as the dialog.
+                        const fixedWidth = await page.evaluate(() => {
+                            const ruler = document.createElement("div")
+                            Object.assign(ruler.style, { position: "fixed", inset: "0", visibility: "hidden", pointerEvents: "none" })
+                            document.body.append(ruler)
+                            const measuredWidth = ruler.getBoundingClientRect().width
+                            ruler.remove()
+                            return measuredWidth
+                        })
+                        const gutterOffset = (width - fixedWidth) / 2
+                        return !!box && box.x >= 15 - gutterOffset &&
+                            box.x + box.width <= width - 15 - gutterOffset &&
+                            box.x >= 0 && box.x + box.width <= fixedWidth &&
+                            Math.abs(box.x + box.width / 2 - fixedWidth / 2) <= 1
                     })
                     .toBe(true)
                 expect(await dialog.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true)

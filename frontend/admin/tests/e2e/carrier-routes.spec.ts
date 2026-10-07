@@ -1,7 +1,7 @@
 import {test,expect} from "@playwright/test";
 import {createServer} from "../../../user/src/test/fixtures";
 const origin=process.env.E2E_BASE_URL||"https://127.0.0.1:18476";
-test.use({ignoreHTTPSErrors:true});
+test.use({baseURL:origin,ignoreHTTPSErrors:true});
 for(const width of [1366,390])for(const inline of ["0","1"])for(const theme of ["light","dark"])for(const custom of [false,true])
 test("carrier colors "+width+" inline="+inline+" "+theme+" custom="+custom,async({page,baseURL})=>{
  expect(baseURL).toBe(origin);
@@ -53,7 +53,17 @@ test("carrier colors "+width+" inline="+inline+" "+theme+" custom="+custom,async
    const r=await badge.boundingBox();expect(r!.x).toBeGreaterThanOrEqual(0);expect(r!.x+r!.width).toBeLessThanOrEqual(width);
   }
  }
- if(custom){await expect(page.locator("[data-provider-logo]")).toHaveCount(2);for(const img of await page.locator("[data-provider-logo]").all()){await expect(img).toBeVisible();await expect(img).toHaveCSS("object-fit","scale-down");const rect=await img.boundingBox();expect(rect!.width).toBeLessThanOrEqual(width<1024?120:80);const box=await img.locator("..").boundingBox();const heading=await img.locator("..").locator("..").boundingBox();expect(Math.abs(rect!.x+rect!.width/2-box!.x-box!.width/2)).toBeLessThan(1);expect(rect!.height).toBeLessThanOrEqual(width<1024?32:28);if(width>=1024)expect(Math.abs(rect!.x+rect!.width/2-heading!.x-76)).toBeLessThan(1);await expect.poll(()=>img.evaluate((el:HTMLImageElement)=>el.complete&&el.naturalWidth>0)).toBe(true)}}
+ if(custom){await expect(page.locator("[data-provider-logo]")).toHaveCount(2);for(const img of await page.locator("[data-provider-logo]").all()){await expect(img).toBeVisible();await expect(img).toHaveCSS("object-fit","scale-down");const rect=await img.boundingBox();expect(rect!.width).toBeLessThanOrEqual(width<1024?120:80);const box=await img.locator("..").boundingBox();const heading=await img.locator("..").locator("..").boundingBox();expect(Math.abs(rect!.x+rect!.width/2-box!.x-box!.width/2)).toBeLessThan(1);expect(rect!.height).toBeLessThanOrEqual(width<1024?32:28);if(width>=1024){
+  if(await img.locator("..").getAttribute("data-desktop-logo-placement")==="left"){
+   // Offline cards use the existing gap below status/flag when there is no room above the name.
+   const card=await img.locator("xpath=ancestor::*[@data-server-card]").boundingBox();
+   const name=await img.locator("..").locator("..").locator("[data-server-name]").boundingBox();
+   expect(rect!.x).toBeGreaterThanOrEqual(card!.x);
+   expect(rect!.x+rect!.width).toBeLessThanOrEqual(name!.x);
+   expect(rect!.y).toBeGreaterThanOrEqual(name!.y+name!.height);
+   expect(rect!.y+rect!.height).toBeLessThanOrEqual(card!.y+card!.height);
+  }else expect(Math.abs(rect!.x+rect!.width/2-heading!.x-76)).toBeLessThan(1);
+ }await expect.poll(()=>img.evaluate((el:HTMLImageElement)=>el.complete&&el.naturalWidth>0)).toBe(true)}}
  else await expect(page.locator("[data-provider-logo]")).toHaveCount(0);
  expect(await page.locator("[data-carrier]").evaluateAll(els=>els.map(e=>e.getAttribute("data-carrier")))).toEqual([...keys,...keys]);
  await expect(page.getByText("old blue label")).toHaveCount(0);

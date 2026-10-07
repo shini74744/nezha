@@ -1,5 +1,6 @@
 import {Suspense,useEffect,useState} from "react";
 import {act,fireEvent,render,screen,waitFor} from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {describe,it,expect,vi} from "vitest";
 import DetailPanel from "@/components/DetailPanel";
 import TabSwitch from "@/components/TabSwitch";
@@ -40,7 +41,8 @@ describe("responsive detail panes",()=>{
   }
   const view=render(<Harness server={7}/>);
   const button=screen.getByRole("button",{name:"tabSwitch.BGP"});
-  fireEvent.keyDown(button,{key:"Enter"});
+  button.focus();
+  await userEvent.setup().keyboard("{Enter}");
   await waitFor(()=>expect(button).toHaveAttribute("aria-pressed","true"));
   await waitFor(()=>expect(screen.getByTestId("pane")).toHaveTextContent("7:BGP"));
   view.rerender(<Harness server={8}/>);

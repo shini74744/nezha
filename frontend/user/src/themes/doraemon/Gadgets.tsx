@@ -50,7 +50,7 @@ export const CardGadget=memo(function CardGadget({serverId}:{serverId:number}){
  const enabled=useDoraFeature("cardGadgets");
  if(!enabled)return null;
  const item=gadgetForServer(serverId);
- return <span className="dora-card-gadget" data-gadget={item.id} title={item.name+"："+item.description} aria-label={item.name+"："+item.description}><GadgetIcon id={item.id}/>{item.name}</span>;
+ return <span role="img" className="dora-card-gadget" data-gadget={item.id} title={item.name+"："+item.description} aria-label={item.name+"："+item.description}><GadgetIcon id={item.id}/>{item.name}</span>;
 });
 export function PocketGadgets(){
  const enabled=useDoraFeature("gadgetDecorations");

@@ -52,6 +52,7 @@ export function TrafficRow({serverId,stat,interval}:{serverId:number;stat:Traffi
      limited?<span style={{color,fontWeight:500}}>{percent.toFixed(2)}%</span>:<span>{quotaLabel}</span>}
    </div>
   </div>
+  {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: Both progressbar and img support a label; the role depends on whether a quota exists. */}
   <div className={"nz-traffic-track"+(limited?"":" nz-traffic-unbounded")} role={limited?"progressbar":"img"} aria-label={limited?stat.name:quotaLabel+"，已用 "+current.value+" "+current.unit}
    aria-valuenow={limited?Math.min(100,Math.max(0,percent)):undefined} aria-valuemin={limited?0:undefined} aria-valuemax={limited?100:undefined}>
    {limited&&<div className="nz-traffic-fill" style={{width:Math.min(100,Math.max(0,percent))+"%",backgroundColor:color}}/>}

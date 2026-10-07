@@ -1,7 +1,9 @@
 import {test,expect} from "@playwright/test";
 import {createServer} from "../../../user/src/test/fixtures";
-const origin=process.env.E2E_BASE_URL!;test.use({ignoreHTTPSErrors:true});
-for(const width of [390,1366])for(const inline of ["0","1"])test("owned logos "+width+" inline="+inline,async({page})=>{
+test.use({ignoreHTTPSErrors:true});
+for(const width of [390,1366])for(const inline of ["0","1"])test("owned logos "+width+" inline="+inline,async({page,baseURL})=>{
+ expect(baseURL).toBeTruthy();
+ const origin=new URL(baseURL!).origin;
  const external:string[]=[];page.on("request",r=>{if(r.resourceType()==="image"&&r.url().startsWith("http")&&new URL(r.url()).origin!==origin)external.push(r.url())});
  const small=await page.evaluate(()=>{const c=document.createElement("canvas");c.width=12;c.height=16;const x=c.getContext("2d")!;x.fillStyle="green";x.fillRect(0,0,12,16);return c.toDataURL().split(",")[1]});
  const png="/api/v1/logo/assets/"+"a".repeat(64)+".png",svg="/api/v1/logo/assets/"+"b".repeat(64)+".svg";

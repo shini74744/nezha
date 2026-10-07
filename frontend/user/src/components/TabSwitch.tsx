@@ -46,18 +46,14 @@ export default function TabSwitch({
 					/>
 				)}
 				{tabs.map((tab: string, index: number) => (
-					<div
+					<button
+						type="button"
 						key={tab}
 						ref={setItemRef(index)}
-						role="button"
-						tabIndex={0}
 						aria-pressed={currentTab === tab}
 						onPointerEnter={() => onTabIntent?.(tab)}
 						onPointerDown={() => onTabIntent?.(tab)}
 						onFocus={() => onTabIntent?.(tab)}
-						onKeyDown={(event) => {
-							if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onTabIntent?.(tab); if (currentTab !== tab) enableIndicatorAnimation(); setCurrentTab(tab); }
-						}}
 						onClick={() => {
 							onTabIntent?.(tab);
 							if (currentTab !== tab) {
@@ -72,10 +68,10 @@ export default function TabSwitch({
 								: "text-stone-400 dark:text-stone-500",
 						)}
 					>
-						<div className="relative z-20 flex items-center gap-1">
-							<p className="whitespace-nowrap">{t(`tabSwitch.${tab}`, {defaultValue:tab==="Streaming"?"流媒体":tab})}</p>
-						</div>
-					</div>
+						<span className="relative z-20 flex items-center gap-1">
+							<span className="whitespace-nowrap">{t(`tabSwitch.${tab}`, {defaultValue:tab==="Streaming"?"流媒体":tab})}</span>
+						</span>
+					</button>
 				))}
 			</div>
 		</div>

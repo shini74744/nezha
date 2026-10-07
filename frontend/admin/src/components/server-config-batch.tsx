@@ -34,7 +34,7 @@ export const ServerConfigCardBatch: React.FC<ServerConfigCardBatchProps> = ({ si
     const [currentVal, setCurrentVal] = useState<string>("")
 
     const onSubmit = async () => {
-        let resp: ModelServerTaskResponse = {}
+        let resp: ModelServerTaskResponse
         try {
             resp = await setServerConfig({ config: JSON.stringify(data), servers: sid })
         } catch (e) {

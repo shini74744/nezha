@@ -52,7 +52,8 @@ func verifyMCPFilesystemPathGuards(ctx context.Context, assertions *AssertionSet
 			_, err := filesystem.write(ctx, mcpFilesystemWrite{relative: "../outside-sentinel", content: "changed", encoding: "utf8", mode: "0600"})
 			return err
 		}},
-		{fixture.PathRejectionVolume, func() error { _, err := filesystem.list(ctx, `C:\outside.txt`, false); return err }},
+		{fixture.PathRejectionAbsolute, func() error { _, err := filesystem.list(ctx, `C:\outside.txt`, false); return err }},
+		{fixture.PathRejectionVolume, func() error { _, err := filesystem.list(ctx, `C:outside.txt`, false); return err }},
 		{fixture.PathRejectionSeparator, func() error { _, err := filesystem.read(ctx, `inside\outside.txt`, 0, 1, "utf8"); return err }},
 		{fixture.PathRejectionDestructiveRoot, func() error { _, err := filesystem.delete(ctx, ".", true); return err }},
 		{fixture.PathRejectionSymlinkParent, func() error {

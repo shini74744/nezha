@@ -9,7 +9,7 @@ import { useTheme } from "@/hooks/use-theme";
 
 function config(mode = "dark") {
  const c=defaults(); c.enabled=true;
- Object.values(c.features).forEach(f=>f.enabled=false);
+ Object.values(c.features).forEach(f=>{f.enabled=false;});
  c.features.dark={enabled:true,mode};return c;
 }
 function Probe(){
@@ -41,13 +41,13 @@ describe("default appearance display mode",()=>{
   }) as unknown as MediaQueryList);
   const v=render(tree(config("system")));
   expect(document.documentElement).toHaveClass("light");
-  act(()=>{dark=true;listeners.forEach(fn=>fn());});
+  act(()=>{dark=true;listeners.forEach(fn=>{fn();});});
   expect(document.documentElement).toHaveClass("dark");
-  act(()=>{dark=false;listeners.forEach(fn=>fn());});
+  act(()=>{dark=false;listeners.forEach(fn=>{fn();});});
   expect(document.documentElement).toHaveClass("light");
   fireEvent.click(screen.getByText("manual dark"));
   expect(listeners.size).toBe(0);
-  act(()=>{dark=false;listeners.forEach(fn=>fn());});
+  act(()=>{dark=false;listeners.forEach(fn=>{fn();});});
   expect(document.documentElement).toHaveClass("dark");
   v.unmount();expect(listeners.size).toBe(0);
  });

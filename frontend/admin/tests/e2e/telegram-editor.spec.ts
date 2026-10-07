@@ -259,7 +259,7 @@ for (const width of [1366, 390]) {
         const modules = dialog.getByLabel("事件通知模块", { exact: true })
         await modules.getByLabel("按事件分别设置通知内容").check()
         await expect(modules.getByLabel("事件类型", { exact: true }).locator("option")).toHaveCount(
-            8,
+            9,
         )
         await expect(modules.getByLabel("事件类型", { exact: true })).toHaveValue("server")
         await expect(

@@ -54,13 +54,14 @@ export function useBrowserConnectivity(serverId: number) {
 			setState(latest.current);
 		}, 80);
 	};
+// biome-ignore lint/correctness/useExhaustiveDependencies: Abort requests and clear ephemeral results when the viewed node changes.
 	useEffect(() => {
 		latest.current = undefined;
 		setState(undefined);
 		return () => {
 			const session = current.current;
 			current.current = undefined;
-			session?.active.forEach((controller) => controller.abort());
+			session?.active.forEach((controller) => { controller.abort(); });
 			clearUpdate();
 		};
 	}, [serverId, clearUpdate]);
@@ -156,7 +157,7 @@ export function useBrowserConnectivity(serverId: number) {
 		const session = current.current;
 		if (!session) return;
 		current.current = undefined;
-		session.active.forEach((controller) => controller.abort());
+		session.active.forEach((controller) => { controller.abort(); });
 		clearUpdate();
 		const run: LocalRun = {
 			...session.run,

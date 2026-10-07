@@ -4,7 +4,6 @@ package workflowpolicy_test
 
 import (
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -16,7 +15,7 @@ const agentWorkflowStressTestName = "TestStressPRFullEightAgentExactlyOnce"
 
 func TestPolicy_AgentStressWorkflowRunsPinnedCrossRepositoryTest(t *testing.T) {
 	// Given
-	path := filepath.Join("..", "..", "..", "..", "..", "agent", ".github", "workflows", "test.yml")
+	path := agentWorkflowPath(t)
 	data, err := os.ReadFile(path)
 	require.NoError(t, err)
 	var workflow qualityWorkflow

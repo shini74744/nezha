@@ -8,7 +8,7 @@ for(const width of [360,390,430,1366])for(const allHidden of [false,true])test("
  const servers=[createServer({id:1,name:"公开机器",last_active:new Date(now).toISOString(),hide_for_display:allHidden}),createServer({id:2,name:"普通隐藏机器",last_active:new Date(now).toISOString(),hide_for_display:true,public_note:note})];
  await page.routeWebSocket("**/api/v1/ws/server",ws=>{
   ws.send(JSON.stringify({now,servers}));
-  setTimeout(()=>ws.send(JSON.stringify({now:now+2000,servers:servers.map(({public_note,...s})=>({...s,name:s.id===1?"公开机器更新":s.name}))})),200);
+  setTimeout(()=>ws.send(JSON.stringify({now:now+2000,servers:servers.map(({public_note:_publicNote,...s})=>({...s,name:s.id===1?"公开机器更新":s.name}))})),200);
  });
  await page.route("**/api/v1/**",r=>{
   const path=new URL(r.request().url()).pathname;let data:any=[];
@@ -33,6 +33,15 @@ for(const width of [360,390,430,1366])for(const allHidden of [false,true])test("
  await expect(hidden.locator("[data-provider-logo]")).toBeVisible();
  await page.screenshot({path:"test-results/display-hidden-"+width+"-"+allHidden+".png"});
  for(let i=0;i<5;i++)await toggle.click();await expect(names).toHaveCount(allHidden?0:1);
+ if(width===1366){
+  await toggle.focus();
+  for(let i=0;i<5;i++)await page.keyboard.press("Enter");
+  await expect(names).toHaveCount(2);
+  await page.keyboard.down("Enter");
+  for(let i=0;i<8;i++)await page.keyboard.down("Enter");
+  await page.keyboard.up("Enter");
+  await expect(names).toHaveCount(2);
+ }
  await page.reload();await expect(page.getByRole("button",{name:"页面插画",exact:true})).toHaveAttribute("aria-pressed","false");
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
@@ -50,13 +59,18 @@ for(const width of [360,390,430,1366])test("ordinary hidden checkbox saves indep
  });
  await page.goto("/dashboard");
  const edit=page.getByRole("row").filter({has:page.getByText("设置测试机器",{exact:true})}).getByRole("button",{name:"编辑服务器",exact:true});
- await edit.click();let dialog=page.getByRole("dialog"),box=dialog.getByRole("checkbox",{name:"普通隐藏",exact:true});
+ await edit.click();const dialog=page.getByRole("dialog"),box=dialog.getByRole("checkbox",{name:"普通隐藏",exact:true});
  const row=dialog.locator("[data-server-visibility-options]");
  await row.scrollIntoViewIfNeeded();
  const checks=row.getByRole("checkbox");await expect(checks).toHaveCount(3);
  const bounds=await checks.evaluateAll(els=>els.map(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right}}));
- expect(Math.max(...bounds.map(b=>b.y))-Math.min(...bounds.map(b=>b.y))).toBeLessThan(1);
- expect(bounds[0].x).toBeLessThan(bounds[1].x);expect(bounds[1].x).toBeLessThan(bounds[2].x);
+ // The visibility row intentionally wraps on the narrowest phones. Preserve
+ // reading order and containment instead of requiring desktop-only geometry.
+ if(width>=390)expect(Math.max(...bounds.map(b=>b.y))-Math.min(...bounds.map(b=>b.y))).toBeLessThan(1);
+ for(let i=1;i<bounds.length;i++){
+  expect(bounds[i].y).toBeGreaterThanOrEqual(bounds[i-1].y-1);
+  if(Math.abs(bounds[i].y-bounds[i-1].y)<1)expect(bounds[i].x).toBeGreaterThan(bounds[i-1].x);
+ }
  expect(await row.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
  expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
  await page.screenshot({path:"test-results/visibility-row-"+width+".png"});

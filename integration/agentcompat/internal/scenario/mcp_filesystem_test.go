@@ -109,10 +109,21 @@ func TestMCPFilesystemClient_RejectsUnsafeFixturePathsBeforeDispatch(t *testing.
 			},
 		},
 		{
+			name:   "drive absolute",
+			reason: fixture.PathRejectionAbsolute,
+			configure: func(*testing.T, fixture.AgentRoot) (string, string) {
+				return `C:\outside.txt`, ""
+			},
+			invoke: func(ctx context.Context, filesystem mcpFilesystemClient, candidate string) error {
+				_, err := filesystem.list(ctx, candidate, false)
+				return err
+			},
+		},
+		{
 			name:   "volume",
 			reason: fixture.PathRejectionVolume,
 			configure: func(*testing.T, fixture.AgentRoot) (string, string) {
-				return `C:\outside.txt`, ""
+				return `C:outside.txt`, ""
 			},
 			invoke: func(ctx context.Context, filesystem mcpFilesystemClient, candidate string) error {
 				_, err := filesystem.list(ctx, candidate, false)

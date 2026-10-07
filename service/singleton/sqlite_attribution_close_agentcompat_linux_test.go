@@ -15,6 +15,7 @@ import (
 func TestSQLiteAttributionConnectionCloseFinalizesActiveWriteTransaction(t *testing.T) {
 	// Given
 	resetSQLiteAttributionForTest()
+	t.Cleanup(resetSQLiteAttributionForTest)
 	databasePath := sqliteAttributionTestDatabasePath(t)
 	rawConnection, err := sqliteAttributionDriver{}.Open(databasePath)
 	if err != nil {
@@ -86,6 +87,7 @@ func TestSQLiteAttributionConnectionCloseFinalizesActiveWriteTransaction(t *test
 func TestSQLiteAttributionConnectionCloseWakesSelectedCommit(t *testing.T) {
 	// Given
 	resetSQLiteAttributionForTest()
+	t.Cleanup(resetSQLiteAttributionForTest)
 	databasePath := sqliteAttributionTestDatabasePath(t)
 	rawConnection, err := sqliteAttributionDriver{}.Open(databasePath)
 	if err != nil {

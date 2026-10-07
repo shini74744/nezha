@@ -12,7 +12,7 @@ import {Input} from "@/components/ui/input"
 import {Switch} from "@/components/ui/switch"
 import {Textarea} from "@/components/ui/textarea"
 import {useAuth} from "@/hooks/useAuth"
-import {useEffect,useRef,useState} from "react"
+import {useCallback,useEffect,useRef,useState} from "react"
 import {appearanceEndpoint,appearancePayload,appearanceThemeNames,normalizeThemeAppearance,doraDefinitions,validateThemeConfig,type AppearanceTheme} from "@/lib/theme-appearance"
 import {Navigate} from "react-router-dom"
 import {toast} from "sonner"
@@ -57,14 +57,20 @@ function ThemeAppearanceEditor({theme,onDirtyChange,onBusyChange}:{theme:Appeara
  const [error,setError]=useState("")
  const [reading,setReading]=useState(true)
  const requestId=useRef(0)
- const adopt=(value:State)=>{setSaved(value);setConfig(normalizeThemeAppearance(theme,value.config));setMigrate(false);setError("")}
- const load=async()=>{
+ const adopt=useCallback((value:State)=>{setSaved(value);setConfig(normalizeThemeAppearance(theme,value.config));setMigrate(false);setError("")},[theme])
+ const load=useCallback(async()=>{
   const id=++requestId.current;setReading(true);
   try{const value=await fetcher<State>(FetcherMethod.GET,endpoint);if(id===requestId.current)adopt(value)}
   catch(e){if(id===requestId.current)setError(String(e))}
   finally{if(id===requestId.current)setReading(false)}
- }
- useEffect(()=>{if(profile?.role===0)void load();return()=>{requestId.current++}},[profile?.role,theme])
+ },[endpoint,adopt])
+ useEffect(()=>{
+  if(profile?.role===0)void load();
+  return()=>{
+   // eslint-disable-next-line react-hooks/exhaustive-deps -- Invalidate the latest request generation; this ref is not a DOM node.
+   requestId.current++
+  }
+ },[profile?.role,load])
  const dirty=!!saved&&(migrate||JSON.stringify(appearancePayload(theme,config))!==JSON.stringify(appearancePayload(theme,normalizeThemeAppearance(theme,saved.config))))
  const validation=validateThemeConfig(theme,config)
  const activeDefinitions=isDefault?definitions:doraDefinitions

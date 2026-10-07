@@ -2,7 +2,7 @@
 // Migrated source for the built-in snow feature; resources are owned by FeatureScope.
 export function snow(scope, config) {
 const window = scope.window; const document = scope.document;
-(function () {
+(() => {
   const _0x49d801 = scope.createElement("style");
   _0x49d801.textContent = "\n      \n\n      .snowflake {\n          position: fixed;\n          top: -10px;\n          color: white;\n          font-size: 10px;\n          animation: fall linear infinite;\n          opacity: 0.8;\n          z-index: 9988;\n          pointer-events: none;\n      }\n\n      @keyframes fall {\n          0% {\n              transform: translateX(0px) translateY(0px);\n              opacity: 0.8;\n          }\n          50% {\n              transform: translateX(20px) translateY(50vh);\n          }\n          100% {\n              transform: translateX(-20px) translateY(100vh);\n              opacity: 0;\n          }\n      }\n  ";
   scope.append(document.head, _0x49d801);

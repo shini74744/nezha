@@ -80,6 +80,7 @@ function CommandLibrary({ open, connected, onClose, onExecute, ownerId }: Props 
         event.preventDefault()
         if (!editing || pending.current) return
         const cleanName = name.trim()
+        // eslint-disable-next-line no-control-regex -- Names must not contain terminal control characters.
         const validation = !cleanName || [...cleanName].length > 80 || /[\u0000-\u001f\u007f-\u009f]/u.test(cleanName)
             ? "名称需为 1–80 个字符" : terminalCommandError(command)
         if (validation) { setMessage(validation); return }

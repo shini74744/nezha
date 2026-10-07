@@ -15,6 +15,7 @@ import (
 func sqliteAttributionReleasedCommitFixture(t *testing.T, value string) (*sqliteAttributionConnection, *sqliteAttributionTx, SQLiteHoldSession, string, SQLiteTransaction, int) {
 	t.Helper()
 	resetSQLiteAttributionForTest()
+	t.Cleanup(resetSQLiteAttributionForTest)
 	databasePath := sqliteAttributionTestDatabasePath(t)
 	rawConnection, err := sqliteAttributionDriver{}.Open(databasePath)
 	if err != nil {

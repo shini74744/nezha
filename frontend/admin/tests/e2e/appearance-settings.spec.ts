@@ -51,7 +51,7 @@ test("30 native sections, second-row tab, independent save and untouched custom 
     page,
 }) => {
     const { updates } = await setup(page)
-    await expect(page.locator("h2")).toHaveCount(24)
+    await expect(page.locator("h2")).toHaveCount(26)
     const appearanceTab = page.getByRole("tab", { name: "美化设置", exact: true }),
         systemTab = page.getByRole("tab", { name: "系统设置", exact: true })
     expect((await appearanceTab.boundingBox())!.y).toBeGreaterThan(
@@ -75,8 +75,8 @@ test("unknown custom source is never cleared by migration", async ({ page }) => 
 })
 test("other theme retains editable settings and shows default-only warning", async ({ page }) => {
     await setup(page, "", "other-theme")
-    await expect(page.getByText("当前不是默认主题，保存配置不会影响当前前台。")).toBeVisible()
-    await expect(page.locator("h2")).toHaveCount(24)
+    await expect(page.getByText("当前未启用默认主题，设置将在切换到该主题后生效。")).toBeVisible()
+    await expect(page.locator("h2")).toHaveCount(26)
 })
 test("save conflict retains unsaved input", async ({ page }) => {
     const state = await setup(page)
@@ -370,7 +370,20 @@ for(const width of [390,1366])test("visitor IP complete editor saves all setting
  await page.getByRole("button",{name:"保存美化设置",exact:true}).click();await expect.poll(()=>updates.length).toBe(1);
  expect(updates[0].config.features.visitorIP).toMatchObject({queryTimeout:900,fallbackTimeout:800,checkTimeout:700,switchTimeout:600,showRegion:false,showASN:false,showOrganization:false,showDownlink:false,fallbackUrl:"https://fallback.test/json"});
  expect(updates[0].config.features.visitorIP.ipApiUrls).toEqual([...defaultUrls.slice(1),"https://custom.test/json"]);expect(updates[0].config.features.visitorIP.checkNodes.map((n:any)=>n.name)).toEqual(["Google","Custom"]);
- await page.getByRole("button",{name:"重新读取",exact:true}).click();await expect(page.getByLabel("检测节点名称 2",{exact:true})).toHaveValue("Custom");
+ // Wait for the response to be adopted and the mobile toast animation to leave
+ // the sticky action row before the next physical click; request receipt alone is not completion.
+ await expect(page.getByRole("button",{name:"保存美化设置",exact:true})).toBeDisabled();
+ const savedToast=page.getByText("默认主题美化设置已保存，仅影响该主题",{exact:true});
+ await expect(savedToast).toBeVisible();
+ await expect(savedToast).toBeHidden({timeout:10000});
+ await Promise.all([
+  page.waitForResponse(response=>response.url().endsWith("/api/v1/setting/appearance")&&response.request().method()==="GET"),
+  page.getByRole("button",{name:"重新读取",exact:true}).click(),
+ ]);
+ await expect(page.getByText("正在读取默认主题设置…",{exact:true})).toHaveCount(0);
+ const visitorSection=page.getByRole("button",{name:"访客 IP 与网络检测",exact:true});
+ if(await visitorSection.getAttribute("aria-expanded")==="false")await visitorSection.click();
+ await expect(page.getByLabel("检测节点名称 2",{exact:true})).toHaveValue("Custom");
  await page.getByLabel("检测节点地址 2",{exact:true}).fill("javascript:alert(1)");await expect(page.getByRole("button",{name:"保存美化设置",exact:true})).toBeDisabled();
  await page.getByLabel("检测节点地址 2",{exact:true}).fill("https://custom.test/ping");await page.getByLabel("检测节点名称 2",{exact:true}).fill("Google");await expect(page.getByRole("button",{name:"保存美化设置",exact:true})).toBeDisabled();
  await page.getByLabel("检测节点名称 2",{exact:true}).fill("Custom");expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);

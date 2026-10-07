@@ -11,18 +11,22 @@
 .dora-theme [data-dora-rate-effect]:not([data-dora-rate-color]) { color:var(--dora-ink) !important; }
 .dora-theme [data-dora-rate-effect][data-dora-rate-color="up"] {
  color:#991b1b !important;
+ /* biome-ignore lint/suspicious/noDuplicateProperties: Preserve the preceding solid-color fallback for browsers without color-mix. */
  color:color-mix(in srgb,var(--dora-rate-color) 25%,#7f1d1d) !important;
 }
 .dora-theme [data-dora-rate-effect][data-dora-rate-color="down"] {
  color:#1e3a8a !important;
+ /* biome-ignore lint/suspicious/noDuplicateProperties: Preserve the preceding solid-color fallback for browsers without color-mix. */
  color:color-mix(in srgb,var(--dora-rate-color) 25%,#1e3a8a) !important;
 }
 .dark .dora-theme [data-dora-rate-effect][data-dora-rate-color="up"] {
  color:#fca5a5 !important;
+ /* biome-ignore lint/suspicious/noDuplicateProperties: Preserve the preceding solid-color fallback for browsers without color-mix. */
  color:color-mix(in srgb,var(--dora-rate-color) 40%,white) !important;
 }
 .dark .dora-theme [data-dora-rate-effect][data-dora-rate-color="down"] {
  color:#a5b4fc !important;
+ /* biome-ignore lint/suspicious/noDuplicateProperties: Preserve the preceding solid-color fallback for browsers without color-mix. */
  color:color-mix(in srgb,var(--dora-rate-color) 40%,white) !important;
 }
 @keyframes dora-rate-border-glow {

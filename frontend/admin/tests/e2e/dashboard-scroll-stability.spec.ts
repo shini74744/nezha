@@ -36,8 +36,9 @@ async function setup(page: Page, theme = "light", beauty = true) {
         if (path === "/api/v1/server") data = Array.from({ length: 30 }, (_, i) => ({
             id: i + 1, name: "测试节点 " + i, uuid: "fixture-" + i,
             owner: { id: 1, username: "fixture" }, host: { version: "2.3.6" },
-            geoip: { ip: { ipv4_addr: "192.0.2." + (i + 1) } }, enable_ddns: false, hide_for_guest: false,
+            geoip: { ip: { ipv4_addr: "192.0.2." + (i + 1) } }, enable_ddns: false, hide_for_guest: false, public_note: "{}", note: "",
         }))
+        if (path.startsWith("/api/v1/server/config/")) data = JSON.stringify({report_delay:1,nic_allowlist:{},hard_drive_partition_allowlist:[]})
         if (path === "/api/v1/ddns") data = Array.from({ length: 12 }, (_, i) => ({ id: i + 1, name: "测试解析 " + i, provider: "cloudflare", domains: ["node" + i + ".example.com"], enable_ipv4: true, enable_ipv6: true, max_retries: 3, notification_group_id: 0 }))
         if (path === "/api/v1/ddns/providers") data = ["cloudflare", "he", "dummy", "webhook", "tencentcloud"]
         if (path === "/api/v1/server-expiry") data = { config: { enabled: false, notification_group_id: 0, days: [7, 3, 1, 0] }, servers: [] }

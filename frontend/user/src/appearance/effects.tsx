@@ -38,7 +38,7 @@ const modules: Record<
 	clock,
 	sakura,
 	stars,
-	live2d: (scope, f) => f.provider === "sakana" ? sakana(scope, f) : live2d(scope, f),
+	live2d: (scope, f) => f.provider === "sakana" ? sakana(scope, f) : live2d(scope, {cdnPath:f.cdnPath, tools:f.tools}),
 };
 
 function protection(scope: FeatureScope, f: Feature) {
@@ -122,6 +122,7 @@ export function NativeEffects({preview=false}:{preview?:boolean}={}) {
 			}
 		} else modeApplied.current = null;
 	}, [config.enabled, config.features.dark.enabled, mode, setTheme]);
+// biome-ignore lint/correctness/useExhaustiveDependencies: Restart the delayed sponsor placement after route navigation, even when configuration is unchanged.
 	useEffect(() => {
 		if (preview || !config.enabled || !config.features.sponsor.enabled) return;
 		const scope = new FeatureScope("sponsor");
