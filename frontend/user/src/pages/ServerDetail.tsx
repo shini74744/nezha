@@ -9,6 +9,7 @@ const ServerDetailChart = lazy(loadServerDetailChart);
 import ServerDetailOverview from "@/components/ServerDetailOverview";
 import TabSwitch from "@/components/TabSwitch";
 import DetailPanel from "@/components/DetailPanel";
+import { useStableDetailViewport } from "@/hooks/use-stable-detail-viewport";
 import { Separator } from "@/components/ui/separator";
 import { useWebSocketContext } from "@/hooks/use-websocket-context";
 import { formatNezhaInfo } from "@/lib/utils";
@@ -35,6 +36,12 @@ export default function ServerDetail() {
 	});
 	const tabs = useMemo(() => ["Detail", ...(!combinedNetwork ? ["Network"] : []), ...(!server?.connectivity_disabled ? ["Connectivity"] : []), ...(!server?.bgp_disabled ? ["BGP"] : []), ...(!server?.streaming_disabled ? ["Streaming"] : [])], [combinedNetwork, server?.connectivity_disabled, server?.bgp_disabled, server?.streaming_disabled]);
 	const currentTab = tabs.includes(selectedTab) ? selectedTab : "Detail";
+	const { viewportRef, preserveScroll } = useStableDetailViewport(server_id || "", currentTab);
+	const selectTab = (next: string) => {
+		if (next === currentTab) return;
+		preserveScroll();
+		setCurrentTab(next);
+	};
 	if (server && lastData && !formatNezhaInfo(lastData.now, server).online) {
 		return <Suspense fallback={<div className="mx-auto w-full max-w-5xl server-info"><ServerDetailOverview server_id={server_id!}/><SectionLoading/></div>}><OfflineServerDetail key={server.id} server={server} now={lastData.now} initialTab={currentTab} onTabIntent={warmTab} /></Suspense>;
 	}
@@ -52,7 +59,7 @@ export default function ServerDetail() {
 					<TabSwitch
 						tabs={tabs}
 						currentTab={currentTab}
-						setCurrentTab={setCurrentTab}
+						setCurrentTab={selectTab}
 						onTabIntent={warmTab}
 					/>
 				</div>
@@ -63,12 +70,14 @@ export default function ServerDetail() {
 				<ServerDetailSummary server_id={Number(server_id)} />
 			</section> */}
 
+			<div ref={viewportRef} data-detail-viewport className="detail-viewport flex flex-col gap-4 min-w-0">
 			{currentTab !== "Network" && <DetailPanel key={server_id + ":" + currentTab}>
 			{currentTab === tabs[0] && <Suspense fallback={<SectionLoading/>}><ServerDetailChart server_id={server_id} /></Suspense>}
 			{(currentTab === "BGP" || currentTab === "Streaming") && <Suspense fallback={<SectionLoading/>}><ServerNetworkInsight key={server_id+currentTab} serverId={Number(server_id)} kind={currentTab === "BGP" ? "bgp" : "streaming"}/></Suspense>}
 			{currentTab === "Connectivity" && <Suspense fallback={<SectionLoading/>}><ServerConnectivity key={server_id} serverId={Number(server_id)} countryCode={server?.country_code} /></Suspense>}
 			</DetailPanel>}
 			{(currentTab === "Network" || (currentTab === "Detail" && combinedNetwork)) && <DetailPanel key={server_id + ":network"}><Suspense fallback={<SectionLoading/>}><ServerNetworkSection server_id={Number(server_id)} standalone={currentTab === "Network"} /></Suspense></DetailPanel>}
+			</div>
 		</div>
 	);
 }

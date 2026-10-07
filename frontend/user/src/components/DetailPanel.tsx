@@ -11,5 +11,5 @@ export default function DetailPanel({ children }: { children: ReactNode }) {
   return () => { cancelAnimationFrame(frame); clearTimeout(task); };
  }, []);
  if (!ready) return <div data-detail-section-loading role="status" className="rounded-xl border bg-card/70 p-5 text-sm text-muted-foreground">正在加载…</div>;
- return children;
+ return <div className="detail-pane-enter min-w-0 w-full">{children}</div>;
 }

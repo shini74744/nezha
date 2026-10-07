@@ -2,7 +2,7 @@ import {expect,test,type Page} from "@playwright/test"
 import {createServer} from "../../../user/src/test/fixtures"
 import manifest from "../../../user/src/appearance/manifest.json" with {type:"json"}
 test.use({ignoreHTTPSErrors:true})
-async function setup(page:Page,theme:string,effects:boolean,combined=false,initialPath="/server/7",networkChunkDelay=0,rateBits?:boolean,secondaryDelay=0) {
+async function setup(page:Page,theme:string,effects:boolean,combined=false,initialPath="/server/7",networkChunkDelay=0,rateBits?:boolean,secondaryDelay=0,connectivityDelay=0) {
  const origin="https://127.0.0.1:"+(theme==="default"?"18477":"18478"), now=Date.now()
  const servers=Array.from({length:119},(_,i)=>createServer({id:i+1,name:"响应测试节点 "+(i+1),country_code:"hk",last_active:new Date(now).toISOString()}))
  const appearance={version:1,enabled:effects,features:{...Object.fromEntries(manifest.map(d=>[d.key,{...d.defaults,enabled:!["live2d","analytics","visitorIP","footerIP"].includes(d.key)}])),background:{enabled:effects,desktopMedia:[{type:"image",src:origin+"/entry-wallpaper.svg"}],mobileMedia:[{type:"image",src:origin+"/entry-wallpaper.svg"}],nightEnabled:false,lightOpacity:0.82,darkOpacity:0.82}}}
@@ -37,6 +37,7 @@ async function setup(page:Page,theme:string,effects:boolean,combined=false,initi
    state.secondaryBeforePrimary ||= !state.reads["/api/v1/server/7/service"]
    state.events.push({path:u.pathname,phase:"data-start",at:Date.now()})
    if(secondaryDelay)await new Promise(r=>setTimeout(r,secondaryDelay))
+   if(connectivityDelay && u.pathname.endsWith("/connectivity"))await new Promise(r=>setTimeout(r,connectivityDelay))
    state.events.push({path:u.pathname,phase:"data-ready",at:Date.now()})
   }
   let data:any=[]
@@ -169,6 +170,7 @@ for(const theme of ["default","doraemon"])test("detail tabs respect reduced moti
  await page.locator(".server-info-tab").getByRole("button",{name:"BGP",exact:true}).click()
  await expect(page.locator("[data-bgp-graph]")).toBeVisible()
  expect(await page.locator(".server-info-tab .active-indicator-fade-in").evaluate(el=>getComputedStyle(el).transitionProperty)).toBe("none")
+ expect(await page.locator(".detail-pane-enter").evaluate(el=>getComputedStyle(el).animationName)).toBe("none")
 })
 
 
@@ -304,4 +306,66 @@ for(const theme of ["default","doraemon"])test("secondary idle results reuse and
  expect(state.posts).toEqual([])
  console.log("SECONDARY_WARM",JSON.stringify({theme,times}))
  await page.screenshot({path:info.outputPath("secondary-warm.png")})
+})
+
+for(const theme of ["default","doraemon"])for(const width of [390,1440])test("tab switch keeps current scroll offset "+theme+" "+width,async({page},info)=>{
+ await page.setViewportSize({width,height:760})
+ const state=await setup(page,theme,false,true)
+ const tab=(label:string)=>page.locator(".server-info-tab").getByRole("button",{name:label,exact:true})
+ await tab("BGP").click()
+ await expect(page.locator("[data-bgp-graph]")).toBeVisible()
+ const initial=await page.evaluate(()=>{
+  const top=document.querySelector(".server-info-tab")!.getBoundingClientRect().top+scrollY
+  window.scrollTo({top:Math.max(80,top-70),behavior:"instant"})
+  return scrollY
+ })
+ expect(initial).toBeGreaterThan(40)
+ async function switchAtCurrent(label:string){
+  const samples=await tab(label).evaluate(async el=>{
+   const before=scrollY,ys=[before]
+   ;(el as HTMLElement).click()
+   for(let i=0;i<24;i++){await new Promise<void>(r=>requestAnimationFrame(()=>r()));ys.push(scrollY)}
+   return {before,ys}
+  })
+  expect(Math.max(...samples.ys.map(y=>Math.abs(y-samples.before)))).toBeLessThanOrEqual(2)
+  await expect(tab(label)).toHaveAttribute("aria-pressed","true")
+ }
+ await switchAtCurrent("连通性")
+ await expect(page.locator("[data-server-connectivity]")).toBeVisible()
+ await switchAtCurrent("流媒体") // A much shorter pane must not collapse the page.
+ await expect(page.locator("[data-media-card]")).toHaveCount(6)
+ await switchAtCurrent("BGP")
+ // Return from a different offset: do not restore this tab's old position.
+ await page.evaluate(()=>window.scrollTo({top:Math.max(20,scrollY-45),behavior:"instant"}))
+ const changed=await page.evaluate(()=>scrollY)
+ expect(changed).toBeLessThan(initial-20)
+ await switchAtCurrent("连通性")
+ await switchAtCurrent("连通性") // Repeated activation is a no-op.
+ await switchAtCurrent("BGP")
+ expect(await page.evaluate(()=>scrollY)).toBeCloseTo(changed,0)
+ await page.screenshot({path:info.outputPath("stable-tab-scroll.png")})
+ await page.evaluate(()=>window.scrollTo({top:0,behavior:"instant"}))
+ await expect.poll(()=>page.locator("[data-detail-viewport]").evaluate(el=>(el as HTMLElement).style.minHeight)).toBe("")
+ expect(state.posts).toEqual([])
+})
+
+for(const theme of ["default","doraemon"])test("tab scroll holds through pending result and user scrolling "+theme,async({page})=>{
+ await page.setViewportSize({width:1440,height:760})
+ const state=await setup(page,theme,false,false,"/server/7",0,undefined,0,3000)
+ const tab=(label:string)=>page.locator(".server-info-tab").getByRole("button",{name:label,exact:true})
+ await tab("BGP").click()
+ await expect(page.locator("[data-bgp-graph]")).toBeVisible()
+ await page.evaluate(()=>window.scrollTo({top:250,behavior:"instant"}))
+ const y=await page.evaluate(()=>scrollY)
+ await tab("连通性").evaluate(el=>(el as HTMLElement).click())
+ await expect(page.getByText("正在读取检测结果…",{exact:true})).toBeVisible()
+ expect(await page.evaluate(()=>scrollY)).toBe(y)
+ // User input during loading wins; a late response must never undo it.
+ await page.evaluate(()=>window.scrollTo({top:180,behavior:"instant"}))
+ await expect(page.locator("[data-server-connectivity] [role=status]")).toHaveCount(0,{timeout:10000})
+ expect(await page.evaluate(()=>scrollY)).toBe(180)
+ await tab("BGP").evaluate(el=>(el as HTMLElement).click())
+ await expect(page.locator("[data-bgp-graph]")).toBeVisible()
+ expect(await page.evaluate(()=>scrollY)).toBe(180)
+ expect(state.posts).toEqual([])
 })
