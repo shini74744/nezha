@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -122,8 +121,7 @@ func TestMediaFixedShellExtraction(t *testing.T) {
 		require.NotContains(t, command, "curl |")
 		require.NotContains(t, command, " -k ")
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-		cmd := exec.CommandContext(ctx, "sh", "-c", command)
-		cmd.Env = append(os.Environ(), "PATH="+dir+":"+os.Getenv("PATH"), "NZ_TEST_BODY="+c.body)
+		cmd := mediaFixtureCommand(ctx, dir, command, "NZ_TEST_BODY="+c.body)
 		result, e := cmd.CombinedOutput()
 		cancel()
 		require.NoError(t, e, string(result))

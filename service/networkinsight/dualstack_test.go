@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/stretchr/testify/require"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -49,8 +48,7 @@ esac
 	require.Contains(t, command, "curl -q -6")
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "sh", "-c", command)
-	cmd.Env = append(os.Environ(), "PATH="+dir+":"+os.Getenv("PATH"))
+	cmd := mediaFixtureCommand(ctx, dir, command)
 	raw, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(raw))
 	require.Equal(t, 1, strings.Count(string(raw), "title,"))

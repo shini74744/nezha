@@ -13,6 +13,9 @@ func TestSeedNeverResurrectsDeletedOrOverwritesEdits(t *testing.T) {
 	dir := t.TempDir()
 	db, e := gorm.Open(sqlite.Open(filepath.Join(dir, "test.db")), &gorm.Config{})
 	require.NoError(t, e)
+	sqlDB, e := db.DB()
+	require.NoError(t, e)
+	t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
 	require.NoError(t, db.AutoMigrate(&model.Server{}, &model.LogoLibraryEntry{}))
 	require.NoError(t, Seed(db, filepath.Join(dir, "logos")))
 	var count int64
