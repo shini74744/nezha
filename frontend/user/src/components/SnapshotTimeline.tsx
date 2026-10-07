@@ -43,7 +43,7 @@ export default function SnapshotTimeline({
 			});
 	};
 	return (
-		<div className="relative min-w-0 max-w-full mb-3" data-snapshot-timeline>
+		<div className="relative min-w-0 max-w-full mb-2" data-snapshot-timeline>
 			{(edges.left || edges.right) && (
 				<div className="flex justify-end gap-1 mb-1">
 					<button
@@ -69,7 +69,7 @@ export default function SnapshotTimeline({
 			<nav
 				ref={viewport}
 				aria-label="BGP 历史快照"
-				className="flex flex-nowrap w-full min-w-0 max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-2 [scrollbar-width:thin]"
+				className="flex flex-nowrap w-full min-w-0 max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:thin]"
 			>
 				{children}
 			</nav>

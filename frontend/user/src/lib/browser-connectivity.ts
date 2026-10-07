@@ -2,7 +2,7 @@ import type { ConnectivityResult, ConnectivitySample } from "./connectivity-api"
 
 export const BROWSER_PROBE_TIMEOUT_MS = 3000;
 export const BROWSER_PROBE_WORKERS = 6;
-export const BROWSER_PROBE_ROUNDS = 1;
+export const BROWSER_PROBE_ROUNDS = 5;
 export const BROWSER_PROBE_MAX_TARGETS = 120;
 
 // Only public hostnames already returned by the node catalog are used. Never
@@ -78,15 +78,27 @@ export async function runBrowserConnectivity(
 			const index = next++;
 			results[index] = { ...results[index], phase: "running" };
 			onUpdate(snapshot("running"));
-			const sample = await probe(results[index].host, signal);
-			results[index] = { ...results[index], phase: "complete", status: sample.status, samples: [sample], delay_ms: sample.delay_ms };
-			onUpdate(snapshot("running"));
+			for (let round = 0; round < BROWSER_PROBE_ROUNDS && !signal.aborted; round++) {
+				const sample = await probe(results[index].host, signal);
+				// Cancellation is not a failed sample; keep only completed attempts.
+				if (signal.aborted) break;
+				const samples = [...results[index].samples, sample];
+				const delays = samples.flatMap(s => s.status === "ok" && s.delay_ms !== undefined && Number.isFinite(s.delay_ms) && s.delay_ms >= 0 ? [s.delay_ms] : []).sort((a, b) => a - b);
+				const middle = Math.floor(delays.length / 2);
+				const delay_ms = delays.length ? (delays[(delays.length - 1) >> 1] + delays[middle]) / 2 : undefined;
+				results[index] = {
+					...results[index], samples, delay_ms,
+					phase: round === BROWSER_PROBE_ROUNDS - 1 ? "complete" : "running",
+					status: samples.every(s => s.status === samples[0].status) ? samples[0].status : "unstable",
+				};
+				onUpdate(snapshot("running"));
+			}
 		}
 	};
 	await Promise.all(Array.from({ length: Math.min(BROWSER_PROBE_WORKERS, results.length) }, worker));
 	for (let i = 0; i < results.length; i++) {
 		if (results[i].phase !== "complete")
-			results[i] = { ...results[i], phase: "complete", status: "cancelled", samples: [] };
+			results[i] = { ...results[i], phase: "complete", status: "cancelled" };
 	}
 	return snapshot("complete");
 }

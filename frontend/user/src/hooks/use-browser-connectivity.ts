@@ -85,7 +85,12 @@ export function useBrowserConnectivity(serverId: number) {
 			const controller = new AbortController();
 			session.active.set(id, controller);
 			replace(session, { ...target, phase: "running" });
-			void runBrowserConnectivity([target], controller.signal, () => {}).then(
+			void runBrowserConnectivity([target], controller.signal, (run) => {
+				if (current.current !== session || session.active.get(id) !== controller ||
+					controller.signal.aborted || session.queue.has(id)) return;
+				replace(session, run.results[0]);
+				publish(session.run);
+			}).then(
 				(run) => {
 					if (
 						current.current !== session ||
@@ -165,8 +170,6 @@ export function useBrowserConnectivity(serverId: number) {
 							...row,
 							status: "cancelled",
 							phase: "complete",
-							samples: [],
-							delay_ms: undefined,
 						},
 			),
 		};

@@ -50,13 +50,17 @@ function network() {
 		},
 	};
 }
+async function finishAll(net: ReturnType<typeof network>) {
+ for (let i=0; i<30 && net.active; i++) await act(async()=>net.calls.slice().forEach(call=>call.done()));
+ expect(net.active).toBe(0);
+}
 describe("browser single-target scheduling", () => {
 	it("retests without cooldown, replaces rapid retries and preserves other results", async () => {
 		const net = network(),
 			input = targets(2),
 			{ result } = renderHook(() => useBrowserConnectivity(7));
 		act(() => result.current.start(input));
-		await act(async () => net.calls.forEach((call) => call.done()));
+		await finishAll(net);
 		await waitFor(() => expect(result.current.run?.state).toBe("complete"));
 		const other = result.current.run!.results[1];
 		act(() => {
@@ -64,15 +68,15 @@ describe("browser single-target scheduling", () => {
 			result.current.retry("0");
 			result.current.retry("0");
 		});
-		await waitFor(() => expect(net.calls).toHaveLength(4));
-		expect(net.calls[2].signal.aborted).toBe(true);
+		await waitFor(() => expect(net.calls).toHaveLength(12));
+		expect(net.calls[10].signal.aborted).toBe(true);
 		expect(result.current.run!.results[1]).toBe(other);
 		expect(result.current.run!.fullBatch).toBe(false);
-		await act(async () => net.calls[3].done());
+		await finishAll(net);
 		await waitFor(() => expect(result.current.run?.state).toBe("complete"));
 		act(() => result.current.retry("0"));
-		expect(net.calls).toHaveLength(5);
-		await act(async () => net.calls[4].done());
+		expect(net.calls).toHaveLength(17);
+		await finishAll(net);
 		await waitFor(() => expect(result.current.run?.state).toBe("complete"));
 		expect(input[0].delay_ms).toBe(42);
 		expect(result.current.run!.results[1]).toBe(other);
@@ -87,11 +91,11 @@ describe("browser single-target scheduling", () => {
 			result.current.retry("0");
 			result.current.retry("7");
 		});
-		for (let i = 0; i < 6; i++)
-			await act(async () => net.calls.slice().forEach((call) => call.done()));
+		await finishAll(net);
 		await waitFor(() => expect(result.current.run?.state).toBe("complete"));
-		expect(net.calls).toHaveLength(9);
-		expect(net.calls[6].url).toBe("https://site7.example.com/");
+		expect(net.calls).toHaveLength(41);
+		expect(net.calls.findIndex(call => call.url === "https://site7.example.com/")).toBeLessThan(net.calls.findIndex(call => call.url === "https://site6.example.com/"));
+		expect(result.current.run!.results.every(row => row.samples.length === 5)).toBe(true);
 		expect(net.max).toBeLessThanOrEqual(6);
 		expect(
 			result.current.run!.results.every((row) => row.status === "ok"),
@@ -109,7 +113,7 @@ describe("browser single-target scheduling", () => {
 		expect(net.calls).toHaveLength(6);
 		act(() => result.current.retry("8"));
 		expect(net.calls).toHaveLength(7);
-		await act(async () => net.calls[6].done());
+		await finishAll(net);
 		await waitFor(() =>
 			expect(result.current.run!.results[8].status).toBe("ok"),
 		);
@@ -120,6 +124,30 @@ describe("browser single-target scheduling", () => {
 		).toBe(true);
 		act(() => result.current.retry("8"));
 		unmount();
-		expect(net.calls[7].signal.aborted).toBe(true);
+		expect(net.calls[11].signal.aborted).toBe(true);
 	});
+});
+it("publishes intermediate samples and rejects late updates from replaced attempts",async()=>{
+ const net=network(),{result}=renderHook(()=>useBrowserConnectivity(7));
+ act(()=>result.current.start(targets(1)));
+ await act(async()=>net.calls[0].done());
+ await waitFor(()=>expect(result.current.run!.results[0].samples).toHaveLength(1));
+ expect(result.current.run!.state).toBe("running");
+ act(()=>result.current.retry("0"));
+ await act(async()=>{});
+ expect(result.current.run!.results[0].samples).toHaveLength(0);
+ await finishAll(net);
+ await waitFor(()=>expect(result.current.run!.state).toBe("complete"));
+ expect(result.current.run!.results[0].samples).toHaveLength(5);
+ expect(net.max).toBeLessThanOrEqual(6);
+});
+it("preserves finished dots when stopped during later samples",async()=>{
+ const net=network(),{result}=renderHook(()=>useBrowserConnectivity(7));
+ act(()=>result.current.start(targets(1)));
+ await act(async()=>net.calls[0].done());
+ await waitFor(()=>expect(result.current.run!.results[0].samples).toHaveLength(1));
+ act(()=>result.current.stop());
+ expect(result.current.run!.results[0].samples).toHaveLength(1);
+ expect(result.current.run!.cancelled).toBe(true);
+ expect(net.calls).toHaveLength(2);
 });

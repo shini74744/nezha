@@ -860,3 +860,22 @@ for(const theme of ["default","doraemon"])for(const width of [320,1440]){
   expect(state.posts).toEqual([]);
  });
 }
+
+for(const theme of ["default","doraemon"])for(const width of [320,390,768,1440])test("compact BGP vertical gaps "+theme+" "+width,async({page},info)=>{
+ await page.setViewportSize({width,height:1000});
+ await setup(page,theme,true);
+ await page.locator(".server-info-tab").getByRole("button",{name:"BGP",exact:true}).click();
+ const panel=page.locator('[data-network-insight="bgp"]');
+ await expect(panel.locator("[data-bgp-graph]")).toBeVisible();
+ const gaps=await panel.evaluate(el=>{
+  const header=el.querySelector(":scope > header")!.getBoundingClientRect();
+  const family=el.querySelector("[data-bgp-family]")!.getBoundingClientRect();
+  const timeline=el.querySelector("[data-snapshot-timeline]")!.getBoundingClientRect();
+  const graph=el.querySelector(".bgp-observation")!.getBoundingClientRect();
+  const heading=el.querySelector(".bgp-heading")!.getBoundingClientRect();
+  return {header:family.top-header.bottom,family:timeline.top-family.bottom,timeline:graph.top-timeline.bottom,inside:heading.top-graph.top};
+ });
+ expect(gaps.header).toBe(8);expect(gaps.family).toBe(8);expect(gaps.timeline).toBe(8);expect(gaps.inside).toBe(13);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ await panel.screenshot({path:info.outputPath("compact-bgp.png")});
+});
