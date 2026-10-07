@@ -1,3 +1,5 @@
+import { useBrowserConnectivity } from "@/hooks/use-browser-connectivity";
+import { BROWSER_PROBE_ROUNDS } from "@/lib/browser-connectivity";
 import { formatDetectionTime } from "@/lib/detection-time";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CN, JP, US, KR, SG, MY, ID, GB, DE, FR, CA, AU, IN, BR, RU } from "country-flag-icons/react/3x2";
@@ -32,6 +34,10 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 	const [now, setNow] = useState(Date.now());
 	const [help, setHelp] = useState(false);
 	const [manualRun, setManualRun] = useState<string>();
+	const [localServer, setLocalServer] = useState<number>();
+	const localMode = localServer === serverId;
+	const browser = useBrowserConnectivity(serverId);
+	useEffect(() => setLocalServer(undefined), [serverId]);
 	const query = useQuery({
 		...connectivityQueryOptions(serverId),
 		refetchInterval: (state) =>
@@ -49,6 +55,9 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 			void query.refetch();
 		},
 	});
+	useEffect(() => {
+		if (query.isError) browser.stop();
+	}, [query.isError, browser.stop]);
 	const live = query.data;
 	const running = live?.state === "running";
 	const showingLatest = running && !!live.latest && manualRun !== `${serverId}:${live.started_at}`;
@@ -67,6 +76,15 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 		}, 1000);
 		return () => clearInterval(timer);
 	}, [retryAt]);
+	const displayResults = localMode ? browser.run?.results || [] : data?.results || [];
+	const displayRounds = localMode ? BROWSER_PROBE_ROUNDS : data?.rounds || 3;
+	const localRunning = browser.run?.state === "running";
+	const localCompleted = browser.run?.results.filter(result => result.phase === "complete").length || 0;
+	const startLocal = () => {
+		if (!data || query.isError) return;
+		// Match the visible regional order, with no changes to the shared cache.
+		browser.start(regions.flatMap(region => data.results.filter(result => result.group === region.id)));
+	};
 	const completed =
 		data?.results.filter((result) =>
 			result.phase
@@ -88,12 +106,44 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 			className="w-full min-w-0 space-y-4"
 			aria-label={t("tabSwitch.Connectivity")}
 		>
+			{data && !query.isError && (
+				<div data-connectivity-source className="flex min-w-0 items-center justify-between gap-3 text-sm">
+					<button type="button" aria-pressed={!localMode}
+						className={cn("min-h-6 rounded px-1 -ml-1 focus-visible:outline focus-visible:outline-2", !localMode ? "font-semibold" : "text-muted-foreground hover:text-foreground")}
+						onClick={() => { setLocalServer(undefined); browser.stop(); }}>
+						{t("connectivity.serverLatency")}
+					</button>
+					<button type="button" aria-pressed={localMode}
+						className={cn("min-h-6 rounded px-1 -mr-1 focus-visible:outline focus-visible:outline-2", localMode ? "font-semibold" : "text-muted-foreground hover:text-foreground")}
+						onClick={() => { setLocalServer(serverId); if (!browser.run) startLocal(); }}>
+						{t("connectivity.localLatency")}
+					</button>
+				</div>
+			)}
+			{localMode && data && !query.isError && (
+				<div data-local-connectivity className="space-y-1.5">
+					<div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
+						<p className="min-w-0 flex-1">{t("connectivity.localNotice")}</p>
+						<button type="button" className="inline-flex min-h-6 shrink-0 items-center gap-1 rounded px-1 hover:text-foreground focus-visible:outline focus-visible:outline-2"
+							disabled={!data.results.length} onClick={() => localRunning ? browser.stop() : startLocal()}>
+							{localRunning ? <LoaderCircle className="size-3 animate-spin" aria-hidden /> : <RefreshCw className="size-3" aria-hidden />}
+							{t(localRunning ? "connectivity.localStop" : "connectivity.localRetest")}
+						</button>
+					</div>
+					{browser.run && <p role="status" className="text-xs text-muted-foreground">
+						{t(browser.run.cancelled ? "connectivity.localCancelled" : localRunning ? "connectivity.progress" : "connectivity.localFinished", { done: localCompleted, total: browser.run.results.length })}
+					</p>}
+					{localRunning && <div role="progressbar" aria-label={t("connectivity.localLatency")} aria-valuemin={0} aria-valuemax={browser.run?.results.length || 0} aria-valuenow={localCompleted} className="h-1 overflow-hidden rounded-full bg-muted">
+						<div className="h-full rounded-full bg-primary transition-[width] motion-reduce:transition-none" style={{ width: `${browser.run?.results.length ? localCompleted / browser.run.results.length * 100 : 0}%` }} />
+					</div>}
+				</div>
+			)}
 			{!data?.can_run && query.isPending && (
 				<p role="status" className="text-sm text-muted-foreground">
 					{t("connectivity.loading")}
 				</p>
 			)}
-			{!data?.can_run && query.isError && (
+			{(!data?.can_run || localMode) && query.isError && (
 				<p role="alert" className="text-sm">
 					{t("connectivity.readFailed")}{" "}
 					<button
@@ -105,10 +155,10 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 					</button>
 				</p>
 			)}
-			{data?.can_run && (
+			{data?.can_run && !localMode && (
 				<Card data-connectivity-controls className="min-w-0">
 					<CardContent className="px-4 py-2 sm:px-5 space-y-1">
-						<div className="flex flex-wrap items-center justify-between gap-3">
+						<div data-connectivity-header className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
 							<div className="min-w-0">
 								<h2 className="flex items-center gap-2 text-base font-semibold">
 									<Globe2 className="size-4 shrink-0" aria-hidden />
@@ -118,12 +168,29 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 										aria-label={t("connectivity.helpTitle")}
 										aria-expanded={help}
 										onClick={() => setHelp((value) => !value)}
-										className="inline-flex size-7 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2"
+										className="inline-flex -ml-2 size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2"
 									>
 										<CircleHelp className="size-4" aria-hidden />
 									</button>
 								</h2>
 							</div>
+							{showingBatchProgress && (
+								<div
+									role="progressbar"
+									aria-label={t("connectivity.testing")}
+									aria-valuemin={0}
+									aria-valuemax={data.results.length}
+									aria-valuenow={completed}
+									className="col-span-2 row-start-2 h-1.5 min-w-0 overflow-hidden rounded-full bg-muted sm:col-span-1 sm:col-start-2 sm:row-start-1"
+								>
+									<div
+										className="h-full rounded-full bg-primary transition-[width] motion-reduce:transition-none"
+										style={{
+											width: `${data.results.length ? (completed / data.results.length) * 100 : 0}%`,
+										}}
+									/>
+								</div>
+							)}
 							{data?.can_run && (
 								<Button
 									size="sm"
@@ -138,7 +205,7 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 										query.isError
 									}
 									onClick={() => mutation.mutate(undefined)}
-									className="h-8 shrink-0 gap-2"
+									className="col-start-2 row-start-1 h-8 shrink-0 gap-2 sm:col-start-3"
 								>
 									{running || mutation.isPending ? (
 										<LoaderCircle
@@ -212,23 +279,6 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 											{t("connectivity.rounds", { count: data.rounds })}
 										</span>
 									</div>
-									{showingBatchProgress && (
-										<div
-											role="progressbar"
-											aria-label={t("connectivity.testing")}
-											aria-valuemin={0}
-											aria-valuemax={data.results.length}
-											aria-valuenow={completed}
-											className="h-1.5 overflow-hidden rounded-full bg-muted"
-										>
-											<div
-												className="h-full rounded-full bg-primary transition-[width]"
-												style={{
-													width: `${data.results.length ? (completed / data.results.length) * 100 : 0}%`,
-												}}
-											/>
-										</div>
-									)}
 								</>
 							)
 						)}
@@ -240,7 +290,7 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 					</CardContent>
 				</Card>
 			)}
-			{!query.isError && data?.results.length === 0 && (
+			{!query.isError && data && displayResults.length === 0 && (
 				<p className="text-sm text-muted-foreground">
 					{t("connectivity.noTargets")}
 				</p>
@@ -249,7 +299,7 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 				data &&
 				regions
 					.filter(({ id }) =>
-						data.results.some((result) => result.group === id),
+						displayResults.some((result) => result.group === id),
 					)
 					.map(({ id: group, Icon, ...region }) => (
 						<div
@@ -264,26 +314,26 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 								</h3>
 								<span className="text-xs text-muted-foreground">
 									{t("connectivity.reachableCount", {
-										count: data.results.filter(
+										count: displayResults.filter(
 											(r) =>
 												r.group === group &&
 												r.samples.some(
 													(s) => s.status === "ok" || s.status === "http_error",
 												),
 										).length,
-										total: data.results.filter((r) => r.group === group).length,
+										total: displayResults.filter((r) => r.group === group).length,
 									})}
 								</span>
 							</div>
 							<div className="grid min-w-0 grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-								{data.results
+								{displayResults
 									.filter((result) => result.group === group)
 									.map((result) => (
 										<ConnectivityCard
 											key={result.id}
 											result={result}
-											rounds={data.rounds}
-                                            onRetest={data.can_run ? () => mutation.mutate(result.id) : undefined}
+											rounds={displayRounds}
+                                            onRetest={!localMode && data.can_run ? () => mutation.mutate(result.id) : undefined}
                                             disabled={!data.online || running || mutation.isPending || cooldown > 0}
 										/>
 									))}

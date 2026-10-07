@@ -151,12 +151,22 @@
 			"unreachable": "網路無法連通",
 			"unstable": "多次結果不一致",
 			"queued": "排隊中",
-			"batch_timeout": "批次逾時，檢測未完成"
+			"batch_timeout": "批次逾時，檢測未完成",
+			"browser_error": "瀏覽器限制或網路無法連線",
+			"browser_unsupported": "不支援瀏覽器檢測",
+			"cancelled": "已停止"
 		},
 		"queueProgress": "已有結果 {{sampled}} 項 · 檢測中 {{active}} 項 · 排隊 {{queued}} 項",
 		"sampling": "採樣中",
 		"resampleQueued": "等待下一次採樣",
-		"endedEarly": "已結束"
+		"endedEarly": "已結束",
+		"serverLatency": "伺服器延遲",
+		"localLatency": "本地延遲",
+		"localNotice": "目前瀏覽器存取站點網域的 HTTPS 耗時，每項 1 次。僅本頁可見，重新整理即清空；瀏覽器限制可能導致無法檢測。",
+		"localStop": "停止檢測",
+		"localRetest": "重新檢測本地延遲",
+		"localCancelled": "本地檢測已停止",
+		"localFinished": "本地檢測完成 · {{done}} / {{total}} 項"
 	},
 	"tabSwitch": {
 		"Connectivity": "連通性",

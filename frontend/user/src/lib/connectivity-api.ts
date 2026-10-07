@@ -13,7 +13,11 @@ export type ConnectivityStatus =
 	| "error"
 	| "refused"
 	| "unreachable"
-	| "unstable";
+	| "unstable"
+	// Browser-only outcomes; never sent to the server.
+	| "browser_error"
+	| "browser_unsupported"
+	| "cancelled";
 export interface ConnectivitySample {
 	status: ConnectivityStatus;
 	delay_ms?: number;
