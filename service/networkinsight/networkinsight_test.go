@@ -12,7 +12,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 )
 
 func TestBGPAggregation(t *testing.T) {
@@ -120,10 +119,12 @@ func TestMediaFixedShellExtraction(t *testing.T) {
 		require.NoError(t, e)
 		require.NotContains(t, command, "curl |")
 		require.NotContains(t, command, " -k ")
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+		ctx, cancel := mediaFixtureContext(t)
 		cmd := mediaFixtureCommand(ctx, dir, command, "NZ_TEST_BODY="+c.body)
 		result, e := cmd.CombinedOutput()
+		contextErr := ctx.Err()
 		cancel()
+		require.NoError(t, contextErr, string(result))
 		require.NoError(t, e, string(result))
 		require.Equal(t, c.want, ClassifyMedia(c.id, "IPv4", string(result), true).Status, string(result))
 	}

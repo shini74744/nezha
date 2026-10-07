@@ -1,13 +1,11 @@
 package networkinsight
 
 import (
-	"context"
 	"github.com/stretchr/testify/require"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestIPv6DiscoveryRejectsInvalidNonPublicAndIPv4(t *testing.T) {
@@ -46,10 +44,11 @@ esac
 	command, err := MediaCommand("netflix", "IPv6")
 	require.NoError(t, err)
 	require.Contains(t, command, "curl -q -6")
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := mediaFixtureContext(t)
 	defer cancel()
 	cmd := mediaFixtureCommand(ctx, dir, command)
 	raw, err := cmd.CombinedOutput()
+	require.NoError(t, ctx.Err(), string(raw))
 	require.NoError(t, err, string(raw))
 	require.Equal(t, 1, strings.Count(string(raw), "title,"))
 	require.Equal(t, "unknown", ClassifyMedia("netflix", "IPv6", string(raw), true).Status)
