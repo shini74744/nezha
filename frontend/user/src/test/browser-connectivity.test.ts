@@ -103,7 +103,7 @@ describe("ephemeral browser probes", () => {
 	});
 });
 describe("five-sample local summaries", () => {
- it("publishes each dot and uses the median of successful timings, including zero", async () => {
+ it("publishes each dot and uses the average of successful timings, including zero", async () => {
   const times = [0, 10, 0, 100, 0, 0, 0, 30, 0, 20];
   vi.spyOn(performance, "now").mockImplementation(() => times.shift() ?? 0);
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue({type:"opaque"}));
@@ -111,7 +111,7 @@ describe("five-sample local summaries", () => {
   try {
    const run = await runBrowserConnectivity(targets(), new AbortController().signal, r => seen.push(r.results[0].samples.length));
    expect(run.results[0].samples.map(s => s.delay_ms)).toEqual([10,100,0,30,20]);
-   expect(run.results[0].delay_ms).toBe(20);
+   expect(run.results[0].delay_ms).toBe(32);
    expect(seen).toEqual([0,1,2,3,4,5]);
   } finally { vi.restoreAllMocks(); }
  });

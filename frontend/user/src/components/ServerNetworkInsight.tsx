@@ -23,6 +23,8 @@ import { insightQueryOptions } from "@/lib/detail-result-query";
 export const mediaStatus: Record<string, string> = {
 	untested: "暂无记录",
 	unlocked: "解锁",
+	registration_available: "可注册",
+	registration_restricted: "注册受限",
 	originals: "仅自制内容",
 	restricted: "受限",
 	timeout: "超时",
@@ -51,12 +53,13 @@ function MediaStatus({ value }: { value: MediaResult }) {
 				}
 				className={cn(
 					"text-right break-words",
-					value.status === "unlocked"
+					["unlocked", "registration_available"].includes(value.status)
 						? "text-emerald-700 dark:text-emerald-400"
 						: value.status === "originals"
 							? "text-amber-700 dark:text-amber-400"
 							: [
 										"restricted",
+										"registration_restricted",
 										"network_error",
 										"timeout",
 										"blocked",

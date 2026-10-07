@@ -22,7 +22,7 @@ export default function ServerDetail() {
 	}, []);
 
 	const [selectedTab, setCurrentTab] = useState("Detail");
-	const { data: setting } = useQuery({queryKey: ["setting"], queryFn: fetchSetting, refetchOnWindowFocus: true, refetchInterval: 30000});
+	const { data: setting, isPending: settingPending } = useQuery({queryKey: ["setting"], queryFn: fetchSetting, refetchOnWindowFocus: true, refetchInterval: 30000});
 	const combinedNetwork = setting?.data?.config?.show_network_in_detail === true;
 	useEffect(() => { if (combinedNetwork && selectedTab === "Network") setCurrentTab("Detail"); }, [combinedNetwork, selectedTab]);
 
@@ -42,6 +42,13 @@ export default function ServerDetail() {
 		preserveScroll();
 		setCurrentTab(next);
 	};
+	// The overview depends on the first node frame. Do not place interactive tabs
+	// below a shorter skeleton and then move them when the real summary arrives.
+	if (server_id && (!server || settingPending)) {
+		return <div data-detail-initializing className="mx-auto w-full max-w-5xl px-0 server-info">
+			<ServerDetailOverview server_id={server_id} />
+		</div>;
+	}
 	if (server && lastData && !formatNezhaInfo(lastData.now, server).online) {
 		return <Suspense fallback={<div className="mx-auto w-full max-w-5xl server-info"><ServerDetailOverview server_id={server_id!}/><SectionLoading/></div>}><OfflineServerDetail key={server.id} server={server} now={lastData.now} initialTab={currentTab} onTabIntent={warmTab} /></Suspense>;
 	}

@@ -6,8 +6,11 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { createTestQueryClient } from "@/test/utils";
 import type { ReactElement } from "react";
 import ErrorPage from "@/pages/ErrorPage";
+import { createServer } from "@/test/fixtures";
+const websocket = vi.hoisted(() => ({ lastData: null as {now:number; servers: ReturnType<typeof createServer>[]} | null }));
+vi.mock("@/hooks/use-websocket-context", () => ({useWebSocketContext: () => websocket}));
 
-const apiMocks = vi.hoisted(() => ({ fetchSetting: vi.fn(), fetchMonitor: vi.fn().mockResolvedValue({success:true,data:[]}) }));
+const apiMocks = vi.hoisted(() => ({ fetchSetting: vi.fn(), fetchLoginUser: vi.fn().mockResolvedValue({success:false}), fetchMonitor: vi.fn().mockResolvedValue({success:true,data:[]}) }));
 vi.mock("@/lib/nezha-api", () => apiMocks);
 function renderDetail(ui: ReactElement) {
 	return render(<QueryClientProvider client={createTestQueryClient()}>{ui}</QueryClientProvider>);
@@ -104,6 +107,8 @@ describe("simple pages", () => {
 describe("ServerDetail", () => {
 	beforeEach(() => {
 		vi.stubGlobal("scrollTo", vi.fn());
+		const now = Date.now();
+		websocket.lastData = {now,servers:[createServer({id:7,last_active:new Date(now).toISOString()})]};
 		apiMocks.fetchSetting.mockResolvedValue({success:true,data:{config:{show_network_in_detail:false}}});
 	});
 
@@ -143,13 +148,28 @@ describe("ServerDetail", () => {
 		expect(screen.getByTestId("detail-chart")).toBeInTheDocument();
 	});
 
-	it("does not flash network while settings are unresolved", async () => {
+	it("shows the overview before tabs while settings are unresolved", async () => {
 		apiMocks.fetchSetting.mockReturnValue(new Promise(() => {}));
 		renderDetail(<MemoryRouter initialEntries={["/server/7"]}><Routes>
 			<Route path="/server/:id" element={<ServerDetail />} />
 		</Routes></MemoryRouter>);
-		expect(await screen.findByTestId("detail-chart")).toBeInTheDocument();
+		expect(screen.getByTestId("detail-overview")).toBeInTheDocument();
+		expect(screen.queryByTestId("detail-chart")).not.toBeInTheDocument();
+		expect(screen.queryByRole("button", {name:"Detail"})).not.toBeInTheDocument();
 		expect(screen.queryByTestId("network-chart")).not.toBeInTheDocument();
+	});
+
+	it("waits for node information before mounting interactive tabs", async () => {
+		websocket.lastData = null;
+		const ui = <MemoryRouter initialEntries={["/server/7"]}><Routes><Route path="/server/:id" element={<ServerDetail/>}/></Routes></MemoryRouter>;
+		const view = renderDetail(ui);
+		expect(screen.getByTestId("detail-overview")).toBeInTheDocument();
+		expect(screen.queryByRole("button", {name:"Detail"})).not.toBeInTheDocument();
+		const now = Date.now();
+		websocket.lastData = {now,servers:[createServer({id:7,last_active:new Date(now).toISOString()})]};
+		view.rerender(<QueryClientProvider client={createTestQueryClient()}>{ui}</QueryClientProvider>);
+		expect(await screen.findByTestId("detail-chart")).toBeInTheDocument();
+		expect(screen.getByRole("button", {name:"Detail"})).toBeVisible();
 	});
 
 	it("redirects when route params are missing", async () => {
