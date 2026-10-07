@@ -3,7 +3,7 @@ import type { ConnectivityResult, ConnectivitySample } from "./connectivity-api"
 export const BROWSER_PROBE_TIMEOUT_MS = 3000;
 export const BROWSER_PROBE_WORKERS = 6;
 export const BROWSER_PROBE_ROUNDS = 1;
-const MAX_TARGETS = 120;
+export const BROWSER_PROBE_MAX_TARGETS = 120;
 
 // Only public hostnames already returned by the node catalog are used. Never
 // expose/reuse administrator URLs, paths or queries, or accept user-entered URLs.
@@ -67,7 +67,7 @@ export async function runBrowserConnectivity(
 	signal: AbortSignal,
 	onUpdate: (run: BrowserConnectivityRun) => void,
 ): Promise<BrowserConnectivityRun> {
-	const results: ConnectivityResult[] = targets.slice(0, MAX_TARGETS).map(
+	const results: ConnectivityResult[] = targets.slice(0, BROWSER_PROBE_MAX_TARGETS).map(
 		({ id, name, group, host, icon }) => ({ id, name, group, host, icon, status: "pending", phase: "queued", samples: [] }),
 	);
 	let next = 0;

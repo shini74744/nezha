@@ -696,8 +696,8 @@ for (const theme of ["default","doraemon"]) for (const width of [390,1440]) {
   const view=page.locator('[data-network-insight="bgp"]');
   await expect(view.getByRole("navigation",{name:"BGP 历史快照"}).getByText("2026/10/7 00:00:00",{exact:true})).toBeVisible();
   await view.getByRole("button",{name:"BGP 路由拓扑说明",exact:true}).click();
-  await expect(page.getByText(/展示节点网络的 BGP 路由关系/)).toBeVisible();
-  await expect(page.getByText(/IP 地址及网段仅管理员可见/)).toBeVisible();
+  await expect(page.getByText(/查看节点的 BGP 路由与历史变化/)).toBeVisible();
+  await expect(page.getByText(/管理员和节点所属用户|IP 地址及网段仅管理员可见|固定命令/)).toHaveCount(0);
   await page.keyboard.press("Escape");
   await view.getByRole("button",{name:/图例与使用说明/}).click();
   await expect(view.getByText(/完整图展示本次记录收录的全部节点/)).toBeVisible();
@@ -798,4 +798,36 @@ for(const theme of ["default","doraemon"]) test("snapshot timeline native touch 
  await expect.poll(()=>nav.evaluate(el=>el.scrollLeft)).toBeGreaterThan(40);
  await expect(nav.getByRole("button").first()).toHaveAttribute("aria-pressed","true");
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
+
+for(const theme of ["default","doraemon"])for(const width of [390,1440])test("snapshot selection keeps canvas and scroll stable "+theme+" "+width,async({page})=>{
+ await page.setViewportSize({width,height:900});await setup(page,theme,true,false);
+ const slot=Date.parse("2026-10-07T12:00:00Z");
+ const history=[0,1,2].map(i=>({state:"complete",finished_at:slot-i*3600000,topologies:[{...topology,prefix:"126."+i+".0.0/16",observed_at:"2026-10-07T"+(12-i)+":00:00",total:100+i}]}));
+ await page.route("**/api/v1/server/7/bgp",r=>r.fulfill({json:{success:true,data:{...history[0],server_id:7,online:true,can_run:false,available_families:["IPv4"],history}}}));
+ await page.locator(".server-info-tab").getByText("BGP",{exact:true}).click();
+ const nav=page.getByRole("navigation",{name:"BGP 历史快照"});
+ await expect(page.locator("[data-bgp-graph]")).toBeVisible();
+ await page.getByRole("button",{name:"完整图",exact:true}).click();
+ await nav.scrollIntoViewIfNeeded();
+ await page.waitForTimeout(180);
+ await page.evaluate(()=>{(window as any).__bgpCanvas=document.querySelector(".bgp-viewport")});
+ for(const index of [1,2,0,2,1]){
+  const frames=await nav.getByRole("button").nth(index).evaluate(async el=>{
+   const points:any[]=[];const before=window.scrollY;
+   (el as HTMLElement).click();
+   for(let i=0;i<5;i++){await new Promise<void>(r=>requestAnimationFrame(()=>r()));points.push({y:window.scrollY,canvas:document.querySelector(".bgp-viewport")===(window as any).__bgpCanvas,zoom:document.querySelector(".bgp-zoom")?.textContent,top:document.querySelector("[data-snapshot-timeline]")!.getBoundingClientRect().top})}
+   return {before,points};
+  });
+  expect(frames.points.every(p=>p.canvas)).toBe(true);
+  expect(frames.points.every(p=>Math.abs(p.y-frames.before)<2)).toBe(true);
+  expect(new Set(frames.points.map(p=>p.zoom)).size).toBe(1);
+  expect(Math.max(...frames.points.map(p=>p.top))-Math.min(...frames.points.map(p=>p.top))).toBeLessThan(2);
+  await expect(page.getByRole("button",{name:"完整图",exact:true})).toHaveAttribute("aria-pressed","true");
+  await expect(page.getByText((100+index)+" 条观测路径",{exact:true})).toBeVisible();
+ }
+ await page.locator(".server-info-tab").getByText("流媒体",{exact:true}).click();
+ await page.getByRole("button",{name:"流媒体解锁说明",exact:true}).click();
+ await expect(page.getByText("查看节点对各平台的访问与解锁情况，实际播放以平台结果为准。",{exact:true})).toBeVisible();
+ await expect(page.getByText(/需节点支持 sh|允许 Agent 执行固定命令/)).toHaveCount(0);
 });

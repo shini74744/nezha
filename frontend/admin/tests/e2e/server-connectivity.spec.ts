@@ -122,7 +122,7 @@ test("guest and offline only read cache; reloading does not trigger probes",asyn
 });
 test("network/detail tabs still work with combined network; help and failure recovery",async({page})=>{
  const state=await setup(page,"default"),view=page.locator("[data-server-connectivity]");
- await view.getByRole("button",{name:"连通性说明",exact:true}).click();await expect(view.getByText(/不是 ICMP Ping/)).toBeVisible();
+ await view.getByRole("button",{name:"连通性说明",exact:true}).click();await expect(view.getByText(/对比服务器与本地网络/)).toBeVisible();
  state.postError=true;await view.getByRole("button",{name:"开始检测",exact:true}).click();await expect(view.getByRole("alert")).toHaveText(/当前检测任务较多/);
  await expect(page.locator(".server-info-tab").getByText("网络",{exact:true})).toHaveCount(0);
  await page.locator(".server-info-tab").getByText("详情",{exact:true}).click();
@@ -174,6 +174,33 @@ for(const theme of ["default","doraemon"])for(const light of [false,true])for(co
   await view.locator("[data-connectivity-group]").first().scrollIntoViewIfNeeded();
   await page.screenshot({path:info.outputPath("guest-results.png")});
   expect(state.posts).toBe(0);
+ });
+}
+for(const theme of ["default","doraemon"])for(const light of [false,true])for(const offline of [false,true])for(const width of [320,1440]){
+ test(`compact source buttons ${theme} ${light?"light":"dark"} ${offline?"offline":"online"} ${width}`,async({page},info)=>{
+  await page.setViewportSize({width,height:900});
+  const state=await setup(page,theme,light,offline,false,"zh-CN",true),view=page.locator("[data-server-connectivity]");
+  await expect(view.locator("[data-connectivity-target]")).toHaveCount(catalog.length);
+  const source=view.locator("[data-connectivity-source]");
+  await expect.poll(async()=>source.evaluate(el=>el.getBoundingClientRect().top-document.querySelector(".server-info-tab")!.getBoundingClientRect().bottom)).toBeLessThanOrEqual(6);
+  const sourceBox=await source.boundingBox(),tabsBox=await page.locator(".server-info-tab").boundingBox();
+  expect(sourceBox!.y).toBeGreaterThanOrEqual(tabsBox!.y+tabsBox!.height);
+  expect(sourceBox!.height).toBe(32);
+  const buttons=source.getByRole("button");
+  for(let i=0;i<2;i++){
+   const button=buttons.nth(i);
+   await expect(button.locator("svg")).toHaveCount(1);
+   const style=await button.evaluate(el=>{const s=getComputedStyle(el);return {cursor:s.cursor,border:parseFloat(s.borderTopWidth),background:s.backgroundColor,color:s.color}});
+   expect(style.cursor).toBe("pointer");expect(style.border).toBeGreaterThanOrEqual(1);
+   expect(style.background).not.toBe("rgba(0, 0, 0, 0)");expect(style.color).not.toBe(style.background);
+   await button.focus();await expect(button).toBeFocused();
+  }
+  const left=await buttons.nth(0).boundingBox(),right=await buttons.nth(1).boundingBox();
+  expect(left!.x+left!.width+8).toBeLessThanOrEqual(right!.x);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await page.locator(".server-info-tab").scrollIntoViewIfNeeded();
+  await page.screenshot({path:info.outputPath("source-buttons.png")});
+  expect(state.posts).toBe(0);expect(state.localRequests).toHaveLength(0);
  });
 }
 test("guest cache failure retains reload without exposing owner controls",async({page})=>{
@@ -366,7 +393,7 @@ for(const theme of ["default","doraemon"])for(const width of [320,390,768,1440])
   {id:"blocked",name:"受限样例",host:"blocked.example.com",group:"global",status:"pending",samples:[]},
   {id:"private",name:"内部地址样例",host:"127.0.0.1",group:"global",status:"pending",samples:[]},
  ];
- state.mode="complete";state.localMock=true;state.localDelay=350;
+ state.mode="complete";state.localMock=true;state.localDelay=900;
  await page.context().addCookies([{name:"private-session",value:"must-not-send",url:"https://www.example.com"}]);
  await page.reload();await page.locator(".server-info-tab").getByRole("button",{name:"连通性",exact:true}).click();
  const view=page.locator("[data-server-connectivity]"),source=view.locator("[data-connectivity-source]");
@@ -382,6 +409,13 @@ for(const theme of ["default","doraemon"])for(const width of [320,390,768,1440])
  await source.getByRole("button",{name:"本地延迟",exact:true}).click();
  await expect(view.locator("[data-local-connectivity]")).toBeVisible();
  await expect(view.getByRole("button",{name:"停止检测",exact:true})).toBeVisible();
+ const progress=source.getByRole("progressbar");
+ await expect(progress).toBeVisible();
+ expect(await progress.evaluate(el=>!!el.closest("[data-connectivity-source]"))).toBe(true);
+ const p=await progress.boundingBox(),l=await source.getByRole("button",{name:"服务器延迟",exact:true}).boundingBox(),r=await source.getByRole("button",{name:"本地延迟",exact:true}).boundingBox();
+ if(width>=640){expect(p!.x).toBeGreaterThanOrEqual(l!.x+l!.width);expect(p!.x+p!.width).toBeLessThanOrEqual(r!.x);}
+ else expect(p!.y).toBeGreaterThanOrEqual(l!.y+l!.height);
+ await expect(view.getByText(/当前浏览器访问|仅本页可见|每项 1 次/)).toHaveCount(0);
  await expect(view.getByText(/本地检测完成/)).toBeVisible();
  await expect(view.locator('[data-connectivity-target="google"] [data-connectivity-delay]')).not.toHaveText("—");
  await expect(view.locator('[data-connectivity-target="redirect"] [data-connectivity-delay]')).not.toHaveText("—");
@@ -435,4 +469,35 @@ for(const theme of ["default","doraemon"])test("local cancellation and rapid nav
  await expect(view.getByRole("button",{name:"服务器延迟",exact:true})).toHaveAttribute("aria-pressed","true");
  await expect(view.locator("[data-local-connectivity]")).toHaveCount(0);
  expect(state.localRequests).toHaveLength(12);expect(state.posts).toBe(0);
+});
+
+for(const theme of ["default","doraemon"])for(const width of [390,1440])test("visitor unlimited single local retries "+theme+" "+width,async({page},info)=>{
+ await page.setViewportSize({width,height:900});
+ const state=await setup(page,theme,false,true,false,"zh-CN",true);
+ state.override=[{id:"a",name:"Site A",host:"a.example.com",group:"global",status:"ok",phase:"complete",samples:[{status:"ok",delay_ms:42}],delay_ms:42},{id:"b",name:"Site B",host:"b.example.com",group:"global",status:"ok",phase:"complete",samples:[{status:"ok",delay_ms:77}],delay_ms:77}];
+ state.localMock=true;state.localDelay=200;
+ await page.reload();await page.locator(".server-info-tab").getByText("连通性",{exact:true}).click();
+ const view=page.locator("[data-server-connectivity]"),a=view.locator('[data-connectivity-target="a"]'),b=view.locator('[data-connectivity-target="b"]');
+ await view.getByRole("button",{name:"本地延迟",exact:true}).click();
+ await expect(view.getByText(/本地检测完成/)).toBeVisible();
+ expect(state.localRequests).toHaveLength(2);
+ const untouched=await b.locator("[data-connectivity-delay]").innerText();
+ state.localDelay=700;
+ await a.click();await expect(a).toHaveAttribute("aria-disabled","false");
+ await expect(view.getByRole("progressbar")).toHaveCount(0);
+ await expect(b.locator("[data-connectivity-delay]")).toHaveText(untouched);
+ await a.click();
+ await expect.poll(()=>state.localRequests.length).toBe(4);
+ await expect(a).toHaveAttribute("data-connectivity-phase","complete");
+ await expect(view.getByText(/本地检测完成/)).toBeVisible();
+ await a.focus();await page.keyboard.press("Enter");
+ await expect.poll(()=>state.localRequests.length).toBe(5);
+ await expect(a).toHaveAttribute("data-connectivity-phase","complete");
+ await expect(b.locator("[data-connectivity-delay]")).toHaveText(untouched);
+ expect(state.posts).toBe(0);
+ expect(state.localRequests.slice(2).every(row=>new URL(row.url).hostname==="a.example.com")).toBe(true);
+ await view.screenshot({path:info.outputPath("single-local-retry.png")});
+ await view.getByRole("button",{name:"服务器延迟",exact:true}).click();
+ await expect(a.locator("[data-connectivity-delay]")).toHaveText("42ms");
+ await expect(a).not.toHaveAttribute("role","button");
 });

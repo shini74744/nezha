@@ -6,6 +6,8 @@ import { CN, JP, US, KR, SG, MY, ID, GB, DE, FR, CA, AU, IN, BR, RU } from "coun
 import {
 	CircleHelp,
 	Globe2,
+	Gauge,
+	Server,
 	LoaderCircle,
 	RefreshCw,
 	WifiOff,
@@ -107,35 +109,37 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 			aria-label={t("tabSwitch.Connectivity")}
 		>
 			{data && !query.isError && (
-				<div data-connectivity-source className="flex min-w-0 items-center justify-between gap-3 text-sm">
+				<div data-connectivity-source className="grid min-w-0 grid-cols-[auto_auto] items-center justify-between gap-x-3 gap-y-1.5 text-sm sm:grid-cols-[auto_minmax(0,1fr)_auto]">
 					<button type="button" aria-pressed={!localMode}
-						className={cn("min-h-6 rounded px-1 -ml-1 focus-visible:outline focus-visible:outline-2", !localMode ? "font-semibold" : "text-muted-foreground hover:text-foreground")}
+						className={cn("inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-foreground/20 bg-background/90 px-2 sm:px-3 text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none", "col-start-1 row-start-1", !localMode && "font-semibold ring-1 ring-primary/35")}
 						onClick={() => { setLocalServer(undefined); browser.stop(); }}>
+						<Server className="size-3.5 shrink-0" aria-hidden />
 						{t("connectivity.serverLatency")}
 					</button>
+					{localMode && localRunning && browser.run?.fullBatch && (
+						<div role="progressbar" aria-label={t("connectivity.localLatency")} aria-valuemin={0} aria-valuemax={browser.run.results.length} aria-valuenow={localCompleted}
+							className="col-span-2 row-start-2 h-1.5 min-w-0 overflow-hidden rounded-full bg-muted sm:col-span-1 sm:col-start-2 sm:row-start-1">
+							<div className="h-full rounded-full bg-primary transition-[width] motion-reduce:transition-none" style={{ width: `${browser.run.results.length ? localCompleted / browser.run.results.length * 100 : 0}%` }} />
+						</div>
+					)}
 					<button type="button" aria-pressed={localMode}
-						className={cn("min-h-6 rounded px-1 -mr-1 focus-visible:outline focus-visible:outline-2", localMode ? "font-semibold" : "text-muted-foreground hover:text-foreground")}
+						className={cn("inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-foreground/20 bg-background/90 px-2 sm:px-3 text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none col-start-2 row-start-1 sm:col-start-3", localMode && "font-semibold ring-1 ring-primary/35")}
 						onClick={() => { setLocalServer(serverId); if (!browser.run) startLocal(); }}>
+						<Gauge className="size-3.5 shrink-0" aria-hidden />
 						{t("connectivity.localLatency")}
 					</button>
 				</div>
 			)}
 			{localMode && data && !query.isError && (
-				<div data-local-connectivity className="space-y-1.5">
-					<div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
-						<p className="min-w-0 flex-1">{t("connectivity.localNotice")}</p>
-						<button type="button" className="inline-flex min-h-6 shrink-0 items-center gap-1 rounded px-1 hover:text-foreground focus-visible:outline focus-visible:outline-2"
-							disabled={!data.results.length} onClick={() => localRunning ? browser.stop() : startLocal()}>
-							{localRunning ? <LoaderCircle className="size-3 animate-spin" aria-hidden /> : <RefreshCw className="size-3" aria-hidden />}
-							{t(localRunning ? "connectivity.localStop" : "connectivity.localRetest")}
-						</button>
-					</div>
-					{browser.run && <p role="status" className="text-xs text-muted-foreground">
+				<div data-local-connectivity className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
+					{browser.run && <p role="status">
 						{t(browser.run.cancelled ? "connectivity.localCancelled" : localRunning ? "connectivity.progress" : "connectivity.localFinished", { done: localCompleted, total: browser.run.results.length })}
 					</p>}
-					{localRunning && <div role="progressbar" aria-label={t("connectivity.localLatency")} aria-valuemin={0} aria-valuemax={browser.run?.results.length || 0} aria-valuenow={localCompleted} className="h-1 overflow-hidden rounded-full bg-muted">
-						<div className="h-full rounded-full bg-primary transition-[width] motion-reduce:transition-none" style={{ width: `${browser.run?.results.length ? localCompleted / browser.run.results.length * 100 : 0}%` }} />
-					</div>}
+					<button type="button" className="ml-auto inline-flex min-h-6 shrink-0 items-center gap-1 rounded px-1 hover:text-foreground focus-visible:outline focus-visible:outline-2"
+						disabled={!data.results.length} onClick={() => localRunning ? browser.stop() : startLocal()}>
+						{localRunning ? <LoaderCircle className="size-3 animate-spin" aria-hidden /> : <RefreshCw className="size-3" aria-hidden />}
+						{t(localRunning ? "connectivity.localStop" : "connectivity.localRetest")}
+					</button>
 				</div>
 			)}
 			{!data?.can_run && query.isPending && (
@@ -333,8 +337,8 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 											key={result.id}
 											result={result}
 											rounds={displayRounds}
-                                            onRetest={!localMode && data.can_run ? () => mutation.mutate(result.id) : undefined}
-                                            disabled={!data.online || running || mutation.isPending || cooldown > 0}
+                                            onRetest={localMode ? () => browser.retry(result.id) : data.can_run ? () => mutation.mutate(result.id) : undefined}
+                                            disabled={!localMode && (!data.online || running || mutation.isPending || cooldown > 0)}
 										/>
 									))}
 							</div>

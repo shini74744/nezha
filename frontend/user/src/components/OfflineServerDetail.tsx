@@ -80,7 +80,7 @@ export function OfflineServerDetail({server,now,initialTab="Detail",onTabIntent}
   <section className="flex items-center my-2 w-full">
    <Separator className="flex-1"/><div className="flex justify-center w-full max-w-sm"><TabSwitch tabs={tabs} currentTab={tab} setCurrentTab={selectTab} onTabIntent={onTabIntent}/></div><Separator className="flex-1"/>
   </section>
-  <div ref={viewportRef} data-detail-viewport className="detail-viewport flex flex-col gap-4 min-w-0">
+  <div ref={viewportRef} data-detail-viewport className={`detail-viewport flex flex-col gap-4 min-w-0${tab === "Connectivity" ? " -mt-5" : ""}`}>
   {tab!=="Network" && <DetailPanel key={server.id + ":" + tab}>
   {tab==="Detail" && (report?.tsdb_enabled||saved)?<section>
     <PeriodSelector selectedPeriod={activePeriod==="last"?"realtime":activePeriod} onPeriodChange={p=>setPeriod(p==="realtime"?"last":p)} isLogin={!!viewer} isTsdbEnabled={!!report?.tsdb_enabled} offline/>
