@@ -2,15 +2,13 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fetchSetting } from "@/lib/nezha-api";
-import { loadServerDetailChart, loadServerNetworkSection } from "@/lib/detail-modules";
+import { loadServerDetailChart, loadServerNetworkSection, PreloadedServerConnectivity as ServerConnectivity, PreloadedServerNetworkInsight as ServerNetworkInsight } from "@/lib/detail-modules";
 import { usePrimaryDetailPreload } from "@/hooks/use-primary-detail-preload";
 const ServerNetworkSection = lazy(loadServerNetworkSection);
 const ServerDetailChart = lazy(loadServerDetailChart);
 import ServerDetailOverview from "@/components/ServerDetailOverview";
 import TabSwitch from "@/components/TabSwitch";
 import DetailPanel from "@/components/DetailPanel";
-const ServerConnectivity = lazy(() => import("@/components/ServerConnectivity"));
-const ServerNetworkInsight = lazy(() => import("@/components/ServerNetworkInsight"));
 import { Separator } from "@/components/ui/separator";
 import { useWebSocketContext } from "@/hooks/use-websocket-context";
 import { formatNezhaInfo } from "@/lib/utils";
@@ -30,11 +28,15 @@ export default function ServerDetail() {
 	const { id: server_id } = useParams();
 	const { lastData } = useWebSocketContext();
 	const server = lastData?.servers.find(s => s.id === Number(server_id));
-	usePrimaryDetailPreload(server?.id);
+	const warmTab = usePrimaryDetailPreload(server?.id, {
+		connectivity: !!server && !server.connectivity_disabled,
+		bgp: !!server && !server.bgp_disabled,
+		streaming: !!server && !server.streaming_disabled,
+	});
 	const tabs = useMemo(() => ["Detail", ...(!combinedNetwork ? ["Network"] : []), ...(!server?.connectivity_disabled ? ["Connectivity"] : []), ...(!server?.bgp_disabled ? ["BGP"] : []), ...(!server?.streaming_disabled ? ["Streaming"] : [])], [combinedNetwork, server?.connectivity_disabled, server?.bgp_disabled, server?.streaming_disabled]);
 	const currentTab = tabs.includes(selectedTab) ? selectedTab : "Detail";
 	if (server && lastData && !formatNezhaInfo(lastData.now, server).online) {
-		return <Suspense fallback={<div className="mx-auto w-full max-w-5xl server-info"><ServerDetailOverview server_id={server_id!}/><SectionLoading/></div>}><OfflineServerDetail key={server.id} server={server} now={lastData.now} initialTab={currentTab} /></Suspense>;
+		return <Suspense fallback={<div className="mx-auto w-full max-w-5xl server-info"><ServerDetailOverview server_id={server_id!}/><SectionLoading/></div>}><OfflineServerDetail key={server.id} server={server} now={lastData.now} initialTab={currentTab} onTabIntent={warmTab} /></Suspense>;
 	}
 
 	if (!server_id) {
@@ -51,6 +53,7 @@ export default function ServerDetail() {
 						tabs={tabs}
 						currentTab={currentTab}
 						setCurrentTab={setCurrentTab}
+						onTabIntent={warmTab}
 					/>
 				</div>
 				<Separator className="flex-1" />

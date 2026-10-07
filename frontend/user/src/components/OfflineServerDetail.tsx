@@ -1,5 +1,5 @@
-import { lazy, Suspense, useState, useEffect, useMemo } from "react";
-const ServerNetworkInsight=lazy(()=>import("./ServerNetworkInsight"));
+import { Suspense, useState, useEffect, useMemo } from "react";
+import { PreloadedServerNetworkInsight as ServerNetworkInsight } from "@/lib/detail-modules";
 import dayjs from "dayjs";
 import { useQuery } from "@tanstack/react-query";
 import { Area, AreaChart, XAxis, YAxis, CartesianGrid } from "recharts";
@@ -43,7 +43,7 @@ function valueText(value:number|undefined,unit:string) {
  if(unit==="percent")return value.toFixed(2)+"%";
  return Number.isInteger(value)?String(value):value.toFixed(2);
 }
-export function OfflineServerDetail({server,now,initialTab="Detail"}:{server:NezhaServer;now:number;initialTab?:string}) {
+export function OfflineServerDetail({server,now,initialTab="Detail",onTabIntent}:{server:NezhaServer;now:number;initialTab?:string;onTabIntent?:(tab:string)=>void}) {
  const [selectedTab,setTab]=useState(initialTab),[period,setPeriod]=useState<"last"|MetricPeriod>("last");
  const {data:setting}=useQuery({queryKey:["setting"],queryFn:fetchSetting,refetchOnWindowFocus:true,refetchInterval:30000});
  const combinedNetwork=setting?.data?.config?.show_network_in_detail===true;
@@ -75,7 +75,7 @@ export function OfflineServerDetail({server,now,initialTab="Detail"}:{server:Nez
     <p>{!report?.tsdb_enabled?"历史存储未启用。":report.history_days===1?"游客仅可查看最近 1 天的历史；登录后可查询最近 30 天。":"最近 30 天内未找到记录，或记录已超过配置的保留期限。"}未保存的数据不能补回。</p>
    </div>:null}
   <section className="flex items-center my-2 w-full">
-   <Separator className="flex-1"/><div className="flex justify-center w-full max-w-sm"><TabSwitch tabs={tabs} currentTab={tab} setCurrentTab={setTab}/></div><Separator className="flex-1"/>
+   <Separator className="flex-1"/><div className="flex justify-center w-full max-w-sm"><TabSwitch tabs={tabs} currentTab={tab} setCurrentTab={setTab} onTabIntent={onTabIntent}/></div><Separator className="flex-1"/>
   </section>
   {tab!=="Network" && <DetailPanel key={server.id + ":" + tab}>
   {tab==="Detail" && (report?.tsdb_enabled||saved)?<section>

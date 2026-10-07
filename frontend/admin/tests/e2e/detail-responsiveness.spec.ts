@@ -2,7 +2,7 @@ import {expect,test,type Page} from "@playwright/test"
 import {createServer} from "../../../user/src/test/fixtures"
 import manifest from "../../../user/src/appearance/manifest.json" with {type:"json"}
 test.use({ignoreHTTPSErrors:true})
-async function setup(page:Page,theme:string,effects:boolean,combined=false,initialPath="/server/7",networkChunkDelay=0,rateBits?:boolean) {
+async function setup(page:Page,theme:string,effects:boolean,combined=false,initialPath="/server/7",networkChunkDelay=0,rateBits?:boolean,secondaryDelay=0) {
  const origin="https://127.0.0.1:"+(theme==="default"?"18477":"18478"), now=Date.now()
  const servers=Array.from({length:119},(_,i)=>createServer({id:i+1,name:"响应测试节点 "+(i+1),country_code:"hk",last_active:new Date(now).toISOString()}))
  const appearance={version:1,enabled:effects,features:{...Object.fromEntries(manifest.map(d=>[d.key,{...d.defaults,enabled:!["live2d","analytics","visitorIP","footerIP"].includes(d.key)}])),background:{enabled:effects,desktopMedia:[{type:"image",src:origin+"/entry-wallpaper.svg"}],mobileMedia:[{type:"image",src:origin+"/entry-wallpaper.svg"}],nightEnabled:false,lightOpacity:0.82,darkOpacity:0.82}}}
@@ -10,7 +10,7 @@ async function setup(page:Page,theme:string,effects:boolean,combined=false,initi
  const monitors=Array.from({length:18},(_,i)=>({monitor_id:i+1,monitor_name:"监控 "+i,display_index:0,server_id:7,server_name:servers[6].name,
   created_at:Array.from({length:1440},(_,j)=>now-(1440-j)*60000),avg_delay:Array.from({length:1440},(_,j)=>80+i*10+Math.sin(j)*20),packet_loss:Array(1440).fill(0)}))
  const topology={family:"IPv4",status:"ok",total:322,source:"RIPE RIS",paths:Array.from({length:24},(_,i)=>({origin:{asn:4760,name:"Origin"},direct:{asn:3491,name:"Transit"},second:{asn:1299+i,name:"Peer "+i},count:30-i}))}
- const state={reads:{} as Record<string,number>,posts:[] as string[],assets:[] as string[],networkChunkLoads:0,networkChunkReleased:false,monitorBeforeChunk:false,tick:()=>{}}
+ const state={reads:{} as Record<string,number>,posts:[] as string[],assets:[] as string[],networkChunkLoads:0,networkChunkReleased:false,monitorBeforeChunk:false,secondaryBeforePrimary:false,events:[] as {path:string,phase:string,at:number}[],tick:()=>{}}
  await page.addInitScript(()=>{localStorage.setItem("language","zh-CN");localStorage.setItem("vite-ui-theme","light");localStorage.setItem("doraemon-ui-theme","light")})
  await page.routeWebSocket("**/api/v1/ws/server",ws=>{let frame=0;state.tick=()=>{const at=now+frame++*1000;ws.send(JSON.stringify({now:at,servers:servers.map(s=>({...s,last_active:new Date(at).toISOString(),state:{...s.state,cpu:12+frame%30}})),online:119}))};state.tick()})
  await page.route("**/*",async route=>{
@@ -24,10 +24,21 @@ async function setup(page:Page,theme:string,effects:boolean,combined=false,initi
     await new Promise(r=>setTimeout(r,networkChunkDelay))
     state.networkChunkReleased=true
    }
+   if(secondaryDelay && /\/(ServerConnectivity|ServerNetworkInsight|BGPTopology)[-.][^/]+\.js$/.test(u.pathname)){
+    state.events.push({path:u.pathname,phase:"module-start",at:Date.now()})
+    await new Promise(r=>setTimeout(r,secondaryDelay))
+    state.events.push({path:u.pathname,phase:"module-ready",at:Date.now()})
+   }
    return route.continue()
   }
   state.reads[u.pathname]=(state.reads[u.pathname]||0)+1
   if(req.method()==="POST")state.posts.push(u.pathname)
+  if(/\/(connectivity|bgp|streaming)$/.test(u.pathname)){
+   state.secondaryBeforePrimary ||= !state.reads["/api/v1/server/7/service"]
+   state.events.push({path:u.pathname,phase:"data-start",at:Date.now()})
+   if(secondaryDelay)await new Promise(r=>setTimeout(r,secondaryDelay))
+   state.events.push({path:u.pathname,phase:"data-ready",at:Date.now()})
+  }
   let data:any=[]
   if(u.pathname==="/api/v1/setting")data={tsdb_enabled:true,config:{language:"zh-CN",site_name:"响应测试",show_network_in_detail:combined,appearance_config:JSON.stringify(appearance),doraemon_appearance_config:JSON.stringify(appearance),custom_code:""}}
   else if(u.pathname==="/api/v1/profile")return route.fulfill({status:401,json:{success:false}})
@@ -227,10 +238,8 @@ for(const theme of ["default","doraemon"])for(const combined of [false,true])tes
  await expect.poll(()=>state.reads["/api/v1/server/7/service"]||0).toBe(1)
  expect(state.networkChunkLoads).toBe(1)
  expect(state.monitorBeforeChunk).toBe(true)
- expect(state.reads["/api/v1/server/7/bgp"]||0).toBe(0)
- expect(state.reads["/api/v1/server/7/streaming"]||0).toBe(0)
- expect(state.reads["/api/v1/server/7/connectivity"]||0).toBe(0)
- expect(state.assets.some(path=>/ServerConnectivity[-.]|ServerNetworkInsight[-.]/.test(path))).toBe(false)
+ expect(state.secondaryBeforePrimary).toBe(false)
+ await expect(page.locator("[data-server-connectivity], [data-network-insight]")).toHaveCount(0)
  if(!combined){
   await expect(page.locator("[data-server-network]")).toHaveCount(0)
   await page.locator(".server-info-tab").getByRole("button",{name:"网络",exact:true}).click()
@@ -254,4 +263,45 @@ for(const width of [320,1440])for(const bits of [true,false])test("default detai
  await expect(network).toContainText(bits?"Mbps":"M/s")
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true)
  await network.screenshot({path:info.outputPath("detail-rate.png")})
+})
+
+for(const theme of ["default","doraemon"])test("secondary cold click timing "+theme,async({page},info)=>{
+ test.setTimeout(45000)
+ const state=await setup(page,theme,false,false,"/server/7",10000,undefined,700)
+ const tabs=page.locator(".server-info-tab")
+ await expect(tabs).toBeVisible()
+ const started=Date.now()
+ // Evaluate click does not secretly warm with Playwright's hover first.
+ await tabs.getByRole("button",{name:"连通性",exact:true}).evaluate(el=>(el as HTMLElement).click())
+ await expect(page.locator("[data-server-connectivity]")).toBeVisible()
+ await expect.poll(()=>state.events.some(e=>e.path.endsWith("/connectivity")&&e.phase==="data-ready")).toBe(true)
+ await expect(page.locator("[data-server-connectivity] [role=status]")).toHaveCount(0)
+ const moduleReady=state.events.find(e=>e.path.includes("ServerConnectivity")&&e.phase==="module-ready")!
+ const dataStart=state.events.find(e=>e.path.endsWith("/connectivity")&&e.phase==="data-start")!
+ expect(dataStart.at).toBeLessThan(moduleReady.at)
+ expect(state.reads["/api/v1/server/7/connectivity"]).toBe(1)
+ console.log("SECONDARY_COLD_TIMING",JSON.stringify({theme,total:Date.now()-started,events:state.events}))
+ expect(state.posts).toEqual([])
+ await page.screenshot({path:info.outputPath("secondary-cold.png")})
+})
+
+for(const theme of ["default","doraemon"])test("secondary idle results reuse and warm tab content "+theme,async({page},info)=>{
+ const state=await setup(page,theme,false,true)
+ await expect(page.locator(".server-charts .recharts-surface")).toHaveCount(6)
+ await expect.poll(()=>state.reads["/api/v1/server/7/bgp"]||0).toBe(1)
+ await expect(page.locator("[data-network-insight], [data-server-connectivity]")).toHaveCount(0)
+ const times:any[]=[]
+ for(const label of ["连通性","流媒体","BGP","连通性","BGP"]){
+  const before=Date.now()
+  await page.locator(".server-info-tab").getByRole("button",{name:label,exact:true}).evaluate(el=>(el as HTMLElement).click())
+  if(label==="连通性")await expect(page.locator("[data-server-connectivity]")).toBeVisible()
+  else if(label==="BGP")await expect(page.locator("[data-bgp-graph]")).toBeVisible()
+  else await expect(page.locator("[data-media-card]")).toHaveCount(6)
+  times.push({label,ms:Date.now()-before})
+ }
+ expect(times.every(t=>t.ms<1500)).toBe(true)
+ for(const kind of ["connectivity","bgp","streaming"])expect(state.reads["/api/v1/server/7/"+kind]).toBe(1)
+ expect(state.posts).toEqual([])
+ console.log("SECONDARY_WARM",JSON.stringify({theme,times}))
+ await page.screenshot({path:info.outputPath("secondary-warm.png")})
 })

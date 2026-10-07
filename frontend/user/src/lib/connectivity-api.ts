@@ -50,9 +50,11 @@ export interface ConnectivityData extends ConnectivitySnapshot {
 export async function fetchConnectivity(
 	serverId: number,
 	signal?: AbortSignal,
+	priority?: RequestPriority,
 ): Promise<ConnectivityData> {
 	const response = await fetch(`/api/v1/server/${serverId}/connectivity`, {
 		signal,
+		priority,
 		cache: "no-store",
 	});
 	const body = await response.json();
