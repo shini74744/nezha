@@ -460,10 +460,22 @@ for(const theme of ["default","doraemon"])for(const width of [320,390,768,1440])
  await view.getByRole("button",{name:"重新检测本地延迟",exact:true}).click();
  await expect(view.getByText(/本地检测完成/)).toBeVisible();
  expect(state.localRequests).toHaveLength(6);
+ const localButton=source.getByRole("button",{name:"本地延迟",exact:true});
+ await expect(localButton).toHaveAttribute("title","重新检测本地延迟");
+ await localButton.click();await localButton.click();
+ await expect.poll(()=>state.localRequests.length).toBe(9);
+ await expect(view.getByText(/本地检测完成/)).toBeVisible();
+ expect(state.localRequests).toHaveLength(9);
+ await expect(localButton).toHaveAttribute("aria-pressed","true");
+ await localButton.focus();await localButton.press("Enter");
+ await expect.poll(()=>state.localRequests.length).toBe(12);
+ await expect(view.getByText(/本地检测完成/)).toBeVisible();
+ expect(state.localRequests).toHaveLength(12);
+ expect(await page.evaluate(()=>(window as any).__storageWrites)).toEqual([]);
  await page.reload();await page.locator(".server-info-tab").getByRole("button",{name:"连通性",exact:true}).click();
  await expect(source.getByRole("button",{name:"服务器延迟",exact:true})).toHaveAttribute("aria-pressed","true");
  await expect(view.locator("[data-local-connectivity]")).toHaveCount(0);
- expect(state.localRequests).toHaveLength(6);expect(state.posts).toBe(0);
+ expect(state.localRequests).toHaveLength(12);expect(state.posts).toBe(0);
 });
 
 for(const theme of ["default","doraemon"])test("local cancellation and rapid navigation "+theme,async({page},info)=>{
@@ -479,7 +491,7 @@ for(const theme of ["default","doraemon"])test("local cancellation and rapid nav
  await view.getByRole("button",{name:"停止检测",exact:true}).click();
  await expect(view.getByText("本地检测已停止",{exact:true})).toBeVisible();
  expect(state.localRequests).toHaveLength(6);
- await view.getByRole("button",{name:"重新检测本地延迟",exact:true}).click();
+ await local.click();
  await expect.poll(()=>state.localRequests.length).toBe(12);
  await page.locator(".server-info-tab").getByRole("button",{name:"详情",exact:true}).click();
  await expect(view).toHaveCount(0);

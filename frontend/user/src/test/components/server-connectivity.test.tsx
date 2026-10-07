@@ -481,11 +481,22 @@ describe("visitor local latency", () => {
 			expect(screen.getByText("42")).toBeVisible();
 			fireEvent.click(screen.getByRole("button", { name: "connectivity.localLatency" }));
 			expect(fetcher).toHaveBeenCalledTimes(1);
+			const local = screen.getByRole("button", { name: "connectivity.localLatency" });
+			expect(local).toHaveAttribute("title", "connectivity.localRetest");
+			for (const count of [2, 3]) {
+				fireEvent.click(local);
+				await screen.findByText("connectivity.localFinished");
+				expect(fetcher).toHaveBeenCalledTimes(count);
+				expect(local).toHaveAttribute("aria-pressed", "true");
+			}
+			expect(api.startConnectivity).not.toHaveBeenCalled();
+			expect(storage).not.toHaveBeenCalled();
+			expect(snapshot.results[0].delay_ms).toBe(42);
 			view.unmount(); mount();
 			await screen.findByText("42");
 			expect(screen.queryByText("connectivity.localFinished")).not.toBeInTheDocument();
 			expect(screen.getByRole("button", { name: "connectivity.localLatency" })).toHaveAttribute("aria-pressed", "false");
-			expect(fetcher).toHaveBeenCalledTimes(1);
+			expect(fetcher).toHaveBeenCalledTimes(3);
 		} finally { globalThis.fetch = previous; storage.mockRestore(); }
 	});
 	it("ignores double starts, cancels on leaving, and ignores late completion after unmount", async () => {

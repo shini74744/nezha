@@ -124,7 +124,8 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 					)}
 					<button type="button" aria-pressed={localMode}
 						className={cn("inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full md:relative md:-top-4 border border-foreground/20 bg-background/90 px-2 sm:px-3 text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none col-start-2 row-start-1 sm:col-start-3", localMode && "border-primary bg-primary text-primary-foreground font-semibold hover:bg-primary/90")}
-						onClick={() => { setLocalServer(serverId); if (!browser.run) startLocal(); }}>
+						title={localMode ? t(localRunning ? "connectivity.testing" : "connectivity.localRetest") : undefined}
+						onClick={() => { setLocalServer(serverId); if (localMode || !browser.run) startLocal(); }}>
 						<Gauge className="size-3.5 shrink-0" aria-hidden />
 						{t("connectivity.localLatency")}
 					</button>
