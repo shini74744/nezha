@@ -10,7 +10,7 @@ import {
 	Scan,
 	X,
 } from "lucide-react";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
 	coreGraph,
 	edgeKey,
@@ -33,13 +33,9 @@ const clamp = (value: number, min: number, max: number) =>
 	Math.max(min, Math.min(max, value));
 function BGPTopology({ topology }: { topology: Topology }) {
 	const graph = useMemo(() => graphFor(topology), [topology]);
-	// Snapshot identity resets the view; background polling of the same snapshot does not.
-	const identity = [
-		topology.family,
-		topology.prefix,
-		topology.observed_at,
-	].join("|");
-	return <Observation key={identity} topology={topology} graph={graph} />;
+	// Keep the canvas and display controls mounted when selecting history.
+	// Geometry changes are fitted before paint, without an intermediate zoom.
+	return <Observation topology={topology} graph={graph} />;
 }
 function Observation({
 	topology,
@@ -132,7 +128,7 @@ function Observation({
 	const fitRef = useRef(fitView);
 	fitRef.current = fitView;
 	// biome-ignore lint/correctness/useExhaustiveDependencies: Geometry identity, not polling object identity, controls viewport fitting.
-	useEffect(() => {
+	useLayoutEffect(() => {
 		const el = viewportElement;
 		if (!el) return;
 		let width = el.clientWidth,

@@ -138,14 +138,8 @@ function ServerNetworkInsight({
 						</PopoverTrigger>
 						<PopoverContent className="max-w-[calc(100vw-2rem)] text-xs leading-relaxed">
 							{kind === "bgp"
-								? "展示节点网络的 BGP 路由关系，数据来自 RIPE RIS。支持切换可用的 IP 协议及历史记录。观测结果不代表实际流量路径或网络测速结果。"
-								: "请求由该节点 Agent 通过 IPv4 / IPv6 发起，不使用访客网络。Netflix 使用自制与非自制内容页面判定，YouTube 检查 Premium；其余平台使用公开区域信号。无法识别会显示无法判断，网页可达不等于解锁，结果不保证账号实际播放权限。需节点支持 sh、curl 且允许 Agent 执行固定命令。"}
-							<p className="mt-2">
-								管理员和节点所属用户可更新检测结果，访客可查看已保存的记录。
-								{kind === "bgp"
-									? "IP 地址及网段仅管理员可见。"
-									: "自动检测使用“卡片设置 → 连通性”，默认每 2 小时一次、保留 1 天。网页可达不代表已解锁。"}
-							</p>
+								? "查看节点的 BGP 路由与历史变化，可切换 IPv4 / IPv6。"
+								: "查看节点对各平台的访问与解锁情况，实际播放以平台结果为准。"}
 						</PopoverContent>
 					</Popover>
 				</div>
