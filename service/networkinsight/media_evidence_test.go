@@ -12,6 +12,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Configure PATH inside the POSIX shell, including on Git-for-Windows.
+// Resolve the fake executable before running any probe so a broken fixture
+// cannot fall through to real platform traffic.
+func mediaFixtureCommand(ctx context.Context, dir, command string, env ...string) *exec.Cmd {
+	prefix := "PATH=\"$PWD:$PATH\"; export PATH; test \"$(command -v curl)\" = \"$PWD/curl\" || exit 97; "
+	cmd := exec.CommandContext(ctx, "sh", "-c", prefix+command)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), env...)
+	return cmd
+}
+
+func TestMediaFixtureRejectsMissingCurl(t *testing.T) {
+	dir := t.TempDir()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	raw, err := mediaFixtureCommand(ctx, dir, "printf unexpected > should-not-run").CombinedOutput()
+	var exit *exec.ExitError
+	require.ErrorAs(t, err, &exit, string(raw))
+	require.Equal(t, 97, exit.ExitCode())
+	_, err = os.Stat(filepath.Join(dir, "should-not-run"))
+	require.True(t, os.IsNotExist(err))
+}
+
 // All HTTP is replaced locally; no platform traffic or user accounts in tests.
 func TestPlatformSpecificMediaFlows(t *testing.T) {
 	cases := []struct {
@@ -74,10 +97,8 @@ esac
 			require.NotContains(t, command, "password=")
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer cancel()
-			cmd := exec.CommandContext(ctx, "sh", "-c", command)
-			cmd.Dir = dir
 			log := filepath.Join(dir, "calls")
-			cmd.Env = append(os.Environ(), "PATH="+dir+":"+os.Getenv("PATH"), "NZ_BODY="+tc.body, "NZ_SCENARIO="+tc.scenario, "NZ_LOG="+log)
+			cmd := mediaFixtureCommand(ctx, dir, command, "NZ_BODY="+tc.body, "NZ_SCENARIO="+tc.scenario, "NZ_LOG=calls")
 			raw, err := cmd.CombinedOutput()
 			require.NoError(t, err, string(raw))
 			require.NotContains(t, string(raw), "test.assertion.token")

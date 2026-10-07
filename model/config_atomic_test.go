@@ -5,6 +5,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -19,7 +20,10 @@ func TestConfigAtomicWrite(t *testing.T) {
 	require.Equal(t, "after", string(data))
 	info, err := os.Stat(target)
 	require.NoError(t, err)
-	require.Equal(t, os.FileMode(0600), info.Mode().Perm())
+	// Windows reports synthetic mode bits; file privacy there is governed by ACLs.
+	if runtime.GOOS != "windows" {
+		require.Equal(t, os.FileMode(0600), info.Mode().Perm())
+	}
 	entries, err := os.ReadDir(dir)
 	require.NoError(t, err)
 	require.Len(t, entries, 1)
