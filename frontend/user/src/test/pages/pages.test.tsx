@@ -7,7 +7,7 @@ import { createTestQueryClient } from "@/test/utils";
 import type { ReactElement } from "react";
 import ErrorPage from "@/pages/ErrorPage";
 
-const apiMocks = vi.hoisted(() => ({ fetchSetting: vi.fn() }));
+const apiMocks = vi.hoisted(() => ({ fetchSetting: vi.fn(), fetchMonitor: vi.fn().mockResolvedValue({success:true,data:[]}) }));
 vi.mock("@/lib/nezha-api", () => apiMocks);
 function renderDetail(ui: ReactElement) {
 	return render(<QueryClientProvider client={createTestQueryClient()}>{ui}</QueryClientProvider>);
@@ -148,7 +148,7 @@ describe("ServerDetail", () => {
 		renderDetail(<MemoryRouter initialEntries={["/server/7"]}><Routes>
 			<Route path="/server/:id" element={<ServerDetail />} />
 		</Routes></MemoryRouter>);
-		expect(screen.getByTestId("detail-chart")).toBeInTheDocument();
+		expect(await screen.findByTestId("detail-chart")).toBeInTheDocument();
 		expect(screen.queryByTestId("network-chart")).not.toBeInTheDocument();
 	});
 

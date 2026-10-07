@@ -141,20 +141,23 @@ for (const theme of ["default", "doraemon"])
         })
 for (const theme of ["default", "doraemon"])
     test(
-        theme + " disabled setting keeps separate network and sends no monitor request",
+        theme + " split network preloads once without mounting or polling hidden charts",
         async ({ page }) => {
             const state = await setup(page, theme, false)
             await expect(page.locator(".server-charts [data-chart]")).toHaveCount(6)
             await expect(page.locator("[data-server-network]")).toHaveCount(0)
-            expect(state.periods).toEqual([])
+            await expect.poll(() => state.periods).toEqual(["1d"])
+            await page.waitForTimeout(11000)
+            expect(state.periods).toEqual(["1d"]) // Preloading does not enable background polling.
             await page.reload()
             await expect(page.locator(".server-charts [data-chart]")).toHaveCount(6)
             await expect(page.locator("[data-server-network]")).toHaveCount(0)
-            expect(state.periods).toEqual([])
+            await expect.poll(() => state.periods).toEqual(["1d", "1d"])
             await page.locator(".server-info-tab").getByText("网络", { exact: true }).click()
             await expect(
                 page.locator("[data-server-network]").getByText("18 个监控服务"),
             ).toBeVisible()
+            expect(state.periods).toEqual(["1d", "1d"]) // Opening uses the warmed response.
             await page.locator(".server-info-tab").getByText("详情", { exact: true }).click()
             await expect(page.locator("[data-server-network]")).toHaveCount(0)
         },
