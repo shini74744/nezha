@@ -30,7 +30,7 @@ vi.mock("recharts", () => {
 			data?: unknown[];
 			dataKey?: string;
 		}) => (
-			<div data-key={dataKey} data-points={data?.length} data-testid={testId}>
+			<div data-key={dataKey} data-values={data ? JSON.stringify(data) : undefined} data-points={data?.length} data-testid={testId}>
 				{children}
 			</div>
 		);
@@ -333,4 +333,35 @@ it("preserves every point in a dense history while avoiding quadratic timestamp 
  const middle=performance.now(), indexed=formatData(rows),after=performance.now();
  expect(indexed).toEqual(legacy);
  console.log("NETWORK_HISTORY_BENCH",JSON.stringify({points:72000,legacy_ms:middle-before,indexed_ms:after-middle}));
+});
+
+it("reuses peak calculations without changing samples, selection, or refreshed data", async () => {
+ const user = userEvent.setup();
+ const props = {chartDataKey:["Alpha","Beta"],chartConfig,chartData:clientChartData,serverName:"cache-check",formattedData:clientFormattedData,isPeriodLoading:false,period:"1d" as const,onPeriodChange:vi.fn(),isLogin:true};
+ const data = () => JSON.parse(screen.getByTestId("composed-chart").getAttribute("data-values")!);
+ let view = render(<NetworkChartClient {...props}/>);
+ await screen.findByTestId("composed-chart");
+ if (screen.getByRole("switch").getAttribute("aria-checked") !== "true") await user.click(screen.getByRole("switch"));
+ const cold = data();
+ expect(cold).toHaveLength(12);
+ expect(cold[0]).toEqual(clientFormattedData[0]);
+ view.unmount();
+ view = render(<NetworkChartClient {...props}/>);
+ await screen.findByTestId("composed-chart");
+ if (screen.getByRole("switch").getAttribute("aria-checked") !== "true") await user.click(screen.getByRole("switch"));
+ expect(data()).toEqual(cold);
+ await user.click(screen.getByText("Alpha"));
+ expect(data()[0].avg_delay).toBe(30);
+ expect(data()[0].packet_loss).toBe(0);
+ await user.click(screen.getByRole("button",{name:/monitor.clearSelections/}));
+ expect(data()).toEqual(cold);
+ const chartData = {...clientChartData,Alpha:clientChartData.Alpha.map(point=>({...point,avg_delay:point.avg_delay+100}))};
+ const formattedData = clientFormattedData.map(point=>({...point,Alpha:point.Alpha+100}));
+ view.rerender(<NetworkChartClient {...props} chartData={chartData} formattedData={formattedData}/>);
+ expect(data()[11].Alpha).toBeCloseTo(cold[11].Alpha+100,8);
+ expect(data()[11].Beta).toBe(cold[11].Beta);
+ await user.click(screen.getByRole("switch"));
+ expect(data()).toEqual(formattedData);
+ expect(clientFormattedData[0].Alpha).toBe(30);
+ expect(clientChartData.Alpha[0].avg_delay).toBe(30);
 });

@@ -37,10 +37,10 @@ import {
 import { useActiveIndicator } from "@/hooks/use-active-indicator";
 import {
 	fetchLoginUser,
-	fetchMonitor,
 	type MonitorPeriod,
 } from "@/lib/nezha-api";
 import { cn, formatTime } from "@/lib/utils";
+import { monitorQueryOptions, MONITOR_REFRESH_INTERVAL } from "@/lib/monitor-query";
 import type { NezhaMonitor, ServerMonitorChart } from "@/types/nezha-api";
 import NetworkChartLoading from "./NetworkChartLoading";
 import { Label } from "./ui/label";
@@ -52,6 +52,24 @@ interface ResultItem {
 }
 
 const MIN_PERIOD_LOADING_MS = 500;
+
+// Keep completed calculations across interrupted initial renders. React may
+// discard useMemo before the first commit; immutable query data remains stable.
+const historyCache = new WeakMap<NezhaMonitor[], {
+	monitors: NezhaMonitor[];
+	transformedData: ServerMonitorChart;
+	formattedData: ResultItem[];
+}>();
+const smoothingCache = new WeakMap<ResultItem[], WeakMap<ServerMonitorChart, Map<string, ResultItem[]>>>();
+function networkHistory(raw: NezhaMonitor[]) {
+	let cached = historyCache.get(raw);
+	if (!cached) {
+		const monitors = raw.filter(item => item.created_at?.length && item.avg_delay?.length);
+		cached = { monitors, transformedData: transformData(monitors), formattedData: formatData(monitors) };
+		historyCache.set(raw, cached);
+	}
+	return cached;
+}
 
 /**
  * Helper method to calculate packet loss from delay data
@@ -151,22 +169,18 @@ export function NetworkChart({
 	}, [isLogin, period]);
 
 	const { data: monitorData, isPlaceholderData, isError, isFetching, refetch } = useQuery({
-		queryKey: ["monitor", server_id, period],
-		queryFn: () => fetchMonitor(server_id, period),
+		...monitorQueryOptions(server_id, period),
 		enabled: show,
 		placeholderData: keepPreviousData,
 		refetchOnMount: true,
 		refetchOnWindowFocus: true,
-		refetchInterval: 10000,
-		retry: 1,
+		refetchInterval: MONITOR_REFRESH_INTERVAL,
 	});
 
 	const { monitors, transformedData, formattedData, chartDataKey, initChartConfig } = useMemo(() => {
-		const monitors = Array.isArray(monitorData?.data)
-			? monitorData.data.filter((item) => item.created_at?.length && item.avg_delay?.length)
-			: [];
-		const transformedData = transformData(monitors);
-		const formattedData = formatData(monitors);
+		const { monitors, transformedData, formattedData } = Array.isArray(monitorData?.data)
+			? networkHistory(monitorData.data)
+			: { monitors: [], transformedData: {}, formattedData: [] };
 		const monitorInfoByName = new Map(
 			monitors.map((item) => [
 				item.monitor_name,
@@ -492,6 +506,14 @@ export const NetworkChartClient = React.memo(function NetworkChart({
 			return baseData;
 		}
 
+		let byChart = smoothingCache.get(formattedData);
+		if (!byChart) { byChart = new WeakMap(); smoothingCache.set(formattedData, byChart); }
+		let cached = byChart.get(chartData);
+		if (!cached) { cached = new Map(); byChart.set(chartData, cached); }
+		const cacheKey = JSON.stringify([activeCharts, chartDataKey]);
+		const previous = cached.get(cacheKey);
+		if (previous) return previous;
+
 		// For peak cutting, use the base data
 		const data = baseData;
 
@@ -536,7 +558,7 @@ export const NetworkChartClient = React.memo(function NetworkChart({
 		// 初始化EWMA历史值
 		const ewmaHistory: { [key: string]: number } = {};
 
-		return data.map((point, index) => {
+		const result = data.map((point, index) => {
 			if (index < windowSize - 1) return point;
 
 			const window = data.slice(index - windowSize + 1, index + 1);
@@ -589,6 +611,9 @@ export const NetworkChartClient = React.memo(function NetworkChart({
 
 			return smoothed;
 		});
+		if (cached.size >= 8) cached.delete(cached.keys().next().value!);
+		cached.set(cacheKey, result);
+		return result;
 	}, [isPeakEnabled, activeCharts, formattedData, chartData, chartDataKey]);
 
 	return (

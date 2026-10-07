@@ -42,9 +42,24 @@ describe("responsive detail panes",()=>{
   const button=screen.getByRole("button",{name:"tabSwitch.BGP"});
   fireEvent.keyDown(button,{key:"Enter"});
   await waitFor(()=>expect(button).toHaveAttribute("aria-pressed","true"));
-  expect(screen.getByTestId("pane")).toHaveTextContent("7:BGP");
+  await waitFor(()=>expect(screen.getByTestId("pane")).toHaveTextContent("7:BGP"));
   view.rerender(<Harness server={8}/>);
   await waitFor(()=>expect(screen.getByTestId("pane")).toHaveTextContent("8:BGP"));
   expect(screen.getAllByTestId("pane")).toHaveLength(1);
  });
+});
+
+it("cancels a queued pane before its first frame and keeps the latest node", async () => {
+ vi.useFakeTimers();
+ const mounted = vi.fn();
+ function Pane({name}:{name:string}){useEffect(()=>{mounted(name)},[name]);return <p>{name}</p>}
+ const view=render(<DetailPanel key="old"><Pane name="old"/></DetailPanel>);
+ expect(screen.queryByText("old")).toBeNull();
+ view.rerender(<DetailPanel key="new"><Pane name="new"/></DetailPanel>);
+ try {
+  await act(async()=>{vi.advanceTimersByTime(17)});
+  await act(async()=>{vi.advanceTimersByTime(1)});
+  expect(screen.getByText("new")).toBeVisible();
+  expect(mounted.mock.calls).toEqual([["new"]]);
+ } finally {view.unmount();vi.runAllTimers();vi.useRealTimers()}
 });

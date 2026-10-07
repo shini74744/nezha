@@ -5,9 +5,9 @@ import { fetchSetting } from "@/lib/nezha-api";
 import NetworkChartLoading from "./NetworkChartLoading";
 import { Separator } from "./ui/separator";
 
-const NetworkChart = lazy(() =>
-	import("./NetworkChart").then((module) => ({ default: module.NetworkChart })),
-);
+import { loadNetworkChart } from "@/lib/detail-modules";
+
+const NetworkChart = lazy(loadNetworkChart);
 
 // Both views use one chart instance, so changing tabs preserves its filters
 // and never creates a second polling request.

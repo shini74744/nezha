@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { NetworkRateContext } from "@/context/network-rate-context";
+import { useFeature } from "@/appearance/context";
+import { formatSpeed } from "@/appearance/widgets";
 import { useTranslation } from "react-i18next";
 import {
 	Area,
@@ -89,6 +91,7 @@ type connectChartData = {
 };
 
 const MIN_HISTORY_LOADING_MS = 300;
+const formatCardBits = (bytes: number) => formatSpeed(bytes, true);
 const sleep = (ms: number) =>
 	new Promise<void>((resolve) => {
 		setTimeout(resolve, ms);
@@ -1558,7 +1561,9 @@ function NetworkChart({
 	period: ChartPeriod;
 }) {
 	const { t } = useTranslation();
-	const rateFormatter = useContext(NetworkRateContext);
+	const themeRateFormatter = useContext(NetworkRateContext);
+	const speed = useFeature("speed");
+	const rateFormatter = themeRateFormatter ?? (speed.enabled && speed.cardEnabled && speed.bits ? formatCardBits : null);
 	const [networkChartData, setNetworkChartData] = useState(
 		[] as networkChartData[],
 	);

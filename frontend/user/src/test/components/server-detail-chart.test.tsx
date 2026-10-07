@@ -3,6 +3,9 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { isValidElement, type ReactNode } from "react";
 import { NetworkRateContext } from "@/context/network-rate-context";
+import { AppearanceProvider } from "@/appearance/context";
+import { defaults } from "@/appearance/config";
+import { formatSpeed } from "@/appearance/widgets";
 import { formatNetworkRate } from "@/themes/doraemon/format";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ServerDetailChart from "@/components/ServerDetailChart";
@@ -320,6 +323,52 @@ describe("ServerDetailChart", () => {
 			);
 		});
 	});
+	it.each([
+		{ enabled: true, cardEnabled: true, bits: true, converted: true },
+		{ enabled: false, cardEnabled: true, bits: true, converted: false },
+		{ enabled: true, cardEnabled: false, bits: true, converted: false },
+		{ enabled: true, cardEnabled: true, bits: false, converted: false },
+	])("default detail rate follows card preferences: %j", async ({enabled, cardEnabled, bits, converted}) => {
+		seedWebSocketData();
+		const config = defaults();
+		config.enabled = enabled;
+		Object.assign(config.features.speed, {enabled:true, cardEnabled, bits});
+		renderWithQuery(<AppearanceProvider raw={JSON.stringify(config)}><ServerDetailChart server_id="7" /></AppearanceProvider>);
+		expect(await screen.findByText(converted ? "24.0Mbps" : "3.00M/s")).toBeInTheDocument();
+		expect(screen.getByText(converted ? "32.0Mbps" : "4.00M/s")).toBeInTheDocument();
+		await waitFor(() => expect(screen.getAllByTestId("line-chart")).toHaveLength(2));
+		expect(screen.getAllByTestId("y-axis").some(el => el.dataset.unitAtOne === (converted ? "8.00Mbps" : "1M/s"))).toBe(true);
+		expect(screen.getAllByTestId("chart-tooltip").some(el => el.dataset.sample?.includes(converted ? "24.0Mbps" : "3.00 MB/s"))).toBe(true);
+	});
+
+	it("default converted historical rates retain raw samples and follow live preference changes", async () => {
+		seedWebSocketData();
+		const config = defaults();
+		config.enabled = true;
+		Object.assign(config.features.speed, {enabled:true,cardEnabled:true,bits:true});
+		detailChartMocks.fetchServerMetrics.mockImplementation((_id: number, metric: string) => {
+			const response = metricsResponse(metric);
+			if (metric.startsWith("net_")) response.data.data_points.forEach(point => { point.value = 125 * 1024 ** 2; });
+			return Promise.resolve(response);
+		});
+		const client = createTestQueryClient();
+		const ui = () => <QueryClientProvider client={client}><AppearanceProvider raw={JSON.stringify(config)}><ServerDetailChart server_id="7" /></AppearanceProvider></QueryClientProvider>;
+		const view = render(ui());
+		await screen.findByText("24.0Mbps");
+		await userEvent.click(screen.getByText("serverDetailChart.period1d"));
+		await waitFor(() => {
+			const chart = screen.getAllByTestId("line-chart").find(el => el.dataset.values?.includes('"upload"'));
+			expect(chart).toBeDefined();
+			const samples = JSON.parse(chart!.dataset.values!);
+			expect(samples[0].upload).toBe(125);
+			expect(formatSpeed(samples[0].upload * 1024 ** 2, true)).toBe("1.00Gbps");
+		});
+		config.features.speed.bits = false;
+		view.rerender(ui());
+		expect(await screen.findByText("3.00M/s")).toBeInTheDocument();
+		expect(screen.queryByText("24.0Mbps")).not.toBeInTheDocument();
+	});
+
 	it("prevents historical periods when TSDB is disabled", async () => {
 		const user = userEvent.setup();
 		seedWebSocketData();

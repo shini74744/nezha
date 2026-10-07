@@ -2,28 +2,37 @@ import {expect,test,type Page} from "@playwright/test"
 import {createServer} from "../../../user/src/test/fixtures"
 import manifest from "../../../user/src/appearance/manifest.json" with {type:"json"}
 test.use({ignoreHTTPSErrors:true})
-async function setup(page:Page,theme:string,effects:boolean,combined=false,initialPath="/server/7") {
+async function setup(page:Page,theme:string,effects:boolean,combined=false,initialPath="/server/7",networkChunkDelay=0,rateBits?:boolean) {
  const origin="https://127.0.0.1:"+(theme==="default"?"18477":"18478"), now=Date.now()
  const servers=Array.from({length:119},(_,i)=>createServer({id:i+1,name:"响应测试节点 "+(i+1),country_code:"hk",last_active:new Date(now).toISOString()}))
  const appearance={version:1,enabled:effects,features:{...Object.fromEntries(manifest.map(d=>[d.key,{...d.defaults,enabled:!["live2d","analytics","visitorIP","footerIP"].includes(d.key)}])),background:{enabled:effects,desktopMedia:[{type:"image",src:origin+"/entry-wallpaper.svg"}],mobileMedia:[{type:"image",src:origin+"/entry-wallpaper.svg"}],nightEnabled:false,lightOpacity:0.82,darkOpacity:0.82}}}
+ if(rateBits!==undefined){appearance.enabled=true;for(const feature of Object.values(appearance.features))feature.enabled=false;appearance.features.speed={...manifest.find(d=>d.key==="speed")!.defaults,enabled:true,cardEnabled:true,bits:rateBits}}
  const monitors=Array.from({length:18},(_,i)=>({monitor_id:i+1,monitor_name:"监控 "+i,display_index:0,server_id:7,server_name:servers[6].name,
   created_at:Array.from({length:1440},(_,j)=>now-(1440-j)*60000),avg_delay:Array.from({length:1440},(_,j)=>80+i*10+Math.sin(j)*20),packet_loss:Array(1440).fill(0)}))
  const topology={family:"IPv4",status:"ok",total:322,source:"RIPE RIS",paths:Array.from({length:24},(_,i)=>({origin:{asn:4760,name:"Origin"},direct:{asn:3491,name:"Transit"},second:{asn:1299+i,name:"Peer "+i},count:30-i}))}
- const state={reads:{} as Record<string,number>,posts:[] as string[],tick:()=>{}}
+ const state={reads:{} as Record<string,number>,posts:[] as string[],assets:[] as string[],networkChunkLoads:0,networkChunkReleased:false,monitorBeforeChunk:false,tick:()=>{}}
  await page.addInitScript(()=>{localStorage.setItem("language","zh-CN");localStorage.setItem("vite-ui-theme","light");localStorage.setItem("doraemon-ui-theme","light")})
  await page.routeWebSocket("**/api/v1/ws/server",ws=>{let frame=0;state.tick=()=>{const at=now+frame++*1000;ws.send(JSON.stringify({now:at,servers:servers.map(s=>({...s,last_active:new Date(at).toISOString(),state:{...s.state,cpu:12+frame%30}})),online:119}))};state.tick()})
  await page.route("**/*",async route=>{
   const req=route.request(),u=new URL(req.url())
   if(u.origin!==origin)return route.abort()
   if(u.pathname==="/entry-wallpaper.svg")return route.fulfill({contentType:"image/svg+xml",body:'<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="950"><defs><linearGradient id="b"><stop stop-color="#bae6fd"/><stop offset=".5" stop-color="#d9f99d"/><stop offset="1" stop-color="#fce7f3"/></linearGradient></defs><rect width="1440" height="950" fill="url(#b)"/><path d="M0 800L1440 160M0 860L1440 220" stroke="#65a30d" stroke-width="32"/></svg>'})
-  if(!u.pathname.startsWith("/api/"))return route.continue()
+  if(!u.pathname.startsWith("/api/")){
+   state.assets.push(u.pathname)
+   if(networkChunkDelay && /\/NetworkChart[-.][^/]+\.js$/.test(u.pathname)){
+    state.networkChunkLoads++
+    await new Promise(r=>setTimeout(r,networkChunkDelay))
+    state.networkChunkReleased=true
+   }
+   return route.continue()
+  }
   state.reads[u.pathname]=(state.reads[u.pathname]||0)+1
   if(req.method()==="POST")state.posts.push(u.pathname)
   let data:any=[]
   if(u.pathname==="/api/v1/setting")data={tsdb_enabled:true,config:{language:"zh-CN",site_name:"响应测试",show_network_in_detail:combined,appearance_config:JSON.stringify(appearance),doraemon_appearance_config:JSON.stringify(appearance),custom_code:""}}
   else if(u.pathname==="/api/v1/profile")return route.fulfill({status:401,json:{success:false}})
   else if(u.pathname==="/api/v1/service")data={services:{},cycle_transfer_stats:{}}
-  else if(/server\/\d+\/service$/.test(u.pathname))data=monitors
+  else if(/server\/\d+\/service$/.test(u.pathname)){data=monitors;state.monitorBeforeChunk ||= !state.networkChunkReleased}
   else if(u.pathname.endsWith("/bgp"))data={server_id:7,online:true,can_run:false,state:"complete",available_families:["IPv4"],topologies:[topology],finished_at:now,history:[]}
   else if(u.pathname.endsWith("/streaming"))data={server_id:7,online:true,can_run:false,state:"complete",results:["netflix","youtube","disneyplus","bbc","tvb","spotify"].map(id=>({id,name:id,family:"IPv4",status:"unlocked",region:"HK"}))}
   else if(u.pathname.endsWith("/connectivity"))data={server_id:7,state:"complete",online:true,can_run:false,rounds:3,results:[],groups:[]}
@@ -52,7 +61,15 @@ for(const theme of ["default","doraemon"])for(const effects of [false,true])test
    return {paint:performance.now()-start,pressed:el.getAttribute("aria-pressed")}
   })
   await expect(tab).toHaveAttribute("aria-pressed","true")
-  if(label==="网络")await expect(page.locator("[data-server-network] .recharts-line-curve")).toHaveCount(18)
+  // Completion budget matches other dense charts under 4x CPU; input latency
+  // remains independently bounded below and in the native-event tests.
+  if(label==="网络")await expect(page.locator("[data-server-network] .recharts-line-curve")).toHaveCount(18,{timeout:15000}).catch(async error=>{
+   const {profile}=await cdp.send("Profiler.stop")
+   await info.attach("failed-network-profile",{body:JSON.stringify(profile),contentType:"application/json"})
+   const counts=new Map<number,number>();for(const id of profile.samples||[])counts.set(id,(counts.get(id)||0)+1)
+   console.log("FAILED_NETWORK_HOT",JSON.stringify(profile.nodes.map((n:any)=>({...n.callFrame,hits:counts.get(n.id)||0})).sort((a:any,b:any)=>b.hits-a.hits).slice(0,20)))
+   throw error
+  })
   if(label==="详情")await expect(page.locator(".server-charts [data-chart]")).toHaveCount(6,{timeout:15000})
   if(label==="BGP")await expect(page.locator("[data-bgp-graph]")).toBeVisible()
   if(label==="流媒体")await expect(page.locator("[data-media-card]")).toHaveCount(6,{timeout:15000})
@@ -202,4 +219,39 @@ for (const theme of ["default","doraemon"]) for (const delay of [0,80,200]) for 
  expect(measurements.input[0].delay).toBeLessThan(250)
  await page.screenshot({path:info.outputPath("native-entry.png")})
  expect(state.posts).toEqual([])
+})
+
+for(const theme of ["default","doraemon"])for(const combined of [false,true])test("primary detail and network preload "+theme+" combined="+combined,async({page})=>{
+ const state=await setup(page,theme,false,combined,"/server/7",1200)
+ await expect(page.locator(".server-charts .recharts-surface")).toHaveCount(6)
+ await expect.poll(()=>state.reads["/api/v1/server/7/service"]||0).toBe(1)
+ expect(state.networkChunkLoads).toBe(1)
+ expect(state.monitorBeforeChunk).toBe(true)
+ expect(state.reads["/api/v1/server/7/bgp"]||0).toBe(0)
+ expect(state.reads["/api/v1/server/7/streaming"]||0).toBe(0)
+ expect(state.reads["/api/v1/server/7/connectivity"]||0).toBe(0)
+ expect(state.assets.some(path=>/ServerConnectivity[-.]|ServerNetworkInsight[-.]/.test(path))).toBe(false)
+ if(!combined){
+  await expect(page.locator("[data-server-network]")).toHaveCount(0)
+  await page.locator(".server-info-tab").getByRole("button",{name:"网络",exact:true}).click()
+ }else{
+  await expect(page.locator(".server-info-tab").getByRole("button",{name:"网络",exact:true})).toHaveCount(0)
+ }
+ await expect(page.locator("[data-server-network] .recharts-line-curve")).toHaveCount(18)
+ expect(state.reads["/api/v1/server/7/service"]).toBe(1)
+ expect(state.posts).toEqual([])
+})
+
+for(const width of [320,1440])for(const bits of [true,false])test("default detail rate units "+width+" bits="+bits,async({page},info)=>{
+ await page.setViewportSize({width,height:900})
+ const state=await setup(page,"default",false,false,"/server/7",0,bits)
+ const charts=page.locator(".server-charts")
+ await expect(charts.getByText(bits?"16.0Mbps":"2.00M/s",{exact:true})).toBeVisible()
+ await expect(charts.getByText(bits?"8.00Mbps":"1.00M/s",{exact:true})).toBeVisible()
+ await expect(charts.locator(".recharts-surface")).toHaveCount(6,{timeout:15000})
+ const network=charts.locator("[data-chart]").nth(4)
+ state.tick()
+ await expect(network).toContainText(bits?"Mbps":"M/s")
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true)
+ await network.screenshot({path:info.outputPath("detail-rate.png")})
 })
