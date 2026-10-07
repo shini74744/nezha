@@ -430,3 +430,20 @@
 		filter: blur(2px);
 	}
 }
+
+/* Tab content changes must not become the browser's scroll anchor. */
+.detail-viewport {
+ overflow-anchor: none;
+}
+
+/* Enter immediately; no exit phase, interaction lock, blur, or chart movement. */
+.detail-pane-enter {
+ animation: detail-pane-enter 140ms ease-out;
+}
+@keyframes detail-pane-enter {
+ from { opacity: 0.72; }
+ to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+ .detail-pane-enter { animation: none; }
+}
