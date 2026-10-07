@@ -7,7 +7,8 @@ const catalog = JSON.parse(readFileSync(new URL("../../../../service/connectivit
 async function setup(page:Page,theme:string,light=false,offline=false,owner=true,language="zh-CN",wallpaper=false,countryCode="us",disabled=false,clickTab=true) {
  const origin="https://127.0.0.1:"+(theme==="doraemon"?"18478":"18477"),now=Date.now();
  const server=createServer({id:7,name:"连通性测试节点",country_code:countryCode,connectivity_disabled:disabled,last_active:offline?"0001-01-01T00:00:00Z":new Date(now).toISOString()});
- const state={posts:0,postPaths:[] as string[],gets:0,external:[] as string[],override:null as any[]|null,latest:undefined as any,canBypass:false,fullBatch:true,mode:"idle",readError:false,postError:false};
+ const state={posts:0,postPaths:[] as string[],gets:0,external:[] as string[],override:null as any[]|null,latest:undefined as any,canBypass:false,fullBatch:true,mode:"idle",readError:false,postError:false,localMock:false,localDelay:0,localRequests:[] as {url:string;method:string;headers:Record<string,string>}[],redirectHeaders:[] as Record<string,string>[]};
+ page.on("request",req=>{if(new URL(req.url()).pathname==="/__local-probe-redirect-test")void req.allHeaders().then(headers=>state.redirectHeaders.push(headers))});
  const results=()=>catalog.map(({id,name,group,host},i)=>({id,name,group,host,
   phase:state.mode==="idle"?undefined:state.mode==="running"?(i===0?"running":i===1?"complete":"queued"):"complete",
   status:state.mode==="idle"||(state.mode==="running"&&i!==1)?"pending":i===7?"http_error":i===8?"timeout":i===9?"agent_timeout":"ok",delay_ms:state.mode==="idle"||(state.mode==="running"&&i!==1)||i===8||i===9?undefined:35+i*12,
@@ -20,7 +21,17 @@ async function setup(page:Page,theme:string,light=false,offline=false,owner=true
  await page.routeWebSocket("**/api/v1/ws/server",ws=>ws.send(JSON.stringify({now,servers:[server],online:offline?0:1})));
  await page.route("**/*",async route=>{
   const req=route.request(),u=new URL(req.url());
-  if(u.origin!==origin){state.external.push(u.href);return route.abort();}
+  if(u.origin!==origin){
+   state.external.push(u.href);
+   if(state.localMock && (state.override??catalog).some(target=>target.host===u.hostname)){
+    state.localRequests.push({url:u.href,method:req.method(),headers:await req.allHeaders()});
+    if(state.localDelay)await new Promise(r=>setTimeout(r,state.localDelay));
+    if(u.hostname==="redirect.example.com")return route.fulfill({status:302,headers:{location:origin+"/__local-probe-redirect-test"},body:""});
+    if(u.hostname==="blocked.example.com")return route.abort("blockedbyresponse");
+    return route.fulfill({status:404,body:""});
+   }
+   return route.abort();
+  }
   if(u.pathname==="/connectivity-wallpaper.svg") return route.fulfill({contentType:"image/svg+xml",body:'<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800"><defs><linearGradient id="bg"><stop stop-color="#052e16"/><stop offset=".45" stop-color="#14532d"/><stop offset=".5" stop-color="#ecfccb"/><stop offset="1" stop-color="#f0fdf4"/></linearGradient></defs><rect width="1200" height="800" fill="url(#bg)"/><path d="M0 640L1200 80M0 710L1200 150" stroke="#c4a875" stroke-width="28"/></svg>'});
   if(u.pathname.startsWith("/api/v1/logo/assets/")) {
    if(u.pathname.includes("bbbbbbbb"))return route.fulfill({status:404,body:"missing"});
@@ -69,6 +80,15 @@ for(const theme of ["default","doraemon"])for(const light of [false,true])for(co
   await expect(view.getByText("正在检测",{exact:true})).toHaveCount(0);
   await expect(view.getByText("排队中",{exact:true})).toHaveCount(0);
   await expect(view.getByText(/排队 \d+ 项/)).toHaveCount(0);
+  const progress=view.locator("[data-connectivity-header]").getByRole("progressbar");
+  await expect(progress).toBeVisible();
+  const p=await progress.boundingBox(),h=await view.locator("[data-connectivity-header] h2").boundingBox(),b=await view.getByRole("button",{name:"检测中…",exact:true}).boundingBox();
+  expect(p!.width).toBeGreaterThan(20);
+  if(width>=640){expect(p!.x).toBeGreaterThanOrEqual(h!.x+h!.width);expect(p!.x+p!.width).toBeLessThanOrEqual(b!.x);expect(Math.abs(p!.y+p!.height/2-(b!.y+b!.height/2))).toBeLessThan(2);}
+  else expect(p!.y).toBeGreaterThanOrEqual(Math.max(h!.y+h!.height,b!.y+b!.height));
+  const helpGap=await view.locator("[data-connectivity-header] h2").evaluate(el=>el.querySelector("button svg")!.getBoundingClientRect().left-el.querySelector("span")!.getBoundingClientRect().right);
+  expect(helpGap).toBeLessThanOrEqual(5);
+  await view.locator("[data-connectivity-controls]").screenshot({path:info.outputPath("progress-header.png")});
   state.mode="complete";
   await expect(view.getByRole("button",{name:/秒后可重测/})).toBeDisabled({timeout:10000});
   await expect(view.getByText("(HTTP 403)")).toHaveCount(0);
@@ -108,7 +128,7 @@ test("network/detail tabs still work with combined network; help and failure rec
  await page.locator(".server-info-tab").getByText("详情",{exact:true}).click();
  await expect(page.locator("[data-server-network]")).toBeVisible();await expect(view).toHaveCount(0);
  await expect(page.locator(".server-charts")).toBeVisible();
- state.readError=true;await page.locator(".server-info-tab").getByText("连通性",{exact:true}).click();await expect(view.getByRole("alert")).toHaveText(/检测结果读取失败/);
+ state.readError=true;await page.locator(".server-info-tab").getByText("连通性",{exact:true}).click();await expect(view.getByRole("alert")).toHaveText(/检测结果读取失败/,{timeout:20000});
  await expect(view.locator("[data-connectivity-target]")).toHaveCount(0);state.readError=false;await view.getByRole("button",{name:"重新加载"}).click();
  await expect(view.locator("[data-connectivity-target]")).toHaveCount(catalog.length);
   await expect(view.locator("[data-connectivity-group]")).toHaveCount(new Set(catalog.map(row=>row.group)).size);
@@ -147,8 +167,8 @@ for(const theme of ["default","doraemon"])for(const light of [false,true])for(co
   await expect(view.locator("[data-connectivity-controls]")).toHaveCount(0);
   await expect(view.getByRole("heading",{name:"节点连通性",exact:true})).toHaveCount(0);
   await expect(view.getByText(/仅管理员或节点所属用户/)).toHaveCount(0);
-  await expect(view.getByRole("button")).toHaveCount(0);
-  expect(await view.evaluate(el=>el.firstElementChild?.hasAttribute("data-connectivity-group"))).toBe(true);
+  await expect(view.getByRole("button")).toHaveCount(2);
+  expect(await view.evaluate(el=>el.firstElementChild?.hasAttribute("data-connectivity-source"))).toBe(true);
   await expect.poll(()=>view.locator("img[data-connectivity-icon]").evaluateAll(images=>images.every(img=>(img as HTMLImageElement).complete&&(img as HTMLImageElement).naturalWidth>0))).toBe(true);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
   await view.locator("[data-connectivity-group]").first().scrollIntoViewIfNeeded();
@@ -161,11 +181,11 @@ test("guest cache failure retains reload without exposing owner controls",async(
  state.readError=true;
  await page.locator(".server-info-tab").getByText("详情",{exact:true}).click();
  await page.locator(".server-info-tab").getByText("连通性",{exact:true}).click();
- await expect(view.getByRole("alert")).toHaveText(/检测结果读取失败/);
+ await expect(view.getByRole("alert")).toHaveText(/检测结果读取失败/,{timeout:20000});
  await expect(view.locator("[data-connectivity-controls]")).toHaveCount(0);
  state.readError=false;await view.getByRole("button",{name:"重新加载"}).click();
  await expect(view.locator("[data-connectivity-target]")).toHaveCount(catalog.length);
- await expect(view.getByRole("button")).toHaveCount(0);
+ await expect(view.getByRole("button")).toHaveCount(2);
  expect(state.posts).toBe(0);
 });
 test("compact reference row has names dots and latency but no website text",async({page},info)=>{
@@ -314,7 +334,8 @@ for(const theme of ["default","doraemon"])for(const width of [390,1440])test("co
  await page.setViewportSize({width,height:900});
  const state=await setup(page,theme,true,false,true,"zh-CN",true,"hk");
  state.canBypass=true;state.mode="complete";
- await page.locator(".server-info-tab").getByRole("button",{name:"详情",exact:true}).click();
+ // A fresh page reads the changed fixture; warm tab switches reuse cached data.
+ await page.reload();
  await page.locator(".server-info-tab").getByRole("button",{name:"连通性",exact:true}).click();
  const view=page.locator("[data-server-connectivity]"),controls=view.locator("[data-connectivity-controls]");
  const button=view.getByRole("button",{name:"重新检测",exact:true});
@@ -335,4 +356,83 @@ for(const theme of ["default","doraemon"])for(const width of [390,1440])test("co
  await expect(view.getByRole("progressbar")).toBeVisible();
  expect(state.postPaths[1]).toBe("/api/v1/server/7/connectivity");
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
+for(const theme of ["default","doraemon"])for(const width of [320,390,768,1440])test(`visitor local latency ${theme} ${width}`,async({page},info)=>{
+ await page.setViewportSize({width,height:900});
+ const state=await setup(page,theme,true,true,false,"zh-CN",true,"hk");
+ state.override=[
+  {id:"google",name:"本地样例",host:"www.example.com",group:"hongkong",status:"ok",phase:"complete",samples:[{status:"ok",delay_ms:42}],delay_ms:42},
+  {id:"redirect",name:"重定向样例",host:"redirect.example.com",group:"global",status:"pending",samples:[]},
+  {id:"blocked",name:"受限样例",host:"blocked.example.com",group:"global",status:"pending",samples:[]},
+  {id:"private",name:"内部地址样例",host:"127.0.0.1",group:"global",status:"pending",samples:[]},
+ ];
+ state.mode="complete";state.localMock=true;state.localDelay=350;
+ await page.context().addCookies([{name:"private-session",value:"must-not-send",url:"https://www.example.com"}]);
+ await page.reload();await page.locator(".server-info-tab").getByRole("button",{name:"连通性",exact:true}).click();
+ const view=page.locator("[data-server-connectivity]"),source=view.locator("[data-connectivity-source]");
+ await expect(view.locator("[data-connectivity-target]")).toHaveCount(4);
+ await expect(source.getByRole("button",{name:"服务器延迟",exact:true})).toHaveAttribute("aria-pressed","true");
+ await expect(source.getByRole("button",{name:"本地延迟",exact:true})).toBeVisible();
+ expect(state.localRequests).toHaveLength(0);
+ expect(await source.evaluate(el=>el.getBoundingClientRect().height)).toBeLessThanOrEqual(32);
+ const left=await source.getByRole("button",{name:"服务器延迟",exact:true}).boundingBox(),right=await source.getByRole("button",{name:"本地延迟",exact:true}).boundingBox();
+ expect(left!.x+left!.width).toBeLessThan(right!.x);
+ await view.screenshot({path:info.outputPath("guest-source-row.png")});
+ await page.evaluate(()=>{(window as any).__storageWrites=[];const original=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){(window as any).__storageWrites.push([k,v]);return original.call(this,k,v)}});
+ await source.getByRole("button",{name:"本地延迟",exact:true}).click();
+ await expect(view.locator("[data-local-connectivity]")).toBeVisible();
+ await expect(view.getByRole("button",{name:"停止检测",exact:true})).toBeVisible();
+ await expect(view.getByText(/本地检测完成/)).toBeVisible();
+ await expect(view.locator('[data-connectivity-target="google"] [data-connectivity-delay]')).not.toHaveText("—");
+ await expect(view.locator('[data-connectivity-target="redirect"] [data-connectivity-delay]')).not.toHaveText("—");
+ await expect(view.locator('[data-connectivity-target="blocked"]')).toContainText("浏览器限制或网络不可达");
+ await expect(view.locator('[data-connectivity-target="private"]')).toContainText("不支持浏览器检测");
+ expect(state.localRequests).toHaveLength(3);
+ for(const req of state.localRequests){expect(req.method).toBe("HEAD");expect(req.headers["cookie"]).toBeUndefined();expect(req.headers["referer"]).toBeUndefined();expect(new URL(req.url).pathname).toBe("/");}
+ // Playwright routes only the first redirect hop. The final HEAD uses the
+ // real preview server; verify credentials remain omitted on that hop too.
+ await expect.poll(()=>state.redirectHeaders.length).toBe(1);
+ expect(state.redirectHeaders[0]["cookie"]).toBeUndefined();
+ expect(state.redirectHeaders[0]["referer"]).toBeUndefined();
+ expect(state.localRequests.some(req=>new URL(req.url).hostname==="127.0.0.1")).toBe(false);
+ expect(state.posts).toBe(0);
+ expect(await page.evaluate(()=>(window as any).__storageWrites)).toEqual([]);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ await view.screenshot({path:info.outputPath("local-results.png")});
+ await source.getByRole("button",{name:"服务器延迟",exact:true}).click();
+ await expect(view.locator('[data-connectivity-target="google"] [data-connectivity-delay]')).toHaveText("42ms");
+ await source.getByRole("button",{name:"本地延迟",exact:true}).click();
+ expect(state.localRequests).toHaveLength(3);
+ await view.getByRole("button",{name:"重新检测本地延迟",exact:true}).click();
+ await expect(view.getByText(/本地检测完成/)).toBeVisible();
+ expect(state.localRequests).toHaveLength(6);
+ await page.reload();await page.locator(".server-info-tab").getByRole("button",{name:"连通性",exact:true}).click();
+ await expect(source.getByRole("button",{name:"服务器延迟",exact:true})).toHaveAttribute("aria-pressed","true");
+ await expect(view.locator("[data-local-connectivity]")).toHaveCount(0);
+ expect(state.localRequests).toHaveLength(6);expect(state.posts).toBe(0);
+});
+
+for(const theme of ["default","doraemon"])test("local cancellation and rapid navigation "+theme,async({page},info)=>{
+ await page.setViewportSize({width:390,height:900});
+ const state=await setup(page,theme,false,false,false,"zh-CN",true,"hk");
+ state.localMock=true;state.localDelay=2000;
+ const view=page.locator("[data-server-connectivity]");
+ const local=view.getByRole("button",{name:"本地延迟",exact:true});
+ await local.click();await local.click();
+ await expect.poll(()=>state.localRequests.length).toBe(6);
+ await expect(view.getByRole("button",{name:"停止检测",exact:true})).toBeVisible();
+ await view.screenshot({path:info.outputPath("local-dark-running.png")});
+ await view.getByRole("button",{name:"停止检测",exact:true}).click();
+ await expect(view.getByText("本地检测已停止",{exact:true})).toBeVisible();
+ expect(state.localRequests).toHaveLength(6);
+ await view.getByRole("button",{name:"重新检测本地延迟",exact:true}).click();
+ await expect.poll(()=>state.localRequests.length).toBe(12);
+ await page.locator(".server-info-tab").getByRole("button",{name:"详情",exact:true}).click();
+ await expect(view).toHaveCount(0);
+ await page.waitForTimeout(3300); // Past the probe timeout: no queued/background work may start.
+ expect(state.localRequests).toHaveLength(12);
+ await page.locator(".server-info-tab").getByRole("button",{name:"连通性",exact:true}).click();
+ await expect(view.getByRole("button",{name:"服务器延迟",exact:true})).toHaveAttribute("aria-pressed","true");
+ await expect(view.locator("[data-local-connectivity]")).toHaveCount(0);
+ expect(state.localRequests).toHaveLength(12);expect(state.posts).toBe(0);
 });

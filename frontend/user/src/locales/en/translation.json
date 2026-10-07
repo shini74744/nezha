@@ -157,12 +157,22 @@
 			"unreachable": "Network unreachable",
 			"unstable": "Results differ between attempts",
 			"queued": "Queued",
-			"batch_timeout": "Batch deadline reached; incomplete"
+			"batch_timeout": "Batch deadline reached; incomplete",
+			"browser_error": "Browser restriction or network unavailable",
+			"browser_unsupported": "Browser check unsupported",
+			"cancelled": "Stopped"
 		},
 		"queueProgress": "Results for {{sampled}} sites · {{active}} testing · {{queued}} queued",
 		"sampling": "Sampling",
 		"resampleQueued": "Next sample queued",
-		"endedEarly": "Ended"
+		"endedEarly": "Ended",
+		"serverLatency": "Server latency",
+		"localLatency": "Local latency",
+		"localNotice": "HTTPS request time from this browser to each site's domain, one check per site. Results stay on this page and clear on refresh. Browser restrictions may prevent some checks.",
+		"localStop": "Stop testing",
+		"localRetest": "Retest local latency",
+		"localCancelled": "Local test stopped",
+		"localFinished": "Local test complete · {{done}} / {{total}} sites"
 	},
 	"tabSwitch": {
 		"Connectivity": "Connectivity",

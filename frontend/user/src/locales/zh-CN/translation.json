@@ -158,12 +158,22 @@
 			"unreachable": "网络不可达",
 			"unstable": "多次结果不一致",
 			"queued": "排队中",
-			"batch_timeout": "批次超时，检测未完成"
+			"batch_timeout": "批次超时，检测未完成",
+			"browser_error": "浏览器限制或网络不可达",
+			"browser_unsupported": "不支持浏览器检测",
+			"cancelled": "已停止"
 		},
 		"queueProgress": "已有结果 {{sampled}} 项 · 检测中 {{active}} 项 · 排队 {{queued}} 项",
 		"sampling": "采样中",
 		"resampleQueued": "等待下一次采样",
-		"endedEarly": "已结束"
+		"endedEarly": "已结束",
+		"serverLatency": "服务器延迟",
+		"localLatency": "本地延迟",
+		"localNotice": "当前浏览器访问站点域名的 HTTPS 耗时，每项 1 次。仅本页可见，刷新清空；浏览器限制可能导致无法检测。",
+		"localStop": "停止检测",
+		"localRetest": "重新检测本地延迟",
+		"localCancelled": "本地检测已停止",
+		"localFinished": "本地检测完成 · {{done}} / {{total}} 项"
 	},
 	"tabSwitch": {
 		"Connectivity": "连通性",

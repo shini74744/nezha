@@ -60,7 +60,9 @@ describe("node connectivity", () => {
 		expect(screen.queryByText("connectivity.title")).not.toBeInTheDocument();
 		expect(screen.queryByText("connectivity.origin")).not.toBeInTheDocument();
 		expect(screen.queryByText("connectivity.readOnly")).not.toBeInTheDocument();
-		expect(screen.queryByRole("button")).not.toBeInTheDocument();
+		expect(screen.getAllByRole("button")).toHaveLength(2);
+		expect(screen.getByRole("button", { name: "connectivity.serverLatency" })).toHaveAttribute("aria-pressed", "true");
+		expect(screen.getByRole("button", { name: "connectivity.localLatency" })).toHaveAttribute("aria-pressed", "false");
 		expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
 		expect(api.startConnectivity).not.toHaveBeenCalled();
 	});
@@ -454,4 +456,85 @@ it.each([false,true])("only full-batch retests show the overall progress bar (fu
  act(()=>{client.setQueryData(["server-connectivity",7],{...live,state:"complete",finished_at:4000,latest:undefined,results:previous.results});});
  expect(await screen.findByText("42")).toBeVisible();
  expect(screen.queryByRole("progressbar")).toBeNull();
+});
+
+describe("visitor local latency", () => {
+	it("requires a click, uses no server mutation or storage, keeps server data intact, and clears on remount", async () => {
+		const snapshot = data({ can_run: false, online: false, state: "complete", results: [{ ...data().results[0], status: "ok", samples: [{ status: "ok", delay_ms: 42 }], delay_ms: 42 }] });
+		api.fetchConnectivity.mockResolvedValue(snapshot);
+		const fetcher = vi.fn().mockResolvedValue({ type: "opaque", status: 0 });
+		const previous = globalThis.fetch;
+		globalThis.fetch = fetcher;
+		const storage = vi.spyOn(Storage.prototype, "setItem");
+		try {
+			const view = mount();
+			expect(await screen.findByText("42")).toBeVisible();
+			expect(fetcher).not.toHaveBeenCalled();
+			fireEvent.click(screen.getByRole("button", { name: "connectivity.localLatency" }));
+			await screen.findByText("connectivity.localFinished");
+			expect(fetcher).toHaveBeenCalledTimes(1);
+			expect(screen.queryByText("42")).not.toBeInTheDocument();
+			expect(api.startConnectivity).not.toHaveBeenCalled();
+			expect(storage).not.toHaveBeenCalled();
+			expect(snapshot.results[0].delay_ms).toBe(42);
+			fireEvent.click(screen.getByRole("button", { name: "connectivity.serverLatency" }));
+			expect(screen.getByText("42")).toBeVisible();
+			fireEvent.click(screen.getByRole("button", { name: "connectivity.localLatency" }));
+			expect(fetcher).toHaveBeenCalledTimes(1);
+			view.unmount(); mount();
+			await screen.findByText("42");
+			expect(screen.queryByText("connectivity.localFinished")).not.toBeInTheDocument();
+			expect(screen.getByRole("button", { name: "connectivity.localLatency" })).toHaveAttribute("aria-pressed", "false");
+			expect(fetcher).toHaveBeenCalledTimes(1);
+		} finally { globalThis.fetch = previous; storage.mockRestore(); }
+	});
+	it("ignores double starts, cancels on leaving, and ignores late completion after unmount", async () => {
+		api.fetchConnectivity.mockResolvedValue(data({ can_run: false }));
+		const previous = globalThis.fetch;
+		let signal!: AbortSignal, finish!: (response: Response) => void;
+		const fetcher = vi.fn((_url: RequestInfo | URL, options?: RequestInit) => {
+			signal = options!.signal!;
+			return new Promise<Response>(resolve => { finish = resolve; });
+		});
+		globalThis.fetch = fetcher;
+		try {
+			const view = mount(); await screen.findByText("Google");
+			const local = screen.getByRole("button", { name: "connectivity.localLatency" });
+			fireEvent.click(local); fireEvent.click(local);
+			expect(fetcher).toHaveBeenCalledTimes(1);
+			fireEvent.click(screen.getByRole("button", { name: "connectivity.serverLatency" }));
+			expect(signal.aborted).toBe(true);
+			view.unmount();
+			await act(async () => { finish({ type: "opaque" } as Response); });
+			mount(); await screen.findByText("Google");
+			expect(screen.queryByText("connectivity.localFinished")).not.toBeInTheDocument();
+		} finally { globalThis.fetch = previous; }
+	});
+	it("aborts on node change and never shows the previous node's local result", async () => {
+		const client = createTestQueryClient();
+		api.fetchConnectivity.mockResolvedValue(data({ can_run: false }));
+		const previous = globalThis.fetch;
+		let signal!: AbortSignal;
+		globalThis.fetch = vi.fn((_url: RequestInfo | URL, options?: RequestInit) => {
+			signal = options!.signal!;
+			return new Promise<Response>((_resolve, reject) => signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError"))));
+		});
+		try {
+			const renderNode = (id: number) => <QueryClientProvider client={client}><ServerConnectivity serverId={id} /></QueryClientProvider>;
+			const view = render(renderNode(7)); await screen.findByText("Google");
+			fireEvent.click(screen.getByRole("button", { name: "connectivity.localLatency" }));
+			view.rerender(renderNode(8));
+			await waitFor(() => expect(signal.aborted).toBe(true));
+			await screen.findByText("Google");
+			expect(screen.queryByText("connectivity.localCancelled")).not.toBeInTheDocument();
+			expect(screen.getByRole("button", { name: "connectivity.serverLatency" })).toHaveAttribute("aria-pressed", "true");
+		} finally { globalThis.fetch = previous; }
+	});
+	it("places only the full-batch progress inside the top header", async () => {
+		api.fetchConnectivity.mockResolvedValue(data({ state: "running", full_batch: true }));
+		const view = mount();
+		const progress = await screen.findByRole("progressbar");
+		expect(view.container.querySelector("[data-connectivity-header]")).toContainElement(progress);
+		expect(progress).toHaveClass("sm:col-start-2", "sm:row-start-1");
+	});
 });
