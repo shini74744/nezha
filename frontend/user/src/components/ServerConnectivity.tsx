@@ -105,7 +105,7 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 	return (
 		<section
 			data-server-connectivity
-			className="w-full min-w-0 space-y-4 max-md:[&>[data-connectivity-source]]:mb-2"
+			className="w-full min-w-0 space-y-4 max-md:[&>[data-connectivity-source]]:mb-2 md:[&>[data-connectivity-source]]:-mb-2"
 			aria-label={t("tabSwitch.Connectivity")}
 		>
 			{data && !query.isError && (
