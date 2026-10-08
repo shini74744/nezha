@@ -111,15 +111,21 @@ function ServerNetworkInsight({
 	});
 	const data = query.data,
 		active = data?.state === "running" || run.isPending;
-	const selectedHistory = data?.history?.find((item) => item.finished_at === historyAt);
+	const selectedHistory = data?.history?.find(
+		(item) => item.finished_at === historyAt,
+	);
 	const effectiveHistoryAt = selectedHistory ? historyAt : 0;
 	const snapshot = selectedHistory || data;
 	const families = data?.available_families?.length
 		? data.available_families
 		: ["IPv4", "IPv6"];
 	const selectedFamily = families.includes(family) ? family : families[0];
-	const topology = snapshot?.topologies?.find((t) => t.family === selectedFamily);
-	const mediaResults = (data?.results || []).filter((r) => families.includes(r.family));
+	const topology = snapshot?.topologies?.find(
+		(t) => t.family === selectedFamily,
+	);
+	const mediaResults = (data?.results || []).filter((r) =>
+		families.includes(r.family),
+	);
 	const names = [...new Set(mediaResults.map((r) => r.id))];
 	const title = kind === "bgp" ? "BGP 路由拓扑" : "流媒体解锁";
 	return (
@@ -127,8 +133,13 @@ function ServerNetworkInsight({
 			className="rounded-2xl border bg-card/80 backdrop-blur-sm p-4 sm:p-5 text-card-foreground min-w-0"
 			data-network-insight={kind}
 		>
-			<header className={cn("flex flex-wrap items-center justify-between gap-3", kind === "bgp" ? "mb-2" : "mb-4")}>
-				<div className="flex items-center gap-2 min-w-0">
+			<header
+				className={cn(
+					"flex flex-wrap items-center justify-between gap-x-3 gap-y-2",
+					kind === "bgp" ? "mb-2" : "mb-4",
+				)}
+			>
+				<div className="flex shrink-0 items-center gap-2 min-w-0">
 					<h2 className="font-semibold text-base">{title}</h2>
 					<Popover>
 						<PopoverTrigger asChild>
@@ -147,6 +158,36 @@ function ServerNetworkInsight({
 						</PopoverContent>
 					</Popover>
 				</div>
+				{data && kind === "bgp" && (
+					<div
+						data-bgp-family
+						className="order-3 flex w-full min-w-0 flex-wrap items-center gap-x-3 gap-y-1 min-[900px]:order-none min-[900px]:w-auto min-[900px]:flex-1"
+					>
+						<div className="inline-flex shrink-0 rounded-full bg-muted p-1">
+							{families.map((f) => (
+								<button
+									key={f}
+									onClick={() => setFamily(f)}
+									aria-pressed={selectedFamily === f}
+									className={cn(
+										"rounded-full px-3 py-1.5 text-xs",
+										selectedFamily === f && "bg-background shadow-sm",
+									)}
+								>
+									{f}
+								</button>
+							))}
+						</div>
+						{topology && topology.total > 0 && (
+							<span className="text-sm break-all">
+								{data.can_view_ip && topology.prefix
+									? `${topology.prefix} · `
+									: ""}
+								{topology.total} 条观测路径
+							</span>
+						)}
+					</div>
+				)}
 				{data?.can_run && (
 					<Button
 						variant="outline"
@@ -154,6 +195,7 @@ function ServerNetworkInsight({
 						onClick={() => run.mutate()}
 						disabled={active || (kind === "streaming" && !data.online)}
 						aria-label={`重新检测${title}`}
+						className="ml-auto shrink-0"
 					>
 						<RefreshCw
 							className={cn("size-4 mr-1.5", active && "animate-spin")}
@@ -184,31 +226,6 @@ function ServerNetworkInsight({
 			)}
 			{data && kind === "bgp" && (
 				<>
-					<div data-bgp-family className="flex flex-wrap items-center gap-3 mb-2">
-						<div className="inline-flex rounded-full bg-muted p-1">
-							{families.map((f) => (
-								<button
-									key={f}
-									onClick={() => setFamily(f)}
-									aria-pressed={selectedFamily === f}
-									className={cn(
-										"rounded-full px-3 py-1.5 text-xs",
-										selectedFamily === f && "bg-background shadow-sm",
-									)}
-								>
-									{f}
-								</button>
-							))}
-						</div>
-						{topology && topology.total > 0 && (
-							<span className="text-sm break-all">
-								{data.can_view_ip && topology.prefix
-									? `${topology.prefix} · `
-									: ""}
-								{topology.total} 条观测路径
-							</span>
-						)}
-					</div>
 					{!!data.history?.length && (
 						<SnapshotTimeline>
 							{data.history.map((item, i) => (
@@ -228,11 +245,17 @@ function ServerNetworkInsight({
 											"border-blue-500 bg-blue-50 dark:bg-blue-950",
 									)}
 								>
-									<span title={`实际完成：${item.finished_at ? new Date(item.finished_at).toLocaleString() : "—"}`}>
-										{formatDetectionTime(item.scheduled_at || item.finished_at, !!item.scheduled_at)}
+									<span
+										title={`实际完成：${item.finished_at ? new Date(item.finished_at).toLocaleString() : "—"}`}
+									>
+										{formatDetectionTime(
+											item.scheduled_at || item.finished_at,
+											!!item.scheduled_at,
+										)}
 									</span>
 									<span className="block text-muted-foreground mt-1">
-										{i === 0 ? "最新快照" : "历史快照"}{item.scheduled_at ? " · 北京时间" : " · 手动检测"}
+										{i === 0 ? "最新快照" : "历史快照"}
+										{item.scheduled_at ? " · 北京时间" : " · 手动检测"}
 									</span>
 								</button>
 							))}
@@ -240,7 +263,18 @@ function ServerNetworkInsight({
 					)}
 					{topology ? (
 						<>
-							<Suspense fallback={<p role="status" className="py-10 text-center text-sm text-muted-foreground">正在加载路由拓扑…</p>}><BGPTopology topology={topology} /></Suspense>
+							<Suspense
+								fallback={
+									<p
+										role="status"
+										className="py-10 text-center text-sm text-muted-foreground"
+									>
+										正在加载路由拓扑…
+									</p>
+								}
+							>
+								<BGPTopology topology={topology} />
+							</Suspense>
 							{topology.observed_at && (
 								<p className="text-[11px] text-muted-foreground mt-2">
 									数据源观测时间：{topology.observed_at.replace("T", " ")} UTC
@@ -294,7 +328,10 @@ function ServerNetworkInsight({
 				<p className="mt-3 text-[11px] text-muted-foreground">
 					<span title={`实际完成：${formatDetectionTime(data.finished_at)}`}>
 						{data.scheduled_at ? "检测周期（北京时间）：" : "最近完成："}
-						{formatDetectionTime(data.scheduled_at || data.finished_at, !!data.scheduled_at)}
+						{formatDetectionTime(
+							data.scheduled_at || data.finished_at,
+							!!data.scheduled_at,
+						)}
 					</span>
 					{!data.online ? " · 节点离线，显示已保存结果" : ""}
 				</p>

@@ -215,7 +215,7 @@ func TestReportSystemStatePersistsCompleteSnapshotBeforeReceipt(t *testing.T) {
 	current.SetSnapshotCountry("JP")
 	stop := make(chan struct{})
 	stream := &stateGenerationHandlerStream{ctx: metadata.NewIncomingContext(context.Background(), metadata.Pairs("client_secret", "snapshot-secret", "client_uuid", reporter.UUID)), states: make(chan *pb.State, 1), receipts: make(chan *pb.Receipt, 1), stop: stop}
-	stream.states <- &pb.State{Cpu: 12.5, MemUsed: 2 << 30, DiskUsed: 25 << 30}
+	stream.states <- &pb.State{Cpu: 12.5, MemUsed: 2 << 30, DiskUsed: 25 << 30, DiskReadSpeed: 4096, DiskWriteSpeed: 8192, DiskIoAvailable: true}
 	done := make(chan error, 1)
 	go func() { done <- NewNezhaHandler().ReportSystemState(stream) }()
 	select {
@@ -229,6 +229,9 @@ func TestReportSystemStatePersistsCompleteSnapshotBeforeReceipt(t *testing.T) {
 	require.Equal(t, "ubuntu", saved.Snapshot.Host.Platform)
 	require.Equal(t, "JP", saved.Snapshot.CountryCode)
 	require.Equal(t, float64(25), saved.Metrics["disk_percent"])
+	require.Equal(t, float64(4096), saved.Metrics["disk_read_speed"])
+	require.Equal(t, float64(8192), saved.Metrics["disk_write_speed"])
+	require.True(t, saved.Snapshot.State.DiskIOAvailable)
 	close(stop)
 	require.ErrorIs(t, <-done, context.Canceled)
 	require.True(t, current.RuntimeSnapshot().LastActive.IsZero())

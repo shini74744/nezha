@@ -98,6 +98,8 @@ const (
 	MetricServerMemory         MetricType = "nezha_server_memory"
 	MetricServerSwap           MetricType = "nezha_server_swap"
 	MetricServerDisk           MetricType = "nezha_server_disk"
+	MetricServerDiskReadSpeed  MetricType = "nezha_server_disk_read_speed"
+	MetricServerDiskWriteSpeed MetricType = "nezha_server_disk_write_speed"
 	MetricServerNetInSpeed     MetricType = "nezha_server_net_in_speed"
 	MetricServerNetOutSpeed    MetricType = "nezha_server_net_out_speed"
 	MetricServerNetInTransfer  MetricType = "nezha_server_net_in_transfer"
@@ -119,25 +121,28 @@ const (
 
 // ServerMetrics 服务器指标数据
 type ServerMetrics struct {
-	ServerID       uint64
-	Timestamp      time.Time
-	CPU            float64
-	MemUsed        uint64
-	SwapUsed       uint64
-	DiskUsed       uint64
-	NetInSpeed     uint64
-	NetOutSpeed    uint64
-	NetInTransfer  uint64
-	NetOutTransfer uint64
-	Load1          float64
-	Load5          float64
-	Load15         float64
-	TCPConnCount   uint64
-	UDPConnCount   uint64
-	ProcessCount   uint64
-	Temperature    float64
-	Uptime         uint64
-	GPU            float64
+	ServerID        uint64
+	Timestamp       time.Time
+	CPU             float64
+	MemUsed         uint64
+	SwapUsed        uint64
+	DiskUsed        uint64
+	DiskReadSpeed   uint64
+	DiskWriteSpeed  uint64
+	DiskIOAvailable bool
+	NetInSpeed      uint64
+	NetOutSpeed     uint64
+	NetInTransfer   uint64
+	NetOutTransfer  uint64
+	Load1           float64
+	Load5           float64
+	Load15          float64
+	TCPConnCount    uint64
+	UDPConnCount    uint64
+	ProcessCount    uint64
+	Temperature     float64
+	Uptime          uint64
+	GPU             float64
 }
 
 // ServiceMetrics 服务监控指标数据
@@ -177,6 +182,9 @@ func (db *TSDB) WriteServerMetrics(m *ServerMetrics) error {
 		makeServerMetricRow(MetricServerTemperature, serverIDStr, ts, m.Temperature),
 		makeServerMetricRow(MetricServerUptime, serverIDStr, ts, float64(m.Uptime)),
 		makeServerMetricRow(MetricServerGPU, serverIDStr, ts, m.GPU),
+	}
+	if m.DiskIOAvailable {
+		rows = append(rows, makeServerMetricRow(MetricServerDiskReadSpeed, serverIDStr, ts, float64(m.DiskReadSpeed)), makeServerMetricRow(MetricServerDiskWriteSpeed, serverIDStr, ts, float64(m.DiskWriteSpeed)))
 	}
 
 	if db.writer != nil {
@@ -271,6 +279,9 @@ func (db *TSDB) WriteBatchServerMetrics(metrics []*ServerMetrics) error {
 			makeServerMetricRow(MetricServerUptime, serverIDStr, ts, float64(m.Uptime)),
 			makeServerMetricRow(MetricServerGPU, serverIDStr, ts, m.GPU),
 		)
+		if m.DiskIOAvailable {
+			rows = append(rows, makeServerMetricRow(MetricServerDiskReadSpeed, serverIDStr, ts, float64(m.DiskReadSpeed)), makeServerMetricRow(MetricServerDiskWriteSpeed, serverIDStr, ts, float64(m.DiskWriteSpeed)))
+		}
 	}
 
 	if db.writer != nil {

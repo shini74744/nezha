@@ -22,6 +22,10 @@ const detailChartMocks = vi.hoisted(() => ({
 	messageHistory: [] as NezhaWebsocketResponse[],
 }));
 
+// Chart admission scheduling has its own tests; metric assertions should not
+// race frame scheduling when release builds share the test machine.
+vi.mock("@/components/ChartMountBoundary", () => ({default: ({children}: {children: ReactNode}) => children}));
+
 vi.mock("recharts", () => {
 	const createElement =
 		(testId: string) =>
@@ -421,4 +425,66 @@ describe("ServerDetailChart", () => {
 			});
 		}
 	});
+});
+
+describe("disk card click-only switching", () => {
+ it("starts with capacity, ignores hover/reports, and switches only after click", async () => {
+  seedWebSocketData();
+  detailChartMocks.lastData!.servers[0].state.disk_io_available=true;
+  detailChartMocks.lastData!.servers[0].state.disk_read_speed=1024;
+  detailChartMocks.lastData!.servers[0].state.disk_write_speed=2048;
+  const view=renderWithQuery(<ServerDetailChart server_id="7"/>);
+  const card=await screen.findByRole("button",{name:"点击切换到磁盘读写"});
+  expect(card).toHaveAttribute("data-disk-mode","capacity");
+  await userEvent.hover(card);
+  expect(card).toHaveAttribute("data-disk-mode","capacity");
+  await userEvent.click(card);
+  expect(card).toHaveAttribute("data-disk-mode","io");
+  expect(screen.getByText("磁盘读写")).toBeInTheDocument();
+  await waitFor(()=>expect(card.querySelector('[data-testid="line-chart"]')).not.toBeNull());
+  const points=JSON.parse(card.querySelector('[data-testid="line-chart"]')!.getAttribute("data-values")!);
+  expect(points.at(-1).read).toBe(1024);
+  expect(points.at(-1).write).toBe(2048);
+  detailChartMocks.lastData={...detailChartMocks.lastData!,now:detailChartMocks.lastData!.now+1000};
+  view.rerender(<QueryClientProvider client={createTestQueryClient()}><ServerDetailChart server_id="7"/></QueryClientProvider>);
+  expect(card).toHaveAttribute("data-disk-mode","io");
+  await userEvent.click(card);
+  expect(card).toHaveAttribute("data-disk-mode","capacity");
+ });
+ it("does not invent zero throughput for legacy Agents", async () => {
+  seedWebSocketData();
+  renderWithQuery(<ServerDetailChart server_id="7"/>);
+  await userEvent.click(await screen.findByRole("button",{name:"点击切换到磁盘读写"}));
+  expect(screen.getByText("暂无读写数据")).toBeInTheDocument();
+ });
+ it("keeps valid idle zero rates and supports keyboard switching", async () => {
+  seedWebSocketData();
+  detailChartMocks.lastData!.servers[0].state.disk_io_available=true;
+  const user=userEvent.setup();
+  renderWithQuery(<ServerDetailChart server_id="7"/>);
+  const card=await screen.findByRole("button",{name:"点击切换到磁盘读写"});
+  card.focus();
+  await user.keyboard("{Enter}");
+  expect(card).toHaveAttribute("data-disk-mode","io");
+  expect(screen.queryByText("暂无读写数据")).not.toBeInTheDocument();
+  await user.keyboard(" ");
+  expect(card).toHaveAttribute("data-disk-mode","capacity");
+ });
+ it("requests disk read/write history after a click and preserves the selected period", async () => {
+  seedWebSocketData();
+  detailChartMocks.fetchServerMetrics.mockImplementation((_id:number,metric:string)=>Promise.resolve(metricsResponse(metric)));
+  renderWithQuery(<ServerDetailChart server_id="7"/>);
+  await userEvent.click(await screen.findByText("serverDetailChart.period1d"));
+  await waitFor(()=>expect(detailChartMocks.fetchServerMetrics).toHaveBeenCalledWith(7,"disk","1d"));
+  expect(detailChartMocks.fetchServerMetrics.mock.calls.some(call=>call[1]==="disk_read_speed")).toBe(false);
+  await userEvent.click(screen.getByRole("button",{name:"点击切换到磁盘读写"}));
+  await waitFor(()=>expect(detailChartMocks.fetchServerMetrics).toHaveBeenCalledWith(7,"disk_read_speed","1d"));
+  expect(detailChartMocks.fetchServerMetrics).toHaveBeenCalledWith(7,"disk_write_speed","1d");
+  await waitFor(()=>{
+   const card=screen.getByRole("button",{name:"点击切换到磁盘占用"});
+   const points=JSON.parse(card.querySelector('[data-testid="line-chart"]')!.getAttribute("data-values")!);
+   expect(points[0].read).toBe(10);
+   expect(points[0].write).toBe(10);
+  });
+ });
 });

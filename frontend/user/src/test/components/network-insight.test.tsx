@@ -184,3 +184,19 @@ describe("streaming protocol availability", () => {
   expect(screen.getByText("IPv6")).toBeVisible();
  });
 });
+
+describe("compact BGP header",()=>{
+ it("places protocol and path summary inside the title header without exposing private prefixes",async()=>{
+  const value=result();
+  value.topologies[0]={...value.topologies[0],prefix:"192.0.2.0/24"} as typeof value.topologies[0];
+  api.insightRequest.mockResolvedValue(value);
+  const {container}=mount();
+  await screen.findByTestId("topology");
+  const header=container.querySelector('[data-network-insight="bgp"] > header')!;
+  expect(within(header as HTMLElement).getByRole("heading",{name:"BGP 路由拓扑"})).toBeInTheDocument();
+  expect(within(header as HTMLElement).getByRole("button",{name:"IPv4"})).toBeInTheDocument();
+  expect(header.querySelector("[data-bgp-family]")).not.toBeNull();
+  expect(container.querySelectorAll("[data-bgp-family]")).toHaveLength(1);
+  expect(screen.queryByText(/192\.0\.2\.0/)).not.toBeInTheDocument();
+ });
+});
