@@ -2,7 +2,7 @@
 
 ## 范围与来源
 
-本管理入口用于 Linux systemd 独立二进制部署。首个自有 Release 为 `custom-2026.10.08.1`，提供 Linux amd64 安装包；未提供安装包的架构会在停止现有服务前失败，不会下载其他项目替代。
+本管理入口用于 Linux systemd 独立二进制部署。首个自有 Release 为 `custom-2026.10.08.1`，提供 Linux amd64 安装包；未提供安装包的架构会在停止现有服务前失败，不会下载其他项目替代。Windows x64 使用独立安装包，按 [Windows 部署说明](docs/windows-deployment.md) 运行，不执行本 Linux 管理脚本。
 
 唯一发布来源为 [shini74744/nezha](https://github.com/shini74744/nezha/releases)。面板安装、更新、脚本自更新均锁定同一个 Release 并校验 SHA-256，不访问官方面板、官方脚本或第三方下载镜像。校验文件和程序都经 HTTPS 从同一仓库获得；校验用于发现下载错误，不等同于独立签名验证。
 

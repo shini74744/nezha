@@ -20,7 +20,34 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  inputs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # GitHub restricts draft release access to callers with push permission.
+    # Keep that token out of the Windows build/test job entirely.
+    permissions:
+      contents: write
+    steps:
+      - name: Fetch reviewed draft inputs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          INPUTS_SHA256: ${{ inputs.inputs_sha256 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^custom-[0-9.]+$ ]]
+          [[ "$INPUTS_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern windows-build-inputs.tar.gz
+          printf '%s  windows-build-inputs.tar.gz\n' "$INPUTS_SHA256" | sha256sum -c -
+      - uses: actions/upload-artifact@v7
+        with:
+          name: reviewed-windows-inputs
+          path: windows-build-inputs.tar.gz
+          if-no-files-found: error
+          retention-days: 2
   windows:
+    needs: inputs
     runs-on: windows-latest
     timeout-minutes: 40
     steps:
@@ -31,17 +58,17 @@ jobs:
         with:
           go-version: "1.26.8"
           cache: false
-      - name: Fetch and verify reviewed build inputs
+      - uses: actions/download-artifact@v8
+        with:
+          name: reviewed-windows-inputs
+      - name: Verify reviewed build inputs
         env:
-          GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_tag }}
           INPUTS_SHA256: ${{ inputs.inputs_sha256 }}
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           if ($env:RELEASE_TAG -notmatch '^custom-[0-9.]+$' -or $env:INPUTS_SHA256 -notmatch '^[0-9a-f]{64}$') { throw 'Invalid release inputs' }
-          gh release download $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --pattern windows-build-inputs.tar.gz
-          if ($LASTEXITCODE -ne 0) { throw 'Build input download failed' }
           if ((Get-FileHash windows-build-inputs.tar.gz -Algorithm SHA256).Hash.ToLowerInvariant() -ne $env:INPUTS_SHA256) { throw 'Input checksum mismatch' }
           $entries = tar -tzf windows-build-inputs.tar.gz
           if ($LASTEXITCODE -ne 0) { throw 'Invalid input archive' }
