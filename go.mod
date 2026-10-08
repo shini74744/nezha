@@ -36,7 +36,7 @@ require (
 	github.com/swaggo/gin-swagger v1.6.1
 	github.com/swaggo/swag v1.16.6
 	github.com/tidwall/gjson v1.19.0
-	golang.org/x/crypto v0.55.0
+	golang.org/x/crypto v0.56.0
 	golang.org/x/exp v0.0.0-20260824195058-e88cd73687aa
 	golang.org/x/mod v0.40.0
 	golang.org/x/net v0.58.0

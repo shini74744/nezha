@@ -66,7 +66,7 @@ GEOIP_DB=/path/to/country.mmdb VERSION=custom-$(git rev-parse --short HEAD) bash
 产物为 `dist/dashboard`。脚本会编译本仓库的两套前端、保留原有社区主题，再嵌入后端。
 仅运行上游 `fetch-frontends.sh` 会下载上游界面；构建此二开版请使用上述 `build-custom.sh`。
 自有发布使用 `custom-*` 标签和校验过的安装包，不使用官方 `v*` 发布资产。安装、停机、重启、更新和故障恢复说明见 [面板管理与发布](PANEL_MANAGEMENT.md)。
-测试方法和目录说明见 [frontend/README.md](frontend/README.md)。图片库安全升级与 Windows 并发快照复核见 [2026-10-08 增量回归记录](docs/image-snapshot-regression-20261008.md)。
+测试方法和目录说明见 [frontend/README.md](frontend/README.md)。图片库安全升级与 Windows 并发快照复核见 [2026-10-08 增量回归记录](docs/image-snapshot-regression-20261008.md)。x/crypto 升级与 OpenPGP 防引入检查见 [依赖维护回归记录](docs/crypto-dependency-regression-20261008.md)。
 
 </details>
 
