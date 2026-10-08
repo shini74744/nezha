@@ -47,11 +47,21 @@ jobs:
         if: runner.os == 'Windows'
         run: go test -mod=readonly -count=10 -run '^TestSnapshot(ConcurrentFleetWrites|SlowCommitFleetWrites)$' -v ./service/singleton
 
+      - name: Repeated Windows private key lifecycle
+        if: runner.os == 'Windows'
+        run: go test -mod=readonly -count=10 -run '^TestTerminal' -v ./service/singleton
+
       - name: Unit test
         run: go test -mod=readonly -count=1 ./...
 
       - name: Build dashboard
         run: go build -v ./cmd/dashboard
+
+      - name: Windows native Dashboard lifecycle
+        if: runner.os == 'Windows'
+        env:
+          NEZHA_TEST_BINARY: ${{ github.workspace }}/dashboard.exe
+        run: go test -mod=readonly -tags=deploymenttest -count=1 -timeout=8m -v ./integration/deployment
 
   linux-race-quality:
     name: Linux race and quality

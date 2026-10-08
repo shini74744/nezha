@@ -56,6 +56,8 @@ func TestPolicy_NezhaQualityWorkflow(t *testing.T) {
 	}, "\n"), strings.TrimSpace(ordinaryJob.stepNamed(t, "Generate Swagger docs").Run))
 	require.Equal(t, "go test -mod=readonly -count=1 ./...", ordinaryJob.stepNamed(t, "Unit test").Run)
 	require.Equal(t, "go build -v ./cmd/dashboard", ordinaryJob.stepNamed(t, "Build dashboard").Run)
+	require.Equal(t, "go test -mod=readonly -count=10 -run '^TestTerminal' -v ./service/singleton", ordinaryJob.stepNamed(t, "Repeated Windows private key lifecycle").Run)
+	require.Equal(t, "go test -mod=readonly -tags=deploymenttest -count=1 -timeout=8m -v ./integration/deployment", ordinaryJob.stepNamed(t, "Windows native Dashboard lifecycle").Run)
 
 	linuxJob := workflow.Jobs["linux-race-quality"]
 	require.Equal(t, "ubuntu-24.04", linuxJob.RunsOn)

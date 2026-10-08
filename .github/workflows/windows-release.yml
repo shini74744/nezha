@@ -1,0 +1,90 @@
+name: Build tested Windows release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing draft release containing windows-build-inputs.tar.gz
+        required: true
+        type: string
+      inputs_sha256:
+        description: SHA-256 of the reviewed frontend and licensed GeoIP input archive
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.26.8"
+          cache: false
+      - name: Fetch and verify reviewed build inputs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          INPUTS_SHA256: ${{ inputs.inputs_sha256 }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:RELEASE_TAG -notmatch '^custom-[0-9.]+$' -or $env:INPUTS_SHA256 -notmatch '^[0-9a-f]{64}$') { throw 'Invalid release inputs' }
+          gh release download $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --pattern windows-build-inputs.tar.gz
+          if ($LASTEXITCODE -ne 0) { throw 'Build input download failed' }
+          if ((Get-FileHash windows-build-inputs.tar.gz -Algorithm SHA256).Hash.ToLowerInvariant() -ne $env:INPUTS_SHA256) { throw 'Input checksum mismatch' }
+          $entries = tar -tzf windows-build-inputs.tar.gz
+          if ($LASTEXITCODE -ne 0) { throw 'Invalid input archive' }
+          foreach ($entry in $entries) {
+            if ($entry -match '(^/|\.\.|\\)' -or $entry -notmatch '^(cmd/dashboard/[a-z-]+-dist/|pkg/geoip/geoip.db$)') { throw 'Unexpected archive path' }
+          }
+          tar -xzf windows-build-inputs.tar.gz
+          if ($LASTEXITCODE -ne 0) { throw 'Input extraction failed' }
+          if (!(Test-Path cmd/dashboard/user-dist/index.html) -or !(Test-Path cmd/dashboard/admin-dist/index.html)) { throw 'Frontend missing' }
+      - name: Generate Swagger
+        run: |
+          go install github.com/swaggo/swag/cmd/swag@v1.16.6
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          swag init --pd -d cmd/dashboard -g main.go -o cmd/dashboard/docs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build native Windows binary
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          CGO_ENABLED: "1"
+        run: |
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          go build -mod=readonly -tags go_json -trimpath -buildvcs=false -ldflags "-s -w -X github.com/nezhahq/nezha/service/singleton.Version=$env:RELEASE_TAG" -o dist/dashboard-windows-amd64.exe ./cmd/dashboard
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $version = & ./dist/dashboard-windows-amd64.exe -v
+          if ($LASTEXITCODE -ne 0 -or $version -ne $env:RELEASE_TAG) { throw 'Version mismatch' }
+      - name: Native private key regression
+        run: go test -mod=readonly -tags go_json -count=10 -run '^TestTerminal' ./service/singleton
+      - name: Test the exact release binary
+        env:
+          NEZHA_TEST_BINARY: ${{ github.workspace }}/dist/dashboard-windows-amd64.exe
+          NEZHA_TEST_FRONTEND: "1"
+        run: go test -mod=readonly -tags=deploymenttest -count=1 -timeout=8m -v ./integration/deployment
+      - name: Package tested binary
+        run: |
+          Copy-Item docs/windows-deployment.md dist/Windows-deployment.md
+          Compress-Archive -LiteralPath dist/dashboard-windows-amd64.exe,dist/Windows-deployment.md -DestinationPath dist/dashboard-windows-amd64.zip
+          $hash = (Get-FileHash dist/dashboard-windows-amd64.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  dashboard-windows-amd64.zip" | Out-File dist/windows-SHA256SUMS -Encoding ascii
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tested-windows-release
+          path: |
+            dist/dashboard-windows-amd64.zip
+            dist/windows-SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14

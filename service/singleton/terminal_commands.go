@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -19,40 +20,36 @@ import (
 var TerminalCommandCipher cipher.AEAD
 
 func loadTerminalCommandCipher(path string, hasRows bool) (cipher.AEAD, error) {
-	info, err := os.Lstat(path)
+	file, err := openPrivateTerminalKey(path, false)
+	var key []byte
 	if errors.Is(err, os.ErrNotExist) {
 		if hasRows {
 			return nil, errors.New("terminal command key missing; restore terminal-commands.key from backup")
 		}
-		key := make([]byte, 32)
+		key = make([]byte, 32)
 		if _, err = rand.Read(key); err != nil {
 			return nil, err
 		}
-		// #nosec G304 -- Startup-only key path derived from the operator-configured DB directory; never request input. O_EXCL prevents replacing an existing file.
-		file, createErr := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
-		if createErr != nil {
-			return nil, createErr
+		file, err = openPrivateTerminalKey(path, true)
+		if err != nil {
+			return nil, err
 		}
 		_, err = file.Write(key)
 		if err == nil {
 			err = file.Sync()
 		}
-		closeErr := file.Close()
-		if err != nil {
-			return nil, err
-		}
-		if closeErr != nil {
-			return nil, closeErr
-		}
 	} else if err != nil {
 		return nil, err
-	} else if !info.Mode().IsRegular() || info.Mode().Perm()&0077 != 0 {
-		return nil, errors.New("terminal command key must be a regular private file (0600)")
+	} else {
+		// Read only the checked, open file; reject oversized keys without unbounded allocation.
+		key, err = io.ReadAll(io.LimitReader(file, 33))
 	}
-	// #nosec G304 -- Startup-only key path; existing files must pass the regular/private-file checks above.
-	key, err := os.ReadFile(path)
+	closeErr := file.Close()
 	if err != nil {
 		return nil, err
+	}
+	if closeErr != nil {
+		return nil, closeErr
 	}
 	if len(key) != 32 {
 		return nil, errors.New("invalid terminal command key length")
