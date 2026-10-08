@@ -29,3 +29,11 @@ Internal Go module paths remain unchanged for source compatibility; they are not
 - Dashboard connectivity tasks (reserved ID bit 62) have a three-second request deadline including response-body reads. Ordinary service monitors retain the existing 30-second timeout.
 - IPv4 and IPv6 are tracked separately for IP-report change detection, including appearance and disappearance of either family. Failed reports remain dirty until acknowledged.
 - No connection credentials, UUIDs, network routes or firewall rules are changed by this release.
+
+## v2.3.8 disk read/write reporting
+
+- Adds whole-machine disk read/write throughput in bytes per second, computed from cumulative OS counters and actual elapsed sample time.
+- Linux aggregates whole leaf block devices, excluding partitions, loop/RAM devices and stacked mappings to avoid duplicate I/O accounting. Other platforms use gopsutil device counters when supported.
+- First sample, missing OS counters and probe errors are explicitly unavailable, distinct from valid idle zero rates. Counter resets and device hotplug cannot wrap into huge throughput values.
+- Adds protobuf State fields 19–21 without changing existing numbers. Old dashboards ignore these fields; older Agents remain compatible with upgraded dashboards.
+- Includes concurrent sampler/race, reset/error/idle, Linux device selection and model/report mapping tests. Existing capacity collection, credentials, UUIDs, service settings and update source are unchanged.

@@ -35,6 +35,7 @@ var (
 	cpuStateProbe      = cpu.GetState
 	diskHostProbe      = disk.GetHost
 	diskStateProbe     = disk.GetState
+	diskIOStateProbe   = disk.GetIOState
 	gpuHostProbe       = gpu.GetHost
 	gpuStatProbe       = gpu.GetStat
 	loadStateProbe     = load.GetState

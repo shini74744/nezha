@@ -45,6 +45,11 @@ message State {
   repeated State_SensorTemperature temperatures = 16;
   repeated double gpu = 17;
   repeated State_GPU gpus = 18;
+  // Disk throughput in bytes/second. False availability means missing/warm-up,
+  // not zero throughput. Appended fields preserve older Agent compatibility.
+  uint64 disk_read_speed = 19;
+  uint64 disk_write_speed = 20;
+  bool disk_io_available = 21;
 }
 
 // State_GPU carries per-card figures. Index-aligned with Host.gpu, matching

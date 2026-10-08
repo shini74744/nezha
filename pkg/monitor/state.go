@@ -42,6 +42,8 @@ func GetState(config *model.AgentConfig, skipConnectionCount bool, skipProcsCoun
 	}
 
 	result.DiskUsed = getDiskUsed(config)
+	diskIO := diskIOStateProbe(context.Background())
+	result.DiskReadSpeed, result.DiskWriteSpeed, result.DiskIOAvailable = diskIO.ReadSpeed, diskIO.WriteSpeed, diskIO.Available
 	loadState := tryStat(context.Background(), Load, loadStateProbe)
 	result.Load1 = loadState.Load1
 	result.Load5 = loadState.Load5

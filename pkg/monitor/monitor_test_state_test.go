@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"context"
 	"maps"
 	"slices"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	"github.com/shirou/gopsutil/v4/mem"
 
 	"github.com/nezhahq/agent/model"
+	"github.com/nezhahq/agent/pkg/monitor/disk"
 	"github.com/nezhahq/agent/pkg/monitor/gpu/vendor"
 )
 
@@ -21,6 +23,7 @@ type monitorProbeSnapshot struct {
 	cpuState          hostStateFunc[[]float64]
 	diskHost          hostStateFunc[uint64]
 	diskState         hostStateFunc[uint64]
+	diskIOState       func(context.Context) disk.IOState
 	gpuHost           hostStateFunc[[]string]
 	gpuStat           hostStateFunc[[]vendor.GPUStat]
 	loadState         hostStateFunc[*psLoad.AvgStat]
@@ -74,7 +77,7 @@ func captureMonitorTestState() monitorTestStateSnapshot {
 		probes: monitorProbeSnapshot{
 			hostInfo: hostInfoProbe, virtualMemory: virtualMemoryProbe,
 			cpuHost: cpuHostProbe, cpuState: cpuStateProbe,
-			diskHost: diskHostProbe, diskState: diskStateProbe,
+			diskHost: diskHostProbe, diskState: diskStateProbe, diskIOState: diskIOStateProbe,
 			gpuHost: gpuHostProbe, gpuStat: gpuStatProbe,
 			loadState: loadStateProbe, nicState: nicStateProbe,
 			temperature: temperatureProbe, fetchIP: fetchIPProbe,
@@ -110,6 +113,7 @@ func (s monitorTestStateSnapshot) restore() {
 	hostInfoProbe, virtualMemoryProbe = s.probes.hostInfo, s.probes.virtualMemory
 	cpuHostProbe, cpuStateProbe = s.probes.cpuHost, s.probes.cpuState
 	diskHostProbe, diskStateProbe = s.probes.diskHost, s.probes.diskState
+	diskIOStateProbe = s.probes.diskIOState
 	gpuHostProbe, gpuStatProbe = s.probes.gpuHost, s.probes.gpuStat
 	loadStateProbe, nicStateProbe = s.probes.loadState, s.probes.nicState
 	temperatureProbe, fetchIPProbe = s.probes.temperature, s.probes.fetchIP

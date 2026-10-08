@@ -10,24 +10,27 @@ type SensorTemperature struct {
 }
 
 type HostState struct {
-	CPU            float64
-	MemUsed        uint64
-	SwapUsed       uint64
-	DiskUsed       uint64
-	NetInTransfer  uint64
-	NetOutTransfer uint64
-	NetInSpeed     uint64
-	NetOutSpeed    uint64
-	Uptime         uint64
-	Load1          float64
-	Load5          float64
-	Load15         float64
-	TcpConnCount   uint64
-	UdpConnCount   uint64
-	ProcessCount   uint64
-	Temperatures   []SensorTemperature
-	GPU            []float64
-	GPUs           []GPUStat
+	CPU             float64
+	MemUsed         uint64
+	SwapUsed        uint64
+	DiskUsed        uint64
+	DiskReadSpeed   uint64
+	DiskWriteSpeed  uint64
+	DiskIOAvailable bool
+	NetInTransfer   uint64
+	NetOutTransfer  uint64
+	NetInSpeed      uint64
+	NetOutSpeed     uint64
+	Uptime          uint64
+	Load1           float64
+	Load5           float64
+	Load15          float64
+	TcpConnCount    uint64
+	UdpConnCount    uint64
+	ProcessCount    uint64
+	Temperatures    []SensorTemperature
+	GPU             []float64
+	GPUs            []GPUStat
 }
 
 // GPUStat carries per-card figures. Memory is in MiB and stays zero on
@@ -57,24 +60,27 @@ func (s *HostState) PB() *pb.State {
 	}
 
 	return &pb.State{
-		Cpu:            s.CPU,
-		MemUsed:        s.MemUsed,
-		SwapUsed:       s.SwapUsed,
-		DiskUsed:       s.DiskUsed,
-		NetInTransfer:  s.NetInTransfer,
-		NetOutTransfer: s.NetOutTransfer,
-		NetInSpeed:     s.NetInSpeed,
-		NetOutSpeed:    s.NetOutSpeed,
-		Uptime:         s.Uptime,
-		Load1:          s.Load1,
-		Load5:          s.Load5,
-		Load15:         s.Load15,
-		TcpConnCount:   s.TcpConnCount,
-		UdpConnCount:   s.UdpConnCount,
-		ProcessCount:   s.ProcessCount,
-		Temperatures:   ts,
-		Gpu:            s.GPU,
-		Gpus:           gs,
+		Cpu:             s.CPU,
+		MemUsed:         s.MemUsed,
+		SwapUsed:        s.SwapUsed,
+		DiskUsed:        s.DiskUsed,
+		DiskReadSpeed:   s.DiskReadSpeed,
+		DiskWriteSpeed:  s.DiskWriteSpeed,
+		DiskIoAvailable: s.DiskIOAvailable,
+		NetInTransfer:   s.NetInTransfer,
+		NetOutTransfer:  s.NetOutTransfer,
+		NetInSpeed:      s.NetInSpeed,
+		NetOutSpeed:     s.NetOutSpeed,
+		Uptime:          s.Uptime,
+		Load1:           s.Load1,
+		Load5:           s.Load5,
+		Load15:          s.Load15,
+		TcpConnCount:    s.TcpConnCount,
+		UdpConnCount:    s.UdpConnCount,
+		ProcessCount:    s.ProcessCount,
+		Temperatures:    ts,
+		Gpu:             s.GPU,
+		Gpus:            gs,
 	}
 }
 
