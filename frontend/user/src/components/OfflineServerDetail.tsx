@@ -1,6 +1,5 @@
-import { Suspense, useState, useEffect, useMemo } from "react";
-import { ArrowLeftRight } from "lucide-react";
-import DiskCardStack from "@/components/DiskCardStack";
+import { Suspense, useState, useEffect, useMemo, type ReactNode } from "react";
+import { DiskIORates, DiskModeToggle } from "@/components/DiskCardHeader";
 import { PreloadedServerNetworkInsight as ServerNetworkInsight } from "@/lib/detail-modules";
 import dayjs from "dayjs";
 import { useQuery } from "@tanstack/react-query";
@@ -98,13 +97,13 @@ export function OfflineServerDetail({server,now,initialTab="Detail",onTabIntent}
   </div>
  </div>;
 }
-function MetricHeader({group,report}:{group:typeof groups[number];report:LastReport}) {
+function MetricHeader({group,report,title}:{group:typeof groups[number];report:LastReport;title?:ReactNode}) {
  const metrics=report.metrics,host=report.snapshot?.host;
  const value=metrics[group.keys[0]];
  const capacities:Record<string,number|undefined>={memory:host?.mem_total,swap:host?.swap_total,disk:host?.disk_total};
  const percent=(key:string,i:number)=>{const value=metrics[key+"_percent"];return <span className="flex items-center gap-2 text-xs font-medium">{value!==undefined?<><AnimatedCircularProgressBar className="size-3 text-[0px]" max={100} min={0} value={value} primaryColor={"hsl(var(--chart-"+group.colors[i]+"))"}/><span data-recorded-percent={key}>{value.toFixed(0)}%</span></>:"—"}</span>};
  if(group.unit==="bytes")return <div className="flex items-center justify-between gap-2">
-  {group.keys.length===1?<p className="text-md font-medium">{group.title}</p>:<section className="flex items-center gap-4">{group.labels.map((label,i)=><div key={label}><p className="text-xs text-muted-foreground">{label}</p>{percent(group.keys[i],i)}</div>)}</section>}
+  {group.keys.length===1?(title===undefined?<p className="text-md font-medium">{group.title}</p>:title):<section className="flex items-center gap-4">{group.labels.map((label,i)=><div key={label}><p className="text-xs text-muted-foreground">{label}</p>{percent(group.keys[i],i)}</div>)}</section>}
   <section className="flex flex-col items-end gap-0.5">{group.keys.length===1&&percent(group.keys[0],0)}{group.keys.map(key=><p key={key} className="text-[11px] font-medium" title="已用容量 / 总容量">{key==="swap"&&host&&!(host.swap_total||0)&&metrics.swap===0?"no swap":valueText(metrics[key],"bytes")+" / "+(capacities[key]?formatBytes(capacities[key]!):"未知")}</p>)}</section>
  </div>;
  if(group.keys.length>1)return <section className="flex items-center gap-4">{group.keys.map((key,i)=><div key={key}>
@@ -148,10 +147,12 @@ export function OfflineMetricCard({group:originalGroup,report,period}:{group:typ
   data.push(row);
  }
  const config=Object.fromEntries(keys.map((key,i)=>[key,{label:group.labels[i],color:"hsl(var(--chart-"+group.colors[i]+"))"}]));
- const card=<Card role={isDisk?"button":undefined} tabIndex={isDisk?0:undefined} aria-label={isDisk?`点击切换到${diskIO?"磁盘占用":"磁盘读写"}`:undefined} aria-pressed={isDisk?diskIO:undefined} data-disk-mode={isDisk?(diskIO?"io":"capacity"):undefined} onClick={isDisk?toggle:undefined} onKeyDown={event=>{if(isDisk&&event.target===event.currentTarget&&(event.key==="Enter"||event.key===" ")){event.preventDefault();toggle()}}} className={cn(isDisk&&"cursor-pointer outline-none transition-shadow hover:ring-1 hover:ring-ring/30 focus-visible:ring-2 focus-visible:ring-ring",{"bg-card/70":!!window.CustomBackgroundImage})}><CardContent className="px-6 py-3"><section key={diskIO?"io":"capacity"} className={cn("flex flex-col gap-1",isDisk&&"animate-in fade-in slide-in-from-bottom-1 duration-200 motion-reduce:animate-none")}>
-  <div className={cn(isDisk&&"min-h-9")}>
-   {isDisk&&diskIO?<div className="flex min-h-9 items-center justify-between gap-2"><p className="flex items-center gap-1.5 text-md font-medium">磁盘读写<ArrowLeftRight aria-hidden="true" className="size-3 shrink-0 text-muted-foreground"/></p><div className="flex flex-col items-end gap-0.5 text-[11px] font-medium tabular-nums">{group.keys.map((key,i)=><span key={key}><span style={{color:"hsl(var(--chart-"+group.colors[i]+"))"}}>{group.labels[i]} </span>{valueText(report.metrics[key],"speed")}</span>)}</div></div>:<MetricHeader group={isDisk?{...group,title:"磁盘 ⇄"}:group} report={report}/>}
-  </div>
+ return <Card data-disk-mode={isDisk?(diskIO?"io":"capacity"):undefined} className={cn({"bg-card/70":!!window.CustomBackgroundImage})}><CardContent className="px-6 py-3"><section className="flex flex-col gap-1">
+  {isDisk?<div className="flex min-h-9 items-center justify-between gap-2">
+   <DiskModeToggle io={diskIO} onToggle={toggle}/>
+   {diskIO?<DiskIORates read={valueText(report.metrics.disk_read_speed,"speed")} write={valueText(report.metrics.disk_write_speed,"speed")}/>:<MetricHeader group={originalGroup} report={report} title={null}/>}
+  </div>:<MetricHeader group={group} report={report}/>}
+  <div key={diskIO?"io":"capacity"} className={cn(isDisk&&"animate-in fade-in duration-200 motion-reduce:animate-none")}>
   {period!=="last"&&history.isPending?<p className="h-[130px] flex items-center justify-center text-xs">正在读取历史记录…</p>:
    history.isError&&period!=="last"?<p className="h-[130px] flex items-center justify-center text-xs" role="alert">历史记录读取失败</p>:
    !data.length?<p className="h-[130px] flex items-center justify-center text-xs text-muted-foreground">该时间范围没有记录</p>:
@@ -164,6 +165,5 @@ export function OfflineMetricCard({group:originalGroup,report,period}:{group:typ
      {keys.map((key,i)=><Area key={key} dataKey={key} type="step" stroke={"hsl(var(--chart-"+group.colors[i]+"))"} fill={"hsl(var(--chart-"+group.colors[i]+"))"} fillOpacity={0.3} dot={data.length===1} connectNulls={false} isAnimationActive={false}/>)}
     </AreaChart>
    </ChartContainer>}
- </section></CardContent></Card>;
- return isDisk?<DiskCardStack>{card}</DiskCardStack>:card;
+ </div></section></CardContent></Card>;
 }

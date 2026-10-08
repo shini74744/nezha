@@ -434,21 +434,29 @@ describe("disk card click-only switching", () => {
   detailChartMocks.lastData!.servers[0].state.disk_read_speed=1024;
   detailChartMocks.lastData!.servers[0].state.disk_write_speed=2048;
   const view=renderWithQuery(<ServerDetailChart server_id="7"/>);
-  const card=await screen.findByRole("button",{name:"点击切换到磁盘读写"});
+  const toggle=await screen.findByRole("button",{name:"点击切换到磁盘读写"});
+  const card=toggle.closest<HTMLElement>("[data-disk-mode]")!;
   expect(card).toHaveAttribute("data-disk-mode","capacity");
   await userEvent.hover(card);
-  expect(card).toHaveAttribute("data-disk-mode","capacity");
   await userEvent.click(card);
+  expect(card).not.toHaveAttribute("role", "button");
+  expect(document.querySelector("[data-disk-stack]")).toBeNull();
+  expect(card).toHaveAttribute("data-disk-mode","capacity");
+  await userEvent.click(toggle);
   expect(card).toHaveAttribute("data-disk-mode","io");
   expect(screen.getByText("磁盘读写")).toBeInTheDocument();
   await waitFor(()=>expect(card.querySelector('[data-testid="line-chart"]')).not.toBeNull());
   const points=JSON.parse(card.querySelector('[data-testid="line-chart"]')!.getAttribute("data-values")!);
   expect(points.at(-1).read).toBe(1024);
   expect(points.at(-1).write).toBe(2048);
+  await userEvent.click(card.querySelector('[data-testid="line-chart"]')!);
+  await userEvent.click(card.querySelector('[data-disk-rate-label="read"]')!);
+  await userEvent.click(card.querySelector('[data-disk-rate-value="write"]')!);
+  expect(card).toHaveAttribute("data-disk-mode","io");
   detailChartMocks.lastData={...detailChartMocks.lastData!,now:detailChartMocks.lastData!.now+1000};
   view.rerender(<QueryClientProvider client={createTestQueryClient()}><ServerDetailChart server_id="7"/></QueryClientProvider>);
   expect(card).toHaveAttribute("data-disk-mode","io");
-  await userEvent.click(card);
+  await userEvent.click(toggle);
   expect(card).toHaveAttribute("data-disk-mode","capacity");
  });
  it("does not invent zero throughput for legacy Agents", async () => {
@@ -462,10 +470,12 @@ describe("disk card click-only switching", () => {
   detailChartMocks.lastData!.servers[0].state.disk_io_available=true;
   const user=userEvent.setup();
   renderWithQuery(<ServerDetailChart server_id="7"/>);
-  const card=await screen.findByRole("button",{name:"点击切换到磁盘读写"});
-  card.focus();
+  const toggle=await screen.findByRole("button",{name:"点击切换到磁盘读写"});
+  const card=toggle.closest<HTMLElement>("[data-disk-mode]")!;
+  toggle.focus();
   await user.keyboard("{Enter}");
   expect(card).toHaveAttribute("data-disk-mode","io");
+  expect(toggle).toHaveFocus();
   expect(screen.queryByText("暂无读写数据")).not.toBeInTheDocument();
   await user.keyboard(" ");
   expect(card).toHaveAttribute("data-disk-mode","capacity");
@@ -481,7 +491,7 @@ describe("disk card click-only switching", () => {
   await waitFor(()=>expect(detailChartMocks.fetchServerMetrics).toHaveBeenCalledWith(7,"disk_read_speed","1d"));
   expect(detailChartMocks.fetchServerMetrics).toHaveBeenCalledWith(7,"disk_write_speed","1d");
   await waitFor(()=>{
-   const card=screen.getByRole("button",{name:"点击切换到磁盘占用"});
+   const card=screen.getByRole("button",{name:"点击切换到磁盘占用"}).closest<HTMLElement>("[data-disk-mode]")!;
    const points=JSON.parse(card.querySelector('[data-testid="line-chart"]')!.getAttribute("data-values")!);
    expect(points[0].read).toBe(10);
    expect(points[0].write).toBe(10);
