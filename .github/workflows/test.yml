@@ -69,6 +69,11 @@ jobs:
           touch ./cmd/dashboard/admin-dist/a
           swag init --pd -d cmd/dashboard -g main.go -o cmd/dashboard/docs
 
+      - name: Management script regression
+        run: |
+          bash -n script/nezha.sh script/install.sh script/install_en.sh
+          python3 script/test_manager.py
+
       - name: Race and shuffle tests
         run: go test -mod=readonly -race -shuffle=on -count=1 ./...
 

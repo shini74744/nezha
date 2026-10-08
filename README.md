@@ -8,6 +8,10 @@
 
 二开维护者：[shini74744](https://github.com/shini74744) · 本仓库：[shini74744/nezha](https://github.com/shini74744/nezha)。
 
+## 安装与管理
+
+Linux systemd 部署请使用[本仓库 Releases](https://github.com/shini74744/nezha/releases/latest) 和[面板管理说明](PANEL_MANAGEMENT.md)。`bash /opt/nezha/nezha.sh` 提供交互菜单，停止和重启显示实际停机阶段；更新只下载 `shini74744/nezha` 的校验安装包，不回退到官方版本。
+
 ## 二开新增功能
 
 以下为本仓库在所基于的上游版本之上新增或扩展的主要功能；哪吒原有的基础监控、远程终端、告警和 DDNS 能力不属于本仓库原创。
@@ -61,7 +65,7 @@ GEOIP_DB=/path/to/country.mmdb VERSION=custom-$(git rev-parse --short HEAD) bash
 
 产物为 `dist/dashboard`。脚本会编译本仓库的两套前端、保留原有社区主题，再嵌入后端。
 仅运行上游 `fetch-frontends.sh` 会下载上游界面；构建此二开版请使用上述 `build-custom.sh`。
-本次源码同步不创建 GitHub Release，不修改现有上游发布工作流。
+自有发布使用 `custom-*` 标签和校验过的安装包，不使用官方 `v*` 发布资产。安装、停机、重启、更新和故障恢复说明见 [面板管理与发布](PANEL_MANAGEMENT.md)。
 测试方法和目录说明见 [frontend/README.md](frontend/README.md)。
 
 </details>

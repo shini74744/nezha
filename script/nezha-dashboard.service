@@ -1,0 +1,19 @@
+[Unit]
+Description=Nezha Dashboard (shini74744/nezha)
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/nezha/dashboard
+ExecStart=/opt/nezha/dashboard/app
+Restart=always
+RestartSec=3s
+KillSignal=SIGTERM
+KillMode=control-group
+TimeoutStopSec=90s
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

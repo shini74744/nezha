@@ -131,7 +131,7 @@ func InitDBFromPath(path string) error {
 }
 
 // RecordTransferHourlyUsage 对流量记录进行打点
-func RecordTransferHourlyUsage(servers ...*model.Server) {
+func RecordTransferHourlyUsage(servers ...*model.Server) error {
 	now := time.Now()
 	nowTrimSeconds := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), 0, 0, 0, now.Location())
 
@@ -158,9 +158,11 @@ func RecordTransferHourlyUsage(servers ...*model.Server) {
 	}
 
 	if len(txs) == 0 {
-		return
+		return nil
 	}
-	log.Printf("NEZHA>> Saved traffic metrics to database. Affected %d row(s), Error: %v", len(txs), DB.Create(txs).Error)
+	err := DB.Create(txs).Error
+	log.Printf("NEZHA>> Saved traffic metrics to database. Affected %d row(s), Error: %v", len(txs), err)
+	return err
 }
 
 func PersistTransfer(transfer model.Transfer) error {

@@ -79,8 +79,16 @@ func TSDBEnabled() bool {
 	return TSDBShared != nil && !TSDBShared.IsClosed()
 }
 
-func CloseTSDB() {
-	if TSDBShared != nil {
-		TSDBShared.Close()
+func CloseTSDB() error {
+	if TSDBShared == nil {
+		return nil
 	}
+	// Paused storage can discard buffered writes. Do not report a fully
+	// persisted shutdown merely because the underlying Close returned nil.
+	paused := TSDBShared.WritesPaused()
+	err := TSDBShared.Close()
+	if paused || TSDBShared.WritesPaused() {
+		err = errors.Join(err, errors.New("TSDB writes paused; complete persistence cannot be confirmed"))
+	}
+	return err
 }

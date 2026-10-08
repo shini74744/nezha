@@ -10,6 +10,7 @@ import (
 
 	"github.com/jinzhu/copier"
 	"github.com/nezhahq/nezha/pkg/tsdb"
+	"github.com/nezhahq/nezha/pkg/utils"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -27,6 +28,7 @@ var NezhaHandlerSingleton *NezhaHandler
 var ErrRequestTaskStreamSuperseded = errors.New("request task stream superseded")
 
 type NezhaHandler struct {
+	reportGate             utils.DrainGate
 	Auth                   *authHandler
 	ioStreams              map[string]*ioStreamContext
 	ioStreamMutex          *sync.RWMutex
@@ -121,11 +123,17 @@ func (s *NezhaHandler) RequestTask(stream pb.NezhaService_RequestTaskServer) err
 		singleton.ServerTransferShared.OnAgentReconnect(clientID)
 	}
 	var result *pb.TaskResult
+	lease := reportLease{gate: &s.reportGate}
+	defer lease.end()
 	for {
+		lease.end()
 		result, err = stream.Recv()
 		if err != nil {
 			log.Printf("NEZHA>> RequestTask error: %v, clientID: %d\n", err, clientID)
 			return err
+		}
+		if !lease.begin() {
+			return errReportsStopping
 		}
 		if singleton.ServerIDReassignmentInProgress.Load() {
 			return errors.New("server ID reassignment in progress")
@@ -231,11 +239,17 @@ func (s *NezhaHandler) ReportSystemState(stream pb.NezhaService_ReportSystemStat
 	defer lease.Clear()
 	var state *pb.State
 	var stateCount uint64
+	report := reportLease{gate: &s.reportGate}
+	defer report.end()
 	for {
+		report.end()
 		state, err = stream.Recv()
 		if err != nil {
 			log.Printf("NEZHA>> ReportSystemState error: %v, clientID: %d\n", err, clientID)
 			return err
+		}
+		if !report.begin() {
+			return errReportsStopping
 		}
 		if singleton.ServerIDReassignmentInProgress.Load() {
 			return errors.New("server ID reassignment in progress")
@@ -343,6 +357,10 @@ func (s *NezhaHandler) onReportSystemInfo(c context.Context, r *pb.Host) (model.
 }
 
 func (s *NezhaHandler) ReportSystemInfo(c context.Context, r *pb.Host) (*pb.Receipt, error) {
+	if !s.reportGate.Begin() {
+		return nil, errReportsStopping
+	}
+	defer s.reportGate.End()
 	if handled, err := deletedCleanupHost(c, r); handled {
 		if err != nil {
 			return nil, err
@@ -356,6 +374,10 @@ func (s *NezhaHandler) ReportSystemInfo(c context.Context, r *pb.Host) (*pb.Rece
 }
 
 func (s *NezhaHandler) ReportSystemInfo2(c context.Context, r *pb.Host) (*pb.Uint64Receipt, error) {
+	if !s.reportGate.Begin() {
+		return nil, errReportsStopping
+	}
+	defer s.reportGate.End()
 	if handled, err := deletedCleanupHost(c, r); handled {
 		if err != nil {
 			return nil, err
