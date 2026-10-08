@@ -36,6 +36,9 @@ export interface NezhaServerStatus {
 	mem_used: number;
 	swap_used: number;
 	disk_used: number;
+	disk_read_speed?: number;
+	disk_write_speed?: number;
+	disk_io_available?: boolean;
 	net_in_transfer: number;
 	net_out_transfer: number;
 	net_in_speed: number;
@@ -175,6 +178,8 @@ export type MetricType =
 	| "memory"
 	| "swap"
 	| "disk"
+	| "disk_read_speed"
+	| "disk_write_speed"
 	| "net_in_speed"
 	| "net_out_speed"
 	| "net_in_transfer"

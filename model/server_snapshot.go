@@ -31,6 +31,10 @@ func (r RecordedServerState) Metrics() map[string]float64 {
 		"load1": s.Load1, "load5": s.Load5, "load15": s.Load15, "uptime": float64(s.Uptime),
 		"tcp_conn": float64(s.TcpConnCount), "udp_conn": float64(s.UdpConnCount), "process_count": float64(s.ProcessCount),
 	}
+	if s.DiskIOAvailable {
+		values["disk_read_speed"] = float64(s.DiskReadSpeed)
+		values["disk_write_speed"] = float64(s.DiskWriteSpeed)
+	}
 	if r.Host != nil {
 		if r.Host.MemTotal > 0 {
 			values["memory_percent"] = float64(s.MemUsed) / float64(r.Host.MemTotal) * 100

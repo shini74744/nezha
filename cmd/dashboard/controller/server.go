@@ -489,6 +489,8 @@ var serverMetricMap = map[string]tsdb.MetricType{
 	"memory":           tsdb.MetricServerMemory,
 	"swap":             tsdb.MetricServerSwap,
 	"disk":             tsdb.MetricServerDisk,
+	"disk_read_speed":  tsdb.MetricServerDiskReadSpeed,
+	"disk_write_speed": tsdb.MetricServerDiskWriteSpeed,
 	"net_in_speed":     tsdb.MetricServerNetInSpeed,
 	"net_out_speed":    tsdb.MetricServerNetOutSpeed,
 	"net_in_transfer":  tsdb.MetricServerNetInTransfer,
@@ -511,7 +513,7 @@ var serverMetricMap = map[string]tsdb.MetricType{
 // @Description Get server metrics history for a specific server
 // @Tags common
 // @param id path uint true "Server ID"
-// @param metric query string true "Metric name: cpu, memory, swap, disk, net_in_speed, net_out_speed, net_in_transfer, net_out_transfer, load1, load5, load15, tcp_conn, udp_conn, process_count, temperature, uptime, gpu"
+// @param metric query string true "Metric name: cpu, memory, swap, disk, disk_read_speed, disk_write_speed, net_in_speed, net_out_speed, net_in_transfer, net_out_transfer, load1, load5, load15, tcp_conn, udp_conn, process_count, temperature, uptime, gpu"
 // @param period query string false "Time period: 1d, 7d, 30d (default: 1d)"
 // @Produce json
 // @Success 200 {object} model.CommonResponse[model.ServerMetricsResponse]

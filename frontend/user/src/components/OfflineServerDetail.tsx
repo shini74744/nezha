@@ -1,4 +1,6 @@
 import { Suspense, useState, useEffect, useMemo } from "react";
+import { ArrowLeftRight } from "lucide-react";
+import DiskCardStack from "@/components/DiskCardStack";
 import { PreloadedServerNetworkInsight as ServerNetworkInsight } from "@/lib/detail-modules";
 import dayjs from "dayjs";
 import { useQuery } from "@tanstack/react-query";
@@ -112,7 +114,11 @@ function MetricHeader({group,report}:{group:typeof groups[number];report:LastRep
   {group.unit==="percent"&&value!==undefined&&<AnimatedCircularProgressBar className="size-3 text-[0px]" max={100} min={0} value={value} primaryColor="hsl(var(--chart-1))"/>}
  </section></div>;
 }
-function OfflineMetricCard({group,report,period}:{group:typeof groups[number];report:LastReport;period:"last"|MetricPeriod}) {
+export function OfflineMetricCard({group:originalGroup,report,period}:{group:typeof groups[number];report:LastReport;period:"last"|MetricPeriod}) {
+ const isDisk=originalGroup.keys[0]==="disk";
+ const [diskIO,setDiskIO]=useState(false);
+ const group=isDisk&&diskIO?{title:"磁盘读写",keys:["disk_read_speed","disk_write_speed"],labels:["读取","写入"],unit:"speed",colors:[1,10]}:originalGroup;
+ const toggle=()=>{if(isDisk)setDiskIO(value=>!value)};
  const history=useQuery({
   queryKey:["offline-history",report.server_id,period,group.keys],
   enabled:period!=="last",
@@ -142,8 +148,10 @@ function OfflineMetricCard({group,report,period}:{group:typeof groups[number];re
   data.push(row);
  }
  const config=Object.fromEntries(keys.map((key,i)=>[key,{label:group.labels[i],color:"hsl(var(--chart-"+group.colors[i]+"))"}]));
- return <Card className={cn({"bg-card/70":!!window.CustomBackgroundImage})}><CardContent className="px-6 py-3"><section className="flex flex-col gap-1">
-  <MetricHeader group={group} report={report}/>
+ const card=<Card role={isDisk?"button":undefined} tabIndex={isDisk?0:undefined} aria-label={isDisk?`点击切换到${diskIO?"磁盘占用":"磁盘读写"}`:undefined} aria-pressed={isDisk?diskIO:undefined} data-disk-mode={isDisk?(diskIO?"io":"capacity"):undefined} onClick={isDisk?toggle:undefined} onKeyDown={event=>{if(isDisk&&event.target===event.currentTarget&&(event.key==="Enter"||event.key===" ")){event.preventDefault();toggle()}}} className={cn(isDisk&&"cursor-pointer outline-none transition-shadow hover:ring-1 hover:ring-ring/30 focus-visible:ring-2 focus-visible:ring-ring",{"bg-card/70":!!window.CustomBackgroundImage})}><CardContent className="px-6 py-3"><section key={diskIO?"io":"capacity"} className={cn("flex flex-col gap-1",isDisk&&"animate-in fade-in slide-in-from-bottom-1 duration-200 motion-reduce:animate-none")}>
+  <div className={cn(isDisk&&"min-h-9")}>
+   {isDisk&&diskIO?<div className="flex min-h-9 items-center justify-between gap-2"><p className="flex items-center gap-1.5 text-md font-medium">磁盘读写<ArrowLeftRight aria-hidden="true" className="size-3 shrink-0 text-muted-foreground"/></p><div className="flex flex-col items-end gap-0.5 text-[11px] font-medium tabular-nums">{group.keys.map((key,i)=><span key={key}><span style={{color:"hsl(var(--chart-"+group.colors[i]+"))"}}>{group.labels[i]} </span>{valueText(report.metrics[key],"speed")}</span>)}</div></div>:<MetricHeader group={isDisk?{...group,title:"磁盘 ⇄"}:group} report={report}/>}
+  </div>
   {period!=="last"&&history.isPending?<p className="h-[130px] flex items-center justify-center text-xs">正在读取历史记录…</p>:
    history.isError&&period!=="last"?<p className="h-[130px] flex items-center justify-center text-xs" role="alert">历史记录读取失败</p>:
    !data.length?<p className="h-[130px] flex items-center justify-center text-xs text-muted-foreground">该时间范围没有记录</p>:
@@ -157,4 +165,5 @@ function OfflineMetricCard({group,report,period}:{group:typeof groups[number];re
     </AreaChart>
    </ChartContainer>}
  </section></CardContent></Card>;
+ return isDisk?<DiskCardStack>{card}</DiskCardStack>:card;
 }
