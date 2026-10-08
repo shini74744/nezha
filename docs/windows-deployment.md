@@ -8,6 +8,9 @@
 
 ```powershell
 New-Item -ItemType Directory -Path data -Force
+if (!(Test-Path .\data\config.yaml)) {
+    'listen_host: 127.0.0.1' | Set-Content .\data\config.yaml -Encoding utf8
+}
 .\dashboard-windows-amd64.exe -c .\data\config.yaml -db .\data\sqlite.db
 ```
 
