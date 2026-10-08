@@ -53,4 +53,21 @@
 
 先前按用户要求暂缓的 Windows 服务端终端密钥权限兼容问题，本轮没有修改，不能因此声称 Windows CI 全绿。通知告警也没有修改。
 
-本文件的构建验收不代表阿里生产版本已更新；发布与部署状态另行记录。
+## 发布与阿里部署
+
+[自有 Release custom-2026.10.08.3](https://github.com/shini74744/nezha/releases/tag/custom-2026.10.08.3) 已发布为 latest，标签指向 `dec3de8b041aca30e1864ebc3e33fa34d50bdb5a`。5 个发布资产均上传完成，GitHub 返回的资产校验值与构建产物一致。
+
+阿里通过 `bash /opt/nezha/nezha.sh update` 完成更新，退出 0。下载校验后，真实日志确认停止接收新上报、排空 Agent、排空服务队列、落盘、关闭和退出，再启动新版本；旧程序与一致性备份保留在 `/opt/nezha/backups/update-20261008T092817Z-38800`。
+
+上线验收：
+
+- 磁盘程序和运行中进程的 SHA-256 均匹配正式包，版本为 custom-2026.10.08.3，HTTP 200。
+- 119 个节点身份/归属、1 个用户、18 个服务、配置及终端密钥保持不变；SQLite quick_check=ok、权限 0600，TSDB 目录 inode 保留。
+- 新快照时间递增，WebSocket 连续收到包含 119 个节点的两帧实时数据。
+- 服务 active，NRestarts=0，开机启动 enabled，Restart=always；自有管理脚本未被替换。
+- 上线观察窗口内未发现快照写入失败、数据库锁定、缺表、panic 或停机未完成标记；不将有限观察宣称为未来永无故障。
+- 1440px 电脑与 390px 触控手机的只读页面检查通过：详情、连通性、BGP、流媒体接口 200，标签和 BGP 历史快照切换保持 scrollY=180，没有横向溢出或页面脚本错误；IPv4-only 节点不显示 IPv6，未发起管理写请求。
+
+构建机保存 `live-alibaba-smoke.log`、截图及 `live-alibaba-verified/report.json`；阿里核对证据保存在 `/opt/nezha/backups/crypto-update-20261008.7W1wvktQ`。此次没有清理现有备份或无关未跟踪数据。
+
+源码提交触发的 GitHub Actions 另行运行，不能把构建机 Linux 回归通过等同于全平台 CI 全绿；Windows 已知暂缓问题保持上述边界。
