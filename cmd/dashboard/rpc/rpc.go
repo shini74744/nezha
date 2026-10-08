@@ -18,6 +18,16 @@ func CloseReceiptGate() {
 	rpcService.CloseReceiptGate()
 }
 
+// StopReports closes report admission, not the processing of admitted data.
+func StopReports() <-chan struct{} {
+	if rpcService.NezhaHandlerSingleton != nil {
+		return rpcService.NezhaHandlerSingleton.StopReports()
+	}
+	done := make(chan struct{})
+	close(done)
+	return done
+}
+
 // SetMCPKillSwitchObserver re-exports the service/rpc hook so cmd/dashboard
 // can wire singleton.Conf.EnableMCP without importing the inner rpc package
 // (cmd/dashboard already imports cmd/dashboard/rpc for ServeRPC).

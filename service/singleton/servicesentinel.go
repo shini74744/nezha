@@ -55,6 +55,7 @@ type pingStore struct {
 	count        int
 	ping         float64
 	successCount int
+	lastData     string
 }
 
 /*
@@ -89,21 +90,19 @@ type ServiceSentinel struct {
 	monthlyStatusLock sync.Mutex
 	monthlyStatus     map[uint64]*serviceResponseItem
 
-	// closeOnce + workerWG together let Close() wait for the worker goroutine
-	// to fully exit. Without this, a test that swaps ServiceSentinelShared back
-	// to its original value in t.Cleanup races against the still-running
-	// worker, which keeps reading globals like Conf/CronShared/NotificationShared.
-	// Production never calls Close() — the process exits while the worker is
-	// still running and that is fine — but tests must drain the worker before
-	// restoring globals.
-	closeOnce sync.Once
-	workerWG  sync.WaitGroup
+	// Admission closes before the queue: already admitted senders must finish
+	// enqueuing before the worker can drain and exit.
+	reportGate  utils.DrainGate
+	closeOnce   sync.Once
+	workerDone  chan struct{}
+	shutdownErr error // published when workerDone closes
 }
 
 // NewServiceSentinel 创建服务监控器
 func NewServiceSentinel(serviceSentinelDispatchBus chan<- *model.Service) (*ServiceSentinel, error) {
 	ss := &ServiceSentinel{
 		serviceReportChannel:     make(chan ReportData, 200),
+		workerDone:               make(chan struct{}),
 		serviceStatusToday:       make(map[uint64]*_TodayStatsOfService),
 		serviceCurrentStatusData: make(map[uint64]*serviceTaskStatus),
 		serviceResponseDataStore: make(map[uint64]serviceResponseData),
@@ -126,9 +125,8 @@ func NewServiceSentinel(serviceSentinelDispatchBus chan<- *model.Service) (*Serv
 	ss.loadTodayStats(today)
 
 	// 启动服务监控器
-	ss.workerWG.Add(1)
 	go func() {
-		defer ss.workerWG.Done()
+		defer close(ss.workerDone)
 		ss.worker()
 	}()
 
@@ -176,8 +174,13 @@ func (ss *ServiceSentinel) refreshMonthlyServiceStatus() {
 }
 
 // Dispatch 将传入的 ReportData 传给 服务状态汇报管道
-func (ss *ServiceSentinel) Dispatch(r ReportData) {
+func (ss *ServiceSentinel) Dispatch(r ReportData) bool {
+	if !ss.reportGate.Begin() {
+		return false
+	}
+	defer ss.reportGate.End()
 	ss.serviceReportChannel <- r
+	return true
 }
 
 // sortServices 按 DisplayIndex 降序、ID 升序排列服务列表
@@ -534,22 +537,23 @@ func canReportServiceResult(service *model.Service, reporter *model.Server, task
 	return service.UserID == reporter.GetUserID() || userIsAdmin(service.UserID)
 }
 
-// Close shuts down the ServiceSentinel worker goroutine and waits for it to
-// exit. It is idempotent and safe to call more than once.
-//
-// Why this exists: the worker reads multiple package-level globals during
-// each report (Conf, CronShared via notifyCheck, NotificationShared via
-// UnMuteNotification, ServerShared, TSDBShared). A test fixture that swaps
-// those globals out in t.Cleanup MUST first call Close() — otherwise the
-// cleanup write races the still-running worker's read and `go test -race`
-// fires (see security_regression_test.go newServiceMonitorSecurityHarness).
-// Production never calls Close because the process exits with the worker
-// still running, which is fine.
-func (ss *ServiceSentinel) Close() {
+// Stop rejects new dispatches and drains all already admitted reports. It
+// never closes a channel while an admitted sender can still write to it.
+func (ss *ServiceSentinel) Stop() <-chan struct{} {
 	ss.closeOnce.Do(func() {
-		close(ss.serviceReportChannel)
-		ss.workerWG.Wait()
+		admitted := ss.reportGate.Stop()
+		go func() {
+			<-admitted
+			close(ss.serviceReportChannel)
+		}()
 	})
+	return ss.workerDone
+}
+
+// Close also waits for persistence to finish. Keep TSDB/SQLite and the shared
+// server state alive until this returns. Repeated concurrent calls are safe.
+func (ss *ServiceSentinel) Close() {
+	<-ss.Stop()
 }
 
 // worker 服务监控的实际工作流程
@@ -572,6 +576,7 @@ func (ss *ServiceSentinel) worker() {
 			ss.processReport(r, serverShared)
 		}()
 	}
+	ss.flushPendingHistory()
 }
 
 func (ss *ServiceSentinel) processReport(r ReportData, serverShared *ServerClass) {
@@ -615,6 +620,7 @@ func (ss *ServiceSentinel) processReport(r ReportData, serverShared *ServerClass
 			ts = &pingStore{}
 		}
 		ts.count++
+		ts.lastData = mh.Data
 		ts.ping = (ts.ping*float64(ts.count-1) + float64(mh.Delay)) / float64(ts.count)
 		if mh.Successful {
 			ts.successCount++

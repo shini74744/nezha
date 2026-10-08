@@ -201,8 +201,9 @@ func main() {
 	}
 
 	errChan := make(chan error, 2)
-	errHTTPS := errors.New("error from https server")
 
+	// Allow accepted report queues to drain before systemd terminates the process.
+	graceful.DefaultShutdownTimeout = 30 * time.Second
 	if err := graceful.Graceful(func() error {
 		log.Printf("NEZHA>> Dashboard::START ON %s:%d", singleton.Conf.ListenHost, singleton.Conf.ListenPort)
 		if singleton.Conf.HTTPS.ListenPort != 0 {
@@ -216,25 +217,15 @@ func main() {
 		}()
 		return <-errChan
 	}, func(c context.Context) error {
-		log.Println("NEZHA>> Graceful::START")
-		rpc.CloseReceiptGate()
-		singleton.RecordTransferHourlyUsage()
-		singleton.CloseTSDB()
-		log.Println("NEZHA>> Graceful::END")
-		var err error
-		if muxServerHTTPS != nil {
-			err = muxServerHTTPS.Shutdown(c)
-		}
-		return errors.Join(muxServerHTTP.Shutdown(c), utils.IfOr(err != nil, utils.NewWrapError(errHTTPS, err), nil))
+		return shutdownDashboard(c, muxServerHTTP, muxServerHTTPS)
 	}); err != nil {
 		log.Printf("NEZHA>> ERROR: %v", err)
 		var wrapError *utils.WrapError
 		if errors.As(err, &wrapError) {
 			log.Printf("NEZHA>> ERROR HTTPS: %v", wrapError.Unwrap())
 		}
+		os.Exit(1)
 	}
-
-	close(errChan)
 }
 
 func newHTTPandGRPCMux(httpHandler http.Handler, grpcHandler http.Handler) http.Handler {

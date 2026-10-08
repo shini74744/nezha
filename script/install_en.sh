@@ -1,52 +1,29 @@
-#!/bin/sh
-
-#========================================================
-# master install script redirect
-#========================================================
-
-# Default: Guide users to use master branch v1 new panel installation script
-# However, if install_agent parameter is used, redirect to v0 by default
-if echo "$@" | grep -q "install_agent"; then
-    echo "Detected v0 panel install_agent parameter, will use v0 branch script..."
-    echo "Warning: v0 panel is no longer maintained, please upgrade to v1 panel ASAP. See docs: https://nezha.wiki/, script will continue in 5s"
-    sleep 5
-    is_v1=false
-else
-    echo "v1 panel has been officially released, v0 is no longer maintained. If you have v0 panel installed, please upgrade to v1 ASAP"
-    echo "v1 differs significantly from v0, see documentation: https://nezha.wiki/"
-    echo "If you don't want to upgrade now, enter 'n' and press Enter to continue using v0 panel script"
-    read -p "Execute v1 panel installation script? [y/n] " choice
-    case "$choice" in
-        n|N)
-            is_v1=false
-            ;;
-        *)
-            is_v1=true
-            ;;
-    esac
+#!/usr/bin/env bash
+# Bootstrap only this fork's published, checksummed management script.
+set -Eeuo pipefail
+umask 077
+readonly releases="https://github.com/shini74744/nezha/releases"
+stage="$(mktemp -d)"
+trap 'rm -f -- "$stage/version.txt" "$stage/SHA256SUMS" "$stage/nezha.sh"; rmdir -- "$stage"' EXIT
+fetch() { curl --fail --show-error --silent --location --proto '=https' --tlsv1.2 --connect-timeout 15 --max-time 180 "$1" -o "$2"; }
+fetch "$releases/latest/download/version.txt" "$stage/version.txt"
+version="$(tr -d '\r\n' < "$stage/version.txt")"
+[[ "$version" =~ ^custom-[0-9A-Za-z._-]+$ ]] || { echo "没有有效的自有发布版本" >&2; exit 1; }
+fetch "$releases/download/$version/SHA256SUMS" "$stage/SHA256SUMS"
+fetch "$releases/download/$version/nezha.sh" "$stage/nezha.sh"
+expected="$(awk '$2=="nezha.sh" || $2=="*nezha.sh" {print $1}' "$stage/SHA256SUMS")"
+[[ "$expected" =~ ^[0-9a-fA-F]{64}$ ]] || exit 1
+actual="$(sha256sum "$stage/nezha.sh")"; actual="${actual%% *}"
+[[ "${actual,,}" == "${expected,,}" ]] || { echo "脚本校验失败，未安装" >&2; exit 1; }
+bash -n "$stage/nezha.sh"
+[[ "$(id -u)" == 0 ]] || { echo "请使用 root 或 sudo 执行" >&2; exit 1; }
+mkdir -p /opt/nezha
+if [[ -f /opt/nezha/nezha.sh ]]; then
+ backup="/opt/nezha/backups/bootstrap-$(date -u +%Y%m%dT%H%M%SZ)-$$"
+ install -d -m 0700 "$backup"
+ cp -p /opt/nezha/nezha.sh "$backup/nezha.sh.previous"
 fi
-
-if [ "$is_v1" = true ]; then
-    echo "Will use v1 panel installation script..."
-    shell_url="https://raw.githubusercontent.com/nezhahq/scripts/main/install_en.sh"
-    file_name="nezha.sh"
-else
-    echo "Will use v0 panel installation script, script will be downloaded as nezha_v0.sh"
-    shell_url="https://raw.githubusercontent.com/nezhahq/scripts/refs/heads/v0/install_en.sh"
-    file_name="nezha_v0.sh"
-fi
-
-
-if command -v wget >/dev/null 2>&1; then
-    wget -O "/tmp/nezha.sh" "$shell_url"
-elif command -v curl >/dev/null 2>&1; then
-    curl -o "/tmp/nezha.sh" "$shell_url"
-else
-    echo "Error: wget or curl not found, please install either one and try again"
-    exit 1
-fi
-
-chmod +x "/tmp/nezha.sh"
-mv "/tmp/nezha.sh" "./$file_name"
-# Run the new script with the original parameters
-exec ./"$file_name" "$@"
+install -m 0755 "$stage/nezha.sh" /opt/nezha/nezha.sh.new
+mv -f /opt/nezha/nezha.sh.new /opt/nezha/nezha.sh
+if (($#==0)); then set -- install; fi
+bash /opt/nezha/nezha.sh "$@"

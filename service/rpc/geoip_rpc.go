@@ -14,6 +14,10 @@ import (
 )
 
 func (s *NezhaHandler) ReportGeoIP(ctx context.Context, report *pb.GeoIP) (*pb.GeoIP, error) {
+	if !s.reportGate.Begin() {
+		return nil, errReportsStopping
+	}
+	defer s.reportGate.End()
 	clientID, err := s.Auth.Check(ctx)
 	if err != nil {
 		return nil, err
