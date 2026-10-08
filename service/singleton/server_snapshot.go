@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/nezhahq/nezha/model"
-	"gorm.io/gorm"
 	"time"
 )
 
@@ -21,34 +20,11 @@ func PersistServerSnapshot(id uint64, uuid string, sample model.RecordedServerSt
 	if err != nil {
 		return err
 	}
-	// Serialize snapshot writers to avoid a fleet of SQLite lock waiters.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	select {
-	case snapshotWriteGate <- struct{}{}:
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-	defer func() { <-snapshotWriteGate }()
-	return DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		result := tx.Exec(`INSERT INTO server_snapshots(server_id,slot,uuid,recorded_at,payload)
-   SELECT id,?,?,?,? FROM servers WHERE id=? AND uuid=?
-   ON CONFLICT(server_id,slot) DO UPDATE SET uuid=excluded.uuid,
-   recorded_at=excluded.recorded_at,payload=excluded.payload
-   WHERE excluded.recorded_at>server_snapshots.recorded_at`,
-			sample.At/1000, uuid, sample.At, string(payload), id, uuid)
-		if result.Error != nil {
-			return result.Error
-		}
-		if result.RowsAffected == 0 {
-			return nil
-		}
-		if err := tx.Exec(`DELETE FROM server_snapshots WHERE server_id=? AND recorded_at <
-   (SELECT MAX(recorded_at)-60000 FROM server_snapshots WHERE server_id=?)`, id, id).Error; err != nil {
-			return err
-		}
-		// Atomically commit the report and both traffic directions in one disk transaction.
-		return recordPlanTrafficTx(tx, id, uuid, sample)
+	return serverSnapshotWriter.persist(&snapshotWriteRequest{
+		db: DB, ctx: ctx, id: id, uuid: uuid, sample: sample, payload: string(payload),
+		result: make(chan error, 1),
 	})
 }
 
