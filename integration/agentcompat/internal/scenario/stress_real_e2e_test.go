@@ -107,6 +107,15 @@ func (spec stressResourceCaptureSpec) diagnostics() *fdDiagnosticCollector {
 	return spec.Diagnostics
 }
 
+// Baseline and end must both exclude active SQLite transactions. FD observations
+// come from the same read that produced the count, not a later /proc snapshot.
+func (spec stressResourceCaptureSpec) dashboardWindowSpec(pid int, journalPath string) processharness.WindowSpec {
+	return processharness.WindowSpec{
+		PID: pid, Interval: contract.ResourceSampleInterval, CaptureFDObservations: true,
+		ObserveSample: observeStressDashboardSQLiteJournal(journalPath),
+	}
+}
+
 func captureStressResources(ctx context.Context, fixture *heldSessionSetRealFixture, spec stressResourceCaptureSpec) ([]StressProcessWindows, error) {
 	diagnostics := spec.diagnostics()
 	result := make([]StressProcessWindows, 0, len(fixture.agents)+1)
@@ -115,10 +124,7 @@ func captureStressResources(ctx context.Context, fixture *heldSessionSetRealFixt
 	if err != nil {
 		return nil, err
 	}
-	windowSpec := processharness.WindowSpec{PID: dashboard.PID, Interval: contract.ResourceSampleInterval}
-	if spec.Phase == stressResourceBaseline {
-		windowSpec.ObserveSample = observeStressDashboardSQLiteJournal(fixture.dashboard.DatabasePath() + "-journal")
-	}
+	windowSpec := spec.dashboardWindowSpec(dashboard.PID, fixture.dashboard.DatabasePath()+"-journal")
 	baseline, err := sampleStressQuietWindow(ctx, func(sampleContext context.Context) (processharness.Window, error) {
 		return processharness.SampleWindow(sampleContext, windowSpec)
 	})

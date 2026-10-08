@@ -5,6 +5,8 @@ package scenario
 import (
 	"context"
 	"errors"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/nezhahq/nezha/integration/agentcompat/internal/client"
@@ -76,6 +78,14 @@ func drainStressDashboardSQLiteJournal(ctx context.Context, fixture *heldSession
 
 func observeStressDashboardSQLiteJournal(path string) func(context.Context, processharness.Sample) error {
 	return func(_ context.Context, sample processharness.Sample) error {
+		// A journal may close after counting but before the live-path check.
+		// Reject that entire sample window too; never subtract or hide its FD.
+		for _, observation := range sample.FDObservations {
+			target := strings.TrimSuffix(observation.Target, " (deleted)")
+			if filepath.IsAbs(target) && filepath.Clean(target) == filepath.Clean(path) {
+				return ErrStressSQLiteJournalNotDrained
+			}
+		}
 		held, err := processharness.ProcessHasOpenPath(sample.PID, path)
 		if err != nil {
 			return err
@@ -88,7 +98,7 @@ func observeStressDashboardSQLiteJournal(path string) func(context.Context, proc
 }
 
 // The selected transaction drain cannot drain subsequent asynchronous MCP audit
-// writes. Require a complete journal-free baseline window, within a fixed bound.
+// writes. Require complete journal-free baseline and end windows within a fixed bound.
 // Never retry resource-count failures or combine samples from different windows.
 func sampleStressQuietWindow(ctx context.Context, sample func(context.Context) (processharness.Window, error)) (processharness.Window, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
