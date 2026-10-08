@@ -36,12 +36,12 @@ func (execution transferExecution) run(ctx context.Context, assertions *Assertio
 	if err != nil {
 		return TransferEvidence{}, fmt.Errorf("transfer warm-up: %w", err)
 	}
-	quiescenceDeadline, err := confirmTransferQuiescence(ctx, execution.residueScope)
+	quiescenceDeadline, err := execution.confirmQuiescence(ctx)
 	if err != nil {
 		return TransferEvidence{}, err
 	}
 	warmupEvidence.deadline = quiescenceDeadline
-	assertions.Record("small real upload and download warm-up precedes event and deadline quiescence", warmupEvidence.valid(), fmt.Sprintf("completion_event=download_response upload_bytes=%d download_bytes=%d sha256=%s duration=%s deadline_remaining=%s", warmupEvidence.uploadBytes, warmupEvidence.downloadBytes, warmupEvidence.sha256, warmupEvidence.duration, warmupEvidence.deadline))
+	assertions.Record("small real upload and download warm-up precedes event and deadline quiescence", warmupEvidence.valid(), fmt.Sprintf("completion_event=download_response_and_stream_cleanup upload_bytes=%d download_bytes=%d sha256=%s duration=%s deadline_remaining=%s", warmupEvidence.uploadBytes, warmupEvidence.downloadBytes, warmupEvidence.sha256, warmupEvidence.duration, warmupEvidence.deadline))
 
 	uploadPath, err := execution.root.Path("measured/nested/upload.bin")
 	if err != nil {
@@ -75,7 +75,7 @@ func (execution transferExecution) run(ctx context.Context, assertions *Assertio
 	oversizeRejected := isTransferHTTPError(oversizeErr, 413, "transfer cap")
 	assertions.Record("100MiB plus one upload is typed too large", oversizeRejected, errorText(oversizeErr))
 
-	if _, err := confirmTransferQuiescence(ctx, execution.residueScope); err != nil {
+	if _, err := execution.confirmQuiescence(ctx); err != nil {
 		return TransferEvidence{}, err
 	}
 	residue, err := transferResidue(execution.residueScope)
@@ -112,7 +112,7 @@ func (execution transferExecution) finishHashFault(ctx context.Context, assertio
 	assertions.Record("transfer-hash rejects upload with typed 502", isTransferHTTPError(uploadErr, 502, "sha256 mismatch"), errorText(uploadErr))
 	_, statErr := os.Stat(uploadPath.String())
 	assertions.Record("transfer-hash leaves target absent", errors.Is(statErr, os.ErrNotExist), errorText(statErr))
-	if _, err := confirmTransferQuiescence(ctx, execution.residueScope); err != nil {
+	if _, err := execution.confirmQuiescence(ctx); err != nil {
 		return TransferEvidence{}, err
 	}
 	residue, err := transferResidue(execution.residueScope)
@@ -154,4 +154,22 @@ func (evidence transferPathEvidence) validUpload(want fixture.PayloadDigest) boo
 
 func (evidence transferPathEvidence) validDownload(want fixture.PayloadDigest) bool {
 	return evidence.bytes == contract.TransferBytes && evidence.sha256 != "" && evidence.sha256 == want.Hex()
+}
+
+func (execution transferExecution) confirmQuiescence(ctx context.Context) (time.Duration, error) {
+	if _, bounded := ctx.Deadline(); !bounded {
+		return 0, errors.New("transfer quiescence requires a context deadline")
+	}
+	// Content-Length lets the client finish reading before the handler's
+	// defers run. In this isolated transfer-only fixture, wait for its stream
+	// cleanup receipt before checking the spool and Agent directories once.
+	// Do not poll away residue: any descriptor left after this receipt fails.
+	state, err := execution.client.WaitForIOStreamState(ctx, client.IOStreamStateExpectation{ExpectedCount: client.ExpectedIOStreamCount(0)})
+	if err != nil {
+		return 0, fmt.Errorf("transfer cleanup receipt: %w", err)
+	}
+	if state.Count != 0 {
+		return 0, errors.New("transfer cleanup receipt still has active streams")
+	}
+	return confirmTransferQuiescence(ctx, execution.residueScope)
 }
