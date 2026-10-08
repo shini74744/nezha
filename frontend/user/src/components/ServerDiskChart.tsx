@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeftRight } from "lucide-react";
+import { DiskIORates, DiskModeToggle } from "@/components/DiskCardHeader";
 import { useTranslation } from "react-i18next";
 import {
 	Area,
@@ -12,7 +12,6 @@ import {
 	YAxis,
 } from "recharts";
 import { Card, CardContent } from "@/components/ui/card";
-import DiskCardStack from "@/components/DiskCardStack";
 import {
 	ChartContainer,
 	ChartTooltip,
@@ -159,7 +158,6 @@ export default function ServerDiskChart({
 	const failed = period !== "realtime" && historical.isError;
 	const unavailable =
 		io && !points.some((point) => point.read != null || point.write != null);
-	const next = io ? "磁盘占用" : "磁盘读写";
 	const axes = (
 		<>
 			<CartesianGrid vertical={false} />
@@ -210,79 +208,56 @@ export default function ServerDiskChart({
 		</>
 	);
 	return (
-		<DiskCardStack>
-			<Card
-				role="button"
-				tabIndex={0}
-				aria-label={`点击切换到${next}`}
-				aria-pressed={io}
-				data-disk-mode={io ? "io" : "capacity"}
-				className={cn(
-					"cursor-pointer outline-none transition-shadow hover:ring-1 hover:ring-ring/30 focus-visible:ring-2 focus-visible:ring-ring",
-					{ "bg-card/70": !!window.CustomBackgroundImage },
-				)}
-				onClick={toggle}
-				onKeyDown={(event) => {
-					if (
-						event.target === event.currentTarget &&
-						(event.key === "Enter" || event.key === " ")
-					) {
-						event.preventDefault();
-						toggle();
-					}
-				}}
-			>
-				<CardContent className="px-6 py-3">
-					<section
-						key={io ? "io" : "capacity"}
-						className="flex flex-col gap-1 animate-in fade-in slide-in-from-bottom-1 duration-200 motion-reduce:animate-none"
-					>
-						<div className="flex min-h-9 items-center justify-between gap-2">
-							<div className="flex min-w-0 items-center gap-1.5">
-								<p className="text-md font-medium">
-									{io ? "磁盘读写" : t("serverDetailChart.disk")}
-								</p>
-								<ArrowLeftRight
-									aria-hidden="true"
-									className="size-3 shrink-0 text-muted-foreground"
-								/>
-							</div>
-							{io ? (
-								<div className="flex shrink-0 flex-col items-end gap-0.5 text-[11px] font-medium tabular-nums">
-									<span>
-										<span className="text-blue-500">读取 </span>
-										{data.state.disk_io_available
-											? rate(validRate(data.state.disk_read_speed) ?? 0)
-											: "—"}
-									</span>
-									<span>
-										<span className="text-purple-500">写入 </span>
-										{data.state.disk_io_available
-											? rate(validRate(data.state.disk_write_speed) ?? 0)
-											: "—"}
-									</span>
-								</div>
-							) : (
-								<section className="flex flex-col items-end gap-0.5">
-									<section className="flex items-center gap-2">
-										<p className="text-xs text-end w-10 font-medium">
-											{disk.toFixed(0)}%
-										</p>
-										<AnimatedCircularProgressBar
-											className="size-3 text-[0px]"
-											max={100}
-											min={0}
-											value={disk}
-											primaryColor="hsl(var(--chart-5))"
-										/>
-									</section>
-									<div className="flex text-[11px] font-medium items-center gap-2">
-										{formatBytes(data.state.disk_used)} /{" "}
-										{formatBytes(data.host.disk_total)}
-									</div>
+		<Card
+			data-disk-mode={io ? "io" : "capacity"}
+			className={cn({ "bg-card/70": !!window.CustomBackgroundImage })}
+		>
+			<CardContent className="px-6 py-3">
+				<section className="flex flex-col gap-1">
+					<div className="flex min-h-9 items-center justify-between gap-2">
+						<DiskModeToggle
+							io={io}
+							onToggle={toggle}
+							capacityLabel={t("serverDetailChart.disk")}
+						/>
+						{io ? (
+							<DiskIORates
+								read={
+									data.state.disk_io_available
+										? rate(validRate(data.state.disk_read_speed) ?? 0)
+										: "—"
+								}
+								write={
+									data.state.disk_io_available
+										? rate(validRate(data.state.disk_write_speed) ?? 0)
+										: "—"
+								}
+							/>
+						) : (
+							<section className="flex flex-col items-end gap-0.5">
+								<section className="flex items-center gap-2">
+									<p className="text-xs text-end w-10 font-medium">
+										{disk.toFixed(0)}%
+									</p>
+									<AnimatedCircularProgressBar
+										className="size-3 text-[0px]"
+										max={100}
+										min={0}
+										value={disk}
+										primaryColor="hsl(var(--chart-5))"
+									/>
 								</section>
-							)}
-						</div>
+								<div className="flex text-[11px] font-medium items-center gap-2">
+									{formatBytes(data.state.disk_used)} /{" "}
+									{formatBytes(data.host.disk_total)}
+								</div>
+							</section>
+						)}
+					</div>
+					<div
+						key={io ? "io" : "capacity"}
+						className="animate-in fade-in duration-200 motion-reduce:animate-none"
+					>
 						{loading ? (
 							<div className="h-[130px]">
 								<ChartSkeleton />
@@ -354,9 +329,9 @@ export default function ServerDiskChart({
 								)}
 							</ChartContainer>
 						)}
-					</section>
-				</CardContent>
-			</Card>
-		</DiskCardStack>
+					</div>
+				</section>
+			</CardContent>
+		</Card>
 	);
 }

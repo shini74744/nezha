@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { fireEvent, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {
 	OfflineMetricCard,
 	type LastReport,
@@ -7,7 +8,7 @@ import {
 import { renderWithProviders } from "@/test/utils";
 vi.mock("@/lib/detail-modules", () => ({
 	PreloadedServerNetworkInsight: () => null,
- loadNetworkChart: async () => ({default: () => null}),
+	loadNetworkChart: async () => ({ default: () => null }),
 }));
 const group = {
 	title: "磁盘",
@@ -24,19 +25,33 @@ const report: LastReport = {
 	recent: {},
 };
 describe("offline disk card", () => {
-	it("switches saved disk rates on click and back without auto switching", () => {
+	it("switches only from the title and retains keyboard focus", async () => {
+		const user = userEvent.setup();
 		renderWithProviders(
 			<OfflineMetricCard group={group} report={report} period="last" />,
 		);
-		const card = screen.getByRole("button", { name: "点击切换到磁盘读写" });
+		const toggle = screen.getByRole("button", { name: "点击切换到磁盘读写" });
+		const card = toggle.closest<HTMLElement>("[data-disk-mode]")!;
 		fireEvent.mouseOver(card);
+		await user.click(card);
+		expect(card).not.toHaveAttribute("role", "button");
+		expect(document.querySelector("[data-disk-stack]")).toBeNull();
 		expect(card).toHaveAttribute("data-disk-mode", "capacity");
-		fireEvent.click(card);
+		await user.click(toggle);
 		expect(card).toHaveAttribute("data-disk-mode", "io");
 		expect(card).toHaveTextContent("2.00 KiB/s");
 		expect(card).toHaveTextContent("0 KiB/s");
-		fireEvent.keyDown(card, { key: "Enter" });
+		await user.click(screen.getByText("该时间范围没有记录"));
+		await user.click(screen.getByText("读取"));
+		await user.click(screen.getByText("0 KiB/s"));
+		expect(card).toHaveAttribute("data-disk-mode", "io");
+		toggle.focus();
+		await user.keyboard("{Enter}");
 		expect(card).toHaveAttribute("data-disk-mode", "capacity");
+		expect(toggle).toHaveFocus();
+		await user.keyboard(" ");
+		expect(card).toHaveAttribute("data-disk-mode", "io");
+		expect(toggle).toHaveFocus();
 	});
 	it("does not show absent legacy readings as zero", () => {
 		renderWithProviders(
