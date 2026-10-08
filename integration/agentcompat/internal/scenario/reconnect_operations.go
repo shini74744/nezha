@@ -44,11 +44,7 @@ func runDashboardReconnectOperations(ctx context.Context, dashboardInstance *das
 		return nil, err
 	}
 	generation := dashboardInstance.RuntimeIdentity().Generation
-	expectations, err := reconnectReceiptExpectations(dashboardInstance.MCPReceiptEventsAfter(cursor), generation, serverID, []uint64{model.TaskTypeExec, model.TaskTypeFsWrite, model.TaskTypeFsRead})
-	if err != nil {
-		return nil, err
-	}
-	return dashboardInstance.WaitForMCPReceiptSet(ctx, cursor, expectations)
+	return waitReconnectReceipts(ctx, dashboardInstance, cursor, generation, serverID, []uint64{model.TaskTypeExec, model.TaskTypeFsWrite, model.TaskTypeFsRead})
 }
 
 func runAgentRestartOperations(ctx context.Context, dashboardInstance *dashboard.Dashboard, serverID uint64, fixturePath string) ([]dashboard.MCPReceiptPair, error) {
@@ -60,11 +56,30 @@ func runAgentRestartOperations(ctx context.Context, dashboardInstance *dashboard
 		return nil, err
 	}
 	generation := dashboardInstance.RuntimeIdentity().Generation
-	expectations, err := reconnectReceiptExpectations(dashboardInstance.MCPReceiptEventsAfter(cursor), generation, serverID, []uint64{model.TaskTypeExec, model.TaskTypeFsRead})
+	return waitReconnectReceipts(ctx, dashboardInstance, cursor, generation, serverID, []uint64{model.TaskTypeExec, model.TaskTypeFsRead})
+}
+
+type reconnectReceiptReader interface {
+	WaitForMCPReceiptPairs(context.Context, dashboard.MCPReceiptCursor, []dashboard.MCPReceiptExpectation) ([]dashboard.MCPReceiptPair, error)
+	MCPReceiptEventsAfter(dashboard.MCPReceiptCursor) []dashboard.MCPReceiptEvent
+	WaitForMCPReceiptSet(context.Context, dashboard.MCPReceiptCursor, []dashboard.MCPReceiptExpectation) ([]dashboard.MCPReceiptPair, error)
+}
+
+func waitReconnectReceipts(ctx context.Context, reader reconnectReceiptReader, cursor dashboard.MCPReceiptCursor, generation, serverID uint64, taskTypes []uint64) ([]dashboard.MCPReceiptPair, error) {
+	// HTTP completion does not join the asynchronous receipt reader. Wait for
+	// all task/result events before taking the exact, generation-scoped snapshot.
+	pending := make([]dashboard.MCPReceiptExpectation, len(taskTypes))
+	for index, taskType := range taskTypes {
+		pending[index] = dashboard.MCPReceiptExpectation{ServerID: serverID, TaskType: taskType}
+	}
+	if _, err := reader.WaitForMCPReceiptPairs(ctx, cursor, pending); err != nil {
+		return nil, err
+	}
+	expectations, err := reconnectReceiptExpectations(reader.MCPReceiptEventsAfter(cursor), generation, serverID, taskTypes)
 	if err != nil {
 		return nil, err
 	}
-	return dashboardInstance.WaitForMCPReceiptSet(ctx, cursor, expectations)
+	return reader.WaitForMCPReceiptSet(ctx, cursor, expectations)
 }
 
 func reconnectReceiptExpectations(events []dashboard.MCPReceiptEvent, generation, serverID uint64, taskTypes []uint64) ([]dashboard.MCPReceiptExpectation, error) {
