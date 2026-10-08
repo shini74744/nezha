@@ -64,6 +64,6 @@ bash -n script/nezha.sh script/install.sh script/install_en.sh
 python3 script/test_manager.py
 ```
 
-发布资产：`dashboard-linux-amd64.zip`（内含同名无扩展名程序）、`version.txt`、`nezha.sh`、`nezha-dashboard.service`、`SHA256SUMS`。版本文件应与程序 `-v` 输出一致。只发布本仓库后端和二开前端构建产物，不上传生产配置、数据库、私钥或访问令牌。
+发布资产：`dashboard-linux-amd64.zip`（内含同名无扩展名程序）、`version.txt`、`nezha.sh`、`nezha-dashboard.service`、`SHA256SUMS`。从 `custom-2026.10.08.4` 起另附 `dashboard-windows-amd64.zip`（内含 EXE 和 Windows 部署说明），不改变 Linux 管理命令。版本文件应与程序 `-v` 输出一致。只发布本仓库后端和二开前端构建产物，不上传生产配置、数据库、私钥或访问令牌。
 
 管理脚本离线测试模拟网络和 systemd，覆盖阶段反馈、失败中止、校验、备份、二进制回退、数据不覆盖和安装保护；不能代替目标服务器上的 HTTP 与 Agent 上报验证。

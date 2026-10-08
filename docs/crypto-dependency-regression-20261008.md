@@ -1,5 +1,7 @@
 # x/crypto 依赖维护与回归（2026-10-08）
 
+后续状态：本文记录的 Windows 密钥权限遗留问题，已在 custom-2026.10.08.4 修复并完成原生验收；见 [Windows 兼容验收记录](windows-compatibility-regression-20261008.md)。下文保留本次依赖发布时的历史结果。
+
 ## 范围与改动
 
 本轮只处理 x/crypto 依赖公告，不修改通知策略、Windows 密钥权限、前端、监控采样或数据库结构。
