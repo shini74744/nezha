@@ -117,7 +117,7 @@ func TestSnapshotConcurrentFleetWrites(t *testing.T) {
 			defer wg.Done()
 			for j := 0; j < 5; j++ {
 				if err := PersistServerSnapshot(uint64(id), fmt.Sprint(id), sampleAt(100000+int64(j)*1000)); err != nil {
-					errs <- err
+					errs <- fmt.Errorf("server %d sample %d: %w", id, j, err)
 					return
 				}
 			}
@@ -125,6 +125,7 @@ func TestSnapshotConcurrentFleetWrites(t *testing.T) {
 	}
 	wg.Wait()
 	close(errs)
+	t.Logf("118-server write burst completed in %s; failed servers: %d", time.Since(started), len(errs))
 	for err := range errs {
 		require.NoError(t, err)
 	}

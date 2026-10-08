@@ -43,6 +43,10 @@ jobs:
           touch ./cmd/dashboard/admin-dist/a
           swag init --pd -d cmd/dashboard -g main.go -o cmd/dashboard/docs
 
+      - name: Repeated Windows snapshot writes
+        if: runner.os == 'Windows'
+        run: go test -mod=readonly -count=10 -run '^TestSnapshotConcurrentFleetWrites$' -v ./service/singleton
+
       - name: Unit test
         run: go test -mod=readonly -count=1 ./...
 
