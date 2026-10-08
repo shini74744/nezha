@@ -70,4 +70,4 @@
 
 构建机保存 `live-alibaba-smoke.log`、截图及 `live-alibaba-verified/report.json`；阿里核对证据保存在 `/opt/nezha/backups/crypto-update-20261008.7W1wvktQ`。此次没有清理现有备份或无关未跟踪数据。
 
-源码提交触发的 GitHub Actions 另行运行，不能把构建机 Linux 回归通过等同于全平台 CI 全绿；Windows 已知暂缓问题保持上述边界。
+发布源码提交 `dec3de8` 的 [GitHub Actions](https://github.com/shini74744/nezha/actions/runs/37756649401) 已完成：Ubuntu 普通测试与构建、macOS 普通测试与构建、Linux race/quality、Linux Agent 压测均成功。Windows 仍因原有 `TestTerminalCommandEncryptionAndKey` 的 Unix 密钥权限断言失败，汇总门禁因此失败；新增依赖检查没有失败。该问题按此前要求暂缓，不称为全平台 CI 全绿。[CodeQL 工作流](https://github.com/shini74744/nezha/actions/runs/37756649256) 执行成功，不表示修改或关闭既有告警。后续提交只更新本验收文档，未改变发布源码。
