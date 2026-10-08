@@ -204,3 +204,53 @@ func TestStressQuietWindowDoesNotIgnorePersistentJournal(t *testing.T) {
 	require.ErrorIs(t, err, context.Canceled)
 	require.ErrorIs(t, err, ErrStressSQLiteJournalNotDrained)
 }
+
+func TestObserveStressJournalRejectsCapturedDescriptorAfterItCloses(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "dashboard.sqlite-journal")
+	file, err := os.Create(path)
+	require.NoError(t, err)
+	sample, err := processharness.SampleProcessWithFDObservations(os.Getpid())
+	require.NoError(t, err)
+	require.NoError(t, file.Close())
+
+	// The counted FD must not become a valid quiet sample merely because the
+	// transaction finished between counting and the observer's later /proc read.
+	observer := observeStressDashboardSQLiteJournal(path)
+	require.ErrorIs(t, observer(t.Context(), sample), ErrStressSQLiteJournalNotDrained)
+	quiet, err := processharness.SampleProcessWithFDObservations(os.Getpid())
+	require.NoError(t, err)
+	require.NoError(t, observer(t.Context(), quiet))
+}
+
+func TestDashboardResourceWindowsRejectJournalsInBothPhases(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "dashboard.sqlite-journal")
+	for _, phase := range []stressResourceCapturePhase{stressResourceBaseline, stressResourceEnd} {
+		spec := (stressResourceCaptureSpec{Phase: phase}).dashboardWindowSpec(os.Getpid(), path)
+		require.Equal(t, os.Getpid(), spec.PID)
+		require.True(t, spec.CaptureFDObservations)
+		require.NotNil(t, spec.ObserveSample)
+		for _, target := range []string{path, path + " (deleted)"} {
+			sample := processharness.Sample{PID: os.Getpid(), FDObservations: []processharness.FDObservation{{Number: 100, Target: target}}}
+			require.ErrorIs(t, spec.ObserveSample(t.Context(), sample), ErrStressSQLiteJournalNotDrained)
+		}
+		other := processharness.Sample{PID: os.Getpid(), FDObservations: []processharness.FDObservation{{Number: 100, Target: path + ".other"}}}
+		// Other descriptors are not classified as journal activity; the
+		// unchanged resource-count validator must still evaluate them.
+		require.NoError(t, spec.ObserveSample(t.Context(), other))
+	}
+}
+
+func TestStressQuietWindowDiscardsWholeBusyWindow(t *testing.T) {
+	calls := 0
+	quiet := processharness.Window{PID: 123, Samples: []processharness.Sample{{NonStdioFDCount: 30}}}
+	got, err := sampleStressQuietWindow(t.Context(), func(context.Context) (processharness.Window, error) {
+		calls++
+		if calls == 1 {
+			return processharness.Window{PID: 123, Samples: []processharness.Sample{{NonStdioFDCount: 31}}}, ErrStressSQLiteJournalNotDrained
+		}
+		return quiet, nil
+	})
+	require.NoError(t, err)
+	require.Equal(t, quiet, got)
+	require.Equal(t, 2, calls)
+}
