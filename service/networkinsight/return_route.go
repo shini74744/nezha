@@ -100,6 +100,8 @@ type ReturnHop struct {
 	Network      string   `json:"network,omitempty"`
 	Stage        string   `json:"stage,omitempty"`
 	IPHidden     bool     `json:"ip_hidden,omitempty"`
+	Latitude     *float64 `json:"latitude,omitempty"`
+	Longitude    *float64 `json:"longitude,omitempty"`
 }
 type ReturnResult struct {
 	ID            string      `json:"id"`

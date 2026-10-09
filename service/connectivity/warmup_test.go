@@ -13,7 +13,7 @@ import (
 func TestWarmupTimingsNeverBecomeSamplesOrPersistedAverage(t *testing.T) {
 	m := NewManager()
 	selected := Targets()[:1]
-	delays := []float64{900, 700, 10, 20, 30}
+	delays := []float64{900, 700, 10, 20, 30, 40, 50}
 	var calls atomic.Int32
 	persisted := make(chan Snapshot, 1)
 	m.SetCompletionHandler(func(_ string, s Snapshot) { persisted <- s })
@@ -33,10 +33,10 @@ func TestWarmupTimingsNeverBecomeSamplesOrPersistedAverage(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("timeout")
 	}
-	require.EqualValues(t, 5, calls.Load())
-	require.Equal(t, 3, saved.Rounds)
-	require.Len(t, saved.Results[0].Samples, 3)
-	require.Equal(t, 20.0, *saved.Results[0].DelayMS)
+	require.EqualValues(t, 7, calls.Load())
+	require.Equal(t, 5, saved.Rounds)
+	require.Len(t, saved.Results[0].Samples, MeasuredRounds)
+	require.Equal(t, 30.0, *saved.Results[0].DelayMS)
 	for i, s := range saved.Results[0].Samples {
 		require.Equal(t, delays[i+2], *s.DelayMS)
 	}
@@ -56,7 +56,7 @@ func TestWarmupFailureIsNotAReportedFailureWhenMeasuredRequestsSucceed(t *testin
 	require.Eventually(t, func() bool { return m.Get("warm-fail", Targets()[:1]).State == "complete" }, time.Second, time.Millisecond)
 	s := m.Get("warm-fail", Targets()[:1])
 	require.Equal(t, "ok", s.Results[0].Status)
-	require.Len(t, s.Results[0].Samples, 3)
+	require.Len(t, s.Results[0].Samples, MeasuredRounds)
 	require.Equal(t, 8.0, *s.Results[0].DelayMS)
 }
 func TestLegacyResourceUpgradePreservesCustomizations(t *testing.T) {

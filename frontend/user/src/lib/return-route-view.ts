@@ -32,8 +32,8 @@ export const returnStages: Record<string, { text: string; help: string }> = {
 		help: "根据响应节点的位置标注；不代表海缆走向。",
 	},
 	landing: {
-		text: "登陆点·推测",
-		help: "境外响应之后首次观测到的中国大陆响应，不代表已确认的物理海缆登陆站。",
+		text: "首个大陆响应",
+		help: "境外响应之后首个定位为中国大陆的响应；IP 定位可能不准，不确认实际入境跳点或物理海缆登陆站。",
 	},
 	domestic: { text: "境内段", help: "本次响应的地理信息位于中国大陆。" },
 	destination: { text: "到达", help: "该跳响应地址与本次检测目标一致。" },

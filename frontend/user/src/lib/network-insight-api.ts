@@ -68,6 +68,8 @@ export interface ReturnHop {
 	network?: string;
 	stage?: string;
 	ip_hidden?: boolean;
+	latitude?: number;
+	longitude?: number;
 }
 export interface ReturnSelection {
 	id: string;

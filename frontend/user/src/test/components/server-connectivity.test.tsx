@@ -472,22 +472,22 @@ describe("visitor local latency", () => {
 			expect(fetcher).not.toHaveBeenCalled();
 			fireEvent.click(screen.getByRole("button", { name: "connectivity.localLatency" }));
 			await screen.findByText("connectivity.localFinished");
-			expect(fetcher).toHaveBeenCalledTimes(7);
+			expect(fetcher).toHaveBeenCalledTimes(12);
 			expect(screen.queryByText("42")).not.toBeInTheDocument();
 			expect(api.startConnectivity).not.toHaveBeenCalled();
 			expect(storage).not.toHaveBeenCalled();
 			expect(snapshot.results[0].delay_ms).toBe(42);
-			expect(view.container.querySelectorAll("[data-connectivity-sample]")).toHaveLength(5);
+			expect(view.container.querySelectorAll("[data-connectivity-sample]")).toHaveLength(10);
 			fireEvent.click(screen.getByRole("button", { name: "connectivity.serverLatency" }));
 			expect(screen.getByText("42")).toBeVisible();
 			fireEvent.click(screen.getByRole("button", { name: "connectivity.localLatency" }));
-			expect(fetcher).toHaveBeenCalledTimes(7);
+			expect(fetcher).toHaveBeenCalledTimes(12);
 			const local = screen.getByRole("button", { name: "connectivity.localLatency" });
 			expect(local).toHaveAttribute("title", "connectivity.localRetest");
 			for (const count of [2, 3]) {
 				fireEvent.click(local);
 				await screen.findByText("connectivity.localFinished");
-				expect(fetcher).toHaveBeenCalledTimes(count * 7);
+				expect(fetcher).toHaveBeenCalledTimes(count * 12);
 				expect(local).toHaveAttribute("aria-pressed", "true");
 				expect(local).toHaveAttribute("aria-busy", "false");
 				expect(local.querySelector("svg")).not.toHaveClass("animate-spin");
@@ -500,7 +500,7 @@ describe("visitor local latency", () => {
 			await screen.findByText("42");
 			expect(screen.queryByText("connectivity.localFinished")).not.toBeInTheDocument();
 			expect(screen.getByRole("button", { name: "connectivity.localLatency" })).toHaveAttribute("aria-pressed", "false");
-			expect(fetcher).toHaveBeenCalledTimes(21);
+			expect(fetcher).toHaveBeenCalledTimes(36);
 		} finally { globalThis.fetch = previous; storage.mockRestore(); }
 	});
 	it("ignores double starts, cancels on leaving, and ignores late completion after unmount", async () => {

@@ -102,17 +102,17 @@ describe("ephemeral browser probes", () => {
 		expect(fetcher).toHaveBeenCalledTimes(120 * (BROWSER_PROBE_ROUNDS + BROWSER_PROBE_WARMUPS));
 	});
 });
-describe("five-sample local summaries", () => {
+describe("ten-sample local summaries", () => {
  it("publishes each dot and uses the average of successful timings, including zero", async () => {
-  const times = [0, 900, 0, 700, 0, 10, 0, 100, 0, 0, 0, 30, 0, 20];
+  const times = [0, 900, 0, 700, 0, 10, 0, 100, 0, 0, 0, 30, 0, 20, 0, 40, 0, 50, 0, 60, 0, 70, 0, 80];
   vi.spyOn(performance, "now").mockImplementation(() => times.shift() ?? 0);
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue({type:"opaque"}));
   const seen: number[] = [];
   try {
    const run = await runBrowserConnectivity(targets(), new AbortController().signal, r => seen.push(r.results[0].samples.length));
-   expect(run.results[0].samples.map(s => s.delay_ms)).toEqual([10,100,0,30,20]);
-   expect(run.results[0].delay_ms).toBe(32);
-   expect(seen).toEqual([0,1,2,3,4,5]);
+   expect(run.results[0].samples.map(s => s.delay_ms)).toEqual([10,100,0,30,20,40,50,60,70,80]);
+   expect(run.results[0].delay_ms).toBe(46);
+   expect(seen).toEqual([0,1,2,3,4,5,6,7,8,9,10]);
   } finally { vi.restoreAllMocks(); }
  });
  it("retains successful latency while failed attempts keep their own status", async () => {
@@ -123,8 +123,8 @@ describe("five-sample local summaries", () => {
    .mockRejectedValueOnce(new TypeError("Failed to fetch"));
   vi.stubGlobal("fetch",fetcher);
   const run=await runBrowserConnectivity(targets(),new AbortController().signal,()=>{});
-  expect(run.results[0].samples).toHaveLength(5);
-  expect(run.results[0].samples.filter(s=>s.status==="ok")).toHaveLength(3);
+  expect(run.results[0].samples).toHaveLength(10);
+  expect(run.results[0].samples.filter(s=>s.status==="ok")).toHaveLength(8);
   expect(run.results[0].status).toBe("unstable");
   expect(run.results[0].delay_ms).toBeGreaterThanOrEqual(0);
  });

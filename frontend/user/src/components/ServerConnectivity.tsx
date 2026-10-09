@@ -89,7 +89,7 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 		return () => clearInterval(timer);
 	}, [retryAt]);
 	const displayResults = localMode ? browser.run?.results || [] : data?.results || [];
-	const displayRounds = localMode ? BROWSER_PROBE_ROUNDS : data?.rounds || 3;
+	const displayRounds = localMode ? BROWSER_PROBE_ROUNDS : data?.rounds || 5;
 	const localRunning = browser.run?.state === "running";
 	const localBusy = localMode && localRunning;
 	const localCompleted = browser.run?.results.filter(result => result.phase === "complete").length || 0;

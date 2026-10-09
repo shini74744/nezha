@@ -13,6 +13,9 @@ import (
 // ProbeTimeout bounds the dashboard wait for a single Agent attempt.
 const ProbeTimeout = 3 * time.Second
 
+// MeasuredRounds excludes the unreported connection warmups.
+const MeasuredRounds = 5
+
 // Warmup attempts use the same bounded queue, but never become displayed samples.
 const WarmupRounds = 2
 
@@ -83,8 +86,8 @@ var ErrBusy = errors.New("connectivity_busy")
 
 func NewManager() *Manager {
 	return &Manager{entries: map[string]*entry{}, now: time.Now, maxActive: 4,
-		maxEntries: 512, ttl: 24 * time.Hour, cooldown: time.Minute, rounds: 3,
-		workers: 12, timeout: 3 * time.Minute}
+		maxEntries: 512, ttl: 24 * time.Hour, cooldown: time.Minute, rounds: MeasuredRounds,
+		workers: 12, timeout: 4 * time.Minute}
 }
 func empty(rounds int, selected ...[]Target) Snapshot {
 	targets := selectedTargets(selected)
@@ -210,6 +213,8 @@ func (m *Manager) start(key string, probe Probe, selected []Target, id string, s
 		copy := clone(old.snapshot)
 		previous = &copy
 	}
+	// A single-target rerun may inherit a snapshot from an older sampling policy.
+	s.Rounds = m.rounds
 	s.ScheduledAt = scheduledAt
 	s.State, s.Full = "running", id == ""
 	s.FinishedAt = 0

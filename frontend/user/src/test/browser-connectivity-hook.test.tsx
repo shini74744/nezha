@@ -68,14 +68,14 @@ describe("browser single-target scheduling", () => {
 			result.current.retry("0");
 			result.current.retry("0");
 		});
-		await waitFor(() => expect(net.calls).toHaveLength(16));
-		expect(net.calls[14].signal.aborted).toBe(true);
+		await waitFor(() => expect(net.calls).toHaveLength(26));
+		expect(net.calls[24].signal.aborted).toBe(true);
 		expect(result.current.run!.results[1]).toBe(other);
 		expect(result.current.run!.fullBatch).toBe(false);
 		await finishAll(net);
 		await waitFor(() => expect(result.current.run?.state).toBe("complete"));
 		act(() => result.current.retry("0"));
-		expect(net.calls).toHaveLength(23);
+		expect(net.calls).toHaveLength(38);
 		await finishAll(net);
 		await waitFor(() => expect(result.current.run?.state).toBe("complete"));
 		expect(input[0].delay_ms).toBe(42);
@@ -93,9 +93,9 @@ describe("browser single-target scheduling", () => {
 		});
 		await finishAll(net);
 		await waitFor(() => expect(result.current.run?.state).toBe("complete"));
-		expect(net.calls).toHaveLength(57);
+		expect(net.calls).toHaveLength(97);
 		expect(net.calls.findIndex(call => call.url === "https://site7.example.com/favicon.ico")).toBeLessThan(net.calls.findIndex(call => call.url === "https://site6.example.com/favicon.ico"));
-		expect(result.current.run!.results.every(row => row.samples.length === 5)).toBe(true);
+		expect(result.current.run!.results.every(row => row.samples.length === 10)).toBe(true);
 		expect(net.max).toBeLessThanOrEqual(6);
 		expect(
 			result.current.run!.results.every((row) => row.status === "ok"),
@@ -138,7 +138,7 @@ it("publishes intermediate samples and rejects late updates from replaced attemp
  expect(result.current.run!.results[0].samples).toHaveLength(0);
  await finishAll(net);
  await waitFor(()=>expect(result.current.run!.state).toBe("complete"));
- expect(result.current.run!.results[0].samples).toHaveLength(5);
+ expect(result.current.run!.results[0].samples).toHaveLength(10);
  expect(net.max).toBeLessThanOrEqual(6);
 });
 it("preserves finished dots when stopped during later samples",async()=>{

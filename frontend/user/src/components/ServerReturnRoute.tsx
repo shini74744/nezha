@@ -6,7 +6,7 @@ import {
 	RefreshCw,
 	Route,
 } from "lucide-react";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { insightQueryOptions } from "@/lib/detail-result-query";
 import { formatDetectionTime } from "@/lib/detection-time";
@@ -36,6 +36,7 @@ import {
 	DialogTrigger,
 } from "./ui/dialog";
 
+const ReturnRouteMap = lazy(() => import("./ReturnRouteMap"));
 const statuses = returnStatusText;
 function RouteCard({
 	result: r,
@@ -53,6 +54,7 @@ function RouteCard({
 	mixed?: boolean;
 }) {
 	const [compact, setCompact] = useState(true);
+	const [mapView, setMapView] = useState(false);
 	const hops = r.hops || [],
 		labels = r.route || [],
 		finalRTT = finalReturnRTT(r);
@@ -61,7 +63,11 @@ function RouteCard({
 			className="min-w-0 rounded-xl border bg-background/50"
 			data-return-route={r.id + "-" + r.family}
 		>
-			<Dialog>
+			<Dialog
+				onOpenChange={(open) => {
+					if (!open) setMapView(false);
+				}}
+			>
 				<DialogTrigger asChild>
 					<button
 						type="button"
@@ -146,7 +152,7 @@ function RouteCard({
 					overlayClassName="z-[10000] bg-black/45 backdrop-blur-sm"
 				>
 					<DialogHeader className="pr-6 text-left">
-						<div className="flex flex-wrap items-start justify-between gap-2">
+						<div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 							<div className="min-w-0 flex-1 space-y-1.5">
 								<DialogTitle className="text-base">
 									{r.name} · {r.carrier} 回程详情
@@ -157,21 +163,42 @@ function RouteCard({
 									{r.line ? " · " + r.line : ""}
 								</DialogDescription>
 							</div>
-							{onRetest && (
-								<Button
-									variant="outline"
-									size="sm"
-									className="shrink-0 gap-1.5"
-									disabled={busy || !online}
-									onClick={() => onRetest({ id: r.id, family: r.family })}
-									aria-label={"单独检测" + r.name + r.carrier}
+							<div className="flex flex-wrap items-center gap-2">
+								<div
+									className="inline-flex rounded-full border bg-muted/40 p-0.5"
+									aria-label="回程查看方式"
 								>
-									<RefreshCw
-										className={cn("size-3.5", busy && "animate-spin")}
-									/>
-									{busy ? "检测中…" : "单独检测"}
-								</Button>
-							)}
+									{[false, true].map((map) => (
+										<button
+											key={String(map)}
+											type="button"
+											aria-pressed={mapView === map}
+											className={cn(
+												"min-h-9 rounded-full px-3 text-xs transition-colors",
+												mapView === map && "bg-background shadow-sm",
+											)}
+											onClick={() => setMapView(map)}
+										>
+											{map ? "地图" : "逐跳"}
+										</button>
+									))}
+								</div>
+								{onRetest && (
+									<Button
+										variant="outline"
+										size="sm"
+										className="shrink-0 gap-1.5"
+										disabled={busy || !online}
+										onClick={() => onRetest({ id: r.id, family: r.family })}
+										aria-label={"单独检测" + r.name + r.carrier}
+									>
+										<RefreshCw
+											className={cn("size-3.5", busy && "animate-spin")}
+										/>
+										{busy ? "检测中…" : "单独检测"}
+									</Button>
+								)}
+							</div>
 						</div>
 						{onRetest && (
 							<p className="text-[11px] text-muted-foreground">
@@ -199,20 +226,22 @@ function RouteCard({
 						data-return-hop-scroll
 						// biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users need to focus and scroll the bounded hop region.
 						tabIndex={0}
-						aria-label="逐跳详情滚动区域"
+						aria-label={mapView ? "回程地图滚动区域" : "逐跳详情滚动区域"}
 					>
 						<div className="flex flex-wrap items-center justify-between gap-2 pb-2 text-xs">
 							<span className="min-w-0 break-all text-muted-foreground">
 								{r.target ? "目标：" + r.target : "节点及接入商地址已隐藏"}
 							</span>
-							<button
-								type="button"
-								className="shrink-0 rounded-md border px-2 py-1.5"
-								aria-pressed={!compact}
-								onClick={() => setCompact(!compact)}
-							>
-								{compact ? "逐跳显示未响应" : "合并未响应跳"}
-							</button>
+							{!mapView && (
+								<button
+									type="button"
+									className="shrink-0 rounded-md border px-2 py-1.5"
+									aria-pressed={!compact}
+									onClick={() => setCompact(!compact)}
+								>
+									{compact ? "逐跳显示未响应" : "合并未响应跳"}
+								</button>
+							)}
 						</div>
 						{!!r.evidence?.length && (
 							<details className="mb-2 rounded-lg bg-muted/40 px-3 py-2 text-xs">
@@ -224,7 +253,20 @@ function RouteCard({
 								</ul>
 							</details>
 						)}
-						{hops.length ? (
+						{mapView ? (
+							<Suspense
+								fallback={
+									<p
+										role="status"
+										className="py-8 text-center text-sm text-muted-foreground"
+									>
+										正在加载地图…
+									</p>
+								}
+							>
+								<ReturnRouteMap hops={hops} />
+							</Suspense>
+						) : hops.length ? (
 							<ol
 								aria-label={r.name + r.carrier + "逐跳路由"}
 								className="space-y-0.5"
@@ -312,6 +354,15 @@ function RouteCard({
 						) : (
 							<p className="py-4 text-sm text-muted-foreground">
 								暂无逐跳数据，可稍后重新检测。
+							</p>
+						)}
+						{!mapView && (
+							<p
+								className="mt-3 text-[11px] leading-5 text-muted-foreground"
+								data-return-location-note
+							>
+								“首个大陆响应”仅按 IP
+								定位推测，不代表实际入境点或物理登陆站。各跳延迟为独立往返时间，不是逐跳累加，后续跳点可能更低。
 							</p>
 						)}
 					</section>

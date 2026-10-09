@@ -4,7 +4,7 @@ import type { ConnectivityResult, ConnectivitySample } from "./connectivity-api"
 
 export const BROWSER_PROBE_TIMEOUT_MS = 3000;
 export const BROWSER_PROBE_WORKERS = 6;
-export const BROWSER_PROBE_ROUNDS = 5;
+export const BROWSER_PROBE_ROUNDS = 10;
 export const BROWSER_PROBE_WARMUPS = 2;
 
 // Ship only public built-ins. Administrator paths/queries are never exposed.
@@ -35,8 +35,8 @@ export interface BrowserConnectivityRun {
 	cancelled: boolean;
 }
 
-async function probe(host: string, signal: AbortSignal): Promise<ConnectivitySample> {
-	const url = browserProbeURL(host);
+async function probe(host: string, signal: AbortSignal, pageURL: string): Promise<ConnectivitySample> {
+	const url = browserProbeURL(host, pageURL);
 	if (!url) return { status: "browser_unsupported" };
 	if (signal.aborted) return { status: "cancelled" };
 	const controller = new AbortController();
@@ -72,6 +72,7 @@ export async function runBrowserConnectivity(
 	targets: readonly ConnectivityResult[],
 	signal: AbortSignal,
 	onUpdate: (run: BrowserConnectivityRun) => void,
+	pageURL: string = location.href,
 ): Promise<BrowserConnectivityRun> {
 	const results: ConnectivityResult[] = targets.slice(0, BROWSER_PROBE_MAX_TARGETS).map(
 		({ id, name, group, host, icon }) => ({ id, name, group, host, icon, status: "pending", phase: "queued", samples: [] }),
@@ -86,10 +87,10 @@ export async function runBrowserConnectivity(
 			onUpdate(snapshot("running"));
 			// Warm DNS/TLS/HTTP connections without inventing dots or averaging cold requests.
 			for (let warmup = 0; warmup < BROWSER_PROBE_WARMUPS && !signal.aborted; warmup++) {
-				await probe(results[index].host, signal);
+				await probe(results[index].host, signal, pageURL);
 			}
 			for (let round = 0; round < BROWSER_PROBE_ROUNDS && !signal.aborted; round++) {
-				const sample = await probe(results[index].host, signal);
+				const sample = await probe(results[index].host, signal, pageURL);
 				// Cancellation is not a failed sample; keep only completed attempts.
 				if (signal.aborted) break;
 				const samples = [...results[index].samples, sample];

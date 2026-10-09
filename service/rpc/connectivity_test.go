@@ -168,7 +168,7 @@ func TestConnectivityFullAgentTaskChannelDoesNotTouchMonitorHistory(t *testing.T
 	require.NoError(t, err)
 	require.Eventually(t, func() bool { return manager.Get("fixture").State == "complete" }, 2*time.Second, time.Millisecond)
 	snapshot := manager.Get("fixture")
-	require.EqualValues(t, (3+connectivity.WarmupRounds)*len(connectivity.Targets()), stream.sent.Load())
+	require.EqualValues(t, (connectivity.MeasuredRounds+connectivity.WarmupRounds)*len(connectivity.Targets()), stream.sent.Load())
 	for _, result := range snapshot.Results {
 		if result.ID == "chatgpt" {
 			require.Equal(t, "http_error", result.Status)
@@ -180,7 +180,7 @@ func TestConnectivityFullAgentTaskChannelDoesNotTouchMonitorHistory(t *testing.T
 	}
 }
 
-func TestConnectivitySlowAgentReplyDoesNotBlockOtherSitesAndStillSamplesThreeTimes(t *testing.T) {
+func TestConnectivitySlowAgentReplyDoesNotBlockOtherSitesAndStillSamplesFiveTimes(t *testing.T) {
 	server := requestTaskSecurityServer(7, 200, "fair-timeout-fixture")
 	setupRequestTaskSecurityFixture(t, []*model.Server{server}, nil, nil, nil)
 	server, _ = singleton.ServerShared.Get(7)
@@ -209,14 +209,14 @@ func TestConnectivitySlowAgentReplyDoesNotBlockOtherSitesAndStillSamplesThreeTim
 		}
 		return s.Results[0].Phase == "running"
 	}, 2*time.Second, 5*time.Millisecond)
-	require.Eventually(t, func() bool { return manager.Get("fair-3s").State == "complete" }, 18*time.Second, 10*time.Millisecond)
+	require.Eventually(t, func() bool { return manager.Get("fair-3s").State == "complete" }, time.Duration(connectivity.MeasuredRounds+connectivity.WarmupRounds+1)*connectivity.ProbeTimeout, 10*time.Millisecond)
 	s := manager.Get("fair-3s")
-	require.EqualValues(t, 3+connectivity.WarmupRounds, slowCalls.Load())
-	require.Len(t, s.Results[0].Samples, 3)
+	require.EqualValues(t, connectivity.MeasuredRounds+connectivity.WarmupRounds, slowCalls.Load())
+	require.Len(t, s.Results[0].Samples, connectivity.MeasuredRounds)
 	require.Equal(t, "agent_timeout", s.Results[0].Status)
 	for _, row := range s.Results[1:] {
 		require.Equal(t, "ok", row.Status)
-		require.Len(t, row.Samples, 3)
+		require.Len(t, row.Samples, connectivity.MeasuredRounds)
 	}
 }
 

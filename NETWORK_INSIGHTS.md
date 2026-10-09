@@ -126,8 +126,8 @@ YouTube uses `https://yt3.ggpht.com/favicon.ico`, matching the inspected
 ip.skk.moe resource. Official CDN resources test that CDN, not video playback,
 account access, streaming unlock or an ICMP/network-layer RTT.
 
-Each target receives two unreported warmup requests, followed by three measured
-Agent requests or five browser requests. Only measured valid HTTP response times
+Each target receives two unreported warmup requests, followed by five measured
+Agent requests or ten browser requests. Only measured valid HTTP response times
 are averaged; a timeout is not zero milliseconds. Warmups never appear as dots
 or enter history. Server probes keep the existing Agent HTTP GET protocol and
 body completion timing; browsers keep credential-free, uncached no-CORS HEAD.
@@ -135,7 +135,7 @@ No Agent upgrade is needed. Prewarming can reuse connections but cannot guarante
 identical DNS, routing, CDN selection or latency on different clients.
 
 Warmups share existing bounded dispatch, cancellation, identity and permission
-guards; the server batch budget is three minutes to accommodate 120 targets at
+guards; the server batch budget is four minutes to accommodate 120 targets at
 the existing three-second per-attempt ceiling. Disabled-query/offline outcomes
 during warmup end that item without fabricated samples. Single retests warm up
 again and preserve other targets.
@@ -144,3 +144,9 @@ Exact legacy built-in URLs are upgraded when loading saved catalogs, preserving
 names, order, icons, switches and genuinely customized URLs. Administrator URLs
 remain private; unknown custom hosts use only public `/favicon.ico` locally.
 Historical measurements of changed resources are not reused as current results.
+
+### Local probe worker and return map (custom-2026.10.09.2)
+
+Local probes use a dedicated Web Worker; timing is measured inside the worker, not across UI message delivery. Each target keeps two warmups plus ten measured responses. Dots and the effective response mean update while testing. Cancellation, single retests and worker-start/runtime failure fallback remain bounded; the per-target worker watchdog covers all 12 attempts. Server probes retain two warmups plus five measured attempts with partial snapshots available during the run. Cached history keeps its original samples; new runs use the current policy. No Agent upgrade is required.
+
+Return details offer a lazy-loaded local SVG map and a hop list. Coordinates come from the existing pinned NextTrace JSON, never from city-name guesses or another geolocation request. Unknown (0,0), incomplete, out-of-range, private and privacy-redacted locations are omitted. A missing or ECMP TTL breaks a line; nearby/coincident coordinates are grouped. The map is a location reference, not proof of physical routers or cable paths. The first mainland response label describes the first visible mainland geolocation after an overseas response, not a verified landing station. Independent hop RTTs need not increase with TTL.
