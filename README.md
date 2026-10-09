@@ -68,7 +68,7 @@ GEOIP_DB=/path/to/country.mmdb VERSION=custom-$(git rev-parse --short HEAD) bash
 自有发布使用 `custom-*` 标签和校验过的安装包，不使用官方 `v*` 发布资产。Linux 安装、停机、重启、更新和故障恢复说明见 [面板管理与发布](PANEL_MANAGEMENT.md)。Windows x64 原生程序、密钥权限和运行方式见 [Windows 部署说明](docs/windows-deployment.md)，修复、全平台测试及上线证据见 [Windows 兼容验收记录](docs/windows-compatibility-regression-20261008.md)。
 回程标签使用 NextTrace，仅检测节点回程路由，提供九个内置检测点、逐跳平均延迟、独立节点开关和后台检测策略；自动检测初始关闭。自动周期每天从北京时间零点起算，管理员重测无冷却、同节点任务合并避免冲突；时间卡片选择历史快照，支持两次已完成快照的线路、状态、最终延迟与逐跳对比，详情使用限高弹层。卡片显示最终目标平均延迟，逐跳显示常见网络类别标签。CN2/GIA 等综合判断及访客 IP 脱敏见 [线路判断说明](RETURN_ROUTE_CLASSIFICATION.md)。运行要求与安全边界见 [网络检测说明](NETWORK_INSIGHTS.md#return-route-nexttrace-only)。
 
-连通性内置 110 个站点使用小资源地址，服务器和访客本地检测先预热 2 次（不计入结果），再分别采样 3 次和 5 次取有效平均值；这是 HTTPS 请求响应耗时，不是 ICMP Ping。自定义检测地址保留，详见 [小资源检测说明](NETWORK_INSIGHTS.md#lightweight-connectivity-sampling-2026-10-09) 与 [验收记录](docs/connectivity-small-resources-20261009.md)。
+连通性内置 110 个站点使用小资源地址，服务器和访客本地检测先预热 2 次（不计入结果），再分别采样 5 次和 10 次取有效平均值；这是 HTTPS 请求响应耗时，不是 ICMP Ping。自定义检测地址保留，详见 [小资源检测说明](NETWORK_INSIGHTS.md#lightweight-connectivity-sampling-2026-10-09) 与 [验收记录](docs/connectivity-small-resources-20261009.md)。
 
 背景设置采用分级折叠，载入效果位于背景设置末尾，仅作用于背景；相关说明见 [原生美化](APPEARANCE.md#background-settings-hierarchy-and-logo-isolation-2026-10-09-preview)。
 
@@ -115,3 +115,5 @@ GEOIP_DB=/path/to/country.mmdb VERSION=custom-$(git rev-parse --short HEAD) bash
 - 回归入口：`frontend/admin/tests/e2e/settings-layout.spec.ts`、`ddns-visual-editor.spec.ts`、`src/test/ddns-editor.test.ts` 及 `cmd/dashboard/controller/ddns_visual_editor_test.go`。浏览器测试使用模拟 API；控制器测试使用隔离数据库，不操作真实 DNS。
 
 - 网络概览上传/下载圆形图标与文字在速率框内统一垂直居中，不使用上下偏移；随字体字号缩放；默认显示及内置美化均生效，保留原单位、颜色、发光分级与手机纵向排列。回归入口：`frontend/admin/tests/e2e/speed-alignment.spec.ts`（隔离前台预览 `https://127.0.0.1:18476`）和 `frontend/user/src/test/speed-alignment.test.tsx`。
+
+回程详情支持“逐跳／地图”切换，地图复用本地底图，只绘制有效且可见的 NextTrace 坐标；旧快照缺少坐标时需重新检测。详见 [本次更新](docs/connectivity-map-20261009.md)。

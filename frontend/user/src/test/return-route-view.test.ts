@@ -9,7 +9,8 @@ describe("return-route compact view",()=>{
   expect(hops).toHaveLength(6);
  });
  it("marks landing as inferred rather than actual cable landing",()=>{
-  expect(returnStages.landing.text).toContain("推测");
-  expect(returnStages.landing.help).toContain("不代表");
+  expect(returnStages.landing.text).toBe("首个大陆响应");
+  expect(returnStages.landing.help).toContain("IP 定位可能不准");
+  expect(returnStages.landing.help).toContain("不确认");
  });
 });

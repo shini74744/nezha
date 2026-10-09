@@ -72,12 +72,14 @@ type traceReply struct {
 		TTL     int
 		RTT     float64
 		Geo     *struct {
-			ASN      string `json:"asnumber"`
-			Country  string
-			Province string `json:"prov"`
-			City     string
-			Owner    string
-			ISP      string
+			ASN       string `json:"asnumber"`
+			Country   string
+			Province  string `json:"prov"`
+			City      string
+			Owner     string
+			ISP       string
+			Latitude  *float64 `json:"lat"`
+			Longitude *float64 `json:"lng"`
 		}
 	}
 }
@@ -162,6 +164,11 @@ func ParseReturnResult(base ReturnResult, body string, successful bool) ReturnRe
 			if s.Geo != nil && PublicIP(address) {
 				if asn, e := strconv.ParseUint(s.Geo.ASN, 10, 32); e == nil && asn > 0 {
 					hop.ASN = strconv.FormatUint(asn, 10)
+				}
+				// NextTrace uses (0,0) for unknown locations. Do not invent map points.
+				if lat, lon := s.Geo.Latitude, s.Geo.Longitude; lat != nil && lon != nil &&
+					*lat >= -90 && *lat <= 90 && *lon >= -180 && *lon <= 180 && (*lat != 0 || *lon != 0) {
+					hop.Latitude, hop.Longitude = lat, lon
 				}
 				hop.Country = cleanRouteText(s.Geo.Country)
 				hop.Location = cleanRouteText(strings.Join([]string{s.Geo.Country, s.Geo.Province, s.Geo.City}, " "))

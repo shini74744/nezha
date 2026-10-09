@@ -12,7 +12,7 @@ describe("shared lightweight connectivity resources",()=>{
  it("never sends an administrator-only URL or follows an ID to a different custom host",async()=>{
   const fetcher=vi.fn().mockResolvedValue({type:"opaque"}); vi.stubGlobal("fetch",fetcher);
   await runBrowserConnectivity([{id:"youtube",name:"Custom",group:"global",host:"public.example.org",status:"pending",samples:[],url:"https://secret.example.org/admin?token=secret"} as any],new AbortController().signal,()=>{});
-  expect(fetcher).toHaveBeenCalledTimes(7);
+  expect(fetcher).toHaveBeenCalledTimes(12);
   expect(fetcher.mock.calls.every(([url])=>url==="https://public.example.org/favicon.ico")).toBe(true);
  });
  it("cancels between the two warmups without publishing a measured sample",async()=>{

@@ -3,9 +3,10 @@ import type { ConnectivityResult } from "@/lib/connectivity-api";
 import {
 	BROWSER_PROBE_MAX_TARGETS,
 	BROWSER_PROBE_WORKERS,
-	runBrowserConnectivity,
 	type BrowserConnectivityRun,
 } from "@/lib/browser-connectivity";
+
+import { createBrowserConnectivityRunner, type BrowserConnectivityRunner } from "@/lib/browser-connectivity-worker-client";
 
 type LocalRun = BrowserConnectivityRun & { fullBatch: boolean };
 type Session = {
@@ -13,6 +14,7 @@ type Session = {
 	run: LocalRun;
 	queue: Set<string>;
 	active: Map<string, AbortController>;
+	runner: BrowserConnectivityRunner;
 };
 const resetTarget = ({
 	id,
@@ -62,6 +64,7 @@ export function useBrowserConnectivity(serverId: number) {
 			const session = current.current;
 			current.current = undefined;
 			session?.active.forEach((controller) => { controller.abort(); });
+			session?.runner.dispose();
 			clearUpdate();
 		};
 	}, [serverId, clearUpdate]);
@@ -86,7 +89,7 @@ export function useBrowserConnectivity(serverId: number) {
 			const controller = new AbortController();
 			session.active.set(id, controller);
 			replace(session, { ...target, phase: "running" });
-			void runBrowserConnectivity([target], controller.signal, (run) => {
+			void session.runner.run(target, controller.signal, (run) => {
 				if (current.current !== session || session.active.get(id) !== controller ||
 					controller.signal.aborted || session.queue.has(id)) return;
 				replace(session, run.results[0]);
@@ -105,6 +108,7 @@ export function useBrowserConnectivity(serverId: number) {
 			);
 		}
 		if (!session.active.size && !session.queue.size) {
+			session.runner.dispose();
 			session.run = { ...session.run, state: "complete" };
 			current.current = undefined;
 			publish(session.run, true);
@@ -124,6 +128,7 @@ export function useBrowserConnectivity(serverId: number) {
 			run: { state: "running", cancelled: false, fullBatch: true, results },
 			queue: new Set(results.map((row) => row.id)),
 			active: new Map(),
+			runner: createBrowserConnectivityRunner(),
 		};
 		current.current = session;
 		publish(session.run, true);
@@ -144,6 +149,7 @@ export function useBrowserConnectivity(serverId: number) {
 			},
 			queue: new Set(),
 			active: new Map(),
+			runner: createBrowserConnectivityRunner(),
 		};
 		current.current = session;
 		replace(session, resetTarget(target));
@@ -158,6 +164,7 @@ export function useBrowserConnectivity(serverId: number) {
 		if (!session) return;
 		current.current = undefined;
 		session.active.forEach((controller) => { controller.abort(); });
+		session.runner.dispose();
 		clearUpdate();
 		const run: LocalRun = {
 			...session.run,

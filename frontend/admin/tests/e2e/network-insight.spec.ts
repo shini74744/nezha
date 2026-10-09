@@ -1041,7 +1041,7 @@ for(const width of [320,390,1440]) test("return-route long details stay bounded 
  const box=await dialog.boundingBox();expect(box!.height).toBeLessThanOrEqual(681);expect(box!.x).toBeGreaterThanOrEqual(0);expect(box!.x+box!.width).toBeLessThanOrEqual(width);
  const scroll=dialog.locator("[data-return-hop-scroll]");
  expect(await scroll.evaluate(el=>el.scrollHeight>el.clientHeight)).toBe(true);
- await expect(dialog.getByText("登陆点·推测",{exact:true})).toHaveCount(1);
+ await expect(dialog.getByText("首个大陆响应",{exact:true})).toHaveCount(1);
  await dialog.getByRole("button",{name:"逐跳显示未响应"}).click();await expect(dialog.getByText("未响应",{exact:true})).toHaveCount(8);
  await scroll.evaluate(el=>el.scrollTo(0,el.scrollHeight));await expect(dialog.getByText("到达",{exact:true})).toBeVisible();
  await page.screenshot({path:info.outputPath("bounded-dialog-"+width+".png")});
@@ -1225,4 +1225,52 @@ test("single retest is unavailable for readonly and offline viewers",async({page
  await page.unrouteAll({behavior:"wait"});await setup(page,"default",true,true,false,true);
  await page.locator(".server-info-tab").getByText("回程",{exact:true}).click();await page.locator("[data-return-route] > button").first().click();
  await expect(page.getByRole("button",{name:"单独检测北京电信"})).toBeDisabled();
+});
+
+for(const theme of ["default","doraemon"])for(const light of [false,true])for(const width of [320,390,768,1440])
+test(`return map responsive isolated ${theme} ${light} ${width}`,async({page},info)=>{
+ await page.setViewportSize({width,height:850});await setup(page,theme,light);
+ const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
+ let posts=0,legacy=false;
+ const hops=[
+  {ttl:1,samples:3,ip_hidden:true,latitude:35,longitude:139},
+  {ttl:2,samples:0},
+  {ttl:3,samples:3,ip:"223.120.1.1",asn:"58807",location:"日本 东京",latitude:35.68,longitude:139.69,rtt_ms:5},
+  {ttl:4,samples:3,ip:"223.120.1.2",asn:"58807",location:"中国 上海",latitude:31.23,longitude:121.47,rtt_ms:50,stage:"landing"},
+  {ttl:5,samples:3,ip:"223.120.1.3",asn:"58807",location:"中国 上海",latitude:31.23,longitude:121.47,rtt_ms:40},
+  {ttl:6,samples:3,ip:"1.1.1.1",location:"中国 北京",latitude:39.90,longitude:116.41,rtt_ms:60,stage:"destination"}];
+ await page.route("**/api/v1/server/7/return-route**",r=>{
+  if(r.request().method()==="POST")posts++;
+  const routes=[{id:"map",name:"北京",carrier:"移动",family:"IPv4",target:"1.1.1.1",protocol:"tcp",status:"reached",
+   hops:legacy?hops.map(h=>({...h,latitude:undefined,longitude:undefined})):hops}];
+  return r.fulfill({json:{success:true,data:{state:"complete",finished_at:Date.now()-1000,routes,history:[],can_run:true,online:true,server_id:7,available_families:["IPv4"]}}});
+ });
+ await page.locator(".server-info-tab").getByText("回程",{exact:true}).click();
+ await page.locator("[data-return-route] > button").click();
+ const dialog=page.getByRole("dialog");
+ await expect(dialog.locator("[data-return-location-note]")).toContainText("独立往返时间");
+ await dialog.getByRole("button",{name:"地图",exact:true}).click();
+ await expect(dialog.locator("[data-return-map-canvas]")).toBeVisible();
+ await expect(dialog.locator("[data-return-map-point]")).toHaveCount(3);
+ await expect(dialog.locator("[data-return-map-edge]")).toHaveCount(2);
+ await expect(dialog.getByRole("button",{name:"逐跳显示未响应",exact:true})).toHaveCount(0);
+ await dialog.getByRole("button",{name:"第 4、5 跳",exact:true}).click();
+ await expect(dialog.locator("[data-return-map-selection]")).toContainText("50.0 ms");
+ await expect(dialog.locator("[data-return-map-selection]")).toContainText("40.0 ms");
+ await expect(dialog.locator("[data-return-map-selection]")).not.toContainText("139");
+ expect(posts).toBe(0);
+ expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ const box=await dialog.boundingBox();expect(box!.y).toBeGreaterThanOrEqual(0);expect(box!.y+box!.height).toBeLessThanOrEqual(851);
+ await dialog.screenshot({path:info.outputPath("return-map.png")});
+ await dialog.getByRole("button",{name:"逐跳",exact:true}).click();
+ await expect(dialog.getByText("首个大陆响应",{exact:true})).toBeVisible();
+ await page.keyboard.press("Escape");
+ await page.locator("[data-return-route] > button").click();
+ await expect(dialog.getByRole("button",{name:"逐跳",exact:true})).toHaveAttribute("aria-pressed","true");
+ await page.keyboard.press("Escape");legacy=true;await page.reload();
+ await page.locator(".server-info-tab").getByText("回程",{exact:true}).click();await page.locator("[data-return-route] > button").click();
+ await dialog.getByRole("button",{name:"地图",exact:true}).click();
+ await expect(dialog.getByText("暂无可用定位数据",{exact:true})).toBeVisible();
+ expect(posts).toBe(0);expect(errors).toEqual([]);
 });

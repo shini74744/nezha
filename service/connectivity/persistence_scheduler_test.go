@@ -72,7 +72,7 @@ func TestSingleTargetPreservesOtherResultsAndSharesLimits(t *testing.T) {
 	require.NoError(t, err)
 	require.Eventually(t, func() bool { return m.Get("node", selected).State == "complete" }, time.Second, time.Millisecond)
 	after := m.Get("node", selected)
-	require.EqualValues(t, 3+WarmupRounds, count.Load())
+	require.EqualValues(t, MeasuredRounds+WarmupRounds, count.Load())
 	require.Equal(t, before.Results[0].Samples, after.Results[0].Samples)
 	require.Equal(t, "timeout", after.Results[1].Status)
 	require.Equal(t, before.Results[2].Samples, after.Results[2].Samples)

@@ -261,6 +261,9 @@ func RedactReturnRoute(r *ReturnResult, sources ...string) {
 		// An unresolved ASN or textual ISP label is not an IP publication allow-list.
 		safeCarrier := routeNetworks[h.ASN] != "" || inRoutePrefix(h.IP, "59.43.0.0/16") || inRoutePrefix(h.IP, "202.97.0.0/16")
 		protect := h.TTL <= 2 || !safeCarrier || protectedAS[h.ASN] || matchesSource(h.IP, sources) || !ReturnPublicIP(h.IP)
+		if protect {
+			h.Latitude, h.Longitude = nil, nil
+		}
 		if protect && h.IP != "" {
 			h.IP = ""
 			h.IPHidden = true
