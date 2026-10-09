@@ -3,15 +3,16 @@ package model
 import "time"
 
 type StreamServer struct {
-	BGPDisabled          bool   `json:"bgp_disabled"`
-	ReturnRouteDisabled  bool   `json:"return_route_disabled"`
-	StreamingDisabled    bool   `json:"streaming_disabled"`
-	ConnectivityDisabled bool   `json:"connectivity_disabled"`
-	HideForDisplay       bool   `json:"hide_for_display"` // 普通隐藏，不改变访问权限
-	ID                   uint64 `json:"id,omitempty"`
-	Name                 string `json:"name,omitempty"`
-	PublicNote           string `json:"public_note,omitempty"`   // 公开备注，只第一个数据包有值
-	DisplayIndex         int    `json:"display_index,omitempty"` // 展示排序，越大越靠前
+	ConnectivityLocalOnly bool   `json:"connectivity_local_only"`
+	BGPDisabled           bool   `json:"bgp_disabled"`
+	ReturnRouteDisabled   bool   `json:"return_route_disabled"`
+	StreamingDisabled     bool   `json:"streaming_disabled"`
+	ConnectivityDisabled  bool   `json:"connectivity_disabled"`
+	HideForDisplay        bool   `json:"hide_for_display"` // 普通隐藏，不改变访问权限
+	ID                    uint64 `json:"id,omitempty"`
+	Name                  string `json:"name,omitempty"`
+	PublicNote            string `json:"public_note,omitempty"`   // 公开备注，只第一个数据包有值
+	DisplayIndex          int    `json:"display_index,omitempty"` // 展示排序，越大越靠前
 
 	Host        *Host      `json:"host,omitempty"`
 	State       *HostState `json:"state,omitempty"`
@@ -26,19 +27,19 @@ type StreamServerData struct {
 }
 
 type ServerForm struct {
-	BGPDisabled          *bool  `json:"bgp_disabled,omitempty" validate:"optional"`
-	ReturnRouteDisabled  *bool  `json:"return_route_disabled,omitempty" validate:"optional"`
-	StreamingDisabled    *bool  `json:"streaming_disabled,omitempty" validate:"optional"`
-	ConnectivityDisabled *bool  `json:"connectivity_disabled,omitempty" validate:"optional"` // nil preserves older clients
-	HideForDisplay       *bool  `json:"hide_for_display,omitempty" validate:"optional"`      // nil preserves older clients
-	Name                 string `json:"name,omitempty"`
-	Note                 string `json:"note,omitempty" validate:"optional"` // 管理员可见备注
+	ConnectivityLocalOnly *bool  `json:"connectivity_local_only,omitempty" validate:"optional"`
+	BGPDisabled           *bool  `json:"bgp_disabled,omitempty" validate:"optional"`
+	ReturnRouteDisabled   *bool  `json:"return_route_disabled,omitempty" validate:"optional"`
+	StreamingDisabled     *bool  `json:"streaming_disabled,omitempty" validate:"optional"`
+	ConnectivityDisabled  *bool  `json:"connectivity_disabled,omitempty" validate:"optional"` // nil preserves older clients
+	HideForDisplay        *bool  `json:"hide_for_display,omitempty" validate:"optional"`      // nil preserves older clients
+	Name                  string `json:"name,omitempty"`
+	Note                  string `json:"note,omitempty" validate:"optional"` // 管理员可见备注
 	// PublicNote is opaque public metadata consumed by independently maintained
 	// user themes. The Dashboard stores/transports it but never renders it as
 	// HTML or navigates URL-like fields. Themes must validate schemes before
 	// using nested values such as customData.orderLink in href/window.open.
 	PublicNote          string              `json:"public_note,omitempty" validate:"optional"`    // 公开备注
-	DisplayIndex        int                 `json:"display_index,omitempty" default:"0"`          // 展示排序，越大越靠前
 	HideForGuest        bool                `json:"hide_for_guest,omitempty" validate:"optional"` // 对游客隐藏
 	EnableDDNS          bool                `json:"enable_ddns,omitempty" validate:"optional"`    // 启用DDNS
 	DDNSProfiles        []uint64            `json:"ddns_profiles,omitempty" validate:"optional"`  // DDNS配置

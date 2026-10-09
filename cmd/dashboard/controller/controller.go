@@ -238,6 +238,8 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	auth.PATCH("/setting/display", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateDisplaySettings))
 	auth.GET("/setting/return-route", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getReturnRouteSettings))
 	auth.PUT("/setting/return-route", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateReturnRouteSettings))
+	auth.GET("/setting/detection-priority", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getDetectionPriority))
+	auth.PUT("/setting/detection-priority", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateDetectionPriority))
 	auth.GET("/setting/bgp/automation", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getBGPAutomation))
 	auth.PUT("/setting/bgp/automation", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateBGPAutomation))
 	auth.GET("/setting/connectivity/automation", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getConnectivityAutomation))

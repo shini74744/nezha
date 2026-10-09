@@ -460,7 +460,7 @@
   {
     "key": "sponsor",
     "title": "赞助商胶囊",
-    "description": "桌面在视图与排序按钮之间上下左右居中，自适应空位；保留缩小、停留、淡出、悬停暂停和移动端底部显示",
+    "description": "桌面原生嵌入视图与排序按钮之间，手机端紧贴页脚；保留缩小、停留、淡出与悬停暂停，随页面自然滚动",
     "defaults": {
       "enabled": true,
       "desktop": true,
@@ -630,7 +630,7 @@
   {
     "key": "counter",
     "title": "访问统计图片",
-    "description": "电脑端右上角同比缩放，手机端沿用原位置；自动缩小避让顶部内容，空间不足时隐藏，滚动隐藏",
+    "description": "原生嵌入页头，在标题与操作区之间自适应缩放；保留电脑／手机尺寸设置，空间不足时收起，滚动隐藏",
     "defaults": {
       "enabled": true,
       "imageUrl": "https://count.getloli.com/@tongji?name=tongji&theme=random&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto",
@@ -646,11 +646,11 @@
     },
     "labels": {
       "imageUrl": "统计图片地址",
-      "desktopRight": "桌面距网页右边缘",
-      "desktopTop": "桌面距网页顶部",
+      "desktopRight": "桌面距屏幕右侧",
+      "desktopTop": "桌面距屏幕顶部",
       "desktopWidth": "桌面参考宽度（1366px 窗口）",
       "desktopHeight": "桌面参考高度（1366px 窗口）",
-      "mobileTop": "移动端距顶部",
+      "mobileTop": "移动端距屏幕顶部",
       "mobileWidth": "移动端宽度",
       "mobileHeight": "移动端高度",
       "mobileOffset": "移动端水平偏移",

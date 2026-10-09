@@ -44,6 +44,7 @@ export interface ConnectivitySnapshot {
 	results: ConnectivityResult[];
 }
 export interface ConnectivityData extends ConnectivitySnapshot {
+ local_only?: boolean;
 	full_batch?: boolean;
 	server_id: number;
 	online: boolean;

@@ -196,6 +196,13 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 		require.Len(t, got.History, returnSnapshotCount)
 	}
 	checkReturnFlow := func(token string) {
+		var priority struct {
+			Order    []string `json:"order"`
+			Revision string   `json:"revision"`
+		}
+		request("GET", "/api/v1/setting/detection-priority", token, nil, &priority)
+		priority.Order = []string{"return-route", "bgp", "connectivity", "streaming"}
+		request("PUT", "/api/v1/setting/detection-priority", token, priority, &priority)
 		var policy struct {
 			networkinsight.ReturnPolicy
 			Revision string `json:"revision"`
@@ -221,6 +228,27 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 		require.NoError(t, state.Send(&pb.State{Cpu: 1, MemUsed: 1024, Uptime: 99}))
 		_, err = state.Recv()
 		require.NoError(t, err)
+		// A real Agent continuously reports state while automatic tasks wait.
+		heartbeatDone := make(chan struct{})
+		defer func() { cancel(); <-heartbeatDone }()
+		go func() {
+			defer close(heartbeatDone)
+			ticker := time.NewTicker(5 * time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					if state.Send(&pb.State{Cpu: 1, MemUsed: 1024, Uptime: 99}) != nil {
+						return
+					}
+					if _, err := state.Recv(); err != nil {
+						return
+					}
+				}
+			}
+		}()
 		tasks, err := agent.RequestTask(ctx)
 		require.NoError(t, err)
 		require.NoError(t, tasks.Send(&pb.TaskResult{}))
@@ -246,6 +274,11 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 			for {
 				task, err = tasks.Recv()
 				require.NoError(t, err)
+				if task.Type == model.TaskTypeKeepalive {
+					require.Zero(t, task.Id)
+					require.Empty(t, task.Data)
+					continue
+				}
 				if task.Type == model.TaskTypeCommand && !strings.Contains(task.Data, "nexttrace-tiny") {
 					// BGP IPv6 discovery and streaming also use the command namespace.
 					require.NotZero(t, task.Id&(uint64(1)<<61))
@@ -328,8 +361,21 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 	for cycle := 0; cycle < 3; cycle++ {
 		report(cycle)
 		if cycle == 0 {
+			request("POST", "/api/v1/server/order", token, map[string]any{"server_ids": []uint64{1}}, nil)
+			// Older clients must not overwrite manually saved order through editing.
+			request("PATCH", "/api/v1/server/1", token, map[string]any{"name": "manual-order-test", "display_index": 999999}, nil)
+			response, err := client.Post(base+"/api/v1/server/weights", "application/json", strings.NewReader("{}"))
+			require.NoError(t, err)
+			require.Equal(t, http.StatusNotFound, response.StatusCode)
+			require.NoError(t, response.Body.Close())
 			checkReturnFlow(token)
 		}
+		var weightServers []model.Server
+		request("GET", "/api/v1/server", token, nil, &weightServers)
+		require.Len(t, weightServers, 1)
+		require.Equal(t, uint64(1), weightServers[0].ID)
+		require.Equal(t, "7e6a3847-ad45-405f-a73b-e74c350f1500", weightServers[0].UUID)
+		require.Equal(t, 1, weightServers[0].DisplayIndex, "manual order persists through edits, restarts and Agent reports")
 		checkDatabase()
 		if cycle == 0 {
 			require.NoError(t, stopProcess(p.cmd))

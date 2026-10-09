@@ -1,5 +1,6 @@
 import {AppearanceProvider} from "./appearance/context";
 import {NativeEffects} from "./appearance/effects";
+import {NativeQuote} from "./appearance/native-layout-widgets";
 import { useQuery } from "@tanstack/react-query";
 import type React from "react";
 import { lazy, Suspense, useEffect, useState } from "react";
@@ -118,6 +119,7 @@ const MainApp: React.FC = () => {
 			>
 				<main className="flex z-20 min-h-[calc(100vh-calc(var(--spacing)*16))] flex-1 flex-col gap-4 p-4 md:p-10 md:pt-8">
 					<RefreshToast />
+					<NativeQuote/>
 					<Header />
 					<DashCommand />
 					<RetainedServerList active={isServerList}><Server backendError={initialBackendError} /></RetainedServerList>

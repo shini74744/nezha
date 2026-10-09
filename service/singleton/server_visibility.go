@@ -13,8 +13,8 @@ func (c *ServerClass) UpdateVisibility(ctx *gin.Context, form model.BatchServerV
 	if len(form.IDs) == 0 || len(form.IDs) > 1000 {
 		return 0, errors.New("请选择 1 至 1000 台服务器")
 	}
-	if form.HideForGuest == nil && form.HideForDisplay == nil {
-		return 0, errors.New("请选择要修改的隐藏设置")
+	if form.HideForGuest == nil && form.HideForDisplay == nil && form.ConnectivityDisabled == nil && form.ConnectivityLocalOnly == nil && form.BGPDisabled == nil && form.ReturnRouteDisabled == nil && form.StreamingDisabled == nil {
+		return 0, errors.New("请选择要修改的设置")
 	}
 	if ServerIDReassignmentInProgress.Load() {
 		return 0, errors.New("服务器 ID 正在调整，请稍后重试")
@@ -33,6 +33,7 @@ func (c *ServerClass) UpdateVisibility(ctx *gin.Context, form model.BatchServerV
 	c.lockLifecycleWrite()
 	defer c.unlockLifecycleWrite()
 	var servers []model.Server
+	var changedIDs []uint64
 	err := model.WithServerOperation(DB, model.ServerOperationActorFromContext(ctx), "visibility", ids, func(tx *gorm.DB) error {
 		if err := tx.Where("id IN ?", ids).Find(&servers).Error; err != nil {
 			return err
@@ -53,11 +54,28 @@ func (c *ServerClass) UpdateVisibility(ctx *gin.Context, form model.BatchServerV
 		if form.HideForDisplay != nil {
 			updates["hide_for_display"] = *form.HideForDisplay
 		}
-		result := tx.Model(&model.Server{}).Where("id IN ?", ids).Updates(updates)
+		for field, value := range map[string]*bool{"connectivity_disabled": form.ConnectivityDisabled, "connectivity_local_only": form.ConnectivityLocalOnly, "bgp_disabled": form.BGPDisabled, "return_route_disabled": form.ReturnRouteDisabled, "streaming_disabled": form.StreamingDisabled} {
+			if value != nil {
+				updates[field] = *value
+			}
+		}
+		for _, server := range servers {
+			current := map[string]bool{"hide_for_guest": server.HideForGuest, "hide_for_display": server.HideForDisplay, "connectivity_disabled": server.ConnectivityDisabled, "connectivity_local_only": server.ConnectivityLocalOnly, "bgp_disabled": server.BGPDisabled, "return_route_disabled": server.ReturnRouteDisabled, "streaming_disabled": server.StreamingDisabled}
+			for field, value := range updates {
+				if current[field] != value.(bool) {
+					changedIDs = append(changedIDs, server.ID)
+					break
+				}
+			}
+		}
+		if len(changedIDs) == 0 {
+			return nil
+		}
+		result := tx.Model(&model.Server{}).Where("id IN ?", changedIDs).Updates(updates)
 		if result.Error != nil {
 			return result.Error
 		}
-		if result.RowsAffected != int64(len(ids)) {
+		if result.RowsAffected != int64(len(changedIDs)) {
 			return errors.New("更新数量不一致，未保存任何更改")
 		}
 		return tx.Where("id IN ?", ids).Find(&servers).Error
@@ -73,5 +91,5 @@ func (c *ServerClass) UpdateVisibility(ctx *gin.Context, form model.BatchServerV
 	}
 	c.listMu.Unlock()
 	c.sortList()
-	return len(servers), nil
+	return len(changedIDs), nil
 }

@@ -30,6 +30,11 @@ export const batchUpdateServerVisibility = async (data: {
     ids: number[]
     hide_for_guest?: boolean
     hide_for_display?: boolean
+    connectivity_disabled?: boolean
+    connectivity_local_only?: boolean
+    bgp_disabled?: boolean
+    return_route_disabled?: boolean
+    streaming_disabled?: boolean
 }): Promise<{ updated: number }> => {
     return fetcher(FetcherMethod.POST, "/api/v1/batch-visibility/server", data)
 }

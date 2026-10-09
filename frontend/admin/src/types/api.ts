@@ -555,6 +555,7 @@ export interface ModelServerOwner {
 
 export interface ModelServer {
     connectivity_disabled?: boolean
+    connectivity_local_only?: boolean
     bgp_disabled?: boolean
     return_route_disabled?: boolean
     streaming_disabled?: boolean
@@ -595,17 +596,13 @@ export interface ModelServerConfigForm {
 
 export interface ModelServerForm {
     connectivity_disabled?: boolean
+    connectivity_local_only?: boolean
     bgp_disabled?: boolean
     return_route_disabled?: boolean
     streaming_disabled?: boolean
     hide_for_display?: boolean
     /** DDNS配置 */
     ddns_profiles?: number[]
-    /**
-     * 展示排序，越大越靠前
-     * @default 0
-     */
-    display_index: number
     /** 启用DDNS */
     enable_ddns?: boolean
     /** 对游客隐藏 */

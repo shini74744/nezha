@@ -76,7 +76,7 @@ export default function ServerPage() {
         {
             header: "ID",
             accessorKey: "id",
-            accessorFn: (row) => `${row.id}(${row.display_index})`,
+            accessorFn: (row) => row.id,
         },
         {
             header: t("Name"),

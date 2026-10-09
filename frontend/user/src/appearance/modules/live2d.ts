@@ -3,7 +3,7 @@ import { FeatureScope } from "../scope";
 import { live2dRuntime } from "../vendor/live2d-runtime";
 import { asteroids } from "./asteroids";
 
-export function live2d(scope: FeatureScope, config: { cdnPath: string; tools: string[] }) {
+export function live2d(scope: FeatureScope, config: { cdnPath: string; tools: string[] }, host: HTMLElement) {
   if (screen.width < 768) return;
   let gameScope: FeatureScope | undefined;
   scope.own(() => gameScope?.dispose());
@@ -12,5 +12,5 @@ export function live2d(scope: FeatureScope, config: { cdnPath: string; tools: st
     gameScope = new FeatureScope("asteroids");
     asteroids(gameScope, {});
   }
-  live2dRuntime(scope, config, startNativeGame);
+  live2dRuntime(scope, config, startNativeGame, host);
 }

@@ -49,11 +49,11 @@ export default function ServerDetail() {
 		void refetchSetting();
 	};
 	const warmTab = usePrimaryDetailPreload(server?.id, {
-		connectivity: !!server && !server.connectivity_disabled,
+		connectivity: !!server && (!server.connectivity_disabled || !!server.connectivity_local_only),
 		bgp: !!server && !server.bgp_disabled,
 		streaming: !!server && !server.streaming_disabled,
 	});
-	const tabs = useMemo(() => ["Detail", ...(!combinedNetwork ? ["Network"] : []), ...(!server?.connectivity_disabled ? ["Connectivity"] : []), ...(!server?.bgp_disabled ? ["BGP"] : []), ...(!server?.return_route_disabled ? ["ReturnRoute"] : []), ...(!server?.streaming_disabled ? ["Streaming"] : [])], [combinedNetwork, server?.connectivity_disabled, server?.bgp_disabled, server?.return_route_disabled, server?.streaming_disabled]);
+	const tabs = useMemo(() => ["Detail", ...(!combinedNetwork ? ["Network"] : []), ...((!server?.connectivity_disabled || !!server?.connectivity_local_only) ? ["Connectivity"] : []), ...(!server?.bgp_disabled ? ["BGP"] : []), ...(!server?.return_route_disabled ? ["ReturnRoute"] : []), ...(!server?.streaming_disabled ? ["Streaming"] : [])], [combinedNetwork, server?.connectivity_disabled, server?.connectivity_local_only, server?.bgp_disabled, server?.return_route_disabled, server?.streaming_disabled]);
 	const currentTab = tabs.includes(selectedTab) ? selectedTab : "Detail";
 	const { viewportRef, preserveScroll } = useStableDetailViewport(server_id || "", currentTab);
 	const selectTab = (next: string) => {
@@ -112,7 +112,7 @@ export default function ServerDetail() {
 			{currentTab === tabs[0] && <Suspense fallback={<SectionLoading/>}><ServerDetailChart server_id={server_id} /></Suspense>}
 			{(currentTab === "BGP" || currentTab === "Streaming") && <Suspense fallback={<SectionLoading/>}><ServerNetworkInsight key={server_id+currentTab} serverId={Number(server_id)} kind={currentTab === "BGP" ? "bgp" : "streaming"}/></Suspense>}
 			{currentTab === "ReturnRoute" && <ServerReturnRoute key={server_id} serverId={Number(server_id)}/>}
-			{currentTab === "Connectivity" && <Suspense fallback={<SectionLoading/>}><ServerConnectivity key={server_id} serverId={Number(server_id)} countryCode={server?.country_code} /></Suspense>}
+			{currentTab === "Connectivity" && <Suspense fallback={<SectionLoading/>}><ServerConnectivity key={server_id} serverId={Number(server_id)} countryCode={server?.country_code} localOnly={!!server?.connectivity_disabled && !!server?.connectivity_local_only} /></Suspense>}
 			</DetailPanel>}
 			{(currentTab === "Network" || (currentTab === "Detail" && combinedNetwork)) && <DetailPanel key={server_id + ":network"}><Suspense fallback={<SectionLoading/>}><ServerNetworkSection server_id={Number(server_id)} standalone={currentTab === "Network"} /></Suspense></DetailPanel>}
 			</div>

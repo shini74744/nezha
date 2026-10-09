@@ -15,6 +15,7 @@ import (
 var connectivityManager = connectivity.NewManager()
 
 type connectivityResponse struct {
+	LocalOnly bool `json:"local_only,omitempty"`
 	connectivity.Snapshot
 	FullBatch         bool                   `json:"full_batch"`
 	CanBypassCooldown bool                   `json:"can_bypass_cooldown"`
@@ -34,13 +35,13 @@ func canRunConnectivity(c *gin.Context, server *model.Server) bool {
 	token := APITokenFromContext(c)
 	return token == nil || token.HasScope(model.ScopeServiceWrite)
 }
-func connectivityServer(c *gin.Context) (*model.Server, error) {
+func connectivityServer(c *gin.Context, allowLocal ...bool) (*model.Server, error) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil || id == 0 {
 		return nil, errors.New("invalid server ID")
 	}
 	server, ok := singleton.ServerShared.Get(id)
-	if !ok || !userCanViewServer(c, server) || server.ConnectivityDisabled {
+	if !ok || !userCanViewServer(c, server) || (server.ConnectivityDisabled && !(len(allowLocal) > 0 && allowLocal[0] && server.ConnectivityLocalOnly)) {
 		return nil, errors.New("server not found")
 	}
 	return server, nil
@@ -55,7 +56,7 @@ func connectivityServer(c *gin.Context) (*model.Server, error) {
 // @Router /server/{id}/connectivity [get]
 func getConnectivity(c *gin.Context) (*connectivityResponse, error) {
 	c.Header("Cache-Control", "no-store")
-	server, err := connectivityServer(c)
+	server, err := connectivityServer(c, true)
 	if err != nil {
 		return nil, err
 	}
@@ -64,10 +65,16 @@ func getConnectivity(c *gin.Context) (*connectivityResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+	if server.ConnectivityDisabled {
+		return localConnectivityResponse(server, targets), nil
+	}
 	snapshot := connectivityCached(key, targets)
-	current, err := connectivityServer(c)
+	current, err := connectivityServer(c, true)
 	if err != nil || connectivityKey(current) != key {
 		return nil, errors.New("server changed; reload")
+	}
+	if current.ConnectivityDisabled {
+		return localConnectivityResponse(current, targets), nil
 	}
 	response := &connectivityResponse{Snapshot: snapshot, FullBatch: snapshot.Full, ServerID: current.ID, Online: rpc.ConnectivityOnline(current), CanRun: canRunConnectivity(c, current)}
 	response.CanBypassCooldown = response.CanRun && callerIsAdmin(c)
@@ -136,4 +143,11 @@ func startConnectivity(c *gin.Context) (*connectivityResponse, error) {
 // @Router /server/{id}/connectivity/{target} [post]
 func startConnectivityTarget(c *gin.Context) (*connectivityResponse, error) {
 	return startConnectivity(c)
+}
+func localConnectivityResponse(server *model.Server, targets []connectivity.Target) *connectivityResponse {
+	results := make([]connectivity.Result, 0, len(targets))
+	for _, target := range targets {
+		results = append(results, connectivity.Result{Target: target, Status: "pending", Samples: []connectivity.Sample{}})
+	}
+	return &connectivityResponse{Snapshot: connectivity.Snapshot{State: "idle", Rounds: connectivity.MeasuredRounds, Results: results}, LocalOnly: true, ServerID: server.ID, Online: rpc.ConnectivityOnline(server), CanRun: false}
 }

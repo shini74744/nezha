@@ -280,6 +280,22 @@ function ServerNetworkInsight({
 							))}
 						</SnapshotTimeline>
 					)}
+					{!effectiveHistoryAt && !!data.auto_retry_at && !active && (
+                        <p role="status" data-bgp-auto-retry className="my-3 rounded-lg border bg-muted/30 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                            数据源暂时不可用，预计 {formatDetectionTime(data.auto_retry_at, true)}（北京时间）后自动补测；排队或节点离线时顺延。已成功的协议族保留结果。
+                        </p>
+                    )}
+                    {!!snapshot?.auto_first_started_at && (
+                        <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
+                            首次检测：{formatDetectionTime(snapshot.auto_first_started_at, true)}（北京时间）
+                            {(snapshot.auto_attempt || 0) > 1 ? " · 本周期第 " + snapshot.auto_attempt + " 次尝试" : ""}
+                        </p>
+                    )}
+                    {topology?.tested_at && (
+                        <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+                            {selectedFamily} 实际检测：{formatDetectionTime(topology.tested_at, true)}（北京时间）
+                        </p>
+                    )}
 					{topology ? (
 						<>
 							<Suspense

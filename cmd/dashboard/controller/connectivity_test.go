@@ -197,3 +197,52 @@ func TestConnectivityResponseIdentifiesFullAndSingleRetests(t *testing.T) {
 		})
 	}
 }
+
+func TestConnectivityLocalOnlyIsReadOnlyCatalogNotServerHistory(t *testing.T) {
+	setupServerGroupVisibilityFixture(t)
+	old := connectivityManager
+	connectivityManager = connectivity.NewManager()
+	t.Cleanup(func() { connectivityManager = old })
+	server, _ := singleton.ServerShared.Get(1)
+	targets, err := configuredConnectivityTargets()
+	require.NoError(t, err)
+	snapshot := connectivity.Snapshot{State: "complete", Rounds: 5, FinishedAt: time.Now().UnixMilli()}
+	for _, target := range targets {
+		snapshot.Results = append(snapshot.Results, connectivity.Result{Target: target, Status: "ok", Samples: []connectivity.Sample{{Status: "ok"}}})
+	}
+	connectivityManager.Restore(connectivityKey(server), snapshot)
+	server.ConnectivityDisabled = true
+	server.ConnectivityLocalOnly = true
+	require.True(t, server.RuntimeCopy(model.RuntimeSnapshot{}).ConnectivityLocalOnly)
+	for _, user := range []*model.User{nil, {Common: model.Common{ID: 1}, Role: model.RoleMember}, {Common: model.Common{ID: 10}, Role: model.RoleAdmin}} {
+		got, err := getConnectivity(connectivityContext("1", user))
+		require.NoError(t, err)
+		require.True(t, got.LocalOnly)
+		require.False(t, got.CanRun)
+		require.False(t, got.CanBypassCooldown)
+		require.Equal(t, "idle", got.State)
+		require.Zero(t, got.FinishedAt)
+		require.Nil(t, got.Latest)
+		require.Len(t, got.Results, len(targets))
+		for _, row := range got.Results {
+			require.Equal(t, "pending", row.Status)
+			require.Empty(t, row.Samples)
+		}
+		_, err = startConnectivity(connectivityContext("1", user))
+		require.Error(t, err)
+	}
+	require.Equal(t, "complete", connectivityManager.Get(connectivityKey(server)).State, "GET must not clear stored results")
+	hidden, _ := singleton.ServerShared.Get(2)
+	hidden.ConnectivityDisabled = true
+	hidden.ConnectivityLocalOnly = true
+	_, err = getConnectivity(connectivityContext("2", nil))
+	require.Error(t, err)
+	server.ConnectivityLocalOnly = false
+	_, err = getConnectivity(connectivityContext("1", nil))
+	require.Error(t, err)
+	server.ConnectivityDisabled = false
+	got, err := getConnectivity(connectivityContext("1", nil))
+	require.NoError(t, err)
+	require.False(t, got.LocalOnly)
+	require.Equal(t, "complete", got.State)
+}

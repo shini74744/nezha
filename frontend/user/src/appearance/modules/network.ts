@@ -1,6 +1,6 @@
 // @ts-nocheck
 // Migrated source for the built-in network feature; resources are owned by FeatureScope.
-export function network(scope, config) {
+export function network(scope, config, canvas: HTMLCanvasElement) {
 const window = scope.window; const document = scope.document;
 (() => {
   var _0x58d316 = !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -68,13 +68,13 @@ const window = scope.window; const document = scope.document;
     scope.requestAnimationFrame(_0x533f11);
   }
   const _0x1df04c = _0x2a7625();
-  const _0x51a74c = scope.createElement("canvas");
+  const _0x51a74c = canvas;
   const _0x1f1a1f = _0x51a74c.getContext("2d");
+  if (!_0x1f1a1f) return;
   let _0x145ce2: number;
   let _0x1a8ee4: number;
   _0x51a74c.id = "canvas-nest";
   scope.styleOf(_0x51a74c).cssText = "position:fixed;top:0;left:0;width:100%;height:100%;z-index:" + _0x1df04c.z + ";opacity:" + _0x1df04c.o + ";pointer-events:none";
-  document.body.insertBefore(_0x51a74c, document.body.firstChild);
   const _0x5efe24 = [];
   let _0x59a8c2: Array<{x:number|null;y:number|null;max:number}>;
   const _0xe4b10e = {

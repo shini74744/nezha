@@ -150,3 +150,27 @@ Historical measurements of changed resources are not reused as current results.
 Local probes use a dedicated Web Worker; timing is measured inside the worker, not across UI message delivery. Each target keeps two warmups plus ten measured responses. Dots and the effective response mean update while testing. Cancellation, single retests and worker-start/runtime failure fallback remain bounded; the per-target worker watchdog covers all 12 attempts. Server probes retain two warmups plus five measured attempts with partial snapshots available during the run. Cached history keeps its original samples; new runs use the current policy. No Agent upgrade is required.
 
 Return details offer a lazy-loaded local SVG map and a hop list. Coordinates come from the existing pinned NextTrace JSON, never from city-name guesses or another geolocation request. Unknown (0,0), incomplete, out-of-range, private and privacy-redacted locations are omitted. A missing or ECMP TTL breaks a line; nearby/coincident coordinates are grouped. The map is a location reference, not proof of physical routers or cable paths. The first mainland response label describes the first visible mainland geolocation after an overseas response, not a verified landing station. Independent hop RTTs need not increase with TTL.
+
+## Automatic card priority (2026-10-09)
+
+后台“卡片设置 → 自动检测优先级”可调整连通性、BGP、回程、流媒体的先后顺序。旧配置默认顺序为连通性 → BGP → 回程 → 流媒体；保存时校验四项完整且不重复，并使用 revision 防止覆盖其他页面修改。
+
+- 单一调度器每 15 秒检查到期任务，每轮最多启动 3 项；先处理较早周期，同一周期按设置优先级、上次完成时间、服务器 ID 稳定排序。
+- 同一节点一次只启动一项自动任务，已有执行中／排队中的回程任务会占住节点；优先项暂时无容量时，后续项不抢跑。不同节点仍保持既有有限并发。
+- 原间隔、保留天数和时钟基准不变。回程继续每天北京时间零点重新起算，流媒体继续沿用连通性的自动检测周期；关闭全局策略或节点开关会跳过相应任务。
+- 优先级仅约束自动任务，不中断已经启动的工作，不增加管理员手动重测冷却。手动请求仍使用原有权限、去重和容量限制。
+- 周期去重读取持久化记录，重启不会把本周期已完成的任务再跑一次。
+
+后台服务器列表的“批量设置”增加四项功能开关，默认保持原样；可统一开启或关闭已选择的机器。已经符合目标状态的机器跳过写入，保存结果显示实际修改数量。未选中的机器、未指定开关、Logo、DDNS、备注和节点身份均不更改；权限失败或数据库写入失败时整批回滚。
+
+### BGP failed-cycle recovery, route-map explanations, and local-only connectivity
+
+BGP 自动快照中任一协议族为 `unavailable` 时，在同一检测周期按 5、15、30、60 分钟退避补测，后续保持每小时一次，成功后停止；无公网地址和确无路由不当作数据源失败。兼容旧版失败快照。新周期按原周期开始检测，不无限重试旧周期。节点离线／其他任务执行时顺延；关闭策略或该节点功能后不再自动补测。
+
+同周期补测只查询失败的协议族，成功结果保留，且保留各协议族实际检测时间和首次检测时间。原始尝试记录不删除；时间线每个自动周期只显示最新一次，手动快照仍独立。前台说明预计补测时间与排队顺延，不能保证外部 BGP 数据源一定恢复。
+
+回程地图在地图上方解释未绘制的跳点，区分未响应、内网地址、隐私隐藏和缺少有效经纬度；可展开逐条查看。不存在的坐标不推测补齐。一个坐标可能对应多个 TTL，仍按原规则聚合。
+
+单台服务器编辑的连通性使用三段选择：“服务器＋本地”“仅本地”“隐藏标签”。后两种均停止服务器端连通性检测；仅本地保留前台标签和后台配置的目标目录，浏览器需点击后才测量。结果只留在当前页面，不写入服务器历史，离线节点也可以本地测量。保留两次预热和十次正式采样；单项首测不会移除其他卡片或显示旧服务器延迟。旧版关闭节点默认仍隐藏标签。批量设置同样支持关闭并隐藏或关闭但保留本地延迟，默认不修改。
+
+发布范围：已在阿里部署，相关源码已同步至 GitHub；本轮不更新公开 Release，无需升级 Agent。未加入访客 IP 回程检测。

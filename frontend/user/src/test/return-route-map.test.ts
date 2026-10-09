@@ -3,6 +3,7 @@ import {
 	hasReturnCoordinates,
 	returnMapData,
 	returnMapFrame,
+ returnUnlocatedReason,
 } from "@/lib/return-route-map";
 import type { ReturnHop } from "@/lib/network-insight-api";
 const hop = (ttl: number, longitude = 120, latitude = 30): ReturnHop => ({
@@ -59,4 +60,13 @@ describe("return route map data", () => {
 		).toBeGreaterThan(0);
 		expect(returnMapData([{ ttl: 1, samples: 3 }]).points).toEqual([]);
 	});
+});
+
+it("explains the screenshot's missing early hops without fabricating positions", () => {
+ const hops: ReturnHop[] = [{ttl:1,samples:0},{ttl:2,samples:3,ip:"10.38.95.0"},{ttl:3,samples:3,ip:"9.34.128.126",location:"美国国防部网络信息中心"},hop(4,114.17,22.32)];
+ expect(returnMapData(hops).points.map(p=>p.hops[0].ttl)).toEqual([4]);
+ expect(hops.slice(0,3).map(returnUnlocatedReason)).toEqual(["未响应","内网或本地地址，无公网定位","数据源缺少有效经纬度"]);
+ expect(returnUnlocatedReason({ttl:1,samples:3,ip_hidden:true})).toBe("地址已隐藏");
+ for (const ip of ["172.16.0.1","192.168.0.1","100.64.1.1","fd00::1","fe80::1","::1"]) expect(returnUnlocatedReason({ttl:1,samples:1,ip})).toContain("内网");
+ for (const ip of ["172.32.0.1","192.169.0.1","100.128.0.1","2001:4860::1"]) expect(returnUnlocatedReason({ttl:1,samples:1,ip})).toContain("经纬度");
 });

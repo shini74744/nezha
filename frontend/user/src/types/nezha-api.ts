@@ -6,6 +6,7 @@ export interface NezhaWebsocketResponse {
 
 export interface NezhaServer {
 	connectivity_disabled?: boolean;
+ connectivity_local_only?: boolean;
 	bgp_disabled?: boolean;
 	return_route_disabled?: boolean;
 	streaming_disabled?: boolean;
