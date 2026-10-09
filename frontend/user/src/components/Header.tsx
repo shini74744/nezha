@@ -1,4 +1,6 @@
 import {useFeature} from "@/appearance/context";
+import {NativeCounter,NativeClockPart} from "@/appearance/native-layout-widgets";
+import {NativeDesktopSponsor} from "@/appearance/native-sponsor";
 import {BackgroundSoundLogo} from "@/appearance/background-sound";
 import {NativeDescription,NativeGreeting} from "@/appearance/widgets";
 import { useQuery } from "@tanstack/react-query";
@@ -53,6 +55,7 @@ const useCurrentTime = () => {
 
 function Header() {
 const brand=useFeature('branding'), hidden=useFeature('hideControls');
+const linksStyle=useFeature('links').enabled;
 	const { t } = useTranslation();
 	const navigate = useNavigate();
 	const { backgroundImage, updateBackground } = useBackground();
@@ -156,7 +159,8 @@ const brand=useFeature('branding'), hidden=useFeature('hideControls');
 						<NativeDescription fallback={customDesc}/>
 					</p>
 				</section>
-				<section className="flex items-center gap-2 header-handles">
+				<NativeCounter/>
+				<section className={"flex items-center gap-2 header-handles"+(linksStyle?" nz-links":"")}>
 					<div className="hidden sm:flex items-center gap-2">
 						<Links />
 						<DashboardLink />
@@ -209,6 +213,7 @@ const brand=useFeature('branding'), hidden=useFeature('hideControls');
 				<Links />
 			</div>
 			<Overview />
+			<NativeDesktopSponsor detail/>
 		</div>
 	);
 }
@@ -354,6 +359,7 @@ function DashboardLink() {
 }
 
 function Overview() {
+	const clockEnabled = useFeature("clock").enabled;
 	const { t } = useTranslation();
 	const time = useCurrentTime();
 	const [mounted, setMounted] = useState(false);
@@ -369,12 +375,12 @@ function Overview() {
 				<p className="text-sm font-medium opacity-50">{t("whereTheTimeIs")}</p>
 				{mounted ? (
 					<div className="flex items-center font-medium text-sm">
-						<AnimateCountClient count={time.hh} minDigits={2} />
-						<span className="mb-px font-medium text-sm opacity-50">:</span>
-						<AnimateCountClient count={time.mm} minDigits={2} />
-						<span className="mb-px font-medium text-sm opacity-50">:</span>
+						<NativeClockPart unit="hour" value={time.hh}><AnimateCountClient count={time.hh} minDigits={2} /></NativeClockPart>
+						<span className="mb-px font-medium text-sm opacity-50" style={clockEnabled ? {color:"rgba(255,255,255,0.72)"} : undefined}>:</span>
+						<NativeClockPart unit="minute" value={time.mm}><AnimateCountClient count={time.mm} minDigits={2} /></NativeClockPart>
+						<span className="mb-px font-medium text-sm opacity-50" style={clockEnabled ? {color:"rgba(255,255,255,0.72)"} : undefined}>:</span>
 						<span className="font-medium text-sm">
-							<AnimateCountClient count={time.ss} minDigits={2} />
+							<NativeClockPart unit="second" value={time.ss}><AnimateCountClient count={time.ss} minDigits={2} /></NativeClockPart>
 						</span>
 					</div>
 				) : (

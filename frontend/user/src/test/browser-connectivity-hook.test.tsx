@@ -151,3 +151,24 @@ it("preserves finished dots when stopped during later samples",async()=>{
  expect(result.current.run!.cancelled).toBe(true);
  expect(net.calls).toHaveLength(4);
 });
+
+it("can bootstrap a single local target without discarding or measuring other cards",async()=>{
+ const net=network(),input=targets(3),{result}=renderHook(()=>useBrowserConnectivity(7));
+ act(()=>result.current.start(input,"missing"));expect(net.calls).toHaveLength(0);
+ act(()=>result.current.start(input,"1"));expect(net.calls).toHaveLength(1);
+ expect(result.current.run!.fullBatch).toBe(false);
+ expect(result.current.run!.results).toHaveLength(3);
+ expect(result.current.run!.results[0].samples).toHaveLength(0);
+ expect(result.current.run!.results[0].delay_ms).toBeUndefined();
+ await finishAll(net);await waitFor(()=>expect(result.current.run!.state).toBe("complete"));
+ expect(net.calls).toHaveLength(12);expect(net.calls.every(c=>c.url.includes("site1.example.com"))).toBe(true);
+ expect(result.current.run!.results[0].status).toBe("pending");
+ expect(result.current.run!.results[1].samples).toHaveLength(10);
+ const measured=result.current.run!.results[1];
+ act(()=>result.current.retry("2"));await finishAll(net);
+ await waitFor(()=>expect(result.current.run!.state).toBe("complete"));
+ expect(result.current.run!.results[1]).toBe(measured);
+ act(()=>result.current.start(input,"1"));act(()=>result.current.stop());
+ expect(result.current.run!.results[0].status).toBe("pending");
+ expect(input[0].delay_ms).toBe(42);
+});

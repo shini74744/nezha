@@ -49,6 +49,7 @@ describe("public note partial submission", () => {
             }),
         })
         expect(result.success).toBe(true)
+        if (result.success) expect(result.data).not.toHaveProperty("display_index")
     })
 
     it("accepts incomplete structured fields when supplied values are valid", () => {

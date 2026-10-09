@@ -63,36 +63,18 @@ func validateCompleteServerOrder(tx *gorm.DB, order []uint64) error {
 }
 
 func updateServerOrder(c *gin.Context) (any, error) {
+	logoLibraryMu.Lock()
+	defer logoLibraryMu.Unlock()
+	serverIDReassignMu.Lock()
+	defer serverIDReassignMu.Unlock()
+	if singleton.ServerIDReassignmentInProgress.Load() {
+		return nil, errors.New("服务器 ID 正在调整，请稍后重试")
+	}
 	var form serverOrderForm
 	if err := c.ShouldBindJSON(&form); err != nil {
 		return nil, err
 	}
-	if err := model.WithServerOperation(singleton.DB, model.ServerOperationActorFromContext(c), "order", form.ServerIDs, func(tx *gorm.DB) error {
-		if err := validateCompleteServerOrder(tx, form.ServerIDs); err != nil {
-			return err
-		}
-		for index, id := range form.ServerIDs {
-			displayIndex := len(form.ServerIDs) - index
-			if err := tx.Model(&model.Server{}).Where("id = ?", id).
-				Update("display_index", displayIndex).Error; err != nil {
-				return err
-			}
-		}
-		return nil
-	}); err != nil {
-		return nil, newGormError("%v", err)
-	}
-	for _, id := range form.ServerIDs {
-		var server model.Server
-		if err := singleton.DB.First(&server, id).Error; err != nil {
-			return nil, err
-		}
-		if running, ok := singleton.ServerShared.Get(id); ok {
-			server.CopyFromRunningServer(running)
-		}
-		singleton.ServerShared.Update(&server, "")
-	}
-	return nil, nil
+	return nil, singleton.ServerShared.UpdateManualOrder(c, form.ServerIDs)
 }
 
 func reassignServerIDs(c *gin.Context) (*serverIDReassignResult, error) {

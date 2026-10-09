@@ -1,4 +1,5 @@
 import { FetcherMethod, fetcher } from "@/api/api"
+import DetectionPrioritySettings from "@/components/DetectionPrioritySettings"
 import ReturnRouteSettings from "@/components/ReturnRouteSettings"
 import ConnectivityAutomationSettings from "@/components/ConnectivityAutomationSettings"
 import SettingHelp from "@/components/SettingHelp"
@@ -200,6 +201,7 @@ export default function CardSettings() {
                     </Button>
                 </div>
             </div>
+            <DetectionPrioritySettings />
             <TabsList aria-label="卡片分类">
                 <TabsTrigger value="connectivity">连通性</TabsTrigger>
                 <TabsTrigger value="bgp">BGP</TabsTrigger>

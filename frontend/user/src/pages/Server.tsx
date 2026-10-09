@@ -10,6 +10,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState, type ComponentType, type ComponentProps, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import GlobalMap from "@/components/GlobalMap";
+import {NativeDesktopSponsor} from "@/appearance/native-sponsor";
+import {useFeature} from "@/appearance/context";
 import GroupSwitch from "@/components/GroupSwitch";
 import { Loader } from "@/components/loading/Loader";
 import ServerCard from "@/components/ServerCard";
@@ -109,6 +111,7 @@ export default function Servers({
  presentation?: ServerPresentation;
  afterContent?: ReactNode;
 }) {
+ const sponsorFeature=useFeature("sponsor");
  const Overview=presentation?.Overview ?? ServerOverview;
  const CardView=presentation?.Card ?? ServerCard;
  const InlineCardView=presentation?.InlineCard ?? ServerCardInline;
@@ -460,7 +463,7 @@ export default function Servers({
 			/>
 			<div
 				hidden={!hasServers}
-				className="flex mt-6 items-center justify-between gap-2 server-overview-controls"
+				className={cn("flex mt-6 items-center justify-between gap-2 server-overview-controls",{"nz-controls-with-sponsor":sponsorFeature.enabled&&sponsorFeature.desktop})}
 			>
 				<section className="flex items-center gap-2 w-full overflow-hidden">
 					<button
@@ -506,6 +509,7 @@ export default function Servers({
 						setCurrentTab={handleTagChange}
 					/>
 				</section>
+				<NativeDesktopSponsor/>
 				<div
 					className={cn(
 						"flex h-8 items-center rounded-full border border-stone-200 bg-white text-sm text-stone-600 shadow-xs transition-all dark:border-stone-800 dark:bg-stone-800 dark:text-stone-300 dark:shadow-none shrink-0",

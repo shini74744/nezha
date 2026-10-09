@@ -85,6 +85,7 @@ func ServerOperationChanges(before, after *Server) []ServerOperationChange {
 	add("hide_for_guest", before.HideForGuest, after.HideForGuest)
 	add("hide_for_display", before.HideForDisplay, after.HideForDisplay)
 	add("connectivity_disabled", before.ConnectivityDisabled, after.ConnectivityDisabled)
+	add("connectivity_local_only", before.ConnectivityLocalOnly, after.ConnectivityLocalOnly)
 	add("bgp_disabled", before.BGPDisabled, after.BGPDisabled)
 	add("return_route_disabled", before.ReturnRouteDisabled, after.ReturnRouteDisabled)
 	add("streaming_disabled", before.StreamingDisabled, after.StreamingDisabled)

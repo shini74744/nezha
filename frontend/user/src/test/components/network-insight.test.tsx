@@ -200,3 +200,15 @@ describe("compact BGP header",()=>{
   expect(screen.queryByText(/192\.0\.2\.0/)).not.toBeInTheDocument();
  });
 });
+
+it("shows retry time and actual per-family time without implying a failed cycle was skipped", async () => {
+ const fresh = { ...result(), auto_retry_at: Date.now()+300000, auto_attempt:2, auto_first_started_at:Date.now()-600000, topologies:[{...topology("IPv4",100), tested_at:Date.now()-500000}] };
+ api.insightRequest.mockResolvedValue(fresh);
+ const view=mount();
+ await screen.findByTestId("topology");
+ expect(screen.getByText(/预计.*自动补测/)).toBeInTheDocument();
+ expect(screen.getByText(/IPv4 实际检测/)).toBeInTheDocument();
+ expect(screen.getByText(/本周期第 2 次尝试/)).toBeInTheDocument();
+ await act(async()=>{view.client.setQueryData(key,{...fresh,auto_retry_at:0})});
+ await waitFor(() => expect(screen.queryByText(/预计.*自动补测/)).not.toBeInTheDocument());
+});

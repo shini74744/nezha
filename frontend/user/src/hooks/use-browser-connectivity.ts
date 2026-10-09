@@ -114,7 +114,7 @@ export function useBrowserConnectivity(serverId: number) {
 			publish(session.run, true);
 		} else publish(session.run);
 	};
-	const start = (targets: readonly ConnectivityResult[]) => {
+	const start = (targets: readonly ConnectivityResult[], targetId?: string) => {
 		if (current.current || !targets.length) return;
 		const results = Array.from(
 			new Map(
@@ -123,10 +123,11 @@ export function useBrowserConnectivity(serverId: number) {
 					.map((row) => [row.id, resetTarget(row)]),
 			).values(),
 		);
-		const session: Session = {
+		if (targetId && !results.some(row => row.id === targetId)) return;
+        const session: Session = {
 			serverId,
-			run: { state: "running", cancelled: false, fullBatch: true, results },
-			queue: new Set(results.map((row) => row.id)),
+			run: { state: "running", cancelled: false, fullBatch: !targetId, results: results.map(row => targetId && row.id !== targetId ? {...row,phase:undefined} : row) },
+			queue: new Set(results.filter(row => !targetId || row.id === targetId).map((row) => row.id)),
 			active: new Map(),
 			runner: createBrowserConnectivityRunner(),
 		};
@@ -172,7 +173,7 @@ export function useBrowserConnectivity(serverId: number) {
 			cancelled: true,
 			fullBatch: false,
 			results: session.run.results.map((row) =>
-				row.phase === "complete"
+				row.phase !== "queued" && row.phase !== "running"
 					? row
 					: {
 							...row,

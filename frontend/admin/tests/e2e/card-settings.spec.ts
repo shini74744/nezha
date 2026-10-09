@@ -70,6 +70,7 @@ async function setup(page: Page, role = 0, theme = "light") {
                 },
             })
         }
+        if (path === "/api/v1/setting/detection-priority") return route.fulfill({ json: {success: true, data: {order:["connectivity","bgp","return-route","streaming"],revision:"d1"}} })
         let data: any = []
         if (path === "/api/v1/profile") data = { id: 1, role, username: "qa" }
         if (path === "/api/v1/setting")

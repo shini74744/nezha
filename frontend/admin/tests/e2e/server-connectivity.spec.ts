@@ -4,16 +4,16 @@ import {readFileSync} from "node:fs";
 const manifest = JSON.parse(readFileSync(new URL("../../../user/src/appearance/manifest.json", import.meta.url), "utf8")) as {key:string}[];
 test.use({ignoreHTTPSErrors:true});
 const catalog = JSON.parse(readFileSync(new URL("../../../../service/connectivity/catalog.json", import.meta.url), "utf8")) as {id:string; name:string; group:string; host:string}[];
-async function setup(page:Page,theme:string,light=false,offline=false,owner=true,language="zh-CN",wallpaper=false,countryCode="us",disabled=false,clickTab=true) {
+async function setup(page:Page,theme:string,light=false,offline=false,owner=true,language="zh-CN",wallpaper=false,countryCode="us",disabled=false,clickTab=true,localOnly=false) {
  const origin="https://127.0.0.1:"+(theme==="doraemon"?"18478":"18477"),now=Date.now();
- const server=createServer({id:7,name:"连通性测试节点",country_code:countryCode,connectivity_disabled:disabled,last_active:offline?"0001-01-01T00:00:00Z":new Date(now).toISOString()});
+ const server=createServer({id:7,name:"连通性测试节点",country_code:countryCode,connectivity_disabled:disabled,connectivity_local_only:localOnly,last_active:offline?"0001-01-01T00:00:00Z":new Date(now).toISOString()});
  const state={posts:0,postPaths:[] as string[],gets:0,external:[] as string[],override:null as any[]|null,latest:undefined as any,canBypass:false,fullBatch:true,mode:"idle",readError:false,postError:false,localMock:false,localDelay:0,localDelays:[] as number[],localRequests:[] as {url:string;method:string;headers:Record<string,string>}[],redirectHeaders:[] as Record<string,string>[]};
  page.on("request",req=>{if(new URL(req.url()).pathname==="/__local-probe-redirect-test")void req.allHeaders().then(headers=>state.redirectHeaders.push(headers))});
  const results=()=>catalog.map(({id,name,group,host},i)=>({id,name,group,host,
   phase:state.mode==="idle"?undefined:state.mode==="running"?(i===0?"running":i===1?"complete":"queued"):"complete",
   status:state.mode==="idle"||(state.mode==="running"&&i!==1)?"pending":i===7?"http_error":i===8?"timeout":i===9?"agent_timeout":"ok",delay_ms:state.mode==="idle"||(state.mode==="running"&&i!==1)||i===8||i===9?undefined:35+i*12,
   samples:state.mode==="idle"||(state.mode==="running"&&i!==1)?[]:Array.from({length:5},()=>({status:i===7?"http_error":i===8?"timeout":i===9?"agent_timeout":"ok",http_status:i===7?403:undefined,delay_ms:i===8||i===9?undefined:35+i*12}))}));
- const response=()=>({full_batch:state.fullBatch,server_id:7,online:!offline,can_run:owner,can_bypass_cooldown:owner&&state.canBypass,state:state.mode,latest:state.latest,rounds:5,started_at:state.mode==="idle"?undefined:now-2000,finished_at:state.mode==="complete"?now:undefined,retry_at:state.mode==="complete"?now+60000:undefined,results:state.override??results()});
+ const response=()=>({full_batch:state.fullBatch,server_id:7,local_only:disabled&&localOnly,online:!offline,can_run:owner&&!disabled,can_bypass_cooldown:owner&&state.canBypass,state:state.mode,latest:state.latest,rounds:5,started_at:state.mode==="idle"?undefined:now-2000,finished_at:state.mode==="complete"?now:undefined,retry_at:state.mode==="complete"?now+60000:undefined,results:state.override??results()});
  await page.addInitScript(({light,language})=>{
   // Playwright's router auto-aborts every /favicon.ico suffix as a browser icon.
   // Tag fixture-only HEAD requests so native fetch/abort/redirect still run.
@@ -807,4 +807,30 @@ test(`server five dots and partial averages refresh ${theme} ${width}`,async({pa
   expect(await card.locator("[data-connectivity-sample]").evaluateAll(es=>es.filter(e=>e.classList.contains("bg-emerald-600")).length)).toBe(i);
  }
  expect(state.posts).toBe(0);
+});
+for(const theme of ["default","doraemon"])for(const light of [false,true])for(const width of [320,1440])test(`local-only disabled server keeps browser probes ${theme} ${light} ${width}`,async({page},info)=>{
+ await page.setViewportSize({width,height:900});
+ const state=await setup(page,theme,light,width===320,true,"zh-CN",true,"jp",true,true,true);
+ state.override=catalog.filter(row=>["youtube","google"].includes(row.id)).map(row=>({...row,status:"pending",samples:[]}));
+ state.localMock=true;state.localDelay=100;
+ await page.reload();await page.locator(".server-info-tab").getByText("连通性",{exact:true}).click();
+ const view=page.locator("[data-server-connectivity]"),card=view.locator('[data-connectivity-target="youtube"]'),other=view.locator('[data-connectivity-target="google"]');
+ await expect(view.locator("[data-connectivity-local-only]")).toBeVisible();
+ await expect(view.getByRole("button",{name:"服务器延迟",exact:true})).toHaveCount(0);
+ await expect(view.locator("[data-connectivity-controls]")).toHaveCount(0);
+ await expect(view.locator("[data-connectivity-target]")).toHaveCount(2);
+ expect(state.localRequests).toHaveLength(0);expect(state.posts).toBe(0);
+ await card.click();
+ await expect(card).toHaveAttribute("data-connectivity-phase","complete",{timeout:15000});
+ expect(state.localRequests).toHaveLength(12);await expect(card.locator("[data-connectivity-sample]")).toHaveCount(10);
+ await expect(other.locator("[data-connectivity-delay]")).toHaveText("—");
+ await expect(view.locator("[data-connectivity-target]")).toHaveCount(2);
+ await view.screenshot({path:info.outputPath("local-only-single.png")});
+ await view.getByRole("button",{name:"本地延迟",exact:true}).click();
+ await expect(view.getByRole("progressbar")).toBeVisible();
+ await expect(other).toHaveAttribute("data-connectivity-phase","complete",{timeout:15000});
+ await expect(card).toHaveAttribute("data-connectivity-phase","complete",{timeout:15000});
+ expect(state.localRequests).toHaveLength(36);expect(state.posts).toBe(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ await view.screenshot({path:info.outputPath("local-only-complete.png")});
 });

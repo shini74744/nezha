@@ -14,7 +14,7 @@ import {
 	RefreshCw,
 	WifiOff,
 } from "lucide-react";
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,7 +30,7 @@ import { orderedConnectivityRegions, connectivityRegionName } from "../../../sha
 
 const flagIcons: Record<string, typeof CN> = { CN, JP, US, KR, SG, MY, ID, GB, DE, FR, CA, AU, IN, BR, RU };
 
-function ServerConnectivity({ serverId, countryCode }: { serverId: number; countryCode?: string }) {
+function ServerConnectivity({ serverId, countryCode, localOnly = false }: { serverId: number; countryCode?: string; localOnly?: boolean }) {
 	const regions = orderedConnectivityRegions(countryCode).map(region => ({...region, Icon: flagIcons[region.country] || Globe2}));
 	const { t, i18n } = useTranslation();
 	const client = useQueryClient();
@@ -46,7 +46,6 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 	}, []);
 	const [manualRun, setManualRun] = useState<string>();
 	const [localServer, setLocalServer] = useState<number>();
-	const localMode = localServer === serverId;
 	const browser = useBrowserConnectivity(serverId);
 // biome-ignore lint/correctness/useExhaustiveDependencies: Changing nodes must leave local mode even when the callback does not read the new ID.
 	useEffect(() => setLocalServer(undefined), [serverId]);
@@ -56,6 +55,10 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 			state.state.data?.state === "running" ? 1500 : 15000,
 		refetchIntervalInBackground: false,
 	});
+	const previousLocalOnly = useRef(localOnly);
+ useEffect(() => { if (previousLocalOnly.current !== localOnly) { previousLocalOnly.current = localOnly; void client.invalidateQueries({queryKey:["server-connectivity",serverId]}); } },[localOnly,serverId,client]);
+	const forcedLocal = localOnly || query.data?.local_only === true;
+ const localMode = forcedLocal || localServer === serverId;
 	const mutation = useMutation({
 		mutationFn: (targetId?: string) => startConnectivity(serverId, targetId),
 		onSuccess: async (data) => {
@@ -88,7 +91,7 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 		}, 1000);
 		return () => clearInterval(timer);
 	}, [retryAt]);
-	const displayResults = localMode ? browser.run?.results || [] : data?.results || [];
+	const displayResults = localMode ? browser.run?.results || (data?.results || []).map(({id,name,group,host,icon})=>({id,name,group,host,icon,status:"pending" as const,samples:[]})) : data?.results || [];
 	const displayRounds = localMode ? BROWSER_PROBE_ROUNDS : data?.rounds || 5;
 	const localRunning = browser.run?.state === "running";
 	const localBusy = localMode && localRunning;
@@ -121,12 +124,12 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 		>
 			{data && !query.isError && (
 				<div data-connectivity-source className="relative grid h-8 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 text-sm md:-top-4">
-					<button type="button" aria-pressed={!localMode}
+					{forcedLocal ? <span className="col-start-1 row-start-1 text-xs text-muted-foreground">仅本地检测</span> : <button type="button" aria-pressed={!localMode}
 						className={cn("inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-foreground/20 bg-background/90 px-2 sm:px-3 text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none", "col-start-1 row-start-1", !localMode && "border-primary bg-primary text-primary-foreground font-semibold hover:bg-primary/90")}
 						onClick={() => { setLocalServer(undefined); browser.stop(); }}>
 						<Server className="size-3.5 shrink-0" aria-hidden />
 						{t("connectivity.serverLatency")}
-					</button>
+					</button>}
 					<div data-local-connectivity={localMode && browser.run ? true : undefined} className="relative col-start-2 row-start-1 flex h-8 min-w-0 items-center justify-between gap-1 pb-1 text-xs">
 						{localMode && browser.run && <>
 							<p role="status" className="min-w-0 truncate tabular-nums" title={t(browser.run.cancelled ? "connectivity.localCancelled" : localRunning ? "connectivity.progress" : "connectivity.localFinished", { done: localCompleted, total: browser.run.results.length })}>
@@ -157,6 +160,7 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 					</button>
 				</div>
 			)}
+			{forcedLocal && <p className="text-xs leading-5 text-muted-foreground" data-connectivity-local-only>服务器端检测已关闭。本地延迟由当前浏览器测量，点击“本地延迟”或单个卡片开始，不会使用该服务器发起请求。</p>}
 			{!data?.can_run && query.isPending && (
 				<p role="status" className="text-sm text-muted-foreground">
 					{t("connectivity.loading")}
@@ -355,7 +359,7 @@ function ServerConnectivity({ serverId, countryCode }: { serverId: number; count
 											result={result}
 											rounds={displayRounds}
 											sampleHover={sampleHover}
-                                            onRetest={localMode ? () => browser.retry(result.id) : data.can_run ? () => mutation.mutate(result.id) : undefined}
+                                            onRetest={localMode ? () => { if (browser.run) browser.retry(result.id); else browser.start(data.results, result.id); } : data.can_run ? () => mutation.mutate(result.id) : undefined}
                                             disabled={!localMode && (!data.online || running || mutation.isPending || cooldown > 0)}
 										/>
 									))}

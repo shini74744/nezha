@@ -1,5 +1,6 @@
-import {useFeature} from "@/appearance/context";
+import {useFeature,useAppearanceLayout} from "@/appearance/context";
 import {NativeFooter} from "@/appearance/widgets";
+import {NativeMobileSponsor} from "@/appearance/native-sponsor";
 import { useQuery } from "@tanstack/react-query";
 import type React from "react";
 import { useTranslation } from "react-i18next";
@@ -7,6 +8,7 @@ import { fetchSetting } from "@/lib/nezha-api";
 
 const Footer: React.FC = () => {
 const nativeFooter=useFeature('footer');
+const layout=useAppearanceLayout(), sponsorFeature=useFeature("sponsor");
 	const { t } = useTranslation();
 	const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
 
@@ -18,7 +20,7 @@ const nativeFooter=useFeature('footer');
 		retry: false,
 	});
 
-	return <div data-footer-region className="nz-footer-region">
+	return <div ref={layout.footer} data-footer-region className={"nz-footer-region"+(sponsorFeature.enabled&&sponsorFeature.mobile?" nz-footer-with-sponsor":"")}>
 		{nativeFooter.enabled ? <NativeFooter/> : (
 		<footer className="mx-auto w-full max-w-5xl px-4 lg:px-0 pb-4 server-footer">
 			<section className="flex flex-col">
@@ -63,6 +65,7 @@ const nativeFooter=useFeature('footer');
 			</section>
 		</footer>
 		)}
+		<NativeMobileSponsor/>
 	</div>;
 };
 

@@ -227,7 +227,9 @@ for (const theme of ["default","doraemon"]) for (const delay of [0,80,200]) for 
  await card.evaluate(el=>(el as HTMLElement).click())
  await expect(page.locator(".server-info-tab").getByRole("button",{name:"BGP",exact:true})).toHaveAttribute("aria-pressed","true",{timeout:20000})
  await sent
- await expect(page.locator("[data-bgp-graph]")).toBeVisible()
+ // Cold module/chart completion at 4x CPU has the same budget as dense network charts.
+ // Input responsiveness remains independently limited to 250 ms below.
+ await expect(page.locator("[data-bgp-graph]")).toBeVisible({timeout:15000})
  const measurements=await page.evaluate(()=>(window as any).entryMeasurements)
  await info.attach("entry-measurements",{body:JSON.stringify(measurements),contentType:"application/json"})
  console.log("NATIVE_ENTRY",JSON.stringify({theme,delay,warm,...measurements}))

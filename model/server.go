@@ -31,6 +31,7 @@ type Server struct {
 	BGPDisabled            bool   `json:"bgp_disabled" gorm:"default:false"`
 	ReturnRouteDisabled    bool   `json:"return_route_disabled" gorm:"default:false"`
 	StreamingDisabled      bool   `json:"streaming_disabled" gorm:"default:false"`
+	ConnectivityLocalOnly  bool   `json:"connectivity_local_only" gorm:"default:false"`
 	ConnectivityDisabled   bool   `json:"connectivity_disabled" gorm:"default:false"` // 默认显示连通性；关闭时禁止读取与发起检测
 	EnableDDNS             bool   `json:"enable_ddns,omitempty"`                      // 启用DDNS
 	DDNSProfilesRaw        string `gorm:"default:'[]';column:ddns_profiles_raw" json:"-"`
@@ -712,6 +713,7 @@ func (s *Server) RuntimeCopy(runtime RuntimeSnapshot) *Server {
 		ReturnRouteDisabled:     s.ReturnRouteDisabled,
 		StreamingDisabled:       s.StreamingDisabled,
 		ConnectivityDisabled:    s.ConnectivityDisabled,
+		ConnectivityLocalOnly:   s.ConnectivityLocalOnly,
 		EnableDDNS:              s.EnableDDNS,
 		DDNSProfilesRaw:         s.DDNSProfilesRaw,
 		OverrideDDNSDomainsRaw:  s.OverrideDDNSDomainsRaw,

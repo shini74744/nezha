@@ -40,6 +40,7 @@ export interface BGPGraph {
 	legacy?: boolean;
 }
 export interface BGPTopology {
+ tested_at?: number;
 	graph?: BGPGraph;
 	family: string;
 	prefix?: string;
@@ -92,6 +93,9 @@ export interface ReturnResult {
 	evidence?: string[];
 }
 export interface InsightSnapshot {
+ auto_attempt?: number;
+ auto_retry_at?: number;
+ auto_first_started_at?: number;
 	retest?: ReturnSelection;
 	routes?: ReturnResult[];
 	scheduled_at?: number;

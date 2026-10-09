@@ -96,3 +96,18 @@ export function returnMapFrame(points: MapPoint[]) {
 		latSpan: Math.max(8, maxLat - minLat),
 	};
 }
+
+export function returnUnlocatedReason(h: ReturnHop): string {
+ if (!h.samples) return "未响应";
+ if (h.ip_hidden) return "地址已隐藏";
+ const ip = h.ip?.toLowerCase() || "";
+ const parts = ip.split(".").map(Number);
+ const internal4 = parts.length === 4 && parts.every(v => Number.isInteger(v) && v >= 0 && v <= 255) && (
+  parts[0] === 10 || parts[0] === 127 || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+  (parts[0] === 192 && parts[1] === 168) || (parts[0] === 169 && parts[1] === 254) ||
+  (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127)
+ );
+ const internal6 = ip.includes(":") && (/^(fc|fd|fe[89ab])/i.test(ip) || ip === "::1");
+ if (internal4 || internal6) return "内网或本地地址，无公网定位";
+ return "数据源缺少有效经纬度";
+}

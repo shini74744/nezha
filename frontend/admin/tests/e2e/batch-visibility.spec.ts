@@ -3,7 +3,7 @@ import { createServer } from "../../../user/src/test/fixtures";
 
 for (const width of [360,390,430,1366]) test("batch visibility selected only "+width, async ({page}) => {
  await page.setViewportSize({width,height:950});
- let servers=[11,12,13].map(id=>({id,name:"批量测试"+id,host:{version:"2.3.6"},display_index:0,user_id:1,uuid:"fixture-"+id,public_note:"",note:"keep",enable_ddns:false,hide_for_guest:id===12,hide_for_display:false}));
+ let servers=[11,12,13].map(id=>({id,name:"批量测试"+id,host:{version:"2.3.6"},display_index:0,user_id:1,uuid:"fixture-"+id,public_note:"",note:"keep",enable_ddns:false,hide_for_guest:id===12,hide_for_display:false, connectivity_disabled:id===12,bgp_disabled:id===12,return_route_disabled:false,streaming_disabled:false}));
  const writes:any[]=[];
  await page.route("**/api/v1/**",async r=>{
   const path=new URL(r.request().url()).pathname;let data:any=[];
@@ -12,7 +12,8 @@ for (const width of [360,390,430,1366]) test("batch visibility selected only "+w
   if(path==="/api/v1/server")data=servers;
   if(path==="/api/v1/batch-visibility/server"){
    const body=r.request().postDataJSON();writes.push(body);
-   const {ids,...flags}=body;servers=servers.map(s=>ids.includes(s.id)?{...s,...flags}:s);data={updated:ids.length};
+   const {ids,...flags}=body;
+   let updated=0;servers=servers.map(s=>{if(!ids.includes(s.id))return s;if(Object.entries(flags).some(([key,value])=>(s as any)[key]!==value))updated++;return {...s,...flags}});data={updated};
    await new Promise(resolve=>setTimeout(resolve,150));
   }
   return r.fulfill({json:{success:true,data}});
@@ -39,6 +40,28 @@ for (const width of [360,390,430,1366]) test("batch visibility selected only "+w
  expect(writes[1]).toEqual({ids:[11,12],hide_for_guest:false,hide_for_display:false});
  expect(servers[0].note).toBe("keep");expect(servers[1].hide_for_guest).toBe(false);
  await batch.click();await dialog.getByRole("button",{name:"取消",exact:true}).click();expect(writes).toHaveLength(2);
+ await batch.click();
+ const featureRows=dialog.locator("[data-batch-features]");
+ await expect(featureRows).toContainText("已开 1 · 已关 1");
+ for(const label of ["连通性","BGP"]) {await dialog.getByRole("combobox",{name:label,exact:true}).click();await page.getByRole("option",{name:"全部开启",exact:true}).click()}
+ await dialog.getByRole("combobox",{name:"流媒体",exact:true}).click();await page.getByRole("option",{name:"全部关闭",exact:true}).click();
+ await apply.click();await expect(dialog).toHaveCount(0);
+ expect(writes[2]).toEqual({ids:[11,12],connectivity_disabled:false,bgp_disabled:false,streaming_disabled:true});
+ expect(servers[0].bgp_disabled).toBe(false);expect(servers[1].bgp_disabled).toBe(false);expect(servers[2].streaming_disabled).toBe(false);
+ await batch.click();
+ await dialog.getByRole("combobox",{name:"BGP",exact:true}).click();await page.getByRole("option",{name:"全部开启",exact:true}).click();
+ await apply.click();await expect(dialog).toHaveCount(0);
+ await expect(page.getByText("已修改 0 台服务器，2 台原本已是所选状态",{exact:true})).toBeVisible();
+ await batch.click();
+ await dialog.getByRole("combobox",{name:"连通性",exact:true}).click();await page.getByRole("option",{name:"关闭，仅保留本地延迟",exact:true}).click();
+ expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
+ await page.screenshot({path:"test-results/batch-local-only-"+width+".png"});
+ await apply.click();await expect(dialog).toHaveCount(0);
+ expect(writes[4]).toEqual({ids:[11,12],connectivity_disabled:true,connectivity_local_only:true});
+ await batch.click();await expect(dialog).toContainText("仅本地 2");
+ await dialog.getByRole("combobox",{name:"连通性",exact:true}).click();await page.getByRole("option",{name:"关闭并隐藏标签",exact:true}).click();
+ await apply.click();await expect(dialog).toHaveCount(0);
+ expect(writes[5]).toEqual({ids:[11,12],connectivity_disabled:true,connectivity_local_only:false});
 });
 
 for(const width of [390,1366])for(const role of [0,2])test("authenticated bypass ordinary hiding "+width+" role"+role,async({page})=>{

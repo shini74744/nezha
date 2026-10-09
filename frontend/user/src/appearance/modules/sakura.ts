@@ -1,6 +1,6 @@
 // @ts-nocheck
 // Migrated source for the built-in sakura feature; resources are owned by FeatureScope.
-export function sakura(scope, config) {
+export function sakura(scope, config, canvas: HTMLCanvasElement) {
 const window = scope.window; const document = scope.document;
 let stop: number | undefined;
 let staticx: boolean | undefined;
@@ -94,14 +94,13 @@ function getRandom(option) {
   return ret;
 }
 function startSakura() {
-  const canvas = scope.createElement('canvas');
   staticx = true;
   canvas.height = window.innerHeight;
   canvas.width = window.innerWidth;
   canvas.setAttribute('style', 'position: fixed;left: 0;top: 0;pointer-events: none;');
   canvas.setAttribute('id', 'canvas_sakura');
-  scope.append(document.getElementsByTagName('body')[0], canvas);
   const cxt = canvas.getContext('2d');
+  if (!cxt) return;
   var sakuraList = new SakuraList();
   for (let i = 0; i < 50; i++) {
     const randomX = getRandom('x');
@@ -127,23 +126,13 @@ function startSakura() {
   });
 }
 scope.listen(window, "resize", () => {
-  const canvas = document.getElementById("canvas_sakura");
   if (canvas) {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
   }
 });
 scope.listen(img, "load", () => {
-  startSakura();
+  if (!staticx) startSakura();
 });
-function stopp() {
-  if (staticx) {
-    const child = document.getElementById("canvas_sakura");
-    scope.detach(child.parentNode, child);
-    window.cancelAnimationFrame(stop);
-    staticx = false;
-  } else {
-    startSakura();
-  }
-}
+if (img.complete && img.naturalWidth) startSakura();
 }

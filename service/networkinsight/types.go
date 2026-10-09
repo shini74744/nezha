@@ -23,6 +23,7 @@ type Path struct {
 	Count  int     `json:"count"`
 }
 type Topology struct {
+	TestedAt   int64     `json:"tested_at,omitempty"`
 	Family     string    `json:"family"`
 	Prefix     string    `json:"prefix,omitempty"`
 	ObservedAt string    `json:"observed_at,omitempty"`
@@ -46,13 +47,16 @@ type ReturnSelection struct {
 }
 
 type Snapshot struct {
-	Retest      *ReturnSelection `json:"retest,omitempty"`
-	ScheduledAt int64            `json:"scheduled_at,omitempty"`
-	State       string           `json:"state"`
-	StartedAt   int64            `json:"started_at,omitempty"`
-	FinishedAt  int64            `json:"finished_at,omitempty"`
-	RetryAt     int64            `json:"retry_at,omitempty"`
-	Topologies  []Topology       `json:"topologies,omitempty"`
-	Results     []MediaResult    `json:"results,omitempty"`
-	Routes      []ReturnResult   `json:"routes,omitempty"`
+	AutoAttempt        int              `json:"auto_attempt,omitempty"`
+	AutoRetryAt        int64            `json:"auto_retry_at,omitempty"`
+	AutoFirstStartedAt int64            `json:"auto_first_started_at,omitempty"`
+	Retest             *ReturnSelection `json:"retest,omitempty"`
+	ScheduledAt        int64            `json:"scheduled_at,omitempty"`
+	State              string           `json:"state"`
+	StartedAt          int64            `json:"started_at,omitempty"`
+	FinishedAt         int64            `json:"finished_at,omitempty"`
+	RetryAt            int64            `json:"retry_at,omitempty"`
+	Topologies         []Topology       `json:"topologies,omitempty"`
+	Results            []MediaResult    `json:"results,omitempty"`
+	Routes             []ReturnResult   `json:"routes,omitempty"`
 }

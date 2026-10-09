@@ -313,7 +313,7 @@ for (const width of [320, 390, 1440])
             .getByRole("button", { name: "编辑服务器", exact: true })
         await edit.click()
         const dialog = page.getByRole("dialog")
-        for (const name of ["连通性", "BGP", "回程", "流媒体"])
+        for (const name of ["BGP", "回程", "流媒体"])
             await expect(dialog.getByRole("switch", { name, exact: true })).toBeChecked()
         const settings = dialog.locator("[data-network-feature-settings]")
         await settings.scrollIntoViewIfNeeded()
@@ -321,14 +321,16 @@ for (const width of [320, 390, 1440])
         await expect(page.getByText(helpText, { exact: true })).toHaveCount(0)
         for (const name of ["连通性", "BGP", "回程", "流媒体"]) {
             const help = settings.getByRole("button", { name: name + "说明", exact: true })
-            const toggle = settings.getByRole("switch", { name, exact: true })
+            const toggle = name === "连通性" ? settings.getByRole("radio",{name:"服务器＋本地",exact:true}) : settings.getByRole("switch", { name, exact: true })
             const helpBox = (await help.boundingBox())!
             const toggleBox = (await toggle.boundingBox())!
-            expect(helpBox.x + helpBox.width).toBeLessThanOrEqual(toggleBox.x)
-            expect(Math.abs(helpBox.y + helpBox.height / 2 - toggleBox.y - toggleBox.height / 2)).toBeLessThan(2)
+            if(width >= 640 && name !== "连通性") {
+                expect(helpBox.x + helpBox.width).toBeLessThanOrEqual(toggleBox.x)
+                expect(Math.abs(helpBox.y + helpBox.height / 2 - toggleBox.y - toggleBox.height / 2)).toBeLessThan(2)
+            }
             await help.click()
             const popover = page.locator("[data-setting-help]")
-            await expect(popover).toHaveText(helpText)
+            await expect(popover).toHaveText(name === "连通性" ? "服务器＋本地：保留服务器与浏览器检测；仅本地：关闭服务器检测，保留本地延迟；隐藏标签：关闭检测并隐藏标签。本地检测需点击后开始，预热 2 次、正式采样 10 次。" : helpText)
             await expect(popover).toBeVisible()
             const box = (await popover.boundingBox())!
             expect(box.x).toBeGreaterThanOrEqual(0)
@@ -358,6 +360,24 @@ for (const width of [320, 390, 1440])
         expect(updates[0].return_route_disabled).toBe(true)
         expect(updates[0].streaming_disabled).toBe(true)
         expect(updates[0].connectivity_disabled).not.toBe(true)
+        await edit.click()
+        await dialog.getByRole("radio",{name:"仅本地",exact:true}).check()
+        await dialog.locator('button[type="submit"]').click()
+        await expect.poll(()=>updates.length).toBe(2)
+        expect(updates[1].connectivity_disabled).toBe(true)
+        expect(updates[1].connectivity_local_only).toBe(true)
+        await edit.click()
+        await expect(dialog.getByRole("radio",{name:"仅本地",exact:true})).toBeChecked()
+        await dialog.getByRole("radio",{name:"隐藏标签",exact:true}).check()
+        await dialog.locator('button[type="submit"]').click()
+        await expect.poll(()=>updates.length).toBe(3)
+        expect(updates[2].connectivity_disabled).toBe(true)
+        expect(updates[2].connectivity_local_only).toBe(false)
+        await edit.click()
+        await dialog.getByRole("radio",{name:"服务器＋本地",exact:true}).check()
+        await dialog.locator('button[type="submit"]').click()
+        await expect.poll(()=>updates.length).toBe(4)
+        expect(updates[3].connectivity_disabled).toBe(false)
         await edit.click()
         await expect(dialog.getByRole("switch", { name: "BGP", exact: true })).not.toBeChecked()
         await expect(dialog.getByRole("switch", { name: "回程", exact: true })).not.toBeChecked()
@@ -1252,6 +1272,8 @@ test(`return map responsive isolated ${theme} ${light} ${width}`,async({page},in
  await dialog.getByRole("button",{name:"地图",exact:true}).click();
  await expect(dialog.locator("[data-return-map-canvas]")).toBeVisible();
  await expect(dialog.locator("[data-return-map-point]")).toHaveCount(3);
+ await expect(dialog.locator("[data-return-map-missing]")).toContainText("地址已隐藏 1 条");
+ await expect(dialog.locator("[data-return-map-missing]")).toContainText("未响应 1 条");
  await expect(dialog.locator("[data-return-map-edge]")).toHaveCount(2);
  await expect(dialog.getByRole("button",{name:"逐跳显示未响应",exact:true})).toHaveCount(0);
  await dialog.getByRole("button",{name:"第 4、5 跳",exact:true}).click();
@@ -1273,4 +1295,19 @@ test(`return map responsive isolated ${theme} ${light} ${width}`,async({page},in
  await dialog.getByRole("button",{name:"地图",exact:true}).click();
  await expect(dialog.getByText("暂无可用定位数据",{exact:true})).toBeVisible();
  expect(posts).toBe(0);expect(errors).toEqual([]);
+});
+for(const theme of ["default","doraemon"])for(const light of [false,true])for(const width of [320,1440])test(`BGP retry notice preserves times ${theme} ${light} ${width}`,async({page},info)=>{
+ await page.setViewportSize({width,height:950});const state=await setup(page,theme,light,false);
+ const now=Date.now(),first=now-900000,latest=now-300000;
+ await page.route("**/api/v1/server/7/bgp",route=>route.fulfill({json:{success:true,data:{server_id:7,online:true,can_run:false,can_view_ip:true,state:"complete",scheduled_at:now-3600000,started_at:latest-10000,finished_at:latest,auto_first_started_at:first,auto_attempt:2,auto_retry_at:now+300000,
+ topologies:[{...topology,tested_at:first+10000},{family:"IPv6",status:"unavailable",paths:[],total:0,tested_at:latest}],history:[]}}}));
+ await page.locator(".server-info-tab").getByRole("button",{name:"BGP",exact:true}).click();
+ const view=page.locator('[data-network-insight="bgp"]');
+ await expect(page.getByText(/后自动补测；排队或节点离线时顺延/)).toBeVisible();
+ await expect(page.getByText(/首次检测：/)).toBeVisible();
+ await page.getByRole("button",{name:"IPv6",exact:true}).click();
+ await expect(page.getByText("BGP 数据源暂时不可用，请稍后重试",{exact:true})).toBeVisible();
+ expect(state.posts).toHaveLength(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ await page.screenshot({path:info.outputPath("bgp-retry-notice.png")});
 });

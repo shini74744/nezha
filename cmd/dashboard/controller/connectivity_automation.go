@@ -132,57 +132,5 @@ func StartConnectivityAutomation() {
 				log.Printf("NEZHA>> connectivity persist failed: server=%d finished_at=%d error=%v", id, snapshot.FinishedAt, err)
 			}
 		})
-		go func() {
-			scheduler := connectivity.Scheduler{}
-			ticker := time.NewTicker(15 * time.Second)
-			defer ticker.Stop()
-			var cleaned time.Time
-			for now := range ticker.C {
-				store := connectivity.Store{DB: singleton.DB}
-				settingsMutationMu.Lock()
-				p, err := store.Policy()
-				connectivityAutoEnabled.Store(err == nil && p.Enabled)
-				settingsMutationMu.Unlock()
-				if err != nil {
-					continue
-				}
-				connectivityManager.SetRetention(time.Duration(p.RetentionDays) * 24 * time.Hour)
-				if now.Sub(cleaned) >= time.Minute {
-					if err = store.Prune(now, p); err != nil {
-						log.Printf("NEZHA>> connectivity prune failed: %v", err)
-					}
-					cleaned = now
-				}
-				if !p.Enabled {
-					continue
-				}
-				targets, err := configuredConnectivityTargets()
-				if err != nil || len(targets) == 0 {
-					continue
-				}
-				nodes := []connectivity.Candidate{}
-				singleton.ServerShared.Range(func(_ uint64, server *model.Server) bool {
-					if server != nil && !server.ConnectivityDisabled && rpc.ConnectivityOnline(server) {
-						nodes = append(nodes, connectivity.Candidate{Key: connectivityKey(server), ID: server.ID})
-					}
-					return true
-				})
-				err = scheduler.Tick(now, p, nodes, store.LastFull, func(node connectivity.Candidate) error {
-					server, ok := singleton.ServerShared.Get(node.ID)
-					if !ok || server.ConnectivityDisabled || connectivityKey(server) != node.Key || !rpc.ConnectivityOnline(server) {
-						return connectivity.ErrNotReady
-					}
-					current := connectivityCached(node.Key, targets)
-					if current.State == "running" || now.UnixMilli() < current.RetryAt {
-						return connectivity.ErrNotReady
-					}
-					_, err := connectivityManager.StartScheduled(node.Key, guardedConnectivityProbe(server, targets, true), targets, connectivity.ClockSlot(now, p.IntervalHours).UnixMilli())
-					return err
-				})
-				if err != nil {
-					log.Printf("NEZHA>> connectivity automatic run failed: %v", err)
-				}
-			}
-		}()
 	})
 }

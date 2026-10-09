@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
 import { geoJsonString } from "@/lib/geo-json-string";
 import type { ReturnHop } from "@/lib/network-insight-api";
-import { returnMapData, returnMapFrame } from "@/lib/return-route-map";
+import { returnMapData, returnMapFrame, returnUnlocatedReason } from "@/lib/return-route-map";
 import { cn } from "@/lib/utils";
 
 const world = JSON.parse(geoJsonString) as {
@@ -73,6 +73,26 @@ export default function ReturnRouteMap({ hops }: { hops: ReturnHop[] }) {
 					已定位 {data.located} / {data.total} 个跳点记录
 				</span>
 			</div>
+			{!!data.unlocated.length && (
+                <p className="rounded-lg bg-muted/30 px-3 py-2 text-xs leading-5 text-muted-foreground" data-return-map-missing>
+                    {data.unlocated.length} 条记录未绘制：{[...new Set(data.unlocated.map(returnUnlocatedReason))].map(reason => reason + " " + data.unlocated.filter(h => returnUnlocatedReason(h) === reason).length + " 条").join("；")}。不根据地址归属名称猜测坐标。
+                </p>
+            )}
+			{!!data.unlocated.length && (
+				<details className="rounded-lg bg-muted/30 px-3 py-2 text-xs">
+					<summary className="cursor-pointer">
+						为什么有些跳点没显示？（{data.unlocated.length} 条）
+					</summary>
+					<ul className="mt-2 space-y-1 text-muted-foreground">
+						{data.unlocated.map((h, i) => (
+							<li key={i}>
+								第 {h.ttl} 跳 ·{" "}
+								{returnUnlocatedReason(h)}
+							</li>
+						))}
+					</ul>
+				</details>
+			)}
 			{data.points.length ? (
 				<>
 					<div
@@ -205,25 +225,7 @@ export default function ReturnRouteMap({ hops }: { hops: ReturnHop[] }) {
 				IP 定位仅供参考，不代表真实机房或光缆路径。连线仅表示相邻 TTL
 				的观测顺序；缺失定位、未响应和多路径之间不推测连线。同位置的跳点合并显示。
 			</p>
-			{!!data.unlocated.length && (
-				<details className="rounded-lg bg-muted/30 px-3 py-2 text-xs">
-					<summary className="cursor-pointer">
-						未绘制记录（{data.unlocated.length}）
-					</summary>
-					<ul className="mt-2 space-y-1 text-muted-foreground">
-						{data.unlocated.map((h, i) => (
-							<li key={i}>
-								第 {h.ttl} 跳 ·{" "}
-								{!h.samples
-									? "未响应"
-									: h.ip_hidden
-										? "地址已隐藏"
-										: "缺少有效定位"}
-							</li>
-						))}
-					</ul>
-				</details>
-			)}
+
 		</div>
 	);
 }

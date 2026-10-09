@@ -559,3 +559,20 @@ describe("visitor local latency", () => {
 		expect(progress).toHaveClass("sm:col-start-2", "sm:row-start-1");
 	});
 });
+
+it.each([true,false])("local-only hides server controls and stale samples while remaining usable offline=%s",async(online)=>{
+ const stale=data({online,state:"complete",can_run:true,results:[{...data().results[0],status:"ok",delay_ms:987,samples:[{status:"ok",delay_ms:987}]}]});
+ api.fetchConnectivity.mockResolvedValue(stale);
+ const previous=globalThis.fetch,fetcher=vi.fn().mockResolvedValue({type:"opaque",status:0});globalThis.fetch=fetcher;
+ try {
+  const view=render(<QueryClientProvider client={createTestQueryClient()}><ServerConnectivity serverId={7} localOnly/></QueryClientProvider>);
+  await screen.findByText("Google");expect(screen.queryByText("987")).not.toBeInTheDocument();
+  expect(screen.queryByRole("button",{name:"connectivity.serverLatency"})).not.toBeInTheDocument();
+  expect(view.container.querySelector("[data-connectivity-controls]")).toBeNull();
+  expect(fetcher).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button",{name:/Google ·/}));
+  await screen.findByText("connectivity.localFinished");expect(fetcher).toHaveBeenCalledTimes(12);
+  expect(view.container.querySelectorAll("[data-connectivity-sample]")).toHaveLength(10);
+  expect(api.startConnectivity).not.toHaveBeenCalled();expect(stale.results[0].delay_ms).toBe(987);
+ }finally{globalThis.fetch=previous;}
+});

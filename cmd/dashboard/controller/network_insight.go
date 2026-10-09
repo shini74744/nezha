@@ -13,7 +13,6 @@ import (
 	"github.com/nezhahq/nezha/service/rpc"
 	"github.com/nezhahq/nezha/service/singleton"
 	"log"
-	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -37,6 +36,7 @@ var insightJobs = struct {
 	values map[string]networkinsight.Snapshot
 }{values: map[string]networkinsight.Snapshot{}}
 var insightSlots = make(chan struct{}, 3)
+var queryBGP = networkinsight.QueryBGP
 
 func insightAutomationEnabled(kind string) bool {
 	if kind == "bgp" {
@@ -133,12 +133,24 @@ func readInsight(c *gin.Context, kind string) (*insightResponse, error) {
 	insightJobs.Unlock()
 	out := &insightResponse{Snapshot: snap, ServerID: s.ID, CanRun: canRunConnectivity(c, s), CanViewIP: callerIsAdmin(c), Online: rpc.ConnectivityOnline(s)}
 	out.AvailableFamilies = insightAvailableFamilies(ips, snap)
+	if kind == "bgp" {
+		out.AutoRetryAt = 0
+		if p.Enabled && snap.ScheduledAt == insightClockSlot(kind, time.Now(), p.IntervalHours).UnixMilli() {
+			out.AutoRetryAt = bgpNextRetry(snap)
+		}
+	}
 	if kind == "return-route" {
 		out.QueuePosition = returnRoutes.position(identity + kind)
 	}
 	if kind == "bgp" || kind == "return-route" {
 		var rows []networkinsight.Record
-		if err = singleton.DB.Where("identity = ? AND kind = ? AND finished_at >= ?", identity, kind, cutoff).Order("finished_at DESC").Limit(12).Find(&rows).Error; err != nil {
+		historyQuery := singleton.DB.Where("identity = ? AND kind = ? AND finished_at >= ?", identity, kind, cutoff)
+		if kind == "bgp" {
+			// Keep every attempt in storage, but show one latest snapshot per automatic slot.
+			latestIDs := singleton.DB.Model(&networkinsight.Record{}).Select("MAX(id)").Where("identity = ? AND kind = ? AND finished_at >= ?", identity, kind, cutoff).Group("CASE WHEN scheduled_at > 0 THEN scheduled_at ELSE -id END").Order("MAX(finished_at) DESC").Limit(12)
+			historyQuery = singleton.DB.Where("id IN (?)", latestIDs)
+		}
+		if err = historyQuery.Order("finished_at DESC, id DESC").Limit(12).Find(&rows).Error; err != nil {
 			return nil, err
 		}
 		for _, row := range rows {
@@ -307,21 +319,31 @@ func launchInsightSelected(s *model.Server, kind string, automatic bool, selecti
 		insightJobs.Unlock()
 		return errors.New("检测已在执行")
 	}
+	var retryBase *networkinsight.Snapshot
 	if automatic {
 		var scheduled networkinsight.Record
-		err := singleton.DB.Select("scheduled_at").Where("identity = ? AND kind = ? AND scheduled_at > 0", identity, kind).Order("scheduled_at DESC").Limit(1).Find(&scheduled).Error
+		err := singleton.DB.Where("identity = ? AND kind = ? AND scheduled_at > 0", identity, kind).Order("scheduled_at DESC, finished_at DESC").Limit(1).Find(&scheduled).Error
 		if err != nil {
 			insightJobs.Unlock()
 			return err
 		}
-		if scheduled.ScheduledAt >= insightClockSlot(kind, time.UnixMilli(now), p.IntervalHours).UnixMilli() {
-			insightJobs.Unlock()
-			return connectivity.ErrNotReady
+		slot := insightClockSlot(kind, time.UnixMilli(now), p.IntervalHours).UnixMilli()
+		if scheduled.ScheduledAt >= slot {
+			if kind != "bgp" || !bgpRetryReady(scheduled, slot, now) {
+				insightJobs.Unlock()
+				return connectivity.ErrNotReady
+			}
+			var previous networkinsight.Snapshot
+			if err = json.Unmarshal([]byte(scheduled.Payload), &previous); err != nil {
+				insightJobs.Unlock()
+				return err
+			}
+			retryBase = &previous
 		}
 	}
 	// Return-route automation is deduplicated by its scheduled slot, not by a
 	// recent manual result. Manual checks must not push the clock schedule back.
-	if latest.RetryAt > now && !(automatic && kind == "return-route") && (automatic || len(bypassCooldown) == 0 || !bypassCooldown[0]) {
+	if latest.RetryAt > now && !(automatic && (kind == "return-route" || (kind == "bgp" && retryBase != nil))) && (automatic || len(bypassCooldown) == 0 || !bypassCooldown[0]) {
 		insightJobs.Unlock()
 		return errors.New("请稍后重试")
 	}
@@ -340,6 +362,20 @@ func launchInsightSelected(s *model.Server, kind string, automatic bool, selecti
 		}
 	}
 	snap := latest
+	snap.AutoRetryAt = 0
+	snap.AutoAttempt = 0
+	snap.AutoFirstStartedAt = 0
+	if kind == "bgp" && automatic {
+		snap.AutoAttempt = 1
+		snap.AutoFirstStartedAt = now
+		if retryBase != nil {
+			snap.AutoAttempt = max(1, retryBase.AutoAttempt) + 1
+			snap.AutoFirstStartedAt = retryBase.AutoFirstStartedAt
+			if snap.AutoFirstStartedAt == 0 {
+				snap.AutoFirstStartedAt = retryBase.StartedAt
+			}
+		}
+	}
 	snap.Retest = selection
 	snap.State = "running"
 	if ticket != nil && !ticket.isReady() {
@@ -418,7 +454,12 @@ func launchInsightSelected(s *model.Server, kind string, automatic bool, selecti
 				wg.Add(1)
 				go func(i int, ip, family string) {
 					defer wg.Done()
-					snap.Topologies[i] = networkinsight.QueryBGP(ctx, ip, family)
+					if retained, ok := bgpRetainedTopology(retryBase, family); ok {
+						snap.Topologies[i] = retained
+					} else {
+						snap.Topologies[i] = queryBGP(ctx, ip, family)
+						snap.Topologies[i].TestedAt = time.Now().UnixMilli()
+					}
 				}(i, item.ip, item.family)
 			}
 			wg.Wait()
@@ -498,6 +539,9 @@ func launchInsightSelected(s *model.Server, kind string, automatic bool, selecti
 		}
 		snap.State = "complete"
 		snap.FinishedAt = time.Now().UnixMilli()
+		if kind == "bgp" && automatic && bgpHasUnavailable(snap) {
+			snap.AutoRetryAt = snap.FinishedAt + bgpRetryDelay(snap.AutoAttempt).Milliseconds()
+		}
 		raw, e := json.Marshal(snap)
 		if e != nil {
 			return
@@ -537,80 +581,10 @@ func StartNetworkInsightAutomation() {
 		go func() {
 			ticker := time.NewTicker(15 * time.Second)
 			defer ticker.Stop()
-			var cleaned time.Time
+			scheduler := cardScheduler{}
 			for now := range ticker.C {
-				policies := map[string]connectivity.Policy{}
-				for _, kind := range []string{"bgp", "return-route", "streaming"} {
-					p, err := insightPolicy(kind)
-					if err != nil {
-						continue
-					}
-					policies[kind] = p
-					if kind == "bgp" {
-						bgpAutoEnabled.Store(p.Enabled)
-					}
-					if kind == "return-route" {
-						returnRouteAutoEnabled.Store(p.Enabled)
-					}
-					if now.Sub(cleaned) >= time.Minute {
-						if err := pruneInsight(kind, p, now); err != nil {
-							log.Printf("NEZHA>> network insight prune failed: %v", err)
-						}
-					}
-				}
-				if now.Sub(cleaned) >= time.Minute {
-					cleaned = now
-				}
-				type candidate struct {
-					s    *model.Server
-					kind string
-					last int64
-				}
-				candidates := []candidate{}
-				singleton.ServerShared.Range(func(_ uint64, s *model.Server) bool {
-					if !rpc.ConnectivityOnline(s) {
-						return true
-					}
-					key, _, e := insightIdentity(s)
-					if e != nil {
-						return true
-					}
-					for _, kind := range []string{"bgp", "return-route", "streaming"} {
-						p, ok := policies[kind]
-						if !ok || !p.Enabled || !insightEnabled(s, kind) {
-							continue
-						}
-						var row networkinsight.Record
-						if singleton.DB.Select("finished_at", "scheduled_at").Where("identity = ? AND kind = ? AND scheduled_at > 0", key, kind).Order("scheduled_at DESC").Limit(1).Find(&row).Error != nil {
-							continue
-						}
-						last := row.ScheduledAt
-						if last == 0 {
-							last = row.FinishedAt
-						}
-						if last == 0 || last < insightClockSlot(kind, now, p.IntervalHours).UnixMilli() {
-							candidates = append(candidates, candidate{s, kind, row.FinishedAt})
-						}
-					}
-					return true
-				})
-				sort.Slice(candidates, func(i, j int) bool {
-					if candidates[i].last != candidates[j].last {
-						return candidates[i].last < candidates[j].last
-					}
-					if candidates[i].s.ID != candidates[j].s.ID {
-						return candidates[i].s.ID < candidates[j].s.ID
-					}
-					return candidates[i].kind < candidates[j].kind
-				})
-				dispatched := 0
-				for _, v := range candidates {
-					if launchInsight(v.s, v.kind, true) == nil {
-						dispatched++
-						if dispatched >= 2 {
-							break
-						}
-					}
+				if err := scheduler.tick(now); err != nil {
+					log.Printf("NEZHA>> card scheduler failed: %v", err)
 				}
 			}
 		}()
