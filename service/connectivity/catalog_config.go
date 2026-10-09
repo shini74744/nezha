@@ -119,6 +119,14 @@ func ParseCatalog(raw string) ([]CatalogItem, error) {
 	if err := json.Unmarshal([]byte(raw), &items); err != nil {
 		return nil, err
 	}
+	// Upgrade old shipped addresses, preserving customized URLs, order and switches.
+	for i := range items {
+		if previous, ok := legacyEndpoints[items[i].ID]; ok && items[i].URL == previous {
+			if current, exists := FindTarget(items[i].ID); exists {
+				items[i].URL = current.URL
+			}
+		}
+	}
 	if err := ValidateCatalog(items); err != nil {
 		return nil, err
 	}

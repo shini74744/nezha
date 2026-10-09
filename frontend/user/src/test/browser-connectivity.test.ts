@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { browserProbeURL, runBrowserConnectivity, BROWSER_PROBE_TIMEOUT_MS, BROWSER_PROBE_WORKERS, BROWSER_PROBE_ROUNDS } from "@/lib/browser-connectivity";
+import { browserProbeURL, runBrowserConnectivity, BROWSER_PROBE_TIMEOUT_MS, BROWSER_PROBE_WORKERS, BROWSER_PROBE_ROUNDS, BROWSER_PROBE_WARMUPS } from "@/lib/browser-connectivity";
 import type { ConnectivityResult } from "@/lib/connectivity-api";
 const targets = (count = 1): ConnectivityResult[] => Array.from({ length: count }, (_, i) => ({
 	id: "site-" + i, name: "Site " + i, group: "global", host: "www.example.com",
@@ -9,7 +9,7 @@ afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("safe browser destination", () => {
 	it.each(["example.com", "WWW.Example.COM", "xn--bcher-kva.de", "1.1.1.1"])("accepts public catalog host %s", host => {
-		expect(browserProbeURL(host, "https://panel.example.org/")).toBe("https://" + host.toLowerCase() + "/");
+		expect(browserProbeURL(host, "https://panel.example.org/")).toBe("https://" + host.toLowerCase() + "/favicon.ico");
 	});
 	it.each(["", "localhost", "127.0.0.1", "10.0.0.1", "[::1]", "2130706433", "0x7f000001",
 		"www.example.com:443", "www.example.com:80", "a.local", "foo.internal", "foo.lan", "x.home", "x.test",
@@ -30,8 +30,8 @@ describe("ephemeral browser probes", () => {
 		expect(result.state).toBe("complete");
 		expect(result.results.every(r => r.status === "ok" && r.samples.length === BROWSER_PROBE_ROUNDS && r.delay_ms! >= 0)).toBe(true);
 		expect(JSON.stringify(original)).toBe(before);
-		expect(fetcher).toHaveBeenCalledTimes(2 * BROWSER_PROBE_ROUNDS);
-		expect(fetcher.mock.calls[0][0]).toBe("https://www.example.com/");
+		expect(fetcher).toHaveBeenCalledTimes(2 * (BROWSER_PROBE_ROUNDS + BROWSER_PROBE_WARMUPS));
+		expect(fetcher.mock.calls[0][0]).toBe("https://www.example.com/favicon.ico");
 		expect(fetcher.mock.calls[0][1]).toMatchObject({
 			method: "HEAD", mode: "no-cors", credentials: "omit", cache: "no-store",
 			referrerPolicy: "no-referrer", redirect: "follow", signal: expect.any(AbortSignal),
@@ -45,7 +45,7 @@ describe("ephemeral browser probes", () => {
 		vi.stubGlobal("fetch", fetcher);
 		const result = await runBrowserConnectivity(targets(), new AbortController().signal, () => {});
 		expect(result.results[0].status).toBe("ok");
-		expect(fetcher).toHaveBeenCalledTimes(BROWSER_PROBE_ROUNDS);
+		expect(fetcher).toHaveBeenCalledTimes(BROWSER_PROBE_ROUNDS + BROWSER_PROBE_WARMUPS);
 	});
 	it("does not label a browser/CORS/CORP rejection as a node outage", async () => {
 		vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
@@ -68,7 +68,7 @@ describe("ephemeral browser probes", () => {
 		vi.stubGlobal("fetch", fetcher);
 		const promise = runBrowserConnectivity(targets(13), new AbortController().signal, () => {});
 		expect(fetcher).toHaveBeenCalledTimes(BROWSER_PROBE_WORKERS);
-		await vi.advanceTimersByTimeAsync(BROWSER_PROBE_TIMEOUT_MS * 3 * BROWSER_PROBE_ROUNDS);
+		await vi.advanceTimersByTimeAsync(BROWSER_PROBE_TIMEOUT_MS * 3 * (BROWSER_PROBE_ROUNDS + BROWSER_PROBE_WARMUPS));
 		const result = await promise;
 		expect(peak).toBe(BROWSER_PROBE_WORKERS);
 		expect(active).toBe(0);
@@ -99,12 +99,12 @@ describe("ephemeral browser probes", () => {
 		expect(fetcher).not.toHaveBeenCalled();
 		const result = await runBrowserConnectivity(targets(200), new AbortController().signal, () => {});
 		expect(result.results).toHaveLength(120);
-		expect(fetcher).toHaveBeenCalledTimes(120 * BROWSER_PROBE_ROUNDS);
+		expect(fetcher).toHaveBeenCalledTimes(120 * (BROWSER_PROBE_ROUNDS + BROWSER_PROBE_WARMUPS));
 	});
 });
 describe("five-sample local summaries", () => {
  it("publishes each dot and uses the average of successful timings, including zero", async () => {
-  const times = [0, 10, 0, 100, 0, 0, 0, 30, 0, 20];
+  const times = [0, 900, 0, 700, 0, 10, 0, 100, 0, 0, 0, 30, 0, 20];
   vi.spyOn(performance, "now").mockImplementation(() => times.shift() ?? 0);
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue({type:"opaque"}));
   const seen: number[] = [];
@@ -117,6 +117,7 @@ describe("five-sample local summaries", () => {
  });
  it("retains successful latency while failed attempts keep their own status", async () => {
   const fetcher=vi.fn().mockResolvedValue({type:"opaque"})
+   .mockResolvedValueOnce({type:"opaque"}).mockResolvedValueOnce({type:"opaque"})
    .mockRejectedValueOnce(new TypeError("Failed to fetch"))
    .mockResolvedValueOnce({type:"opaque"})
    .mockRejectedValueOnce(new TypeError("Failed to fetch"));
@@ -131,7 +132,7 @@ describe("five-sample local summaries", () => {
   const fetcher=vi.fn().mockResolvedValue({type:"opaque"});vi.stubGlobal("fetch",fetcher);
   const controller=new AbortController();
   const run=await runBrowserConnectivity(targets(),controller.signal,r=>{if(r.results[0].samples.length===2)controller.abort()});
-  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(fetcher).toHaveBeenCalledTimes(BROWSER_PROBE_WARMUPS + 2);
   expect(run.results[0].samples).toHaveLength(2);
   expect(run.results[0].status).toBe("cancelled");
   expect(run.cancelled).toBe(true);

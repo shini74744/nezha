@@ -68,14 +68,14 @@ describe("browser single-target scheduling", () => {
 			result.current.retry("0");
 			result.current.retry("0");
 		});
-		await waitFor(() => expect(net.calls).toHaveLength(12));
-		expect(net.calls[10].signal.aborted).toBe(true);
+		await waitFor(() => expect(net.calls).toHaveLength(16));
+		expect(net.calls[14].signal.aborted).toBe(true);
 		expect(result.current.run!.results[1]).toBe(other);
 		expect(result.current.run!.fullBatch).toBe(false);
 		await finishAll(net);
 		await waitFor(() => expect(result.current.run?.state).toBe("complete"));
 		act(() => result.current.retry("0"));
-		expect(net.calls).toHaveLength(17);
+		expect(net.calls).toHaveLength(23);
 		await finishAll(net);
 		await waitFor(() => expect(result.current.run?.state).toBe("complete"));
 		expect(input[0].delay_ms).toBe(42);
@@ -93,8 +93,8 @@ describe("browser single-target scheduling", () => {
 		});
 		await finishAll(net);
 		await waitFor(() => expect(result.current.run?.state).toBe("complete"));
-		expect(net.calls).toHaveLength(41);
-		expect(net.calls.findIndex(call => call.url === "https://site7.example.com/")).toBeLessThan(net.calls.findIndex(call => call.url === "https://site6.example.com/"));
+		expect(net.calls).toHaveLength(57);
+		expect(net.calls.findIndex(call => call.url === "https://site7.example.com/favicon.ico")).toBeLessThan(net.calls.findIndex(call => call.url === "https://site6.example.com/favicon.ico"));
 		expect(result.current.run!.results.every(row => row.samples.length === 5)).toBe(true);
 		expect(net.max).toBeLessThanOrEqual(6);
 		expect(
@@ -124,13 +124,13 @@ describe("browser single-target scheduling", () => {
 		).toBe(true);
 		act(() => result.current.retry("8"));
 		unmount();
-		expect(net.calls[11].signal.aborted).toBe(true);
+		expect(net.calls[net.calls.length - 1].signal.aborted).toBe(true);
 	});
 });
 it("publishes intermediate samples and rejects late updates from replaced attempts",async()=>{
  const net=network(),{result}=renderHook(()=>useBrowserConnectivity(7));
  act(()=>result.current.start(targets(1)));
- await act(async()=>net.calls[0].done());
+ for (let i=0; i<3; i++) await act(async()=>net.calls[i].done());
  await waitFor(()=>expect(result.current.run!.results[0].samples).toHaveLength(1));
  expect(result.current.run!.state).toBe("running");
  act(()=>result.current.retry("0"));
@@ -144,10 +144,10 @@ it("publishes intermediate samples and rejects late updates from replaced attemp
 it("preserves finished dots when stopped during later samples",async()=>{
  const net=network(),{result}=renderHook(()=>useBrowserConnectivity(7));
  act(()=>result.current.start(targets(1)));
- await act(async()=>net.calls[0].done());
+ for (let i=0; i<3; i++) await act(async()=>net.calls[i].done());
  await waitFor(()=>expect(result.current.run!.results[0].samples).toHaveLength(1));
  act(()=>result.current.stop());
  expect(result.current.run!.results[0].samples).toHaveLength(1);
  expect(result.current.run!.cancelled).toBe(true);
- expect(net.calls).toHaveLength(2);
+ expect(net.calls).toHaveLength(4);
 });

@@ -15,13 +15,13 @@ import (
 
 func setupInsight(t *testing.T) {
 	setupServerGroupVisibilityFixture(t)
-	require.NoError(t, singleton.DB.AutoMigrate(&model.ServerIPHistory{}, &networkinsight.Record{}, &networkinsight.BGPPolicy{}, &connectivity.Policy{}))
+	require.NoError(t, singleton.DB.AutoMigrate(&model.ServerIPHistory{}, &networkinsight.Record{}, &networkinsight.BGPPolicy{}, &networkinsight.ReturnPolicy{}, &connectivity.Policy{}))
 }
 func TestInsightReadOnlyVisibilityPermissionAndDisabled(t *testing.T) {
 	setupInsight(t)
 	owner := &model.User{Common: model.Common{ID: 1}, Role: model.RoleMember}
 	other := &model.User{Common: model.Common{ID: 200}, Role: model.RoleMember}
-	for _, kind := range []string{"bgp", "streaming"} {
+	for _, kind := range []string{"bgp", "return-route", "streaming"} {
 		for _, u := range []*model.User{nil, owner, other} {
 			c := connectivityContext("1", u)
 			got, e := readInsight(c, kind)
@@ -47,7 +47,8 @@ func TestInsightReadOnlyVisibilityPermissionAndDisabled(t *testing.T) {
 	server, _ := singleton.ServerShared.Get(1)
 	server.BGPDisabled = true
 	server.StreamingDisabled = true
-	for _, kind := range []string{"bgp", "streaming"} {
+	server.ReturnRouteDisabled = true
+	for _, kind := range []string{"bgp", "return-route", "streaming"} {
 		_, e := readInsight(connectivityContext("1", owner), kind)
 		require.Error(t, e)
 		_, e = startInsight(connectivityContext("1", owner), kind)
@@ -93,7 +94,7 @@ func TestInsightPATScopeWhitelistQueryAndIndependentSwitches(t *testing.T) {
 	token := &model.APIToken{}
 	token.SetServerIDs([]uint64{1})
 	token.SetScopes([]string{model.ScopeServerRead})
-	for _, kind := range []string{"bgp", "streaming"} {
+	for _, kind := range []string{"bgp", "return-route", "streaming"} {
 		c := connectivityContext("1", admin)
 		c.Set(model.CtxKeyAPIToken, token)
 		c.Set(apiTokenCtxKey, token)
@@ -184,7 +185,7 @@ func TestInsightPrefixIsAdminOnlyForLatestHistoryAndRunning(t *testing.T) {
 func TestInsightPoliciesHaveIndependentRetention(t *testing.T) {
 	setupInsight(t)
 	now := time.Now()
-	for _, kind := range []string{"bgp", "streaming"} {
+	for _, kind := range []string{"bgp", "return-route", "streaming"} {
 		require.NoError(t, singleton.DB.Create(&networkinsight.Record{Identity: kind, Kind: kind, FinishedAt: now.Add(-48 * time.Hour).UnixMilli(), Payload: "{}"}).Error)
 	}
 	require.NoError(t, pruneInsight("bgp", connectivity.Policy{RetentionDays: 1}, now))
@@ -236,7 +237,7 @@ func TestInsightAutomaticSlotDeduplicatesAfterManualRecordAndRestart(t *testing.
 	require.NoError(t, singleton.DB.Create(&model.ServerIPHistory{ServerUUID: server.UUID, CurrentIP: model.IP{IPv4Addr: "1.1.1.1"}}).Error)
 	identity, _, err := insightIdentity(server)
 	require.NoError(t, err)
-	for _, kind := range []string{"bgp", "streaming"} {
+	for _, kind := range []string{"bgp", "return-route", "streaming"} {
 		p, err := insightPolicy(kind)
 		require.NoError(t, err)
 		slot := connectivity.ClockSlot(time.Now(), p.IntervalHours).UnixMilli()

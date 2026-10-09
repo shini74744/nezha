@@ -1,3 +1,4 @@
+import ServerReturnRoute from "@/components/ServerReturnRoute";
 import { Suspense, useState, useEffect, useMemo, type ReactNode } from "react";
 import { DiskIORates, DiskModeToggle } from "@/components/DiskCardHeader";
 import { PreloadedServerNetworkInsight as ServerNetworkInsight } from "@/lib/detail-modules";
@@ -50,7 +51,7 @@ export function OfflineServerDetail({server,now,initialTab="Detail",onTabIntent}
  const {data:setting}=useQuery({queryKey:["setting"],queryFn:fetchSetting,refetchOnWindowFocus:true,refetchInterval:30000});
  const combinedNetwork=setting?.data?.config?.show_network_in_detail===true;
  useEffect(()=>{if(combinedNetwork&&selectedTab==="Network")setTab("Detail")},[combinedNetwork,selectedTab]);
- const tabs=useMemo(()=>["Detail",...(!combinedNetwork?["Network"]:[]),...(!server.connectivity_disabled?["Connectivity"]:[]),...(!server.bgp_disabled?["BGP"]:[]),...(!server.streaming_disabled?["Streaming"]:[])],[combinedNetwork,server.connectivity_disabled,server.bgp_disabled,server.streaming_disabled]);
+ const tabs=useMemo(()=>["Detail",...(!combinedNetwork?["Network"]:[]),...(!server.connectivity_disabled?["Connectivity"]:[]),...(!server.bgp_disabled?["BGP"]:[]),...(!server.return_route_disabled?["ReturnRoute"]:[]),...(!server.streaming_disabled?["Streaming"]:[])],[combinedNetwork,server.connectivity_disabled,server.bgp_disabled,server.return_route_disabled,server.streaming_disabled]);
  const tab=tabs.includes(selectedTab)?selectedTab:"Detail";
  const {viewportRef,preserveScroll}=useStableDetailViewport(server.id,tab);
  const selectTab=(next:string)=>{if(next===tab)return;preserveScroll();setTab(next)};
@@ -91,6 +92,7 @@ export function OfflineServerDetail({server,now,initialTab="Detail",onTabIntent}
     </div>
    </section>:null}
   {(tab==="BGP"||tab==="Streaming")&&<Suspense fallback={<p role="status">正在加载…</p>}><ServerNetworkInsight key={server.id+tab} serverId={server.id} kind={tab==="BGP"?"bgp":"streaming"}/></Suspense>}
+  {tab==="ReturnRoute"&&<ServerReturnRoute key={server.id} serverId={server.id}/>}
   {tab==="Connectivity" && <ServerConnectivity key={server.id} serverId={server.id} countryCode={server.country_code || saved?.country_code}/>}
   </DetailPanel>}
   {(tab==="Network"||(tab==="Detail"&&combinedNetwork)) && <DetailPanel key={server.id+":network"}><ServerNetworkSection server_id={server.id} standalone={tab==="Network"}/></DetailPanel>}

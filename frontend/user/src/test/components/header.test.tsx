@@ -1,7 +1,7 @@
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { AppearanceProvider } from "@/appearance/context";
 import { defaults } from "@/appearance/config";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
@@ -124,6 +124,17 @@ describe("Header", () => {
 		headerMocks.fetchSetting.mockResolvedValue(settingResponse());
 		headerMocks.fetchLoginUser.mockRejectedValue(new Error("anonymous"));
 	});
+
+ it("keeps a local logo fallback when an external image fails", async () => {
+  Object.assign(window,{CustomLogo:"https://example.invalid/logo.webp"});
+  renderHeader();
+  const logo=screen.getByRole("img",{name:"apple-touch-icon"});
+  expect(logo).toHaveAttribute("src","https://example.invalid/logo.webp");
+  fireEvent.error(logo);
+  expect(logo).toHaveAttribute("src","/apple-touch-icon.png");
+  fireEvent.error(logo);
+  expect(logo).toHaveAttribute("src","/apple-touch-icon.png");
+ });
 
  it.each(["hidden","default","master-off","feature-off","search-only"])("does not flash controls while loading %s settings", async (mode) => {
   let resolve!: (value:ReturnType<typeof settingResponse>)=>void;

@@ -13,6 +13,9 @@ import (
 // ProbeTimeout bounds the dashboard wait for a single Agent attempt.
 const ProbeTimeout = 3 * time.Second
 
+// Warmup attempts use the same bounded queue, but never become displayed samples.
+const WarmupRounds = 2
+
 type Target struct {
 	ID    string `json:"id"`
 	Name  string `json:"name"`
@@ -81,7 +84,7 @@ var ErrBusy = errors.New("connectivity_busy")
 func NewManager() *Manager {
 	return &Manager{entries: map[string]*entry{}, now: time.Now, maxActive: 4,
 		maxEntries: 512, ttl: 24 * time.Hour, cooldown: time.Minute, rounds: 3,
-		workers: 12, timeout: 2 * time.Minute}
+		workers: 12, timeout: 3 * time.Minute}
 }
 func empty(rounds int, selected ...[]Target) Snapshot {
 	targets := selectedTargets(selected)
@@ -286,6 +289,7 @@ func (m *Manager) run(key string, e *entry, probe Probe, targets []Target, queue
 			}
 		}()
 	}
+	warmed := make([]int, len(targets))
 	active := 0
 	deadline := ctx.Done()
 	for len(queue) > 0 || active > 0 {
@@ -302,6 +306,21 @@ func (m *Manager) run(key string, e *entry, probe Probe, targets []Target, queue
 			active--
 			m.mu.Lock()
 			r := &e.snapshot.Results[done.index]
+			if warmed[done.index] < WarmupRounds {
+				warmed[done.index]++
+				if ctx.Err() != nil || stopSampling(done.sample.Status) {
+					r.Phase, r.Status = "complete", done.sample.Status
+					if ctx.Err() != nil {
+						r.Status = "batch_timeout"
+					}
+					r.CheckedAt = m.now().UnixMilli()
+				} else {
+					r.Phase = "queued"
+					queue = append(queue, done.index)
+				}
+				m.mu.Unlock()
+				continue
+			}
 			r.Samples = append(r.Samples, done.sample)
 			r.CheckedAt = m.now().UnixMilli()
 			summarize(r) // Surface partial responses immediately, not after all rounds.

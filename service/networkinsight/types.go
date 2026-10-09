@@ -40,12 +40,19 @@ type MediaResult struct {
 	Status string `json:"status"`
 	Region string `json:"region,omitempty"`
 }
+type ReturnSelection struct {
+	ID     string `json:"id"`
+	Family string `json:"family"`
+}
+
 type Snapshot struct {
-	ScheduledAt int64         `json:"scheduled_at,omitempty"`
-	State       string        `json:"state"`
-	StartedAt   int64         `json:"started_at,omitempty"`
-	FinishedAt  int64         `json:"finished_at,omitempty"`
-	RetryAt     int64         `json:"retry_at,omitempty"`
-	Topologies  []Topology    `json:"topologies,omitempty"`
-	Results     []MediaResult `json:"results,omitempty"`
+	Retest      *ReturnSelection `json:"retest,omitempty"`
+	ScheduledAt int64            `json:"scheduled_at,omitempty"`
+	State       string           `json:"state"`
+	StartedAt   int64            `json:"started_at,omitempty"`
+	FinishedAt  int64            `json:"finished_at,omitempty"`
+	RetryAt     int64            `json:"retry_at,omitempty"`
+	Topologies  []Topology       `json:"topologies,omitempty"`
+	Results     []MediaResult    `json:"results,omitempty"`
+	Routes      []ReturnResult   `json:"routes,omitempty"`
 }

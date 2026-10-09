@@ -103,6 +103,7 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	optionalAuth.GET("/server/:id/metrics", restScopeMiddleware(model.ScopeServerRead), commonHandler(getServerMetrics))
 	optionalAuth.GET("/server/:id/last-report", restScopeMiddleware(model.ScopeServerRead), commonHandler(getServerLastReport))
 	optionalAuth.GET("/server/:id/bgp", restScopeMiddleware(model.ScopeServerRead), csrfMiddleware(), commonHandler(getBGP))
+	optionalAuth.GET("/server/:id/return-route", restScopeMiddleware(model.ScopeServerRead), csrfMiddleware(), commonHandler(getReturnRoute))
 	optionalAuth.GET("/server/:id/streaming", restScopeMiddleware(model.ScopeServerRead), csrfMiddleware(), commonHandler(getStreaming))
 	optionalAuth.GET("/server/:id/connectivity", restScopeMiddleware(model.ScopeServerRead), csrfMiddleware(), commonHandler(getConnectivity))
 
@@ -111,6 +112,8 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	// cookie-JWT POST/PATCH/PUT/DELETE, which is exactly the H6 surface.
 	auth := api.Group("", authMw, csrfMiddleware())
 	auth.POST("/server/:id/bgp", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startBGP))
+	auth.POST("/server/:id/return-route", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startReturnRoute))
+	auth.POST("/server/:id/return-route/:target/:family", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startReturnRouteTarget))
 	auth.POST("/server/:id/streaming", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startStreaming))
 	auth.POST("/server/:id/connectivity/:target", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startConnectivityTarget))
 	auth.POST("/server/:id/connectivity", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startConnectivity))
@@ -233,6 +236,8 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	auth.PATCH("/setting/dashboard-appearance", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateDashboardAppearance))
 	auth.GET("/setting/display", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getDisplaySettings))
 	auth.PATCH("/setting/display", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateDisplaySettings))
+	auth.GET("/setting/return-route", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getReturnRouteSettings))
+	auth.PUT("/setting/return-route", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateReturnRouteSettings))
 	auth.GET("/setting/bgp/automation", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getBGPAutomation))
 	auth.PUT("/setting/bgp/automation", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateBGPAutomation))
 	auth.GET("/setting/connectivity/automation", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getConnectivityAutomation))

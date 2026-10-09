@@ -33,6 +33,15 @@ live2d, analytics。
 live-custom-code.snapshot.json、配置备份和 smoke 测试数据库不应提交到公共仓库。
 生产升级前先备份 app、完整 data 和 systemd 服务文件，校验 ID/UUID 及其他配置未改变。
 
+## 背景载入效果（阿里预览）
+
+- 在“背景图片与视频 → 载入效果”中，电脑端与手机端分别选择载入方式和淡入时长。支持中心展开、整体淡入、轻微放大淡入、上／下／左／右渐显、直接显示；时长范围 0～10 秒（0 为无动画）。旧配置默认中心展开、1.2 秒。
+- 图片下载并解码完成、视频首帧可显示后才播放效果；普通、分时和地区背景共用对应设备的设置。手机背景地址留空时仍使用手机载入设置。动画只影响背景，不移动页面内容；修改设置不打断已经开始的动画。
+- 更换背景时保留已显示的画面，等新资源就绪并完成过渡后再移除旧层；加载失败继续尝试后备资源，过期加载结果不会覆盖当前背景。
+- 图片只使用一个实际显示的图片节点，避免随机接口因 CSS 背景和隐藏图片分别加载而产生重复请求。
+- 保留随机、设备、地区、分时选择和默认静音/Logo 声音控制；视频循环不重复播放入场动画。系统设置“减少动态效果”时使用短淡入。
+- 此轮为阿里预览，尚未推送 GitHub 或发布 Release。
+
 ## 2026-09-26 背景重构与独立后台美化
 - 前台桌面/手机背景改为每行一个图片或视频 URL；无后缀地址先探测图片，再尝试视频。
 - 分时规则支持时区、跨午夜、排序和独立移动端列表；特殊地区支持 JSON 字段路径、ASN/运营商关键词、国家代码与优先级。
@@ -224,3 +233,24 @@ live-custom-code.snapshot.json、配置备份和 smoke 测试数据库不应提�
 - 详情页先显示概要和标签，图表、网络与连通性模块分别后台加载，不等待其他模块返回。
 - 已打开的服务器列表通过 React Activity 保留卡片 DOM 和筛选/布局状态。进入详情时暂停隐藏列表的副作用，返回时恢复原列表与滚动位置，同时刷新数据；直接打开详情不会预先创建全量隐藏列表。
 - 测试入口：`server-list-return.spec.ts` 使用 120 台模拟节点、慢接口、CPU 降速及手机/桌面两种主题，验证原 DOM 复用及重复往返滚动恢复。
+
+## Background settings hierarchy and Logo isolation (2026-10-09 preview)
+
+- Background settings use six initially collapsed sub-sections: addresses,
+  schedules, regional selection, card transparency, video/related options,
+  and **load effects last**. Sections retain mounted fields, so collapse or
+  temporary tab switching does not discard unsaved edits.
+- Background reveal masks/transforms/opacity stay on background media layers.
+  The Logo wrapper is stable across video sound-controller availability changes;
+  an overlay sound button does not remount the Logo image. Broken external Logo
+  images fall back once to the bundled icon without a retry loop.
+- Mobile BGP timeline arrows share the protocol/count row; their former separate
+  row no longer creates a gap. Desktop timeline controls retain their layout.
+
+### Mobile sponsor spacing (preview3)
+
+When the sponsor feature is enabled at <=640px, the native/legacy footer's extra
+bottom padding is removed and its reserved sponsor space reduced by 16px.
+The existing main padding and safe-area reservation keep the copyright above
+the fixed sponsor strip. Desktop placement and mobile fast-fling visibility
+logic are unchanged. Disabling sponsor removes this scoped CSS.

@@ -69,7 +69,7 @@ export default function TabSwitch({
 						)}
 					>
 						<span className="relative z-20 flex items-center gap-1">
-							<span className="whitespace-nowrap">{t(`tabSwitch.${tab}`, {defaultValue:tab==="Streaming"?"流媒体":tab})}</span>
+							<span className="whitespace-nowrap">{t(`tabSwitch.${tab}`, {defaultValue:tab==="Streaming"?"流媒体":tab==="ReturnRoute"?"回程":tab})}</span>
 						</span>
 					</button>
 				))}

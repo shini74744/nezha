@@ -75,7 +75,7 @@ const brand=useFeature('branding'), hidden=useFeature('hideControls');
 	const controlsReady = !!settingData?.data?.config;
 
 	// @ts-expect-error CustomLogo is a global variable
-	const customLogo = brand.enabled ? brand.logo : window.CustomLogo || "/apple-touch-icon.png";
+	const customLogo = (brand.enabled ? brand.logo : window.CustomLogo) || "/apple-touch-icon.png";
 
 	// @ts-expect-error CustomDesc is a global variable
 	const customDesc = window.CustomDesc || t("nezha");
@@ -137,6 +137,9 @@ const brand=useFeature('branding'), hidden=useFeature('hideControls');
 							height={40}
 							alt="apple-touch-icon"
 							src={customLogo}
+						loading="eager"
+						referrerPolicy="no-referrer"
+						onError={({currentTarget}) => { if (currentTarget.getAttribute("src") !== "/apple-touch-icon.png") currentTarget.src = "/apple-touch-icon.png"; }}
 							className="relative m-0! border-2 border-transparent h-6 w-6 object-cover object-top p-0!"
 						/>
 					</BackgroundSoundLogo>

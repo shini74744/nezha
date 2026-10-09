@@ -29,6 +29,7 @@ type Server struct {
 	HideForGuest           bool   `json:"hide_for_guest,omitempty"`              // 对游客隐藏
 	HideForDisplay         bool   `json:"hide_for_display" gorm:"default:false"` // 普通隐藏，仅前台展示筛选
 	BGPDisabled            bool   `json:"bgp_disabled" gorm:"default:false"`
+	ReturnRouteDisabled    bool   `json:"return_route_disabled" gorm:"default:false"`
 	StreamingDisabled      bool   `json:"streaming_disabled" gorm:"default:false"`
 	ConnectivityDisabled   bool   `json:"connectivity_disabled" gorm:"default:false"` // 默认显示连通性；关闭时禁止读取与发起检测
 	EnableDDNS             bool   `json:"enable_ddns,omitempty"`                      // 启用DDNS
@@ -708,6 +709,7 @@ func (s *Server) RuntimeCopy(runtime RuntimeSnapshot) *Server {
 		HideForGuest:            s.HideForGuest,
 		HideForDisplay:          s.HideForDisplay,
 		BGPDisabled:             s.BGPDisabled,
+		ReturnRouteDisabled:     s.ReturnRouteDisabled,
 		StreamingDisabled:       s.StreamingDisabled,
 		ConnectivityDisabled:    s.ConnectivityDisabled,
 		EnableDDNS:              s.EnableDDNS,

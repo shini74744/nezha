@@ -556,6 +556,7 @@ export interface ModelServerOwner {
 export interface ModelServer {
     connectivity_disabled?: boolean
     bgp_disabled?: boolean
+    return_route_disabled?: boolean
     streaming_disabled?: boolean
     /** 普通隐藏，仅影响前台默认展示，不是访问权限 */
     hide_for_display?: boolean
@@ -595,6 +596,7 @@ export interface ModelServerConfigForm {
 export interface ModelServerForm {
     connectivity_disabled?: boolean
     bgp_disabled?: boolean
+    return_route_disabled?: boolean
     streaming_disabled?: boolean
     hide_for_display?: boolean
     /** DDNS配置 */

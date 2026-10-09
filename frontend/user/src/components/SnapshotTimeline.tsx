@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -5,12 +6,16 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 // translating the page or changing the selected snapshot while swiping.
 export default function SnapshotTimeline({
 	children,
+	mobileControls,
+	label = "BGP 历史快照",
 }: {
 	children: ReactNode;
+	mobileControls?: HTMLElement | null;
+	label?: string;
 }) {
 	const viewport = useRef<HTMLElement>(null);
 	const [edges, setEdges] = useState({ left: false, right: false });
-// biome-ignore lint/correctness/useExhaustiveDependencies: Snapshot children can change the scroll edges without resizing the viewport.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: Snapshot children can change the scroll edges without resizing the viewport.
 	useEffect(() => {
 		const el = viewport.current;
 		if (!el) return;
@@ -43,33 +48,54 @@ export default function SnapshotTimeline({
 					: "smooth",
 			});
 	};
+	const controls = (
+		<>
+			{" "}
+			<button
+				type="button"
+				aria-label="较新快照"
+				disabled={!edges.left}
+				onClick={() => scroll(-1)}
+				className="rounded-md border p-1 disabled:opacity-30"
+			>
+				<ChevronLeft className="size-4" />
+			</button>
+			<button
+				type="button"
+				aria-label="较早快照"
+				disabled={!edges.right}
+				onClick={() => scroll(1)}
+				className="rounded-md border p-1 disabled:opacity-30"
+			>
+				<ChevronRight className="size-4" />
+			</button>
+		</>
+	);
 	return (
 		<div className="relative min-w-0 max-w-full mb-2" data-snapshot-timeline>
 			{(edges.left || edges.right) && (
-				<div className="flex justify-end gap-1 mb-1">
-					<button
-						type="button"
-						aria-label="较新快照"
-						disabled={!edges.left}
-						onClick={() => scroll(-1)}
-						className="rounded-md border p-1 disabled:opacity-30"
+				<>
+					<div
+						className={
+							mobileControls
+								? "hidden sm:flex justify-end gap-1 mb-1"
+								: "flex justify-end gap-1 mb-1"
+						}
 					>
-						<ChevronLeft className="size-4" />
-					</button>
-					<button
-						type="button"
-						aria-label="较早快照"
-						disabled={!edges.right}
-						onClick={() => scroll(1)}
-						className="rounded-md border p-1 disabled:opacity-30"
-					>
-						<ChevronRight className="size-4" />
-					</button>
-				</div>
+						{controls}
+					</div>
+					{mobileControls &&
+						createPortal(
+							<div className="flex gap-1" data-mobile-snapshot-controls>
+								{controls}
+							</div>,
+							mobileControls,
+						)}
+				</>
 			)}
 			<nav
 				ref={viewport}
-				aria-label="BGP 历史快照"
+				aria-label={label}
 				className="flex flex-nowrap w-full min-w-0 max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:thin]"
 			>
 				{children}

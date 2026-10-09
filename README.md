@@ -66,10 +66,20 @@ GEOIP_DB=/path/to/country.mmdb VERSION=custom-$(git rev-parse --short HEAD) bash
 产物为 `dist/dashboard`。脚本会编译本仓库的两套前端、保留原有社区主题，再嵌入后端。
 仅运行上游 `fetch-frontends.sh` 会下载上游界面；构建此二开版请使用上述 `build-custom.sh`。
 自有发布使用 `custom-*` 标签和校验过的安装包，不使用官方 `v*` 发布资产。Linux 安装、停机、重启、更新和故障恢复说明见 [面板管理与发布](PANEL_MANAGEMENT.md)。Windows x64 原生程序、密钥权限和运行方式见 [Windows 部署说明](docs/windows-deployment.md)，修复、全平台测试及上线证据见 [Windows 兼容验收记录](docs/windows-compatibility-regression-20261008.md)。
+回程标签使用 NextTrace，仅检测节点回程路由，提供九个内置检测点、逐跳平均延迟、独立节点开关和后台检测策略；自动检测初始关闭。自动周期每天从北京时间零点起算，管理员重测无冷却、同节点任务合并避免冲突；时间卡片选择历史快照，支持两次已完成快照的线路、状态、最终延迟与逐跳对比，详情使用限高弹层。卡片显示最终目标平均延迟，逐跳显示常见网络类别标签。CN2/GIA 等综合判断及访客 IP 脱敏见 [线路判断说明](RETURN_ROUTE_CLASSIFICATION.md)。运行要求与安全边界见 [网络检测说明](NETWORK_INSIGHTS.md#return-route-nexttrace-only)。
+
+连通性内置 110 个站点使用小资源地址，服务器和访客本地检测先预热 2 次（不计入结果），再分别采样 3 次和 5 次取有效平均值；这是 HTTPS 请求响应耗时，不是 ICMP Ping。自定义检测地址保留，详见 [小资源检测说明](NETWORK_INSIGHTS.md#lightweight-connectivity-sampling-2026-10-09) 与 [验收记录](docs/connectivity-small-resources-20261009.md)。
+
+背景设置采用分级折叠，载入效果位于背景设置末尾，仅作用于背景；相关说明见 [原生美化](APPEARANCE.md#background-settings-hierarchy-and-logo-isolation-2026-10-09-preview)。
+
 磁盘卡片仅点击标题切换读写速率（需自有 Agent v2.3.8+）、采样口径与 BGP 紧凑排版见 [磁盘读写说明](docs/disk-io.md)，本次测试与发布记录见 [验收报告](docs/disk-io-regression-20261008.md)。
 测试方法和目录说明见 [frontend/README.md](frontend/README.md)。图片库安全升级与 Windows 并发快照复核见 [2026-10-08 增量回归记录](docs/image-snapshot-regression-20261008.md)。x/crypto 升级与 OpenPGP 防引入检查见 [依赖维护回归记录](docs/crypto-dependency-regression-20261008.md)。
 
 </details>
+
+## 更新记录
+
+当前功能集与正式安装包说明见 [更新记录](CHANGELOG.md)。Linux／Windows x64 二进制、管理脚本及 SHA-256 清单统一从 [自有 Releases](https://github.com/shini74744/nezha/releases) 获取。
 
 ## 原项目与作者
 

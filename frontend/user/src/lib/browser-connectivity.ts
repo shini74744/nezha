@@ -1,13 +1,18 @@
+import catalog from "../../../../service/connectivity/catalog.json";
 import { averageConnectivityDelay } from "./connectivity-latency";
 import type { ConnectivityResult, ConnectivitySample } from "./connectivity-api";
 
 export const BROWSER_PROBE_TIMEOUT_MS = 3000;
 export const BROWSER_PROBE_WORKERS = 6;
 export const BROWSER_PROBE_ROUNDS = 5;
+export const BROWSER_PROBE_WARMUPS = 2;
+
+// Ship only public built-ins. Administrator paths/queries are never exposed.
+const resourceURLs = new Map(catalog.map(target => [target.host, target.url]));
 export const BROWSER_PROBE_MAX_TARGETS = 120;
 
-// Only public hostnames already returned by the node catalog are used. Never
-// expose/reuse administrator URLs, paths or queries, or accept user-entered URLs.
+// Both server and browser use the same built-in lightweight resources. Custom
+// public hosts use /favicon.ico, never private administrator paths or queries.
 export function browserProbeURL(host: string, pageURL: string = location.href): string | undefined {
 	if (!host || host.length > 253 || host !== host.trim()) return;
 	const hostname = host.toLowerCase();
@@ -17,7 +22,7 @@ export function browserProbeURL(host: string, pageURL: string = location.href): 
 		labels.some(label => !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label)))) return;
 	if (/(^|\.)(localhost|local|internal|lan|home|test|invalid|onion)$/.test(hostname)) return;
 	try {
-		const url = new URL(`https://${hostname}/`);
+		const url = new URL(resourceURLs.get(hostname) || `https://${hostname}/favicon.ico`);
 		// Do not probe the panel itself, including custom catalog entries for it.
 		if (url.hostname !== hostname || url.hostname === new URL(pageURL).hostname) return;
 		return url.href;
@@ -79,6 +84,10 @@ export async function runBrowserConnectivity(
 			const index = next++;
 			results[index] = { ...results[index], phase: "running" };
 			onUpdate(snapshot("running"));
+			// Warm DNS/TLS/HTTP connections without inventing dots or averaging cold requests.
+			for (let warmup = 0; warmup < BROWSER_PROBE_WARMUPS && !signal.aborted; warmup++) {
+				await probe(results[index].host, signal);
+			}
 			for (let round = 0; round < BROWSER_PROBE_ROUNDS && !signal.aborted; round++) {
 				const sample = await probe(results[index].host, signal);
 				// Cancellation is not a failed sample; keep only completed attempts.

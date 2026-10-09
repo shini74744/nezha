@@ -58,6 +58,7 @@ async function setup(
             last_active: offline ? "0001-01-01T00:00:00Z" : new Date(now).toISOString(),
             bgp_disabled: disabled,
             streaming_disabled: disabled,
+            return_route_disabled: disabled,
         })
     const state = { posts: [] as string[], external: [] as string[], reads: 0, tick: () => {} }
     const media = [
@@ -129,6 +130,26 @@ async function setup(
                 recent: {},
             }
         if (u.pathname.endsWith("/metrics")) data = { data_points: [] }
+        if (u.pathname.endsWith("/return-route")) {
+            if (req.method() === "POST") {
+                state.posts.push(u.pathname)
+                expect(req.postData()).toBe(null)
+                expect(req.headers()["x-csrf-token"]).toBe("test-signed-csrf")
+            }
+            const routes = ["北京", "上海", "广州"].flatMap((name, i) => ["电信", "联通", "移动"].map((carrier, j) => ({
+                id: i+"-"+j, name, carrier, family: "IPv4", protocol: "tcp",
+                status: i===2&&j===2 ? "unsupported" : "reached",
+                target: owner ? "101.226.101.195" : undefined,
+                route: ["AS36002", "电信 CTGNet", "电信 CN2"],
+                hops: [{ttl:1,ip:owner?"59.43.1.1":undefined,asn:"4809",location:"中国 上海",organization:"China Telecom",rtt_ms:28.3,samples:3},{ttl:2,samples:0},{ttl:3,ip:owner?"101.226.101.195":undefined,asn:"4812",rtt_ms:31.7,samples:3}],
+            })))
+            const snap = {state:"complete",finished_at:now,routes}
+            return route.fulfill({json:{success:true,data:{
+                ...snap, server_id:7,online:!offline,can_run:owner,can_view_ip:owner,available_families:["IPv4"],
+                ...(req.method()==="POST"?{state:"running",finished_at:0,routes:routes.map((r,i)=>i<3?r:{...r,status:"pending",hops:[],route:[]})}:{}),
+                history:[snap,{...snap,finished_at:now-3600000,routes:routes.map(r=>({...r,route:["联通 9929"]}))}],
+            }}})
+        }
         if (/\/(bgp|streaming)$/.test(u.pathname)) {
             state.reads++
             if (req.method() === "POST") {
@@ -259,7 +280,7 @@ test("offline node keeps cached streaming and blocks retest", async ({ page }) =
 })
 for (const theme of ["light", "dark"])
 for (const width of [320, 390, 1440])
-    test("admin three independent switches " + width + " " + theme, async ({ page }, info) => {
+    test("admin four independent switches " + width + " " + theme, async ({ page }, info) => {
         await page.setViewportSize({ width, height: 1000 })
         await page.addInitScript((theme) => localStorage.setItem("nezha-dashboard-theme", theme), theme)
         let server: any = {
@@ -285,20 +306,20 @@ for (const width of [320, 390, 1440])
             }
             return route.fulfill({ json: { success: true, data } })
         })
-        await page.goto("http://127.0.0.1:18479/dashboard")
+        await page.goto((process.env.E2E_BASE_URL || "http://127.0.0.1:18479") + "/dashboard")
         const edit = page
             .getByRole("row")
             .filter({ hasText: "开关测试" })
             .getByRole("button", { name: "编辑服务器", exact: true })
         await edit.click()
         const dialog = page.getByRole("dialog")
-        for (const name of ["连通性", "BGP", "流媒体"])
+        for (const name of ["连通性", "BGP", "回程", "流媒体"])
             await expect(dialog.getByRole("switch", { name, exact: true })).toBeChecked()
         const settings = dialog.locator("[data-network-feature-settings]")
         await settings.scrollIntoViewIfNeeded()
         const helpText = "默认开启；关闭后隐藏前台标签并停止对应检测。"
         await expect(page.getByText(helpText, { exact: true })).toHaveCount(0)
-        for (const name of ["连通性", "BGP", "流媒体"]) {
+        for (const name of ["连通性", "BGP", "回程", "流媒体"]) {
             const help = settings.getByRole("button", { name: name + "说明", exact: true })
             const toggle = settings.getByRole("switch", { name, exact: true })
             const helpBox = (await help.boundingBox())!
@@ -329,14 +350,17 @@ for (const width of [320, 390, 1440])
         expect((await settings.locator(":scope > div").first().boundingBox())!.height).toBeLessThan(72)
         await page.screenshot({ path: info.outputPath("admin-switches.png") })
         await dialog.getByRole("switch", { name: "BGP", exact: true }).click()
+        await dialog.getByRole("switch", { name: "回程", exact: true }).click()
         await dialog.getByRole("switch", { name: "流媒体", exact: true }).click()
         await dialog.locator('button[type="submit"]').click()
         await expect.poll(() => updates.length).toBe(1)
         expect(updates[0].bgp_disabled).toBe(true)
+        expect(updates[0].return_route_disabled).toBe(true)
         expect(updates[0].streaming_disabled).toBe(true)
         expect(updates[0].connectivity_disabled).not.toBe(true)
         await edit.click()
         await expect(dialog.getByRole("switch", { name: "BGP", exact: true })).not.toBeChecked()
+        await expect(dialog.getByRole("switch", { name: "回程", exact: true })).not.toBeChecked()
         await expect(dialog.getByRole("switch", { name: "流媒体", exact: true })).not.toBeChecked()
         expect(
             await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
@@ -757,6 +781,14 @@ test("snapshot timeline scroll and selection "+theme+" "+width,async({page},info
  const geometry=await nav.evaluate(el=>({w:el.clientWidth,sw:el.scrollWidth,ys:[...el.children].map(e=>e.getBoundingClientRect().top)}));
  expect(geometry.sw).toBeGreaterThan(geometry.w);
  expect(new Set(geometry.ys.map(Math.round)).size).toBe(1);
+ if(width<640){
+  const controls=page.locator("[data-mobile-snapshot-controls]");
+  await expect(controls).toBeVisible();
+  const family=await page.locator("[data-bgp-family]").boundingBox(), arrows=await controls.boundingBox(), row=await nav.boundingBox();
+  expect(arrows!.y).toBeGreaterThanOrEqual(family!.y);
+  expect(arrows!.y+arrows!.height).toBeLessThanOrEqual(family!.y+family!.height+1);
+  expect(row!.y-family!.y-family!.height).toBeLessThanOrEqual(9);
+ }
  await page.getByRole("button",{name:"较早快照",exact:true}).click();
  await expect.poll(()=>nav.evaluate(el=>el.scrollLeft)).toBeGreaterThan(30);
  // Scrolling alone must not select a different snapshot.
@@ -890,7 +922,7 @@ for(const theme of ["default","doraemon"])for(const width of [320,390,768,1440])
   const heading=el.querySelector(".bgp-heading")!.getBoundingClientRect();
   return {header:family.top-header.bottom,family:timeline.top-family.bottom,timeline:graph.top-timeline.bottom,inside:heading.top-graph.top};
  });
- expect(gaps.header).toBe(8);expect(gaps.family).toBe(8);expect(gaps.timeline).toBe(8);expect(gaps.inside).toBe(13);
+ expect(gaps.header).toBeLessThanOrEqual(0);expect(gaps.family).toBe(8);expect(gaps.timeline).toBe(8);expect(gaps.inside).toBe(13);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
  await panel.screenshot({path:info.outputPath("compact-bgp.png")});
 });
@@ -930,4 +962,267 @@ for (const theme of ["default","doraemon"]) test("streaming registration labels 
  await expect(page.locator('[data-media-status="registration_restricted"]')).toHaveText(/注册受限\s*· CN/);
  await expect(page.locator('[data-media-status="unlocked"]')).toHaveCount(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
+for (const theme of ["default","doraemon"])
+for (const light of [false,true])
+for (const width of [320,390,1440])
+test("return-route responsive UI "+theme+" "+light+" "+width,async({page},info)=>{
+ await page.setViewportSize({width,height:950})
+ const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message))
+ const state=await setup(page,theme,light)
+ const tabs=page.locator(".server-info-tab")
+ const names=await tabs.innerText();expect(names.indexOf("回程")).toBeGreaterThan(names.indexOf("BGP"));expect(names.indexOf("回程")).toBeLessThan(names.indexOf("流媒体"))
+ await tabs.getByText("回程",{exact:true}).click()
+ const section=page.locator('[data-network-insight="return-route"]')
+ await expect(section.locator("[data-return-route]")).toHaveCount(9)
+ await expect(section.getByRole("button",{name:"IPv6",exact:true})).toHaveCount(0)
+ const first=section.locator("[data-return-route]").first()
+ await first.getByRole("button").click()
+ const dialog=page.getByRole("dialog")
+ await expect(dialog.getByText("28.3 ms",{exact:true})).toBeVisible()
+ await expect(dialog.getByText("未响应",{exact:true})).toBeVisible()
+ await expect(dialog.getByText("59.43.1.1",{exact:true})).toBeVisible()
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true)
+ await page.screenshot({path:info.outputPath("return-detail-"+width+".png")})
+ await page.keyboard.press("Escape")
+ await expect(dialog).toHaveCount(0)
+ await section.screenshot({path:info.outputPath("return-"+width+".png")})
+ await section.getByRole("button").filter({hasText:"历史快照"}).first().click()
+ await expect(first.locator("[data-return-summary]")).toContainText("联通 9929")
+ await page.getByRole("button",{name:"重新检测回程",exact:true}).click()
+ await expect(page.getByRole("button",{name:"重新检测回程",exact:true})).toBeDisabled()
+ await expect(section.getByText("3 / 9",{exact:true})).toBeVisible()
+ expect(state.posts).toEqual(["/api/v1/server/7/return-route"])
+ expect(state.external).toEqual([]);expect(errors).toEqual([])
+})
+test("return-route readonly, offline and disabled states",async({page})=>{
+ await setup(page,"default",true,false)
+ await page.locator(".server-info-tab").getByText("回程",{exact:true}).click()
+ await expect(page.locator("[data-return-route]")).toHaveCount(9)
+ await page.locator("[data-return-route] > button").first().click()
+ await expect(page.getByText("59.43.1.1",{exact:true})).toHaveCount(0)
+ await expect(page.getByRole("button",{name:"重新检测回程"})).toHaveCount(0)
+ await page.unrouteAll({behavior:"wait"});await setup(page,"default",true,true,false,true)
+ await page.locator(".server-info-tab").getByText("回程",{exact:true}).click()
+ await expect(page.getByRole("button",{name:"重新检测回程"})).toBeDisabled()
+ await page.unrouteAll({behavior:"wait"});await setup(page,"default",true,true,true)
+ await expect(page.locator(".server-info-tab").getByText("回程",{exact:true})).toHaveCount(0)
+})
+
+test("return-route IPv6-only uses the available family and survives read retry",async({page})=>{
+ await page.setViewportSize({width:320,height:900});await setup(page)
+ let fail=true
+ await page.route("**/api/v1/server/7/return-route",r=>fail?r.fulfill({status:503,json:{success:false,error:"temporary"}}):r.fulfill({json:{success:true,data:{
+  state:"complete",server_id:7,online:true,can_run:false,available_families:["IPv6"],finished_at:Date.now(),
+  routes:[{id:"v6",name:"上海",carrier:"电信",family:"IPv6",protocol:"tcp",target:"240e:96c:6000:d80::b00:40",status:"reached",hops:[{ttl:1,ip:"240e:96c:6000:d80::b00:40",samples:3,rtt_ms:2.1}]}]
+ }}}))
+ await page.locator(".server-info-tab").getByText("回程",{exact:true}).click()
+ await expect(page.getByRole("alert")).toContainText("读取回程结果失败")
+ fail=false;await page.getByRole("button",{name:"刷新",exact:true}).click()
+ await expect(page.getByRole("button",{name:"IPv6",exact:true})).toHaveAttribute("aria-pressed","true")
+ await expect(page.getByRole("button",{name:"IPv4",exact:true})).toHaveCount(0)
+ await page.locator("[data-return-route] > button").click()
+ await expect(page.getByRole("dialog").getByText("2.1 ms",{exact:true})).toBeVisible()
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true)
+})
+for(const width of [320,390,1440]) test("return-route long details stay bounded "+width,async({page},info)=>{
+ await page.setViewportSize({width,height:800});await setup(page);
+ const now=Date.now(),hops=Array.from({length:30},(_,i)=>({
+  ttl:i+1,samples:i>=7&&i<=14?0:3,asn:"4809",network:"电信 CN2",
+  stage:i===0?"origin":i===5?"landing":i===29?"destination":"international",
+  ip_hidden:true,location:"中国 上海",rtt_ms:30+i,
+ }));
+ const routes=Array.from({length:9},(_,i)=>({id:String(i),name:"上海",carrier:"电信",family:"IPv4",protocol:"tcp",status:"reached",line:"CN2（类型待确认）",route:["电信 CTGNet","电信 CN2"],evidence:["跨境关键跳缺失，保留待确认。"],hops}));
+ await page.route("**/api/v1/server/7/return-route",r=>r.fulfill({json:{success:true,data:{state:"complete",server_id:7,online:true,can_run:true,routes,finished_at:now,history:Array.from({length:10},(_,i)=>({state:"complete",finished_at:now-i*3600000,scheduled_at:now-i*3600000,routes}))}}}));
+ await page.locator(".server-info-tab").getByText("回程",{exact:true}).click();
+ const first=page.locator("[data-return-route]").first(),card=await first.boundingBox();
+ await first.getByRole("button").click();const dialog=page.getByRole("dialog");
+ await expect(dialog).toBeVisible();await expect(dialog.getByText("8 跳未响应",{exact:true})).toBeVisible();
+ const box=await dialog.boundingBox();expect(box!.height).toBeLessThanOrEqual(681);expect(box!.x).toBeGreaterThanOrEqual(0);expect(box!.x+box!.width).toBeLessThanOrEqual(width);
+ const scroll=dialog.locator("[data-return-hop-scroll]");
+ expect(await scroll.evaluate(el=>el.scrollHeight>el.clientHeight)).toBe(true);
+ await expect(dialog.getByText("登陆点·推测",{exact:true})).toHaveCount(1);
+ await dialog.getByRole("button",{name:"逐跳显示未响应"}).click();await expect(dialog.getByText("未响应",{exact:true})).toHaveCount(8);
+ await scroll.evaluate(el=>el.scrollTo(0,el.scrollHeight));await expect(dialog.getByText("到达",{exact:true})).toBeVisible();
+ await page.screenshot({path:info.outputPath("bounded-dialog-"+width+".png")});
+ await page.keyboard.press("Escape");await expect(dialog).toHaveCount(0);await expect(first.getByRole("button")).toBeFocused();
+ expect(Math.abs((await first.boundingBox())!.height-card!.height)).toBeLessThan(1);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
+test("return-route queued manual demand reuses task and shows progress",async({page})=>{
+ await setup(page);let posts=0,state="queued";
+ await page.route("**/api/v1/server/7/return-route",r=>{
+  if(r.request().method()==="POST"){posts++;state="running"}
+  return r.fulfill({json:{success:true,data:{state,server_id:7,online:true,can_run:true,queue_position:2,routes:[]}}});
+ });
+ await page.locator(".server-info-tab").getByText("回程",{exact:true}).click();
+ await expect(page.getByText("等待检测 · 排队第 2 位",{exact:true})).toBeVisible();
+ const run=page.getByRole("button",{name:"重新检测回程"});await expect(run).toHaveText("优先检测");await expect(run).toBeEnabled();await run.click();
+ await expect(run).toBeDisabled();await expect(run).toHaveText("检测中…");expect(posts).toBe(1);await expect(page.getByRole("alert")).toHaveCount(0);
+});
+
+for(const theme of ["default","doraemon"])
+for(const light of [true,false])
+for(const width of [320,390,1440])
+test("return comparison, quality and final RTT "+theme+" "+light+" "+width,async({page},info)=>{
+ await page.setViewportSize({width,height:900});const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
+ const state=await setup(page,theme,light,false);let posts=0;
+ const now=Date.now();
+ const mk=(id:string,asn:string,rtt:number)=>({id,name:"北京",carrier:id==="ct"?"电信":"联通",family:"IPv4",protocol:"tcp",comparison_key:id,status:"reached",line:asn==="4809"?"CN2（类型待确认）":"电信 163",route:["AS2914",asn==="4809"?"电信 CN2":"电信 163"],hops:[
+  {ttl:1,samples:3,asn:"2914",ip_hidden:true,rtt_ms:1},
+  {ttl:2,samples:3,asn,network:asn==="4809"?"电信 CN2":"电信 163",ip_hidden:true,rtt_ms:25},
+  {ttl:3,samples:0},
+  {ttl:4,samples:3,asn:"4812",ip_hidden:true,stage:"destination",rtt_ms:rtt},
+ ]});
+ const latest={state:"complete",finished_at:now,scheduled_at:now,routes:[mk("ct","4809",112.3),mk("cu","4134",30)]};
+ const older={...latest,finished_at:now-3600000,scheduled_at:now-3600000,routes:[mk("ct","4134",100),mk("cu","4134",25)]};
+ const oldest={...older,finished_at:now-7200000,scheduled_at:now-7200000,routes:[{...mk("ct","4134",100),comparison_key:"changed-target"}]};
+ const v6={...mk("ct","4809",40),family:"IPv6",comparison_key:"v6",hops:[{ttl:1,samples:3,stage:"destination",ip_hidden:true,rtt_ms:40}]};
+ latest.routes.push(v6 as any);older.routes.push(v6 as any);
+ const data={...latest,state:"running",finished_at:0,server_id:7,online:true,can_run:false,available_families:["IPv4","IPv6"],history:[latest,older,oldest]};
+ await page.route("**/api/v1/server/7/return-route",route=>{
+  if(route.request().method()!=="GET")posts++;
+  return route.fulfill({json:{success:true,data}});
+ });
+ await page.locator(".server-info-tab").getByText("回程",{exact:true}).click();
+ const section=page.locator('[data-network-insight="return-route"]');
+ await expect(section.locator("[data-final-rtt]").first()).toHaveText("112.3 ms");
+ const h=await section.locator("header h2").boundingBox(),f=await section.locator("[data-return-family]").boundingBox();
+ if(width>=640){expect(Math.abs(h!.y+h!.height/2-f!.y-f!.height/2)).toBeLessThan(2);expect(f!.x).toBeGreaterThan(h!.x+h!.width)}
+ await section.locator("[data-return-route]").first().getByRole("button").click();
+ await expect(page.getByRole("dialog").locator("[data-route-quality]")).toHaveText(["优质线路"]);
+ await page.keyboard.press("Escape");
+ const compare=section.getByRole("button",{name:"快照对比",exact:true});await compare.click();
+ const dialog=page.getByRole("dialog");await expect(dialog.getByRole("heading",{name:"回程快照对比"})).toBeVisible();
+ await expect(dialog.locator("[data-return-comparison]")).toHaveCount(2);
+ await expect(dialog.locator("[data-latency-delta]").first()).toHaveText("延迟差 +12.3 ms");
+ await dialog.getByText("逐跳对照 · 4 个 TTL",{exact:true}).first().click();
+ await expect(dialog.locator("[data-hop-difference=changed]")).toHaveCount(1);
+ await expect(dialog.getByText("地址已隐藏").first()).toBeVisible();
+ const box=await dialog.boundingBox();expect(box!.x).toBeGreaterThanOrEqual(0);expect(box!.x+box!.width).toBeLessThanOrEqual(width+1);
+ expect(box!.height).toBeLessThanOrEqual(811);
+ expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
+ await dialog.screenshot({path:info.outputPath("compare-"+width+".png")});
+ await dialog.getByLabel("只看路由或状态变化").check();await expect(dialog.locator("[data-return-comparison]")).toHaveCount(1);
+ await dialog.getByRole("button",{name:"IPv6",exact:true}).click();await expect(dialog.getByText("没有路由或状态变化",{exact:true})).toBeVisible();
+ await dialog.getByRole("button",{name:"IPv4",exact:true}).click();await dialog.getByLabel("只看路由或状态变化").uncheck();
+ await dialog.getByLabel("基准快照",{exact:true}).selectOption(String(oldest.finished_at));
+ await expect(dialog.getByText("目标或协议不同／无法确认一致",{exact:true})).toBeVisible();
+ await expect(dialog.locator("[data-latency-delta]")).toHaveCount(0);
+ // Live polling must not replace the comparison session's historical snapshots.
+ data.history=[];await page.waitForTimeout(2800);await expect(dialog.getByLabel("基准快照",{exact:true})).toHaveValue(String(oldest.finished_at));
+ await page.keyboard.press("Escape");await expect(dialog).toHaveCount(0);
+ expect(posts).toBe(0);expect(state.posts).toEqual([]);expect(errors).toEqual([]);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ await section.screenshot({path:info.outputPath("compact-header-"+width+".png")});
+});
+test("return comparison needs two completed snapshots",async({page})=>{
+ await setup(page);
+ await page.route("**/api/v1/server/7/return-route",r=>r.fulfill({json:{success:true,data:{state:"complete",server_id:7,online:true,can_run:false,history:[{state:"complete",finished_at:Date.now(),routes:[]},{state:"running",finished_at:0,routes:[]}],routes:[]}}}));
+ await page.locator(".server-info-tab").getByText("回程",{exact:true}).click();
+ await expect(page.getByRole("button",{name:"快照对比",exact:true})).toBeDisabled();
+});
+
+test("return comparison closes private session when view permission is lost",async({page})=>{
+ await setup(page);let privateView=true;const now=Date.now();
+ const route={id:"ct",name:"北京",carrier:"电信",family:"IPv4",target:"1.1.1.1",comparison_key:"1",protocol:"tcp",status:"reached",hops:[{ttl:1,samples:3,ip:"1.1.1.1",stage:"destination",rtt_ms:10}]};
+ await page.route("**/api/v1/server/7/return-route",r=>{
+  const result=privateView?route:{...route,target:undefined,hops:route.hops.map(h=>({...h,ip:undefined,ip_hidden:true}))};
+  return r.fulfill({json:{success:true,data:{state:"running",server_id:7,online:true,can_run:true,can_view_ip:privateView,routes:[result],history:[{state:"complete",finished_at:now,routes:[result]},{state:"complete",finished_at:now-1000,routes:[result]}]}}});
+ });
+ await page.locator(".server-info-tab").getByText("回程",{exact:true}).click();
+ await page.getByRole("button",{name:"快照对比",exact:true}).click();await expect(page.getByRole("dialog")).toBeVisible();
+ privateView=false;await expect(page.getByRole("dialog")).toHaveCount(0,{timeout:7000});
+ await page.getByRole("button",{name:"快照对比",exact:true}).click();
+ await page.getByRole("dialog").locator("summary").first().click();
+ await expect(page.getByRole("dialog").getByText("1.1.1.1",{exact:true})).toHaveCount(0);
+ await expect(page.getByRole("dialog").getByText("地址已隐藏",{exact:true}).first()).toBeVisible();
+});
+
+for(const theme of ["default","doraemon"]) for(const light of [false,true]) for(const width of [320,390,1440])
+test("single return retest inside details "+theme+" "+light+" "+width,async({page},info)=>{
+ await page.setViewportSize({width,height:850});await setup(page,theme,light);
+ const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
+ const now=Date.now(), routes=["北京","上海"].map((name,i)=>({id:i+"-0",name,carrier:"电信",family:"IPv4",protocol:"tcp",status:"reached",tested_at:now-60000,hops:[{ttl:1,samples:3,rtt_ms:20,stage:"destination"}]}));
+ const snap={state:"complete",finished_at:now-60000,routes};let posts=0,phase="idle",fail=true;
+ await page.route("**/api/v1/server/7/return-route**",r=>{
+  if(r.request().method()==="POST"){
+   posts++;expect(new URL(r.request().url()).pathname).toBe("/api/v1/server/7/return-route/0-0/IPv4");
+   expect(r.request().postData()).toBe(null);expect(r.request().headers()["x-csrf-token"]).toBe("test-signed-csrf");
+   if(fail)return r.fulfill({status:400,json:{success:false,error:"该节点正在进行另一项检测，请完成后重试"}});
+   phase="running";
+  }
+  return r.fulfill({json:{success:true,data:{...snap,can_run:true,can_view_ip:true,online:true,server_id:7,available_families:["IPv4"],history:[snap],
+   ...(phase!=="idle"?{state:phase,retest:{id:"0-0",family:"IPv4"},finished_at:phase==="running"?0:now,routes:[{...routes[0],status:phase==="running"?"pending":"reached",tested_at:phase==="running"?undefined:now},routes[1]]}:{})}}})
+ });
+ await page.locator(".server-info-tab").getByText("回程",{exact:true}).click();
+ const first=page.locator("[data-return-route]").first();await first.getByRole("button").click();
+ const dialog=page.getByRole("dialog"),button=dialog.getByRole("button",{name:"单独检测北京电信"});
+ await expect(button).toBeVisible();expect(posts).toBe(0);
+ await button.click();await expect(dialog.getByRole("alert")).toContainText("另一项检测");
+ fail=false;await button.click();await expect(button).toBeDisabled();expect(posts).toBe(2);
+ await expect(dialog).toBeVisible();phase="complete";await expect(button).toBeEnabled({timeout:10000});
+ await expect(dialog.getByText("本项检测时间：",{exact:false})).toBeVisible();
+ const box=await dialog.boundingBox();expect(box!.x).toBeGreaterThanOrEqual(0);expect(box!.x+box!.width).toBeLessThanOrEqual(width+1);
+ expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
+ await dialog.screenshot({path:info.outputPath("single-retest.png")});
+ await page.keyboard.press("Escape");
+ await expect(page.locator("[data-return-route]").nth(1)).toContainText(new Date(now-60000).getFullYear().toString());
+ await expect(page.getByText("本次为单项重测，其余线路保留原检测结果与时间。")).toBeVisible();
+ expect(errors).toEqual([]);
+});
+
+for(const theme of ["default","doraemon"]) for(const light of [false,true]) for(const width of [320,390,1440])
+test("BGP snapshot comparison responsive "+theme+" "+light+" "+width,async({page},info)=>{
+ await page.setViewportSize({width,height:850});const state=await setup(page,theme,light);
+ const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
+ const now=Date.now(), graph=graphFor(topology);graph.legacy=false;
+ const old={state:"complete",finished_at:now-3600000,topologies:[{...topology,graph}]};
+ const changed=structuredClone(old);changed.finished_at=now;
+ changed.topologies[0].graph.paths[0].asns=[17676,1299,99999];
+ changed.topologies[0].graph.truncated=true;
+ const history=[changed,old,{...old,finished_at:now-7200000,topologies:[{...topology,status:"error"}]}];
+ await page.route("**/api/v1/server/7/bgp",r=>r.fulfill({json:{success:true,data:{...changed,server_id:7,online:true,can_run:true,can_view_ip:true,available_families:["IPv4"],history}}}));
+ await page.locator(".server-info-tab").getByText("BGP",{exact:true}).click();
+ const panel=page.locator('[data-network-insight="bgp"]');await panel.getByRole("button",{name:"快照对比",exact:true}).click();
+ const dialog=page.getByRole("dialog");await expect(dialog.getByRole("heading",{name:"BGP 快照对比"})).toBeVisible();
+ await expect(dialog.locator('[data-bgp-path-change="added"]')).toHaveCount(1);
+ await expect(dialog.locator('[data-bgp-path-change="removed"]')).toHaveCount(1);
+ await expect(dialog.locator("[data-bgp-as-diff]")).toContainText("AS99999");
+ await expect(dialog.getByText("存在截断记录：",{exact:false})).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
+ const box=await dialog.boundingBox();expect(box!.height).toBeLessThanOrEqual(766);expect(box!.x).toBeGreaterThanOrEqual(0);expect(box!.x+box!.width).toBeLessThanOrEqual(width+1);
+ await dialog.screenshot({path:info.outputPath("bgp-compare.png")});
+ await dialog.getByLabel("基准快照",{exact:true}).selectOption(String(now-7200000));
+ await expect(dialog.getByText("所选协议族缺少两份成功观测，不计算路径增减。")).toBeVisible();
+ await expect(dialog.locator("[data-bgp-path-change]")).toHaveCount(0);
+ await page.keyboard.press("Escape");await expect(panel.getByRole("button",{name:"快照对比",exact:true})).toBeFocused();
+ expect(state.posts).toEqual([]);expect(errors).toEqual([]);
+});
+
+test("BGP comparison freezes snapshots and closes on permission downgrade",async({page})=>{
+ await setup(page);
+ const now=Date.now();let readable=true,changed=false,posts=0;
+ await page.route("**/api/v1/server/7/bgp",r=>{
+  if(r.request().method()==="POST")posts++;
+  const a={...topology,prefix:readable?"8.8.8.0/24":undefined,total:changed?99:100};
+  return r.fulfill({json:{success:true,data:{state:"running",server_id:7,can_run:readable,can_view_ip:readable,online:true,topologies:[a],history:[{state:"complete",finished_at:now,topologies:[a]},{state:"complete",finished_at:now-1000,topologies:[{...a,total:88}]}]}}});
+ });
+ await page.locator(".server-info-tab").getByText("BGP",{exact:true}).click();
+ await page.getByRole("button",{name:"快照对比",exact:true}).click();
+ const dialog=page.getByRole("dialog");await expect(dialog.locator("[data-bgp-compare-summary]").last()).toContainText("100 条观测路径");
+ changed=true;await page.waitForTimeout(3000);
+ await expect(dialog.locator("[data-bgp-compare-summary]").last()).toContainText("100 条观测路径");
+ readable=false;await expect(dialog).toHaveCount(0,{timeout:10000});
+ await page.getByRole("button",{name:"快照对比",exact:true}).click();await expect(dialog).not.toContainText("8.8.8.0/24");
+ await expect(dialog).toContainText("不能确认两次前缀是否一致");expect(posts).toBe(0);
+});
+test("single retest is unavailable for readonly and offline viewers",async({page})=>{
+ await setup(page,"default",true,false);
+ await page.locator(".server-info-tab").getByText("回程",{exact:true}).click();await page.locator("[data-return-route] > button").first().click();
+ await expect(page.getByRole("button",{name:"单独检测北京电信"})).toHaveCount(0);
+ await page.unrouteAll({behavior:"wait"});await setup(page,"default",true,true,false,true);
+ await page.locator(".server-info-tab").getByText("回程",{exact:true}).click();await page.locator("[data-return-route] > button").first().click();
+ await expect(page.getByRole("button",{name:"单独检测北京电信"})).toBeDisabled();
 });

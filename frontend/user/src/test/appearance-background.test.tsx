@@ -73,7 +73,7 @@ for (const scenario of [
 		);
 		await act(async () => {});
 		expect(
-			document.querySelector<HTMLElement>(".nz-media")?.style.backgroundImage,
+			document.querySelector<HTMLImageElement>(".nz-media img")?.src,
 		).toContain(scenario.image + ".png");
 		expect(screen.getByRole("status")).toHaveTextContent(String(scenario.peak));
 		view.unmount();

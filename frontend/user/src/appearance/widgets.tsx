@@ -1,3 +1,5 @@
+import { Server } from "lucide-react";
+import { GitHubIcon } from "@/components/Icon";
 import {
 	useEffect,
 	useMemo,
@@ -171,18 +173,7 @@ export function NativeFooter() {
 			})),
 		[f.text, tick],
 	);
-	useEffect(() => {
-		if (!f.enabled) return;
-		const links = ["fontawesome", "solid", "brands"].map((name) => {
-			const link = document.createElement("link");
-			link.rel = "stylesheet";
-			link.href = "/appearance/fontawesome/css/" + name + ".min.css";
-			link.dataset.nezhaAppearance = "footer";
-			document.head.append(link);
-			return link;
-		});
-		return () => links.forEach((link) => { link.remove(); });
-	}, [f.enabled]);
+
 	return (
 		<footer className="mx-auto w-full max-w-5xl px-4 pb-4 text-sm">
 			<FitFooterRow>
@@ -192,7 +183,7 @@ export function NativeFooter() {
 				rel="noopener noreferrer"
 				className="nz-brand-footer"
 			>
-				<i aria-hidden="true" className="fas fa-server" />
+				<Server aria-hidden="true" className="nz-footer-icon" />
 				{letters.map(({ c, color }, i) => (
 					<span
 						key={tick + "-" + i}
@@ -208,7 +199,7 @@ export function NativeFooter() {
 				rel="noopener noreferrer"
 				className="nz-powered"
 			>
-				<i aria-hidden="true" className="fab fa-github" /> {f.poweredText}
+				<GitHubIcon aria-hidden="true" fill="currentColor" className="nz-footer-icon" /> {f.poweredText}
 			</a>
 			</FitFooterRow>
 		</footer>

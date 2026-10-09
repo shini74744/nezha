@@ -35,3 +35,39 @@ func TestBackgroundPolicyValidation(t *testing.T) {
 	require.NoError(t, validate(valid))
 	require.NoError(t, validate(map[string]any{"enabled": true, "nightStart": 1, "nightEnd": 6, "nightEnabled": true, "nightImages": []any{"https://example.test/old.png"}}))
 }
+
+func TestBackgroundLoadSettings(t *testing.T) {
+	check := func(f map[string]any) (json.RawMessage, error) {
+		f["enabled"] = true
+		raw, err := json.Marshal(map[string]any{"version": 1, "enabled": true, "features": map[string]any{"background": f}})
+		require.NoError(t, err)
+		result, err := validateAppearance(raw)
+		return json.RawMessage(result), err
+	}
+	for _, effect := range []string{"center", "fade", "zoom", "top", "bottom", "left", "right", "none"} {
+		_, err := check(map[string]any{"desktopLoadEffect": effect, "mobileLoadEffect": effect, "desktopLoadDuration": 0, "mobileLoadDuration": 10})
+		require.NoError(t, err, effect)
+	}
+	for _, key := range []string{"desktopLoadEffect", "mobileLoadEffect"} {
+		for _, invalid := range []any{"bad", "", nil, 1, []any{}} {
+			_, err := check(map[string]any{key: invalid})
+			require.Error(t, err, key)
+		}
+	}
+	for _, key := range []string{"desktopLoadDuration", "mobileLoadDuration"} {
+		for _, invalid := range []any{-1, 10.1, nil, "2"} {
+			_, err := check(map[string]any{key: invalid})
+			require.Error(t, err, key)
+		}
+	}
+	f := map[string]any{"desktopLoadEffect": "left", "desktopLoadDuration": 4.5, "mobileLoadEffect": "zoom", "mobileLoadDuration": 0.8}
+	result, err := check(f)
+	require.NoError(t, err)
+	var decoded struct {
+		Features map[string]map[string]any `json:"features"`
+	}
+	require.NoError(t, json.Unmarshal(result, &decoded))
+	require.Equal(t, f, decoded.Features["background"])
+	_, err = check(map[string]any{"enabled": true})
+	require.NoError(t, err)
+}

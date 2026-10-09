@@ -1,6 +1,7 @@
 import { formatDetectionTime } from "@/lib/detection-time";
 import { Suspense, memo, useState } from "react";
 import SnapshotTimeline from "./SnapshotTimeline";
+import BGPSnapshotCompare from "./BGPSnapshotCompare";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleHelp, RefreshCw, Tv } from "lucide-react";
 import { fetchLoginUser } from "@/lib/nezha-api";
@@ -88,6 +89,8 @@ function ServerNetworkInsight({
 	const client = useQueryClient(),
 		[family, setFamily] = useState("IPv4"),
 		[historyAt, setHistoryAt] = useState(0);
+	const [mobileSnapshotControls, setMobileSnapshotControls] =
+		useState<HTMLDivElement | null>(null);
 	const member = useQuery({
 		queryKey: ["login-user"],
 		queryFn: fetchLoginUser,
@@ -163,29 +166,45 @@ function ServerNetworkInsight({
 						data-bgp-family
 						className="order-3 flex w-full min-w-0 flex-wrap items-center gap-x-3 gap-y-1 min-[900px]:order-none min-[900px]:w-auto min-[900px]:flex-1"
 					>
-						<div className="inline-flex shrink-0 rounded-full bg-muted p-1">
-							{families.map((f) => (
-								<button
-									key={f}
-									onClick={() => setFamily(f)}
-									aria-pressed={selectedFamily === f}
-									className={cn(
-										"rounded-full px-3 py-1.5 text-xs",
-										selectedFamily === f && "bg-background shadow-sm",
-									)}
-								>
-									{f}
-								</button>
-							))}
+						<div className="flex flex-1 min-w-0 flex-wrap items-center gap-x-3 gap-y-1 sm:contents">
+							<div className="inline-flex shrink-0 rounded-full bg-muted p-1">
+								{families.map((f) => (
+									<button
+										key={f}
+										onClick={() => setFamily(f)}
+										aria-pressed={selectedFamily === f}
+										className={cn(
+											"rounded-full px-3 py-1.5 text-xs",
+											selectedFamily === f && "bg-background shadow-sm",
+										)}
+									>
+										{f}
+									</button>
+								))}
+							</div>
+							{topology && topology.total > 0 && (
+								<span className="text-sm break-all">
+									{data.can_view_ip && topology.prefix
+										? `${topology.prefix} · `
+										: ""}
+									{topology.total} 条观测路径
+								</span>
+							)}
 						</div>
-						{topology && topology.total > 0 && (
-							<span className="text-sm break-all">
-								{data.can_view_ip && topology.prefix
-									? `${topology.prefix} · `
-									: ""}
-								{topology.total} 条观测路径
-							</span>
-						)}
+						<div
+							ref={setMobileSnapshotControls}
+							className="ml-auto shrink-0 sm:hidden"
+						/>
+					</div>
+				)}
+				{kind === "bgp" && (
+					<div className="ml-auto">
+						<BGPSnapshotCompare
+							key={`${serverId}:${viewer}:${!!data?.can_view_ip}`}
+							history={data?.history}
+							selectedAt={snapshot?.finished_at || 0}
+							family={selectedFamily}
+						/>
 					</div>
 				)}
 				{data?.can_run && (
@@ -227,7 +246,7 @@ function ServerNetworkInsight({
 			{data && kind === "bgp" && (
 				<>
 					{!!data.history?.length && (
-						<SnapshotTimeline>
+						<SnapshotTimeline mobileControls={mobileSnapshotControls}>
 							{data.history.map((item, i) => (
 								<button
 									key={item.finished_at}

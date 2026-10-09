@@ -10,9 +10,12 @@ export function publishBackgroundSound(value:Sound){
 }
 export function BackgroundSoundLogo({children,className}:{children:ReactNode;className?:string}){
  const sound=useSyncExternalStore(subscribe,()=>current,()=>null);
- if(!sound)return <div className={className}>{children}</div>;
- const label=sound.muted?"开启背景声音":"关闭背景声音";
- return <button type="button" className={className+" nz-logo-sound"} title={label}
-  aria-label={label} aria-pressed={!sound.muted}
-  onClick={event=>{event.stopPropagation();void sound.toggle()}}>{children}</button>;
+ const label=sound?.muted?"开启背景声音":"关闭背景声音";
+ // Keep the logo mounted when video readiness adds/removes its sound control.
+ return <div className={`relative shrink-0 ${className||""}`}>
+  {children}
+  {sound&&<button type="button" className="absolute inset-0 z-10 rounded-sm nz-logo-sound" title={label}
+   aria-label={label} aria-pressed={!sound.muted}
+   onClick={event=>{event.stopPropagation();void sound.toggle()}}/>}
+ </div>;
 }
