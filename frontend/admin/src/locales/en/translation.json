@@ -142,7 +142,7 @@
     "EditServerGroup": "Edit Server Group",
     "CreateServerGroup": "Create Server Group",
     "ServerSort": "Server order",
-    "ServerSortHint": "Drag or use the arrows to arrange servers, then save. Frontend and dashboard follow this order; system IDs stay unchanged.",
+    "ServerSortHint": "Hold a server and drag; use the mouse wheel to find its position, release, then save. On mobile, use the grip or arrows. System IDs stay unchanged.",
     "ServerManualList": "Manual server order",
     "ServerMoveUp": "Move {{name}} up",
     "ServerMoveDown": "Move {{name}} down",

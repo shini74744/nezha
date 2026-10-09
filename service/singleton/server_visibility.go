@@ -59,7 +59,8 @@ func (c *ServerClass) UpdateVisibility(ctx *gin.Context, form model.BatchServerV
 				updates[field] = *value
 			}
 		}
-		for _, server := range servers {
+		for i := range servers {
+			server := &servers[i]
 			current := map[string]bool{"hide_for_guest": server.HideForGuest, "hide_for_display": server.HideForDisplay, "connectivity_disabled": server.ConnectivityDisabled, "connectivity_local_only": server.ConnectivityLocalOnly, "bgp_disabled": server.BGPDisabled, "return_route_disabled": server.ReturnRouteDisabled, "streaming_disabled": server.StreamingDisabled}
 			for field, value := range updates {
 				if current[field] != value.(bool) {

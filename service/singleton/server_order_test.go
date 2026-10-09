@@ -66,7 +66,8 @@ func TestManualOrderRejectsIncompleteStaleDuplicateUnauthorized(t *testing.T) {
 	require.Error(t, ServerShared.UpdateManualOrder(ctx, []uint64{7, 9, 2}))
 	var rows []model.Server
 	require.NoError(t, DB.Find(&rows).Error)
-	for _, row := range rows {
+	for i := range rows {
+		row := &rows[i]
 		require.Equal(t, 1000+int(row.ID), row.DisplayIndex)
 	}
 	var count int64

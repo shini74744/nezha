@@ -81,7 +81,8 @@ func TestBatchFeaturesMixedAndIdempotent(t *testing.T) {
 	require.Equal(t, 2, result.Updated)
 	var rows []model.Server
 	require.NoError(t, singleton.DB.Where("id IN ?", []uint64{1, 2}).Order("id").Find(&rows).Error)
-	for _, s := range rows {
+	for i := range rows {
+		s := &rows[i]
 		require.False(t, s.ConnectivityDisabled)
 		require.False(t, s.BGPDisabled)
 		require.True(t, s.ReturnRouteDisabled)
