@@ -16,7 +16,6 @@ import useSWR from "swr"
 interface Operation {
     id: number
     created_at: string
-    server_uuid: string
     server_id: number
     previous_id: number
     server_name: string
@@ -30,7 +29,7 @@ const actions: Record<string, string> = {
     create: "节点注册",
     edit: "编辑节点",
     delete: "删除节点",
-    release_uuid: "放行 UUID",
+    release_uuid: "解除节点封禁",
     deleted_cleanup: "删除节点自动清理",
     order: "调整排序",
     weights: "批量分配权重",
@@ -61,7 +60,7 @@ const fields: Record<string, string> = {
     public_note: "公开配置 / 备注",
     groups: "分组",
     status: "状态",
-    uuid_block: "UUID 封禁状态",
+    uuid_block: "节点身份封禁状态",
     deleted_cleanup: "自动清理状态",
     config: "Agent 配置",
     update: "Agent 更新",
@@ -123,7 +122,7 @@ export function ServerOperationHistory() {
                     <div className="flex min-w-0 flex-1 basis-48 gap-1">
                         <Input
                             aria-label="搜索节点历史"
-                            placeholder="名称 / 原 ID / 当前 ID / UUID"
+                            placeholder="名称 / 原 ID / 当前 ID"
                             value={draft}
                             maxLength={200}
                             onChange={(e) => setDraft(e.target.value)}
@@ -212,9 +211,6 @@ export function ServerOperationHistory() {
                                         </p>
                                     </summary>
                                     <div className="mt-3 space-y-2 border-t pt-3">
-                                        <p className="break-all font-mono text-xs text-muted-foreground">
-                                            UUID: {row.server_uuid}
-                                        </p>
                                         {(row.changes ?? []).map((change, index) => (
                                             <div key={index} className="rounded border p-2">
                                                 <p className="mb-1.5 text-xs font-medium">
