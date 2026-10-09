@@ -599,7 +599,9 @@ for(const theme of ["default","doraemon"])for(const width of [320,1440])for(cons
   await expect(button.locator("svg")).toHaveClass(/animate-spin/);
   const busy=await button.boundingBox();
   await page.locator("[data-connectivity-source]").screenshot({path:info.outputPath("local-button-busy.png"),animations:"allow"});
-  await expect(button).toHaveAttribute("aria-busy","false");
+  // Twelve sequential 400 ms mock responses plus browser overhead exceed the default 5 s assertion budget.
+  await expect(button).toHaveAttribute("aria-busy","false",{timeout:15000});
+  expect(state.localRequests).toHaveLength(12);
   await expect(button.getByText(label,{exact:true})).toBeVisible();
   const idle=await button.boundingBox();
   expect(idle!.width).toBe(busy!.width);expect(idle!.height).toBe(32);expect(idle!.height).toBe(busy!.height);
@@ -609,7 +611,7 @@ for(const theme of ["default","doraemon"])for(const width of [320,1440])for(cons
   await expect(button).toHaveAttribute("aria-busy","true");
   await expect(button.locator("svg")).toHaveCSS("animation-name","none");
   await button.press("Enter");
-  await expect(button).toHaveAttribute("aria-busy","false");
+  await expect(button).toHaveAttribute("aria-busy","false",{timeout:15000});
   expect(state.localRequests).toHaveLength(24);expect(state.posts).toBe(0);
  });
 }
@@ -711,14 +713,16 @@ for(const theme of ["default","doraemon"])for(const light of [false,true])for(co
  const state=await setup(page,theme,light,false,false);
  const youtube=catalog.find(row=>row.id==="youtube")!;
  state.override=[{...youtube,status:"pending",samples:[]}];
- state.localMock=true;state.localDelays=[600,600,...Array(10).fill(25)];
+ // Slow warmups make accidental inclusion visibly exceed the measured-average bound.
+ state.localMock=true;state.localDelays=[2000,2000,...Array(10).fill(25)];
  await page.reload();await page.locator(".server-info-tab").getByRole("button",{name:"连通性",exact:true}).click();
  const view=page.locator("[data-server-connectivity]"),card=view.locator('[data-connectivity-target="youtube"]');
  await view.getByRole("button",{name:"本地延迟",exact:true}).click();
- await expect.poll(()=>state.localRequests.length).toBe(2);
+ // Do not require polling to catch the short-lived exact second-request count.
+ await expect.poll(()=>state.localRequests.length).toBeGreaterThanOrEqual(1);
  const completed=()=>card.locator("[data-connectivity-sample]").evaluateAll(nodes=>nodes.filter(el=>el.classList.contains("bg-emerald-600")).length);
  expect(await completed()).toBe(0);
- await expect(card).toHaveAttribute("data-connectivity-phase","complete");
+ await expect(card).toHaveAttribute("data-connectivity-phase","complete",{timeout:15000});
  expect(await completed()).toBe(10);
  expect(state.localRequests).toHaveLength(12);
  for(const req of state.localRequests){expect(req.url.replace("?__connectivity_fixture=1","")).toBe("https://yt3.ggpht.com/favicon.ico");expect(req.method).toBe("HEAD");}
