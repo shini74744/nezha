@@ -4,6 +4,7 @@ import "time"
 
 type StreamServer struct {
 	BGPDisabled          bool   `json:"bgp_disabled"`
+	ReturnRouteDisabled  bool   `json:"return_route_disabled"`
 	StreamingDisabled    bool   `json:"streaming_disabled"`
 	ConnectivityDisabled bool   `json:"connectivity_disabled"`
 	HideForDisplay       bool   `json:"hide_for_display"` // 普通隐藏，不改变访问权限
@@ -26,6 +27,7 @@ type StreamServerData struct {
 
 type ServerForm struct {
 	BGPDisabled          *bool  `json:"bgp_disabled,omitempty" validate:"optional"`
+	ReturnRouteDisabled  *bool  `json:"return_route_disabled,omitempty" validate:"optional"`
 	StreamingDisabled    *bool  `json:"streaming_disabled,omitempty" validate:"optional"`
 	ConnectivityDisabled *bool  `json:"connectivity_disabled,omitempty" validate:"optional"` // nil preserves older clients
 	HideForDisplay       *bool  `json:"hide_for_display,omitempty" validate:"optional"`      // nil preserves older clients

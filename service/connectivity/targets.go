@@ -11,6 +11,19 @@ import (
 //go:embed catalog.json
 var catalogJSON []byte
 
+// Exact prior built-in values only; custom endpoints are never rewritten.
+//
+//go:embed legacy_endpoints.json
+var legacyEndpointsJSON []byte
+
+var legacyEndpoints = func() map[string]string {
+	var values map[string]string
+	if err := json.Unmarshal(legacyEndpointsJSON, &values); err != nil {
+		panic("invalid legacy connectivity endpoints: " + err.Error())
+	}
+	return values
+}()
+
 var targets = loadTargets()
 
 func loadTargets() []Target {

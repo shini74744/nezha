@@ -65,7 +65,7 @@ func TestManagerDeduplicatesCooldownAndMedian(t *testing.T) {
 	wg.Wait()
 	close(release)
 	result := waitComplete(t, m, "node-a")
-	require.EqualValues(t, 3*len(Targets()), calls.Load())
+	require.EqualValues(t, (3+WarmupRounds)*len(Targets()), calls.Load())
 	for _, r := range result.Results {
 		require.Equal(t, "ok", r.Status)
 		require.Len(t, r.Samples, 3)
@@ -74,7 +74,7 @@ func TestManagerDeduplicatesCooldownAndMedian(t *testing.T) {
 	cached, err := m.Start("node-a", probe)
 	require.NoError(t, err)
 	require.Equal(t, result.StartedAt, cached.StartedAt)
-	require.EqualValues(t, 3*len(Targets()), calls.Load())
+	require.EqualValues(t, (3+WarmupRounds)*len(Targets()), calls.Load())
 	// Snapshot copies must not expose the mutable running collection.
 	cached.Results[0].Status = "modified"
 	cached.Results[0].Samples[0].Status = "modified"
@@ -84,7 +84,7 @@ func TestManagerDeduplicatesCooldownAndMedian(t *testing.T) {
 	_, err = m.Start("node-a", probe)
 	require.NoError(t, err)
 	waitComplete(t, m, "node-a")
-	require.EqualValues(t, 6*len(Targets()), calls.Load())
+	require.EqualValues(t, 2*(3+WarmupRounds)*len(Targets()), calls.Load())
 	now = now.Add(25 * time.Hour)
 	require.Equal(t, "idle", m.Get("node-a").State)
 }
@@ -158,7 +158,7 @@ func TestExpandedReferenceCatalogAndBudget(t *testing.T) {
 	// Even if every Agent request reaches the 3s upper bound, all 110 sites
 	// must receive their three real attempts before the overall batch deadline.
 	batches := (len(Targets()) + m.workers - 1) / m.workers
-	require.GreaterOrEqual(t, m.timeout, time.Duration(batches*m.rounds)*ProbeTimeout)
+	require.GreaterOrEqual(t, m.timeout, time.Duration(batches*(m.rounds+WarmupRounds))*ProbeTimeout)
 }
 func TestExpandedWorkersRemainBounded(t *testing.T) {
 	m := NewManager()
@@ -178,7 +178,7 @@ func TestExpandedWorkersRemainBounded(t *testing.T) {
 	_, err := m.Start("bounded", probe)
 	require.NoError(t, err)
 	waitComplete(t, m, "bounded")
-	require.EqualValues(t, len(Targets())*3, calls.Load())
+	require.EqualValues(t, len(Targets())*(3+WarmupRounds), calls.Load())
 	require.LessOrEqual(t, peak.Load(), int32(12))
 }
 func TestQueueInterleavesRegionsAndRetriesOnlyAfterFirstPass(t *testing.T) {
@@ -192,7 +192,7 @@ func TestQueueInterleavesRegionsAndRetriesOnlyAfterFirstPass(t *testing.T) {
 	})
 	require.NoError(t, err)
 	result := waitComplete(t, m, "fair")
-	require.Len(t, order, len(targets)*3)
+	require.Len(t, order, len(targets)*(3+WarmupRounds))
 	seen := map[string]bool{}
 	for _, id := range order[:len(targets)] {
 		require.False(t, seen[id], "a retry jumped ahead of an unstarted target: %s", id)
@@ -259,7 +259,7 @@ func TestTimeoutEndsItemWithoutInventedSamplesOrBlockingNextSites(t *testing.T) 
 			for _, r := range s.Results {
 				require.Equal(t, status, r.Status)
 				require.Equal(t, "complete", r.Phase)
-				require.Len(t, r.Samples, 1)
+				require.Empty(t, r.Samples)
 			}
 		})
 	}
@@ -313,7 +313,7 @@ func TestTimedOutTargetsStillReceiveThreeAttemptsAfterEveryFirstAttempt(t *testi
 	})
 	require.NoError(t, err)
 	s := waitComplete(t, m, "timeouts")
-	require.Len(t, order, len(targets)*3)
+	require.Len(t, order, len(targets)*(3+WarmupRounds))
 	for _, r := range s.Results {
 		require.Equal(t, "complete", r.Phase)
 		require.Equal(t, "timeout", r.Status)

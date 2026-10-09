@@ -105,6 +105,7 @@ export const serverFormSchema = z.object({
     hide_for_display: asOptionalField(z.boolean()),
     connectivity_disabled: asOptionalField(z.boolean()),
     bgp_disabled: asOptionalField(z.boolean()),
+    return_route_disabled: asOptionalField(z.boolean()),
     streaming_disabled: asOptionalField(z.boolean()),
     enable_ddns: asOptionalField(z.boolean()),
     ddns_profiles: asOptionalField(z.array(z.number())),
@@ -976,16 +977,17 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                         )}
                                                     </div>
                                                     </div>
-                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:col-span-2" data-network-feature-settings>
+                                                    <div className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-2 sm:col-span-2" data-network-feature-settings>
                                                         {([
                                                             ["connectivity_disabled", "连通性"],
                                                             ["bgp_disabled", "BGP"],
+                                                            ["return_route_disabled", "回程"],
                                                             ["streaming_disabled", "流媒体"],
                                                         ] as const).map(([name, label]) => (
                                                             <FormField key={name} control={form.control} name={name} render={({ field }) => (
-                                                                <FormItem className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 space-y-0 rounded-md border p-3" data-connectivity-setting={name === "connectivity_disabled" ? "" : undefined}>
+                                                                <FormItem className="grid min-h-10 grid-cols-[minmax(0,1fr)_auto] items-center gap-1 space-y-0 rounded-md border px-2 py-1.5" data-connectivity-setting={name === "connectivity_disabled" ? "" : undefined}>
                                                                     <div className="flex min-w-0 items-center">
-                                                                        <FormLabel className="whitespace-nowrap">{label}</FormLabel>
+                                                                        <FormLabel className="whitespace-nowrap text-xs sm:text-sm">{label}</FormLabel>
                                                                         <SettingHelp label={label}>默认开启；关闭后隐藏前台标签并停止对应检测。</SettingHelp>
                                                                     </div>
                                                                     <FormControl><Switch className="shrink-0" aria-label={label} checked={!field.value} onCheckedChange={checked => field.onChange(!checked)} /></FormControl>

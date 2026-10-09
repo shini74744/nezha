@@ -66,7 +66,7 @@ func TestConfiguredQueueFreezesTargetsAndRetainsCooldown(t *testing.T) {
 	close(release)
 	require.Eventually(t, func() bool { return m.Get("one", original).State == "complete" }, time.Second, time.Millisecond)
 	mu.Lock()
-	require.Len(t, calls, 6)
+	require.Len(t, calls, 2*(3+WarmupRounds))
 	require.Equal(t, "custom-a https://example.com/a", calls[0])
 	require.Equal(t, "custom-b https://example.com/b", calls[1])
 	mu.Unlock()

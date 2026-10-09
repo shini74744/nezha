@@ -1,4 +1,5 @@
 import { FetcherMethod, fetcher } from "@/api/api"
+import ReturnRouteSettings from "@/components/ReturnRouteSettings"
 import ConnectivityAutomationSettings from "@/components/ConnectivityAutomationSettings"
 import SettingHelp from "@/components/SettingHelp"
 import ConnectivityDragHandle from "@/components/ConnectivityDragHandle"
@@ -202,7 +203,9 @@ export default function CardSettings() {
             <TabsList aria-label="卡片分类">
                 <TabsTrigger value="connectivity">连通性</TabsTrigger>
                 <TabsTrigger value="bgp">BGP</TabsTrigger>
+                <TabsTrigger value="return-route">回程</TabsTrigger>
             </TabsList>
+            <TabsContent value="return-route" forceMount className="data-[state=inactive]:hidden"><ReturnRouteSettings /></TabsContent>
             <TabsContent value="bgp" forceMount className="data-[state=inactive]:hidden">
                 <ConnectivityAutomationSettings kind="bgp" />
             </TabsContent>

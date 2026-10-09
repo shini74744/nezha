@@ -8,6 +8,15 @@ import (
 )
 
 func validateBackgroundFields(f map[string]any) error {
+	for _, key := range []string{"desktopLoadEffect", "mobileLoadEffect"} {
+		if value, exists := f[key]; exists {
+			switch value {
+			case "center", "fade", "zoom", "top", "bottom", "left", "right", "none":
+			default:
+				return fmt.Errorf("invalid background load effect: %s", key)
+			}
+		}
+	}
 	if value, ok := f["timezone"].(string); ok {
 		if value == "" {
 			return fmt.Errorf("background timezone is required")

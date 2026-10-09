@@ -1,10 +1,12 @@
 import {useEffect,useRef,useState} from "react";
+import {AppearanceSection} from "@/components/appearance-section";
 import {Input} from "@/components/ui/input";
 import {Textarea} from "@/components/ui/textarea";
 import {Switch} from "@/components/ui/switch";
 import {Button} from "@/components/ui/button";
 import {mediaLines,parseMediaLines,readPath,type Media,type ScheduleRule} from "@/lib/background-config";
 import type {Feature} from "@/lib/appearance-config";
+import {backgroundLoadEffects} from "@/lib/background-load";
 export function MediaLines({label,value,onChange}:{label:string;value:Media[];onChange:(next:Media[])=>void}){
  const [text,setText]=useState(()=>mediaLines(value)),last=useRef(JSON.stringify(value));
  useEffect(()=>{const serialized=JSON.stringify(value);if(last.current!==serialized){last.current=serialized;setText(mediaLines(value))}},[value]);
@@ -18,14 +20,17 @@ export function BackgroundSettings({value:f,sound,onChange,onSoundChange}:{value
  const textList=(key:string,label:string)=><label className="block space-y-1"><span>{label}（逗号或换行分隔）</span><Textarea aria-label={label} value={f[key].join(", ")} onChange={e=>update(key,e.target.value.split(/[,，\n]/).map((v:string)=>v.trim()))}/></label>;
  const patchRule=(index:number,patch:Partial<ScheduleRule>)=>update("scheduleRules",f.scheduleRules.map((r:ScheduleRule,i:number)=>i===index?{...r,...patch}:r));
  const testLookup=async()=>{setTesting(true);setLookup("");try{const response=await fetch(f.regionApi,{credentials:"omit",signal:AbortSignal.timeout(8000)});if(!response.ok)throw Error("HTTP "+response.status);const data=await response.json();setLookup("运营商："+(readPath(data,f.regionOrgPath)||"未找到")+"；地区："+(readPath(data,f.regionCountryPath)||"未找到"))}catch(e){setLookup("查询失败："+String(e)+"。接口需允许浏览器跨域访问。")}finally{setTesting(false)}};
- return <div className="space-y-6">
+ return <div className="space-y-3" data-background-settings>
+  <AppearanceSection title="背景地址" description={`电脑 ${f.desktopMedia.length} 条；手机 ${f.mobileMedia.length?f.mobileMedia.length+" 条":"沿用电脑背景"}`} headingLevel={3}><div className="space-y-4">
   <p className="text-sm text-muted-foreground">每行填写一个直接返回图片或视频的地址，可混合使用。进入页面随机选择一条，加载失败尝试下一条；HTTPS 站点建议填写 HTTPS 地址。</p>
   <div className="grid gap-4 md:grid-cols-2">
    <MediaLines label="电脑背景地址" value={f.desktopMedia} onChange={v=>update("desktopMedia",v)}/>
    <MediaLines label="手机背景地址" value={f.mobileMedia} onChange={v=>update("mobileMedia",v)}/>
   </div>
   <p className="text-sm text-muted-foreground">手机列表留空时使用电脑列表。旧地址的图片/视频类型保留，新地址自动识别。</p>
-  <fieldset className="rounded border p-4 space-y-4"><legend className="px-2 font-semibold">分时背景</legend>
+  </div></AppearanceSection>
+
+  <AppearanceSection title="分时背景" description={f.scheduleEnabled?`已启用 · ${f.scheduleRules.filter((r:ScheduleRule)=>r.enabled).length} 条规则 · ${f.timezone}`:"未启用 · 按时段选择背景"} headingLevel={3}><div className="space-y-4">
    {toggle("scheduleEnabled","启用分时背景")}
    <div className="grid gap-4 sm:grid-cols-2">{field("timezone","分时时区")}{toggle("showScheduleNotice","显示分时切换提示")}</div>
    <p className="text-sm text-muted-foreground">例如 Asia/Shanghai 或 UTC；开始时间包含、结束时间不包含，支持跨午夜，相同时间表示全天。重叠时按列表从上到下匹配，页面停留时自动切换。</p>
@@ -36,8 +41,8 @@ export function BackgroundSettings({value:f,sound,onChange,onSoundChange}:{value
     <div className="flex gap-2"><Button type="button" variant="outline" disabled={i===0} onClick={()=>{const rules=[...f.scheduleRules];[rules[i-1],rules[i]]=[rules[i],rules[i-1]];update("scheduleRules",rules)}}>上移规则</Button><Button type="button" variant="outline" onClick={()=>update("scheduleRules",f.scheduleRules.filter((_:unknown,j:number)=>j!==i))}>删除规则</Button></div>
    </div>)}
    <Button type="button" variant="outline" onClick={()=>update("scheduleRules",[...f.scheduleRules,{name:"新分时规则",enabled:false,start:"22:00",end:"06:00",desktopMedia:[],mobileMedia:[]}])}>添加分时规则</Button>
-  </fieldset>
-  <fieldset className="rounded border p-4 space-y-4"><legend className="px-2 font-semibold">特殊地区背景与运营商查询</legend>
+  </div></AppearanceSection>
+  <AppearanceSection title="特殊地区背景与运营商查询" description={f.regionEnabled?"已启用 · 按地区或运营商选择背景":"未启用 · 可设置地区与运营商规则"} headingLevel={3}><div className="space-y-4">
    {toggle("regionEnabled","启用特殊地区背景")}
    {field("regionApi","运营商查询地址")}
    <div className="grid gap-4 sm:grid-cols-2">{field("regionOrgPath","运营商字段路径")}{field("regionCountryPath","地区字段路径")}</div>
@@ -47,8 +52,8 @@ export function BackgroundSettings({value:f,sound,onChange,onSoundChange}:{value
    <p className="text-sm text-muted-foreground">运营商关键词为包含匹配，地区代码为精确匹配；任意一项命中即生效。两项均留空则不匹配。</p>
    <div className="grid gap-4 md:grid-cols-2"><MediaLines label="特殊地区电脑背景" value={f.chinaMedia} onChange={v=>update("chinaMedia",v)}/><MediaLines label="特殊地区手机背景" value={f.regionMobileMedia} onChange={v=>update("regionMobileMedia",v)}/></div>
    <label className="block space-y-1"><span>背景规则优先级</span><select aria-label="背景规则优先级" className="w-full rounded border bg-background p-2" value={f.priority} onChange={e=>update("priority",e.target.value)}><option value="region-first">特殊地区优先，其次分时，最后普通背景</option><option value="schedule-first">分时优先，其次特殊地区，最后普通背景</option></select></label>
-  </fieldset>
-  <fieldset className="rounded border p-4 space-y-4"><legend className="px-2 font-semibold">卡片透明效果</legend>
+  </div></AppearanceSection>
+  <AppearanceSection title="卡片透明效果" description="分别调整亮色、暗色模式的不透明度与模糊" headingLevel={3}><div className="space-y-4">
    <div className="grid gap-4 md:grid-cols-2">
     {([["light","白天模式（亮色）"],["dark","黑夜模式（暗色）"]] as const).map(([mode,title])=><section key={mode} className="min-w-0 rounded border p-3 space-y-3" aria-label={title}>
      <h4 className="font-semibold">{title}</h4>
@@ -57,12 +62,22 @@ export function BackgroundSettings({value:f,sound,onChange,onSoundChange}:{value
     </section>)}
    </div>
    <p className="text-sm text-muted-foreground">不透明度 0 为完全透明，1 为不透明；模糊 0 为不模糊。随前台亮色／暗色模式切换，不按时间切换；开启背景并有可用背景时生效。旧设置自动沿用到两种模式。</p>
-  </fieldset>
-  <fieldset className="rounded border p-4 space-y-4"><legend className="px-2 font-semibold">背景视频与关联设置</legend>
+  </div></AppearanceSection>
+  <AppearanceSection title="背景视频与关联设置" description={sound.enabled?"声音控制已启用 · 视频默认静音播放":"声音控制未启用"} headingLevel={3}><div className="space-y-4">
    <div className="grid gap-4 sm:grid-cols-2">
     {[["enabled","视频声音控制"],["showControl","显示独立声音按钮"],["toggleMuteOnControlClick","允许按钮切换静音"],["unmuteOnVideoClick","点击背景视频开启声音"]].map(([key,label])=><label key={key} className="flex items-center justify-between gap-3"><span>{label}</span><Switch aria-label={label} checked={sound[key]} onCheckedChange={v=>onSoundChange({...sound,[key]:v})}/></label>)}
    </div>
    <p className="text-sm text-muted-foreground">视频默认静音自动播放，开启声音需要点击专用按钮。网络图削峰已移至独立设置，不再受背景规则影响。</p>
-  </fieldset>
+  </div></AppearanceSection>
+  <AppearanceSection title="载入效果" description={(["desktop","mobile"] as const).map((device)=>`${device==="desktop"?"电脑":"手机"}：${backgroundLoadEffects.find(o=>o.value===f[device+"LoadEffect"])?.label||"中心展开"}${f[device+"LoadEffect"]==="none"?"":` · ${Number.isFinite(f[device+"LoadDuration"])?f[device+"LoadDuration"]:"待填写"} 秒`}`).join("；")} headingLevel={3}><div className="space-y-4">
+   <div className="grid gap-4 md:grid-cols-2">
+    {([["desktop","电脑"],["mobile","手机"]] as const).map(([device,title])=><section key={device} className="min-w-0 rounded border p-3 space-y-3" aria-label={title+"背景载入"}>
+     <h4 className="font-semibold">{title}端</h4>
+     <label className="block space-y-1"><span>载入方式</span><select aria-label={title+"载入效果"} className="w-full rounded border bg-background p-2" value={f[device+"LoadEffect"]} onChange={e=>update(device+"LoadEffect",e.target.value)}>{backgroundLoadEffects.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+     <label className="block space-y-1"><span>淡入时长（秒）</span><Input aria-label={title+"载入时长（秒）"} type="number" min={0} max={10} step={0.1} disabled={f[device+"LoadEffect"]==="none"} value={Number.isNaN(f[device+"LoadDuration"])?"":f[device+"LoadDuration"]} onChange={e=>update(device+"LoadDuration",e.target.value===""?NaN:Number(e.target.value))}/></label>
+    </section>)}
+   </div>
+   <p className="text-sm text-muted-foreground">仅影响背景图片与视频，不影响 Logo、卡片和其他内容。电脑和手机分别设置。资源准备好后开始载入；时长为 0～10 秒，填 0 或选择“直接显示”可关闭动画。</p>
+  </div></AppearanceSection>
  </div>;
 }

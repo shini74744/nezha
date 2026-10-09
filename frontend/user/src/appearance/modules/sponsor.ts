@@ -2,6 +2,7 @@
 // Migrated source for the built-in sponsor feature; resources are owned by FeatureScope.
 import { FeatureScope } from "../scope";
 import { anchorSponsor } from "./sponsor-anchor";
+import { anchorMobileSponsor } from "./sponsor-mobile";
 
 export function sponsor(scope, config) {
   let mobile = window.innerWidth <= 640;
@@ -153,54 +154,7 @@ function setupSponsor(config) {
     }
   }
   if (window.innerWidth <= 640 && config.mobile) {
-    let hideDisplayTimer = null;
-    let scrollFrame = null;
-    const fadeDuration = Math.max(0, Number(config.fadeDuration) || 0);
-    const threshold = Math.max(0, Number(config.mobileBottomThreshold) || 0);
-    function showMobile() {
-      scope.clearTimeout(hideDisplayTimer);
-      if (scope.styleOf(wrap).display !== "block") {
-        scope.styleOf(wrap).display = "block";
-      }
-      scope.requestAnimationFrame(() => {
-        wrap.classList.add("bm-mobile-visible");
-      });
-    }
-    function hideMobile() {
-      if (scope.styleOf(wrap).display === "none") {
-        return;
-      }
-      wrap.classList.remove("bm-mobile-visible");
-      scope.clearTimeout(hideDisplayTimer);
-      hideDisplayTimer = scope.setTimeout(() => {
-        if (!wrap.classList.contains("bm-mobile-visible")) {
-          scope.styleOf(wrap).display = "none";
-        }
-      }, fadeDuration);
-    }
-    function checkBottom() {
-      scrollFrame = null;
-      const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-      const windowHeight = window.innerHeight;
-      const docHeight = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
-      if (scrollTop + windowHeight >= docHeight - threshold) {
-        showMobile();
-      } else {
-        hideMobile();
-      }
-    }
-    function scheduleCheck() {
-      if (scrollFrame) {
-        return;
-      }
-      scrollFrame = scope.requestAnimationFrame(checkBottom);
-    }
-    scope.styleOf(wrap).display = "none";
-    scope.listen(window, "scroll", scheduleCheck, {
-      passive: true
-    });
-    scope.listen(document, "scroll", scheduleCheck, true);
-    scheduleCheck();
+    anchorMobileSponsor(scope, wrap, Math.max(0, Number(config.mobileBottomThreshold) || 0));
   }
 }
 setupSponsor(config);

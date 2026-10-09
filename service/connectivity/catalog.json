@@ -3,15 +3,15 @@
     "id": "deepseek",
     "name": "DeepSeek",
     "group": "china",
-    "host": "www.deepseek.com",
-    "url": "https://www.deepseek.com/favicon.ico"
+    "host": "api-docs.deepseek.com",
+    "url": "https://api-docs.deepseek.com/img/favicon.svg"
   },
   {
     "id": "douyin",
     "name": "抖音",
     "group": "china",
-    "host": "lf3-static.bytednsdoc.com",
-    "url": "https://lf3-static.bytednsdoc.com/obj/eden-cn/favicon.ico"
+    "host": "lf1-cdn-tos.bytegoofy.com",
+    "url": "https://lf1-cdn-tos.bytegoofy.com/goofy/ies/douyin_web/public/favicon.ico"
   },
   {
     "id": "bilibili",
@@ -31,8 +31,8 @@
     "id": "qq",
     "name": "腾讯QQ",
     "group": "china",
-    "host": "www.qq.com",
-    "url": "https://www.qq.com/favicon.ico"
+    "host": "mat1.gtimg.com",
+    "url": "https://mat1.gtimg.com/qqcdn/xw/favicon.ico"
   },
   {
     "id": "weixin",
@@ -45,15 +45,15 @@
     "id": "xiaohongshu",
     "name": "小红书",
     "group": "china",
-    "host": "fe-static.xhscdn.com",
-    "url": "https://fe-static.xhscdn.com/favicon.ico"
+    "host": "fe-video-qc.xhscdn.com",
+    "url": "https://fe-video-qc.xhscdn.com/fe-platform/ed8fe781ce9e16c1bfac2cd962f0721edabe2e49.ico"
   },
   {
     "id": "weibo",
     "name": "新浪微博",
     "group": "china",
-    "host": "tva1.sinaimg.cn",
-    "url": "https://tva1.sinaimg.cn/favicon.ico"
+    "host": "weibo.com",
+    "url": "https://weibo.com/favicon.ico"
   },
   {
     "id": "baidu",
@@ -73,15 +73,15 @@
     "id": "taobao",
     "name": "淘宝",
     "group": "china",
-    "host": "www.taobao.com",
-    "url": "https://www.taobao.com/favicon.ico"
+    "host": "gw.alicdn.com",
+    "url": "https://gw.alicdn.com/imgextra/i4/O1CN01qOI6vB1zaqrBKbyFr_!!6000000006731-73-tps-64-64.ico"
   },
   {
     "id": "mi",
     "name": "小米",
     "group": "china",
-    "host": "www.mi.com",
-    "url": "https://www.mi.com/favicon.ico"
+    "host": "i02.appmifile.com",
+    "url": "https://i02.appmifile.com/i18n/scm/favicon.png"
   },
   {
     "id": "sony",
@@ -150,43 +150,43 @@
     "id": "youtube",
     "name": "YouTube",
     "group": "usa",
-    "host": "www.youtube.com",
-    "url": "https://www.youtube.com/generate_204"
+    "host": "yt3.ggpht.com",
+    "url": "https://yt3.ggpht.com/favicon.ico"
   },
   {
     "id": "github",
     "name": "GitHub",
     "group": "usa",
-    "host": "github.com",
-    "url": "https://github.com/generate_204"
+    "host": "github.githubassets.com",
+    "url": "https://github.githubassets.com/favicons/favicon.png"
   },
   {
     "id": "cloudflare",
     "name": "Cloudflare",
     "group": "usa",
-    "host": "1.1.1.1",
-    "url": "https://1.1.1.1/cdn-cgi/trace"
+    "host": "cp.cloudflare.com",
+    "url": "https://cp.cloudflare.com/generate_204"
   },
   {
     "id": "claude",
     "name": "Claude",
     "group": "usa",
-    "host": "api.anthropic.com",
-    "url": "https://api.anthropic.com/favicon.ico"
+    "host": "assets.claude.com",
+    "url": "https://assets.claude.com/95a868946ac8a31e5ff832e2899f294aa368b836.png?w=32&h=32"
   },
   {
     "id": "chatgpt",
     "name": "ChatGPT",
     "group": "usa",
     "host": "chatgpt.com",
-    "url": "https://chatgpt.com/cdn-cgi/trace"
+    "url": "https://chatgpt.com/unauth-mweb/images/favicon-48x48.png"
   },
   {
     "id": "gemini",
     "name": "AI Studio",
     "group": "usa",
-    "host": "generativelanguage.googleapis.com",
-    "url": "https://generativelanguage.googleapis.com/favicon.ico"
+    "host": "www.gstatic.com",
+    "url": "https://www.gstatic.com/images/branding/productlogos/ai_studio/v1/web-32dp/logo_ai_studio_color_1x_web_32dp.png"
   },
   {
     "id": "amazon",
@@ -228,14 +228,14 @@
     "name": "Facebook",
     "group": "usa",
     "host": "static.xx.fbcdn.net",
-    "url": "https://static.xx.fbcdn.net/rsrc.php/yb/r/hLRJ1GG_y0J.ico"
+    "url": "https://static.xx.fbcdn.net/rsrc.php/y1/r/ay1hV6OlegS.ico"
   },
   {
     "id": "instagram",
     "name": "Instagram",
     "group": "usa",
     "host": "static.cdninstagram.com",
-    "url": "https://static.cdninstagram.com/rsrc.php/yb/r/hLRJ1GG_y0J.ico"
+    "url": "https://static.cdninstagram.com/rsrc.php/y4/r/QaBlI0OZiks.ico"
   },
   {
     "id": "x",
@@ -256,7 +256,7 @@
     "name": "LinkedIn",
     "group": "usa",
     "host": "static.licdn.com",
-    "url": "https://static.licdn.com/favicon.ico"
+    "url": "https://static.licdn.com/aero-v1/sc/h/al2o9zrvru7aqj8e1x2rzsrca"
   },
   {
     "id": "twitch",
@@ -353,8 +353,8 @@
     "id": "epicgames",
     "name": "Epic Games",
     "group": "usa",
-    "host": "store.epicgames.com",
-    "url": "https://store.epicgames.com/favicon.ico"
+    "host": "static-assets-prod.epicgames.com",
+    "url": "https://static-assets-prod.epicgames.com/epic-store/static/favicon.ico"
   },
   {
     "id": "perplexity",
@@ -403,14 +403,14 @@
     "name": "npm",
     "group": "global",
     "host": "registry.npmjs.org",
-    "url": "https://registry.npmjs.org/"
+    "url": "https://registry.npmjs.org/-/ping"
   },
   {
     "id": "takealot",
     "name": "Takealot",
     "group": "global",
-    "host": "static.takealot.com",
-    "url": "https://static.takealot.com/favicon.ico"
+    "host": "www.takealot.com",
+    "url": "https://www.takealot.com/favicon.ico"
   },
   {
     "id": "pixpix",
@@ -430,8 +430,8 @@
     "id": "noon",
     "name": "Noon",
     "group": "global",
-    "host": "www.noon.com",
-    "url": "https://www.noon.com/favicon.ico"
+    "host": "f.nooncdn.com",
+    "url": "https://f.nooncdn.com/s/app/com/noon/icons/favicon_v4/favicon-16x16.png"
   },
   {
     "id": "wikipedia",
@@ -466,7 +466,7 @@
     "name": "MercadoLibre",
     "group": "global",
     "host": "http2.mlstatic.com",
-    "url": "https://http2.mlstatic.com/favicon.ico"
+    "url": "https://http2.mlstatic.com/ui/navigation/5.18.1/mercadolibre/favicon.ico"
   },
   {
     "id": "telegram",
@@ -480,7 +480,7 @@
     "name": "GitLab",
     "group": "global",
     "host": "gitlab.com",
-    "url": "https://gitlab.com/favicon.ico"
+    "url": "https://gitlab.com/assets/favicon-72a2cad5025aa931d6ea56c3201d1f18e68a8cd39788c7c80d5b2b82aa5143ef.png"
   },
   {
     "id": "proton",
@@ -514,8 +514,8 @@
     "id": "daum",
     "name": "Daum",
     "group": "korea",
-    "host": "www.daum.net",
-    "url": "https://www.daum.net/favicon.ico"
+    "host": "t1.daumcdn.net",
+    "url": "https://t1.daumcdn.net/top/favicon/20260220/daum.ico"
   },
   {
     "id": "guardian",
@@ -640,8 +640,8 @@
     "id": "vk",
     "name": "VK",
     "group": "russia",
-    "host": "vk.com",
-    "url": "https://vk.com/favicon.ico"
+    "host": "m.vk.com",
+    "url": "https://m.vk.com/images/icons/pwa/favicon_32.png?12"
   },
   {
     "id": "mailru",
@@ -760,7 +760,7 @@
     "name": "澳门通 MPay",
     "group": "macau",
     "host": "www.macaupass.com",
-    "url": "https://www.macaupass.com/favicon.ico"
+    "url": "https://www.macaupass.com/favicon-16.png"
   },
   {
     "id": "govmo",

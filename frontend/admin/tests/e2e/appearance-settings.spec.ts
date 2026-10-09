@@ -112,16 +112,19 @@ test("background editor saves multiline media, ordered schedules and region sett
 }) => {
     const { updates } = await setup(page)
     await page.getByRole("button", { name: "背景图片与视频", exact: true }).click()
+    await page.getByRole("button", {name:"背景地址",exact:true}).click()
     const desktop = page.getByLabel("电脑背景地址", { exact: true })
     await desktop.fill("https://media.test/a.jpg\n")
     await desktop.press("End")
     await desktop.pressSequentially("https://media.test/b.mp4")
     await expect(desktop).toHaveValue("https://media.test/a.jpg\nhttps://media.test/b.mp4")
     await page.getByLabel("手机背景地址", { exact: true }).fill("https://media.test/mobile-api")
+    await page.getByRole("button", {name:"分时背景",exact:true}).click()
     await page.getByRole("button", { name: "添加分时规则" }).click()
     await page.getByLabel("分时规则名称 2", { exact: true }).fill("晚间")
     await page.getByLabel("分时电脑背景 2", { exact: true }).fill("https://media.test/night.webm")
     await page.getByLabel("启用分时规则 2", { exact: true }).click()
+    await page.getByRole("button", {name:"特殊地区背景与运营商查询",exact:true}).click()
     await page.getByLabel("背景规则优先级", { exact: true }).selectOption("schedule-first")
     await page.getByLabel("国家或地区代码", { exact: true }).fill("CN, HK")
     await page.getByLabel("运营商字段路径", { exact: true }).fill("asn.org")
@@ -148,12 +151,14 @@ test("background editor rejects unsafe URLs and previews custom region API field
 }) => {
     await setup(page)
     await page.getByRole("button", { name: "背景图片与视频", exact: true }).click()
+    await page.getByRole("button", {name:"背景地址",exact:true}).click()
     await page.getByLabel("电脑背景地址", { exact: true }).fill("javascript:alert(1)")
     await expect(page.getByRole("button", { name: "保存美化设置", exact: true })).toBeDisabled()
     await page.getByLabel("电脑背景地址", { exact: true }).fill("https://media.test/api")
     await page.route("https://region.test/query", (route) =>
         route.fulfill({ json: { asn: { org: "AS123 Example" }, data: { country: "CN" } } }),
     )
+    await page.getByRole("button", {name:"特殊地区背景与运营商查询",exact:true}).click()
     await page.getByLabel("运营商查询地址", { exact: true }).fill("https://region.test/query")
     await page.getByLabel("运营商字段路径", { exact: true }).fill("asn.org")
     await page.getByLabel("地区字段路径", { exact: true }).fill("data.country")
@@ -444,6 +449,7 @@ test("custom Sakana roles add, save, reload, validate and delete selected",async
 test("theme transparency settings save independently and survive reload",async({page},testInfo)=>{
  const {updates}=await setup(page);
  await page.getByRole("button",{name:"背景图片与视频",exact:true}).click();
+ await page.getByRole("button",{name:"卡片透明效果",exact:true}).click();
  await page.getByLabel("白天模式（亮色）卡片背景不透明度",{exact:true}).fill("0.25");
  await page.getByLabel("黑夜模式（暗色）卡片背景不透明度",{exact:true}).fill("0.7");
  await page.getByLabel("白天模式（亮色）卡片模糊（像素）",{exact:true}).fill("2");
@@ -452,9 +458,50 @@ test("theme transparency settings save independently and survive reload",async({
  await expect.poll(()=>updates.length).toBe(1);
  expect(updates[0].config.features.background).toMatchObject({lightOpacity:0.25,darkOpacity:0.7,lightBlur:2,darkBlur:8,opacity:0.4,blur:4});
  await page.reload();await page.getByRole("button",{name:"背景图片与视频",exact:true}).click();
+ await page.getByRole("button",{name:"卡片透明效果",exact:true}).click();
  await expect(page.getByLabel("白天模式（亮色）卡片背景不透明度",{exact:true})).toHaveValue("0.25");
  await expect(page.getByLabel("黑夜模式（暗色）卡片背景不透明度",{exact:true})).toHaveValue("0.7");
  await expect(page.getByLabel("白天模式（亮色）卡片模糊（像素）",{exact:true})).toHaveValue("2");
  await expect(page.getByLabel("黑夜模式（暗色）卡片模糊（像素）",{exact:true})).toHaveValue("8");
- await page.getByRole("group",{name:"卡片透明效果",exact:true}).screenshot({path:testInfo.outputPath("card-theme-settings.png")});
+ await page.getByRole("button",{name:"卡片透明效果",exact:true}).locator("xpath=ancestor::section[1]").screenshot({path:testInfo.outputPath("card-theme-settings.png")});
+});
+
+for (const width of [1440,390,320]) test("background loading settings save/reload independently at "+width,async({page})=>{
+ await page.setViewportSize({width,height:900});const {updates}=await setup(page);
+ await page.getByRole("button",{name:"背景图片与视频",exact:true}).click();
+ await page.getByRole("button",{name:"载入效果",exact:true}).click();
+ const pc=page.getByLabel("电脑载入效果",{exact:true}),phone=page.getByLabel("手机载入效果",{exact:true});
+ await pc.selectOption("left");await phone.selectOption("zoom");
+ await page.getByLabel("电脑载入时长（秒）",{exact:true}).fill("4.5");
+ await page.getByLabel("手机载入时长（秒）",{exact:true}).fill("0.8");
+ await page.getByRole("button",{name:"保存美化设置",exact:true}).click();
+ await expect.poll(()=>updates.length).toBe(1);
+ expect(updates[0].config.features.background).toMatchObject({desktopLoadEffect:"left",desktopLoadDuration:4.5,mobileLoadEffect:"zoom",mobileLoadDuration:0.8});
+ await page.reload();await page.getByRole("button",{name:"背景图片与视频",exact:true}).click();
+ await page.getByRole("button",{name:"载入效果",exact:true}).click();
+ await expect(pc).toHaveValue("left");await expect(phone).toHaveValue("zoom");
+ await expect(page.getByLabel("电脑载入时长（秒）",{exact:true})).toHaveValue("4.5");
+ await expect(page.getByLabel("手机载入时长（秒）",{exact:true})).toHaveValue("0.8");
+ const group=page.getByRole("button",{name:"载入效果",exact:true}).locator("xpath=ancestor::section[1]");await group.scrollIntoViewIfNeeded();
+ await page.screenshot({path:test.info().outputPath("background-editor-"+width+".png")});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ const a=await pc.boundingBox(),b=await phone.boundingBox();
+ if(width<768)expect(b!.y).toBeGreaterThan(a!.y);else expect(b!.y).toBe(a!.y);
+ await pc.selectOption("none");await expect(page.getByLabel("电脑载入时长（秒）",{exact:true})).toBeDisabled();
+ await expect(phone).toHaveValue("zoom");
+});
+for(const width of [1440,390,320]) test("background subsections preserve drafts and collapse at "+width,async({page},testInfo)=>{
+ await page.setViewportSize({width,height:900});const {updates}=await setup(page);
+ const outer=page.getByRole("button",{name:"背景图片与视频",exact:true});await outer.click();
+ const groups=page.locator("[data-background-settings] > section h3 button");
+ await expect(groups).toHaveText(["背景地址电脑 5 条；手机 5 条","分时背景未启用 · 按时段选择背景","特殊地区背景与运营商查询已启用 · 按地区或运营商选择背景","卡片透明效果分别调整亮色、暗色模式的不透明度与模糊","背景视频与关联设置声音控制已启用 · 视频默认静音播放","载入效果电脑：中心展开 · 1.2 秒；手机：中心展开 · 1.2 秒"].map(t=>new RegExp(t.split(/电脑|未启用|已启用|分别|声音/)[0])));
+ for(const button of await groups.all())await expect(button).toHaveAttribute("aria-expanded","false");
+ await page.locator("[data-background-settings]").screenshot({path:testInfo.outputPath("background-folded-"+width+".png")});
+ const address=page.getByRole("button",{name:"背景地址",exact:true});await address.focus();await page.keyboard.press("Enter");
+ const field=page.getByLabel("电脑背景地址",{exact:true});await field.fill("https://example.test/draft.png\n");
+ await address.click();await expect(field).not.toBeVisible();await outer.click();await outer.click();await address.focus();await page.keyboard.press("Space");
+ await expect(field).toHaveValue("https://example.test/draft.png\n");
+ await page.getByRole("button",{name:"保存美化设置",exact:true}).click();await expect.poll(()=>updates.length).toBe(1);
+ expect(updates[0].config.features.background.desktopMedia[0].src).toBe("https://example.test/draft.png");
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });

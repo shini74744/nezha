@@ -121,7 +121,7 @@
 		"title": "Node connectivity",
 		"origin": "HTTPS probes originate from this node, not your browser",
 		"helpTitle": "About connectivity",
-		"help": "Compare website response times and reachability from the server and your local network.",
+		"help": "Compare lightweight resource response times from the server and your local network. Two warmups are excluded; average 3 measured server requests or 5 local requests. This measures HTTP response time, not ICMP ping.",
 		"loading": "Loading probe results…",
 		"readFailed": "Unable to load results.",
 		"reload": "Reload",

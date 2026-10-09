@@ -1,4 +1,5 @@
 // Shared by the default frontend and the admin settings editor.
+import {validateBackgroundLoad} from "./background-load";
 export type Media = {type:"auto"|"image"|"video";src:string};
 export type ScheduleRule = {name:string;enabled:boolean;start:string;end:string;desktopMedia:Media[];mobileMedia:Media[]};
 export function mediaLines(items:Media[]):string { return items.map(item=>item.src).join("\n"); }
@@ -60,6 +61,7 @@ export function selectBackground(f:any,mobile:boolean,region:boolean,now=new Dat
  return {media:fallback,key:mobile?"mobile":"desktop",label:"",peak:!!f.peakCutDesktop&&!mobile&&!region};
 }
 export function validateBackground(f:any):void {
+ validateBackgroundLoad(f);
  new Intl.DateTimeFormat("en",{timeZone:f.timezone});
  if(!["region-first","schedule-first"].includes(f.priority))throw Error("背景规则优先级无效");
  for(const key of ["regionOrgPath","regionCountryPath"])if(!/^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)*$/.test(f[key]))throw Error("运营商/地区字段路径无效");

@@ -125,7 +125,8 @@ func (s *connectivityLoopbackAgent) Send(task *pb.Task) error {
 	s.sent.Add(1)
 	// Agent-side fixture: no outbound traffic is used during this test.
 	result := &pb.TaskResult{Id: task.Id, Type: task.Type, Successful: true, Delay: 42}
-	if task.Data == "https://chatgpt.com/cdn-cgi/trace" {
+	chatgpt, _ := connectivity.FindTarget("chatgpt")
+	if task.Data == chatgpt.URL {
 		result.Successful = false
 		result.Data = "应用错误: 403 Forbidden"
 	}
@@ -167,7 +168,7 @@ func TestConnectivityFullAgentTaskChannelDoesNotTouchMonitorHistory(t *testing.T
 	require.NoError(t, err)
 	require.Eventually(t, func() bool { return manager.Get("fixture").State == "complete" }, 2*time.Second, time.Millisecond)
 	snapshot := manager.Get("fixture")
-	require.EqualValues(t, 3*len(connectivity.Targets()), stream.sent.Load())
+	require.EqualValues(t, (3+connectivity.WarmupRounds)*len(connectivity.Targets()), stream.sent.Load())
 	for _, result := range snapshot.Results {
 		if result.ID == "chatgpt" {
 			require.Equal(t, "http_error", result.Status)
@@ -208,9 +209,9 @@ func TestConnectivitySlowAgentReplyDoesNotBlockOtherSitesAndStillSamplesThreeTim
 		}
 		return s.Results[0].Phase == "running"
 	}, 2*time.Second, 5*time.Millisecond)
-	require.Eventually(t, func() bool { return manager.Get("fair-3s").State == "complete" }, 12*time.Second, 10*time.Millisecond)
+	require.Eventually(t, func() bool { return manager.Get("fair-3s").State == "complete" }, 18*time.Second, 10*time.Millisecond)
 	s := manager.Get("fair-3s")
-	require.EqualValues(t, 3, slowCalls.Load())
+	require.EqualValues(t, 3+connectivity.WarmupRounds, slowCalls.Load())
 	require.Len(t, s.Results[0].Samples, 3)
 	require.Equal(t, "agent_timeout", s.Results[0].Status)
 	for _, row := range s.Results[1:] {

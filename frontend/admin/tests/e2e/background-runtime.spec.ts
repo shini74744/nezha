@@ -12,20 +12,20 @@ test("time boundary and responsive sources switch without refresh",async({page})
  await page.clock.install({time:new Date("2026-09-26T13:50:00Z")});await open(page);await page.clock.pauseAt(new Date("2026-09-26T13:59:58Z"));
  const base={regionEnabled:false,scheduleEnabled:true,timezone:"Asia/Shanghai",desktopMedia:[{type:"image",src:origin+"/media/day.png"}],mobileMedia:[{type:"image",src:origin+"/media/mobile.png"}],scheduleRules:[{enabled:true,name:"夜间",start:"22:00",end:"06:00",desktopMedia:[{type:"image",src:origin+"/media/night.png"}],mobileMedia:[{type:"image",src:origin+"/media/night-mobile.png"}]}]};
  await configure(page,base);
- await expect(page.locator(".nz-media img")).toHaveAttribute("src",origin+"/media/day.png");
+ await expect(page.locator(".nz-media").last().locator("img")).toHaveAttribute("src",origin+"/media/day.png");
  await page.clock.fastForward(4000);
- await expect(page.locator(".nz-media img")).toHaveAttribute("src",origin+"/media/night.png");
+ await expect(page.locator(".nz-media").last().locator("img")).toHaveAttribute("src",origin+"/media/night.png");
  await page.setViewportSize({width:390,height:844});await page.clock.runFor(50);
- await expect(page.locator(".nz-media img")).toHaveAttribute("src",origin+"/media/night-mobile.png");
+ await expect(page.locator(".nz-media").last().locator("img")).toHaveAttribute("src",origin+"/media/night-mobile.png");
  await page.screenshot({path:"test-results/background-mobile.png"});
 });
 test("region priority, query failure and resize fallback",async({page})=>{
  await open(page);await page.route(origin+"/region",r=>r.fulfill({json:{network:{org:"AS123 Example"},geo:{country:"HK"}}}));
  const f={scheduleEnabled:false,regionEnabled:true,regionApi:origin+"/region",regionOrgPath:"network.org",regionCountryPath:"geo.country",asns:["AS123"],regionCountries:[],desktopMedia:[{type:"image",src:origin+"/media/day.png"}],mobileMedia:[],chinaMedia:[{type:"image",src:origin+"/media/region.png"}],regionMobileMedia:[]};
- await configure(page,f);await expect(page.locator(".nz-media img")).toHaveAttribute("src",origin+"/media/region.png");
- await page.setViewportSize({width:390,height:844});await expect(page.locator(".nz-media img")).toHaveAttribute("src",origin+"/media/region.png");
+ await configure(page,f);await expect(page.locator(".nz-media").last().locator("img")).toHaveAttribute("src",origin+"/media/region.png");
+ await page.setViewportSize({width:390,height:844});await expect(page.locator(".nz-media").last().locator("img")).toHaveAttribute("src",origin+"/media/region.png");
  await page.route(origin+"/fail",r=>r.abort());await configure(page,{...f,regionApi:origin+"/fail"});
- await expect(page.locator(".nz-media img")).toHaveAttribute("src",origin+"/media/day.png");
+ await expect(page.locator(".nz-media").last().locator("img")).toHaveAttribute("src",origin+"/media/day.png");
 });
 test("extensionless video fallback, logo sound control and cleanup",async({page})=>{
  await open(page);
@@ -35,6 +35,8 @@ test("extensionless video fallback, logo sound control and cleanup",async({page}
  // Prevent the intentionally invalid tiny fixture from advancing before checking the image-to-video fallback.
  await page.evaluate(()=>document.addEventListener("error",e=>{if(e.target instanceof HTMLVideoElement)e.stopImmediatePropagation()},true));
  await expect(page.locator(".nz-media video")).toBeAttached();
+ // Readiness is separate from media-type detection; the invalid fixture has no actual frame.
+ await page.locator("video").evaluate((v:HTMLVideoElement)=>{Object.defineProperty(v,"readyState",{value:2});v.dispatchEvent(new Event("loadeddata"))});
  await expect(page.getByRole("button",{name:"开启背景声音",exact:true})).toBeVisible();
  await page.getByRole("button",{name:"开启背景声音",exact:true}).click();
  await expect(page.getByRole("button",{name:"关闭背景声音",exact:true})).toBeVisible();

@@ -20,15 +20,18 @@ func TestNetworkInsightSwitchesMigrateAndPreserveOldClients(t *testing.T) {
 	require.NoError(t, db.First(&s, 1).Error)
 	require.False(t, s.BGPDisabled)
 	require.False(t, s.StreamingDisabled)
-	require.NoError(t, db.Model(&s).Updates(map[string]any{"bgp_disabled": true, "streaming_disabled": true}).Error)
+	require.False(t, s.ReturnRouteDisabled)
+	require.NoError(t, db.Model(&s).Updates(map[string]any{"bgp_disabled": true, "streaming_disabled": true, "return_route_disabled": true}).Error)
 	require.NoError(t, db.First(&s, 1).Error)
 	copy := s.RuntimeCopy(s.RuntimeSnapshot())
 	require.True(t, copy.BGPDisabled)
 	require.True(t, copy.StreamingDisabled)
+	require.True(t, copy.ReturnRouteDisabled)
 	var f ServerForm
 	require.NoError(t, json.Unmarshal([]byte("{}"), &f))
 	require.Nil(t, f.BGPDisabled)
 	require.Nil(t, f.StreamingDisabled)
+	require.Nil(t, f.ReturnRouteDisabled)
 	before := &Server{}
 	changes := ServerOperationChanges(before, &s)
 	found := map[string]bool{}
@@ -37,4 +40,5 @@ func TestNetworkInsightSwitchesMigrateAndPreserveOldClients(t *testing.T) {
 	}
 	require.True(t, found["bgp_disabled"])
 	require.True(t, found["streaming_disabled"])
+	require.True(t, found["return_route_disabled"])
 }

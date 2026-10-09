@@ -57,7 +57,41 @@ export interface MediaResult {
 	status: string;
 	region?: string;
 }
+export interface ReturnHop {
+	ttl: number;
+	ip?: string;
+	asn?: string;
+	location?: string;
+	organization?: string;
+	rtt_ms?: number;
+	samples: number;
+	network?: string;
+	stage?: string;
+	ip_hidden?: boolean;
+}
+export interface ReturnSelection {
+	id: string;
+	family: string;
+}
+export interface ReturnResult {
+	tested_at?: number;
+	id: string;
+	name: string;
+	carrier: string;
+	family: string;
+	target?: string;
+	comparison_key?: string;
+	protocol: string;
+	status: string;
+	route?: string[];
+	hops?: ReturnHop[];
+	line?: string;
+	confidence?: string;
+	evidence?: string[];
+}
 export interface InsightSnapshot {
+	retest?: ReturnSelection;
+	routes?: ReturnResult[];
 	scheduled_at?: number;
 	state: string;
 	started_at?: number;
@@ -67,6 +101,7 @@ export interface InsightSnapshot {
 	results?: MediaResult[];
 }
 export interface InsightData extends InsightSnapshot {
+	queue_position?: number;
 	server_id: number;
 	can_run: boolean;
 	can_view_ip?: boolean;
@@ -74,13 +109,14 @@ export interface InsightData extends InsightSnapshot {
 	online: boolean;
 	history?: InsightSnapshot[];
 }
-export type InsightKind = "bgp" | "streaming";
+export type InsightKind = "bgp" | "streaming" | "return-route";
 export async function insightRequest(
 	id: number,
 	kind: InsightKind,
 	method: "GET" | "POST" = "GET",
 	signal?: AbortSignal,
 	priority?: RequestPriority,
+	selection?: ReturnSelection,
 ): Promise<InsightData> {
 	let csrf = "";
 	try {
@@ -91,7 +127,11 @@ export async function insightRequest(
 				?.slice(8) || "",
 		);
 	} catch {}
-	const response = await fetch(`/api/v1/server/${id}/${kind}`, {
+	const suffix =
+		selection && kind === "return-route" && method === "POST"
+			? `/${encodeURIComponent(selection.id)}/${encodeURIComponent(selection.family)}`
+			: "";
+	const response = await fetch(`/api/v1/server/${id}/${kind}${suffix}`, {
 		method,
 		signal,
 		priority,

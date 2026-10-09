@@ -51,3 +51,96 @@ Agent v2.3.7 fixes the HTTPS dial-lock bottleneck and enforces the connectivity
 task's three-second request deadline inside the Agent, including TLS and body
 reads. Ordinary HTTP service monitors retain their existing timeout. IPv4 and
 IPv6 changes, appearances and disappearances independently trigger IP reports.
+
+## Return-route (NextTrace only)
+
+The default and Doraemon detail pages add **回程** between BGP and streaming.
+The independent server switch hides this tab and prevents new probes; older API
+clients omitting `return_route_disabled` preserve its current value.
+
+- Card settings → 回程: revision-checked admin-only target editor, automatic
+  detection, interval (1–24 hours), retention (1–30 days), and TCP/ICMP/UDP.
+  Defaults: Beijing/Shanghai/Guangzhou × Telecom/Unicom/Mobile, TCP port 80,
+  six-hour interval, one-day retention. **Automation is initially off**.
+- Requests originate on the selected Agent, not on the dashboard or visitor.
+  Existing command-task RPC is reused; no Agent protocol upgrade is required.
+  Only public literal IP targets are accepted (1–12 entries). No arbitrary
+  shell commands, domains, private addresses or client-supplied run payloads.
+- Supported probe nodes: Linux root, amd64/arm64/armv7, with sh, curl, sha256sum,
+  timeout, stat and mktemp; Agent command execution must be enabled.
+  Other platforms, missing tools, denied execution, download/checksum failures,
+  timeouts and absent responses have explicit states rather than fake routes.
+- On first use, download only official NextTrace tiny **v1.7.3**, verify a pinned
+  SHA-256, and atomically cache it under root-only
+  `/var/cache/nezha-nexttrace-v1.7.3`. No NodeQuality/NetQuality shell script,
+  package installation, hardware/IP-quality check or bandwidth test runs.
+  The binary is not embedded or redistributed by the dashboard.
+- JSON output, 30 hops, three samples per hop, two concurrent targets per job;
+  three return-route jobs globally, separate from BGP/streaming capacity; additional nodes queue with manual priority. Same-node manual/automatic requests reuse one job. Administrators have no retest cooldown.
+  NextTrace is bounded to 35 seconds per target (download 25 seconds), replies
+  to 256 KiB, and the entire job to eight minutes. Temporary outputs are removed.
+  Map/report upload is disabled; NextTrace still uses its normal ASN/geolocation
+  lookup service. Full scripts and speed tests are never executed.
+- Only reported public address families are probed. No reported IPv6 means no
+  IPv6 card. A family/IP change invalidates the previous identity cache.
+- Cards show observed AS/line labels and reached/partial/error status; expand to
+  see hop number, ASN, location and mean RTT of valid responses **for each hop
+  address**. Unanswered hops are not automatically faults. CN2 is not labeled
+  GIA merely because AS4809 was seen. Do not treat labels as SLA guarantees.
+- Guests only read saved/in-progress results. Admins/node owners may start a
+  probe, subject to existing auth/CSRF/token/server rules. Admins see full target/hop IPs. Guests and ordinary owners receive server-side redaction of node/provider prefixes, early/private/unidentified hops and embedded addresses; only identified backbone IPs beyond that edge may be visible, including history and running results. Owner/ID/IP/session changes reject stale replies; target/protocol changes invalidate queued probes and prevent stale results from being persisted.
+- Saved snapshots survive restart, have independent expiry, and are selectable
+  from a BGP-style time-card strip. Automatic cycles restart at Beijing 00:00 every day (including non-divisors of 24); queued work retains its scheduled slot. Long hop details open in a bounded, scrollable dialog, with consecutive unanswered hops merged by default. See [classification and privacy rules](RETURN_ROUTE_CLASSIFICATION.md). Desktop/mobile, light/dark and both built-in themes share the
+  same interaction, without page-wide horizontal overflow.
+
+References: [NextTrace](https://github.com/nxtrace/NTrace-core) and
+[NetQuality route-test design](https://github.com/xykt/NetQuality).
+Only the route-detection concept is used; third-party scripts are not executed.
+
+### Return-route snapshot comparison (preview3)
+
+The read-only comparison dialog selects two completed retained snapshots. It
+compares per-target line/status, destination-only weighted RTT and visible hop
+sets grouped by TTL, with responsive stacked/side-by-side layouts and optional
+route/status-change filtering. Pending probes are excluded and the open dialog
+retains a frozen response so polling cannot silently replace its inputs.
+
+The API assigns response-local opaque comparison groups before guest redaction.
+Different target addresses/protocols, missing targets and unsupported legacy
+hidden-target records never produce an RTT delta. Groups are not address hashes
+and are not persisted. Existing source-IP protection applies equally to both
+sides. See RETURN_ROUTE_CLASSIFICATION.md for quality-label and inference limits.
+
+### BGP 快照对比（preview4）
+
+BGP 卡片新增“快照对比”，至少两份完成记录可用。选择基准／对比快照和协议族，展示前缀、观测数量、ASN 新增／减少、有序 AS 路径新增／减少及样本数变化。补充推测连线不纳入差异；任一失败或缺失记录不计算路径撤销。旧版记录双方统一降级为两级上游摘要，截断、前缀不同或前缀被权限隐藏均明确提示。对比期间冻结数据，切换身份／IP 查看权限关闭旧弹窗，不发起探测。
+
+回程详情右上角增加“单独检测”，仅使用已配置目标与当前协议族，保存新快照并保留其他项目的原检测时间。与整组／自动任务共用节点互斥与原权限、CSRF、配置验证；无须升级 Agent。
+
+### Lightweight connectivity sampling (2026-10-09)
+
+All 110 built-in connectivity destinations use fixed public small resources or
+empty/tiny diagnostic endpoints, shared by the browser and Agent catalogs.
+The browser no longer substitutes a website homepage for the server URL.
+YouTube uses `https://yt3.ggpht.com/favicon.ico`, matching the inspected
+ip.skk.moe resource. Official CDN resources test that CDN, not video playback,
+account access, streaming unlock or an ICMP/network-layer RTT.
+
+Each target receives two unreported warmup requests, followed by three measured
+Agent requests or five browser requests. Only measured valid HTTP response times
+are averaged; a timeout is not zero milliseconds. Warmups never appear as dots
+or enter history. Server probes keep the existing Agent HTTP GET protocol and
+body completion timing; browsers keep credential-free, uncached no-CORS HEAD.
+No Agent upgrade is needed. Prewarming can reuse connections but cannot guarantee
+identical DNS, routing, CDN selection or latency on different clients.
+
+Warmups share existing bounded dispatch, cancellation, identity and permission
+guards; the server batch budget is three minutes to accommodate 120 targets at
+the existing three-second per-attempt ceiling. Disabled-query/offline outcomes
+during warmup end that item without fabricated samples. Single retests warm up
+again and preserve other targets.
+
+Exact legacy built-in URLs are upgraded when loading saved catalogs, preserving
+names, order, icons, switches and genuinely customized URLs. Administrator URLs
+remain private; unknown custom hosts use only public `/favicon.ico` locally.
+Historical measurements of changed resources are not reused as current results.

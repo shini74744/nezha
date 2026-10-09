@@ -248,6 +248,7 @@ func filterServersForViewer(servers []*model.Server, viewerUserID uint64, viewer
 			DisplayIndex:         server.DisplayIndex,
 			HideForDisplay:       server.HideForDisplay,
 			BGPDisabled:          server.BGPDisabled,
+			ReturnRouteDisabled:  server.ReturnRouteDisabled,
 			StreamingDisabled:    server.StreamingDisabled,
 			ConnectivityDisabled: server.ConnectivityDisabled,
 			Host:                 publicHost,

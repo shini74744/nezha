@@ -22,6 +22,7 @@ type mediaWaiter struct {
 	serverID uint64
 	stream   pb.NezhaService_RequestTaskServer
 	result   chan *pb.TaskResult
+	maxBytes int
 }
 
 func MediaProbe(server *model.Server) func(context.Context, string, string) networkinsight.MediaResult {
@@ -55,7 +56,7 @@ func insightCommandRunner(server *model.Server, kind string) func(context.Contex
 	id, uuid, owner, stream := server.ID, server.UUID, server.GetUserID(), server.GetTaskStream()
 	return func(parent context.Context, command string, timeout time.Duration) (*pb.TaskResult, string) {
 		valid := func(s *model.Server) bool {
-			enabled := s != nil && ((kind == "bgp" && !s.BGPDisabled) || (kind == "streaming" && !s.StreamingDisabled))
+			enabled := s != nil && ((kind == "bgp" && !s.BGPDisabled) || (kind == "streaming" && !s.StreamingDisabled) || (kind == "return-route" && !s.ReturnRouteDisabled))
 			return enabled && s.UUID == uuid && s.GetUserID() == owner && s.GetTaskStream() == stream && ConnectivityOnline(s) && !singleton.ServerIDReassignmentInProgress.Load() && !singleton.IsDeletedServerUUID(uuid)
 		}
 		current, ok := singleton.ServerShared.Get(id)
@@ -69,7 +70,11 @@ func insightCommandRunner(server *model.Server, kind string) func(context.Contex
 		ctx, cancel := context.WithTimeout(parent, timeout)
 		defer cancel()
 		taskID := mediaTaskMask | mediaCounter.Add(1)
-		waiter := &mediaWaiter{id, stream, make(chan *pb.TaskResult, 1)}
+		limit := 4096
+		if kind == "return-route" {
+			limit = networkinsight.ReturnOutputLimit
+		}
+		waiter := &mediaWaiter{serverID: id, stream: stream, result: make(chan *pb.TaskResult, 1), maxBytes: limit}
 		mediaWaiters.Store(taskID, waiter)
 		defer mediaWaiters.Delete(taskID)
 		select {
@@ -128,7 +133,11 @@ func deliverMediaResult(result *pb.TaskResult, reporterID uint64, stream pb.Nezh
 		return true
 	}
 	data := result.GetData()
-	if len(data) > 4096 {
+	limit := w.maxBytes
+	if limit == 0 {
+		limit = 4096
+	}
+	if len(data) > limit {
 		data = ""
 	}
 	copy := &pb.TaskResult{Id: result.Id, Type: result.Type, Successful: result.Successful, Data: data}
