@@ -21,6 +21,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 import { IconButton } from "@/components/xui/icon-button"
+import { useServerOrderDrag } from "@/hooks/use-server-order-drag"
 import { ModelServer } from "@/types"
 import { ArrowDown, ArrowUp, GripVertical, ListRestart } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
@@ -54,12 +55,15 @@ export function ServerSortDialog({ servers, mutate }: ServerSortDialogProps) {
     const [open, setOpen] = useState(false)
     const [ordered, setOrdered] = useState<ModelServer[]>(servers)
     const [originalIDs, setOriginalIDs] = useState<number[]>([])
-    const [draggedID, setDraggedID] = useState<number | null>(null)
     const [saving, setSaving] = useState(false)
     const [reassigning, setReassigning] = useState(false)
     const submitting = useRef(false)
     const busy = saving || reassigning
     const changed = ordered.some((server, index) => server.id !== originalIDs[index])
+    const drag = useServerOrderDrag(open && !busy, (id, targetID, after) => {
+        setOrdered((current) => reorderServers(current, id, targetID, after))
+    })
+    const interactionBusy = busy || drag.preview !== null
 
     useEffect(() => {
         if (!open) setOrdered(servers)
@@ -69,13 +73,10 @@ export function ServerSortDialog({ servers, mutate }: ServerSortDialogProps) {
         if (next) {
             setOrdered(servers)
             setOriginalIDs(servers.map((server) => server.id))
-            setDraggedID(null)
+            drag.cancel()
         }
+        if (!next) drag.cancel()
         setOpen(next)
-    }
-    const moveTo = (targetID: number, after: boolean) => {
-        if (draggedID === null || busy) return
-        setOrdered((current) => reorderServers(current, draggedID, targetID, after))
     }
     const moveOne = (index: number, step: -1 | 1) => {
         if (busy || !ordered[index + step]) return
@@ -129,34 +130,38 @@ export function ServerSortDialog({ servers, mutate }: ServerSortDialogProps) {
                     <DialogDescription>{t("ServerSortHint")}</DialogDescription>
                 </DialogHeader>
                 <div
-                    className="min-h-0 space-y-2 overflow-y-auto pr-1"
+                    ref={drag.listRef}
+                    className="min-h-0 space-y-2 overflow-y-auto overscroll-contain scroll-auto pr-1"
                     aria-label={t("ServerManualList")}
+                    onPointerMove={drag.onPointerMove}
+                    onPointerUp={drag.onPointerUp}
+                    onPointerCancel={drag.onPointerCancel}
+                    onLostPointerCapture={drag.onLostPointerCapture}
+                    onWheel={drag.onWheel}
+                    onScroll={drag.onScroll}
                 >
                     {ordered.map((server, index) => (
                         <div
                             key={server.id}
                             data-sort-server={server.id}
-                            draggable={!busy}
-                            onDragStart={(event) => {
-                                event.dataTransfer.effectAllowed = "move"
-                                event.dataTransfer.setData("text/plain", String(server.id))
-                                setDraggedID(server.id)
-                            }}
-                            onDragEnd={() => setDraggedID(null)}
-                            onDragOver={(event) => {
-                                if (!busy) {
-                                    event.preventDefault()
-                                    event.dataTransfer.dropEffect = "move"
-                                }
-                            }}
-                            onDrop={(event) => {
-                                event.preventDefault()
-                                const rect = event.currentTarget.getBoundingClientRect()
-                                moveTo(server.id, event.clientY > rect.top + rect.height / 2)
-                            }}
-                            className="flex cursor-grab items-center gap-2 rounded-lg border bg-background p-3 active:cursor-grabbing"
+                            draggable={false}
+                            onDragStart={(event) => event.preventDefault()}
+                            onPointerDown={(event) => drag.onPointerDown(event, server.id)}
+                            data-dragging={drag.preview?.id === server.id || undefined}
+                            className="relative flex cursor-grab select-none items-center gap-2 rounded-lg border bg-background p-3 active:cursor-grabbing data-[dragging]:border-primary data-[dragging]:opacity-50"
                         >
-                            <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            {drag.preview?.target?.id === server.id &&
+                                drag.preview.id !== server.id && (
+                                    <span
+                                        data-sort-drop={
+                                            drag.preview.target.after ? "after" : "before"
+                                        }
+                                        className={`pointer-events-none absolute -left-px -right-px z-10 h-0.5 rounded bg-primary ${drag.preview.target.after ? "-bottom-1.5" : "-top-1.5"}`}
+                                    />
+                                )}
+                            <span data-sort-handle className="touch-none shrink-0 p-1">
+                                <GripVertical className="h-4 w-4 text-muted-foreground" />
+                            </span>
                             <span
                                 className="min-w-5 shrink-0 text-sm text-muted-foreground"
                                 data-sort-position
@@ -175,7 +180,7 @@ export function ServerSortDialog({ servers, mutate }: ServerSortDialogProps) {
                                     variant="ghost"
                                     className="h-9 w-9"
                                     draggable={false}
-                                    disabled={busy || index === 0}
+                                    disabled={interactionBusy || index === 0}
                                     aria-label={t("ServerMoveUp", { name: server.name })}
                                     title={t("ServerMoveUp", { name: server.name })}
                                     onClick={() => moveOne(index, -1)}
@@ -187,7 +192,7 @@ export function ServerSortDialog({ servers, mutate }: ServerSortDialogProps) {
                                     variant="ghost"
                                     className="h-9 w-9"
                                     draggable={false}
-                                    disabled={busy || index === ordered.length - 1}
+                                    disabled={interactionBusy || index === ordered.length - 1}
                                     aria-label={t("ServerMoveDown", { name: server.name })}
                                     title={t("ServerMoveDown", { name: server.name })}
                                     onClick={() => moveOne(index, 1)}
@@ -207,7 +212,7 @@ export function ServerSortDialog({ servers, mutate }: ServerSortDialogProps) {
                             <Button
                                 variant="destructive"
                                 className="h-auto min-h-10 whitespace-normal text-left"
-                                disabled={busy || !ordered.length}
+                                disabled={interactionBusy || !ordered.length}
                             >
                                 <ListRestart className="mr-2 h-4 w-4 shrink-0" />
                                 {t("ServerIDReassign")}
@@ -233,7 +238,10 @@ export function ServerSortDialog({ servers, mutate }: ServerSortDialogProps) {
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
-                    <Button onClick={saveOrder} disabled={busy || !changed || !ordered.length}>
+                    <Button
+                        onClick={saveOrder}
+                        disabled={interactionBusy || !changed || !ordered.length}
+                    >
                         {saving ? t("Loading") : t("Save")}
                     </Button>
                 </DialogFooter>

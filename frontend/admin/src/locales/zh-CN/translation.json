@@ -142,7 +142,7 @@
     "EditServerGroup": "编辑服务器分组",
     "CreateServerGroup": "创建服务器分组",
     "ServerSort": "服务器排序",
-    "ServerSortHint": "拖动或点击上下箭头调整顺序，保存后同步前台和管理列表；系统 ID 不变。",
+    "ServerSortHint": "按住服务器拖动，可同时滚动鼠标滚轮定位，松开后点击保存。手机可拖动左侧手柄或点上下箭头；系统 ID 不变。",
     "ServerManualList": "手动排序列表",
     "ServerMoveUp": "上移 {{name}}",
     "ServerMoveDown": "下移 {{name}}",
