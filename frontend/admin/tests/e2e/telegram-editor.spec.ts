@@ -137,8 +137,8 @@ for (const width of [1366, 390]) {
             "password",
         )
         await expect(dialog.getByLabel("Chat ID / 频道", { exact: true })).toHaveValue("-100123")
-        await expect(dialog.getByLabel("TG 发送逻辑")).toContainText("运维通知组")
-        await expect(dialog.getByLabel("TG 发送逻辑")).toContainText(
+        await expect(dialog.getByLabel("TG 通知关联")).toContainText("运维通知组")
+        await expect(dialog.getByLabel("TG 通知关联")).toContainText(
             "CPU 高负载 · 已启用 · 单次触发",
         )
         await dialog

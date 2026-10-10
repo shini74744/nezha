@@ -10,7 +10,7 @@ export default function ProviderLayoutEditor({note,onChange,serverId,name}:{note
  const layout=note.planDataMod?.providerLogo?.logoLayout,p=logoPlacement(layout,device);
  const set=(next:LogoLayout)=>onChange({...note,planDataMod:{...note.planDataMod,providerLogo:{...note.planDataMod?.providerLogo,logoLayout:next}}});
  return <div className="min-w-0 w-full space-y-3 rounded-md border p-3" data-provider-layout-editor>
-  <div className="flex flex-wrap items-center gap-2"><span className="text-xs font-medium">卡片图标调整</span><SettingHelp label="卡片图标调整">每台服务器单独保存。负值向左/向上，正值向右/向下。缩放保持比例，不改变原图。手机默认只占 CPU—内存标题上方的左侧空白；长名称挤占空白时会缩小，完全无空白则不显示，不推移原内容。手动放大或偏移过多仍可能遮住文字。预览复用前台卡片，未连接到实时状态时使用示例数据。保存服务器后才生效。</SettingHelp></div>
+  <div className="flex flex-wrap items-center gap-2"><span className="text-xs font-medium">卡片图标调整</span><SettingHelp label="卡片图标调整">负值向左或向上，正值向右或向下。放大或偏移过多可能遮挡文字。预览可能使用示例数据，保存服务器后生效。</SettingHelp></div>
   <div className="flex gap-2">{(["desktop","mobile"] as const).map(d=><Button type="button" key={d} size="sm" variant={device===d?"default":"outline"} aria-pressed={device===d} onClick={()=>setDevice(d)}>{d==="desktop"?"电脑端":"手机端"}</Button>)}</div>
   {(["x","y","scale"] as const).map(k=><PlacementControl key={k} label={{x:"左右偏移",y:"上下偏移",scale:"图标大小"}[k]} unit={k==="scale"?"%":"px"} min={k==="scale"?25:-150} max={k==="scale"?250:150} value={p[k]} onChange={v=>set({...layout,[device]:{...p,[k]:v}})}/>)}
   <Button type="button" size="sm" variant="outline" onClick={()=>set({...layout,[device]:{...defaultPlacement}})}>恢复{device==="desktop"?"电脑端":"手机端"}默认</Button>

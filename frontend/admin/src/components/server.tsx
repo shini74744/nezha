@@ -464,7 +464,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                 onChange={(e) => setPublicNoteRaw(e.target.value)}
                                                 rows={10}
                                             />
-                                            <p className="text-xs text-muted-foreground mt-2">支持中文或旧英文字段；识别到的套餐信息会自动回填。保存使用兼容格式，未知字段保留。</p>
+                                            <p className="text-xs text-muted-foreground mt-2">支持中文或英文字段，可自动填入套餐信息。</p>
                                         </div>
                                     )}
 

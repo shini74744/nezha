@@ -9,7 +9,7 @@ export function VisitorIPSettings({value:v,onChange}:Props){
  const toggle=(key:string,label:string)=><label className="flex items-center justify-between gap-3"><span>{label}</span><Switch aria-label={label} checked={v[key]} onCheckedChange={x=>set(key,x)}/></label>;
  return <div className="space-y-6">
  <section className="space-y-3"><h3 className="font-semibold">IP 查询接口</h3>
- <p className="text-sm text-muted-foreground">并行查询，采用第一个有效结果。接口须支持浏览器跨域读取并返回 JSON（ip/query、country_name/country、city/region、asn、org/isp 等字段）。地址会下发到公开前台，不要填写密钥或内部地址；HTTPS 网站请使用 HTTPS 接口。</p>
+ <p className="text-sm text-muted-foreground">接口须支持浏览器跨域读取并返回 IP、地区等 JSON 数据。地址会公开，请勿填写密钥或内部地址；HTTPS 网站请使用 HTTPS 接口。</p>
  {v.ipApiUrls.map((url:string,i:number)=><div key={i} className="flex items-end gap-2"><label className="min-w-0 flex-1">查询接口 {i+1}<Input aria-label={"IP 查询接口 "+(i+1)} value={url} onChange={e=>set("ipApiUrls",v.ipApiUrls.map((s:string,j:number)=>j===i?e.target.value:s))}/></label><Button type="button" variant="outline" aria-label={"删除查询接口 "+(i+1)} disabled={v.ipApiUrls.length===1} onClick={()=>set("ipApiUrls",v.ipApiUrls.filter((_:string,j:number)=>j!==i))}>删除</Button></div>)}
  <Button type="button" variant="outline" disabled={v.ipApiUrls.length>=8} onClick={()=>set("ipApiUrls",[...v.ipApiUrls,""])}>添加查询接口</Button>
  <label className="block space-y-1">信息补全接口（留空关闭）<Input aria-label="信息补全接口（留空关闭）" value={v.fallbackUrl} onChange={e=>set("fallbackUrl",e.target.value)}/></label>
@@ -25,7 +25,7 @@ export function VisitorIPSettings({value:v,onChange}:Props){
  <section className="space-y-3 border-t pt-4"><h3 className="font-semibold">显示内容</h3>
  <p className="text-sm text-muted-foreground">地区开关影响电脑和手机；ASN、运营商和浏览器估算带宽仅在电脑端显示。关闭 ASN 后也会从运营商文本中去除 ASN 编号。</p>
  <div className="grid gap-4 sm:grid-cols-2">{toggle("showRegion","显示地区")}{toggle("showASN","显示 ASN")}{toggle("showOrganization","显示运营商")}{toggle("showDownlink","显示浏览器估算带宽")}</div></section>
- <section className="space-y-3 border-t pt-4"><h3 className="font-semibold">缓存与位置</h3><p className="text-sm text-muted-foreground">缓存有效期 0 表示不读取缓存。变更查询接口后不会沿用旧接口缓存。</p>
+ <section className="space-y-3 border-t pt-4"><h3 className="font-semibold">缓存与位置</h3><p className="text-sm text-muted-foreground">缓存有效期设为 0 可关闭缓存。</p>
  <div className="grid gap-4 sm:grid-cols-2">{num("cacheDuration","缓存有效期（毫秒）",0,604800000)}{num("bottomThreshold","底部隐藏距离（像素）",0,1000)}</div></section>
  </div>;
 }

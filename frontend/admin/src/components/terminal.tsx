@@ -195,7 +195,7 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
             }
             ws.onerror = (event) => {
                 console.error(event)
-                toast("Websocket error", { description: "View console for details." })
+                toast("终端连接失败", { description: "请检查服务器连接后重试。" })
             }
 
             const updateViewport = () => {

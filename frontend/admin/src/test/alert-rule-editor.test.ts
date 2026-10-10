@@ -107,7 +107,7 @@ describe("visual alert rules", () => {
                 /检测窗口/,
             )
         expect(validateAlertRules([{ type: "offline", cover: 0, duration: 3 }])).toBeUndefined()
-        expect(validateAlertRules([{ type: "unknown", cover: 0, duration: 10 }])).toMatch(/不受/)
+        expect(validateAlertRules([{ type: "unknown", cover: 0, duration: 10 }])).toBe("条件 1：不支持此监控指标，请重新选择或检查高级 JSON。")
         expect(validateAlertRules([])).toMatch(/至少/)
         expect(validateAlertRules([{ type: "cpu", cover: 2, duration: 10 }])).toMatch(/范围/)
         const cycle = newAlertCondition("transfer_all_cycle")

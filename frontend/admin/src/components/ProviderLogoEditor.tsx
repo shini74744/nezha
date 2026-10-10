@@ -14,7 +14,7 @@ type ProviderLogoProps={note:PublicNote;onChange:(note:PublicNote)=>void;serverI
 export default function ProviderLogoEditor(props:ProviderLogoProps){
  const [expanded,setExpanded]=useState(false),contentId=useId();
  return <fieldset className="min-w-0 space-y-2 sm:col-span-2" data-provider-logo-editor>
-  <legend className="text-xs font-medium"><button type="button" aria-expanded={expanded} aria-controls={contentId} onClick={()=>setExpanded(v=>!v)} className="inline-flex cursor-pointer items-center gap-1 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2"><span aria-hidden>{expanded?"▾":"▸"}</span>服务器厂商 Logo</button><SettingHelp label="服务器厂商 Logo">在图标库按名称搜索选择，修改库条目后自动同步；删除库条目会保留最后图标。桌面默认以到期进度条的实际左右边界为宽度范围并居中；无到期信息时保留同起点的 70px 区域，手机在 CPU 与内存标题上方区域显示。图片等比例适配、不裁切；默认不放大小图，手动放大不会提高原图清晰度。</SettingHelp></legend>
+  <legend className="text-xs font-medium"><button type="button" aria-expanded={expanded} aria-controls={contentId} onClick={()=>setExpanded(v=>!v)} className="inline-flex cursor-pointer items-center gap-1 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2"><span aria-hidden>{expanded?"▾":"▸"}</span>服务器厂商 Logo</button><SettingHelp label="服务器厂商 Logo">按名称搜索图标，修改图标库后自动同步。图片等比例显示；放大小图不会提高其清晰度。</SettingHelp></legend>
   {expanded&&<div id={contentId}><ProviderLogoFields {...props}/></div>}
  </fieldset>;
 }

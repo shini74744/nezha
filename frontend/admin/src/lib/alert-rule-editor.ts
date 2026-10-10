@@ -6,7 +6,7 @@ export const alertMetrics = [
     ["offline", "服务器离线", ""],
     ["cpu", "CPU 使用率", "%"],
     ["gpu", "GPU 最高使用率", "%"],
-    ["gpu_max", "GPU 最高使用率（兼容类型）", "%"],
+    ["gpu_max", "GPU 最高使用率（旧版）", "%"],
     ["memory", "内存使用率", "%"],
     ["swap", "Swap 使用率", "%"],
     ["disk", "磁盘使用率", "%"],
@@ -137,7 +137,7 @@ export function validateAlertRules(rules: ModelRule[], now = Date.now()): string
     if (!rules.length) return "请至少添加一个条件。"
     for (const [i, rule] of rules.entries()) {
         const prefix = `条件 ${i + 1}：`
-        if (!metricInfo(rule.type)) return prefix + "指标类型不受当前后端支持，请检查高级 JSON。"
+        if (!metricInfo(rule.type)) return prefix + "不支持此监控指标，请重新选择或检查高级 JSON。"
         if (rule.cover !== 0 && rule.cover !== 1)
             return prefix + "服务器范围必须为全部或指定服务器。"
         if ((rule.min ?? 0) > 0 && (rule.max ?? 0) > 0 && rule.min! >= rule.max!)
