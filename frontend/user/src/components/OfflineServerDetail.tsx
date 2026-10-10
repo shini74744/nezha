@@ -77,7 +77,7 @@ export function OfflineServerDetail({server,now,initialTab="Detail",onTabIntent}
    <p className="text-xs" role="alert">最后上报记录读取失败。<button className="underline ml-2" onClick={()=>query.refetch()}>重试</button></p>:
    !last?<div className="text-xs text-muted-foreground" data-offline-empty>
     <p>暂无可用的最后上报记录，无法确定掉线时间和掉线前状态。</p>
-    <p>{!report?.tsdb_enabled?"历史存储未启用。":report.history_days===1?"游客仅可查看最近 1 天的历史；登录后可查询最近 30 天。":"最近 30 天内未找到记录，或记录已超过配置的保留期限。"}未保存的数据不能补回。</p>
+    <p>{!report?.tsdb_enabled?"历史记录未启用。":report.history_days===1?"游客仅可查看最近 1 天的历史；登录后可查询最近 30 天。":"最近 30 天内未找到记录，或记录已超过配置的保留期限。"}未保存的数据不能补回。</p>
    </div>:null}
   <section className="flex items-center my-2 w-full">
    <Separator className="flex-1"/><div className="flex justify-center w-full max-w-sm"><TabSwitch tabs={tabs} currentTab={tab} setCurrentTab={selectTab} onTabIntent={onTabIntent}/></div><Separator className="flex-1"/>
@@ -86,7 +86,7 @@ export function OfflineServerDetail({server,now,initialTab="Detail",onTabIntent}
   {tab!=="Network" && <DetailPanel key={server.id + ":" + tab}>
   {tab==="Detail" && (report?.tsdb_enabled||saved)?<section>
     <PeriodSelector selectedPeriod={activePeriod==="last"?"realtime":activePeriod} onPeriodChange={p=>setPeriod(p==="realtime"?"last":p)} isLogin={!!viewer} isTsdbEnabled={!!report?.tsdb_enabled} offline/>
-    <p className="text-xs text-muted-foreground mb-3">{saved?"离线前最后 1 分钟的完整记录；已冻结保存，非实时数据。":"旧历史记录未保存完整主机信息和总容量；该机器重新上线后会自动补齐快照。"}</p>
+    <p className="text-xs text-muted-foreground mb-3">{saved?"离线前最后 1 分钟的记录，非实时数据。":"历史主机信息不完整，服务器重新上线后更新。"}</p>
     <div className="grid md:grid-cols-2 lg:grid-cols-3 grid-cols-1 gap-3 server-charts">
      {chartGroups.map(group=><OfflineMetricCard key={group.title} group={group} report={report!} period={activePeriod}/>)}
     </div>

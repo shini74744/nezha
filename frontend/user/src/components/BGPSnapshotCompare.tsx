@@ -332,7 +332,7 @@ export default function BGPSnapshotCompare({
 				<DialogHeader className="pr-6 text-left">
 					<DialogTitle className="text-base">BGP 快照对比</DialogTitle>
 					<DialogDescription className="text-xs">
-						只读对比已保留的记录，不触发检测。打开期间快照保持不变。
+						对比两次历史检测结果，不会重新检测。
 					</DialogDescription>
 				</DialogHeader>
 				<section

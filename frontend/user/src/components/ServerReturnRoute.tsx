@@ -652,7 +652,7 @@ export default function ServerReturnRoute({ serverId }: { serverId: number }) {
 						)}
 						{snapshot?.retest && (
 							<p className="mt-3 text-xs text-muted-foreground">
-								本次为单项重测，其余线路保留原检测结果与时间。
+								仅重测所选线路，其他结果不变。
 							</p>
 						)}
 						{!!snapshot?.finished_at && (

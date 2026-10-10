@@ -8,9 +8,9 @@
 	"whereTheTimeIs": "当前时间",
 	"refreshing": "刷新中",
 	"info": {
-		"websocketConnecting": "WebSocket 连接中",
-		"websocketConnected": "WebSocket 连接成功",
-		"websocketDisconnected": "WebSocket 连接断开",
+		"websocketConnecting": "监控连接中",
+		"websocketConnected": "监控已连接",
+		"websocketDisconnected": "监控连接已断开",
 		"processing": "处理中...",
 		"noServers": "暂无服务器",
 		"noMatchingServers": "没有符合当前筛选条件的服务器"
@@ -84,7 +84,7 @@
 		"period1d": "1 天",
 		"period7d": "7 天",
 		"period30d": "30 天",
-		"tsdbRequired": "需要开启 TSDB 才能启用历史记录功能",
+		"tsdbRequired": "历史记录未启用",
 		"loginRequired": "请登录后查看"
 	},
 	"footer": {
@@ -108,7 +108,7 @@
 	"error": {
 		"pageNotFound": "页面不存在",
 		"backToHome": "回到主页",
-		"backendUnavailableTitle": "后端 API 无法访问",
+		"backendUnavailableTitle": "暂时无法获取监控数据",
 		"backendUnavailableDescription": "页面仍会正常显示，但暂时无法加载监控数据。"
 	},
 	"connectivity": {
@@ -120,9 +120,9 @@
 		"usa": "美国",
 		"japan": "日本",
 		"title": "节点连通性",
-		"origin": "由当前节点发起 HTTPS 检测，不使用访问者网络",
+		"origin": "由服务器发起检测，不使用你的本地网络",
 		"helpTitle": "连通性说明",
-		"help": "对比服务器与本地网络访问各站点小资源的延迟和可达情况。先预热 2 次（不计入），再取服务器 3 次／本地 5 次有效请求的平均值；这是 HTTP 响应耗时，不是 ICMP Ping。",
+		"help": "对比服务器与本地网络访问各站点的连通性和平均响应时间。结果为 HTTP 请求耗时，并非 Ping 延迟。",
 		"loading": "正在读取检测结果…",
 		"readFailed": "检测结果读取失败。",
 		"reload": "重新加载",
@@ -133,7 +133,7 @@
 		"busy": "当前检测任务较多，请稍后再试。",
 		"offline": "节点当前离线，不能发起检测；已有结果仅供参考。",
 		"startFailed": "发起检测失败，请检查登录状态及节点权限后重试。",
-		"readOnly": "仅管理员或节点所属用户可发起检测，访客只查看缓存结果。",
+		"readOnly": "仅管理员或服务器所属用户可发起检测，访客可查看已有结果。",
 		"progress": "已完成 {{done}} / {{total}} 项",
 		"finished": "最近一次检测结果",
 		"scheduledTime": "检测周期（北京时间）",
@@ -150,15 +150,15 @@
 			"timeout": "请求超时",
 			"dns_error": "DNS 解析失败",
 			"tls_error": "TLS / 证书错误",
-			"query_disabled": "Agent 已禁用探测",
-			"agent_timeout": "检测超时（3 秒未收到 Agent 回包）",
+			"query_disabled": "节点已关闭检测",
+			"agent_timeout": "节点未响应，检测超时",
 			"offline": "节点已离线或连接变更",
 			"error": "检测失败",
 			"refused": "连接被拒绝",
 			"unreachable": "网络不可达",
 			"unstable": "多次结果不一致",
 			"queued": "排队中",
-			"batch_timeout": "批次超时，检测未完成",
+			"batch_timeout": "检测超时，部分项目未完成",
 			"browser_error": "浏览器限制或网络不可达",
 			"browser_unsupported": "不支持浏览器检测",
 			"cancelled": "已停止"

@@ -402,7 +402,7 @@ function Observation({
 					graph.supplemental_status === "unavailable"
 				}
 				onClick={() => setSupplemental((v) => !v)}
-				title="增强解释模式：显示 RIPEstat ASN 级邻接补充，不属于此前缀的观测路径"
+				title="显示参考邻接关系，不属于本次观测路径"
 			>
 				补充连线
 			</button>
@@ -710,18 +710,18 @@ function Observation({
 			{chart}
 			{!layout.nodes.length && (
 				<p role="status" className="bgp-notice">
-					本次快照没有可展示的观测路径。
+					本次记录暂无可展示的路径。
 				</p>
 			)}
 			{graph.legacy && (
 				<p className="bgp-notice">
-					旧快照仅保存前三层摘要；重新检测后可查看完整多层路径和采集源。
+					旧记录信息不完整，可重新检测以查看完整路径。
 				</p>
 			)}
 			{graph.truncated && (
 				<p className="bgp-notice">
 					快照收录 {graph.included_path_count} / {graph.observed_path_count}{" "}
-					条观测样本；超出安全上限的完整路径未收录。
+					条观测样本；部分路径未收录。
 				</p>
 			)}
 			<section className="bgp-summary" aria-label="观测分支摘要">
@@ -829,7 +829,7 @@ function Observation({
 								主干图精选主要分支，保留起源节点及连接路径；完整图展示本次记录收录的全部节点。
 							</p>
 							<p>
-								切换视图不会改变原始记录或样本统计。路由服务器可通过独立开关显示或隐藏。
+								可单独显示或隐藏路由服务器。
 							</p>
 							<p>蓝色：目标网络的起源 AS</p>
 							<p>绿色：与起源 AS 直接相邻的观测节点</p>
