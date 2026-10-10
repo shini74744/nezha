@@ -1,5 +1,5 @@
-// @vitest-environment node
 import { readFileSync } from "node:fs";
+import { URL } from "node:url";
 import { describe, it, expect } from "vitest";
 import zh from "../locales/zh-CN/translation.json";
 const source = (f: string) => readFileSync(new URL("../components/" + f, import.meta.url), "utf8");
