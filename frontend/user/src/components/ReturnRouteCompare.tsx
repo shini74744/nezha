@@ -392,7 +392,7 @@ export default function ReturnRouteCompare({
 				<DialogHeader className="pr-6 text-left">
 					<DialogTitle className="text-base">回程快照对比</DialogTitle>
 					<DialogDescription className="text-xs">
-						只读对比已保留的历史记录，不触发重新检测。当前对比期间保持快照不变。
+						对比两次历史检测结果，不会重新检测。
 					</DialogDescription>
 				</DialogHeader>
 				<section

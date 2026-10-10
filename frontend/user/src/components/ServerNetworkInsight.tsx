@@ -282,7 +282,7 @@ function ServerNetworkInsight({
 					)}
 					{!effectiveHistoryAt && !!data.auto_retry_at && !active && (
                         <p role="status" data-bgp-auto-retry className="my-3 rounded-lg border bg-muted/30 px-3 py-2 text-xs leading-5 text-muted-foreground">
-                            数据源暂时不可用，预计 {formatDetectionTime(data.auto_retry_at, true)}（北京时间）后自动补测；排队或节点离线时顺延。已成功的协议族保留结果。
+                            数据源暂时不可用，预计 {formatDetectionTime(data.auto_retry_at, true)}（北京时间）后自动补测；排队或节点离线时顺延。已有成功结果不变。
                         </p>
                     )}
                     {!!snapshot?.auto_first_started_at && (

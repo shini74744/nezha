@@ -110,7 +110,7 @@ for(const theme of ["default","doraemon"])for(const light of [false,true])for(co
   await expect(view.getByRole("button",{name:/秒后可重测/})).toBeDisabled({timeout:10000});
   await expect(view.getByText("(HTTP 403)")).toHaveCount(0);
   await expect(view.getByText("请求超时",{exact:true})).toBeVisible();
-  await expect(view.getByText("检测超时（3 秒未收到 Agent 回包）",{exact:true})).toBeVisible();
+  await expect(view.getByText("节点未响应，检测超时",{exact:true})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
   const cards=await view.locator("[data-connectivity-target]").evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return {left:r.left,right:r.right,width:r.width,height:r.height}}));
   expect(cards.every(r=>r.left>=0&&r.right<=width+1&&r.width>0&&r.height>=54&&r.height<=60)).toBe(true);

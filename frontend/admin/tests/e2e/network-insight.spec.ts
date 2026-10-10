@@ -439,7 +439,7 @@ for (const width of [390,1440]) test("large BGP topology remains bounded and fit
  await expect(graph.locator("[data-bgp-asn]")).toHaveCount(46);
  expect((await graph.boundingBox())!.height).toBeLessThanOrEqual(720);
  await page.getByRole("button",{name:"适应画布",exact:true}).click();
- await expect(page.getByText(/旧快照仅保存前三层摘要/)).toBeVisible();
+ await expect(page.getByText(/旧记录信息不完整/)).toBeVisible();
  await page.locator('[data-network-insight="bgp"]').screenshot({path:info.outputPath("large-fitted.png")});
  await page.getByRole("button",{name:/展开全部 .* 段分支/}).click();
  await expect(page.locator(".bgp-branch")).toHaveCount(45);
