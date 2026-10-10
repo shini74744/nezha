@@ -375,7 +375,7 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 	require.NoError(t, err)
 	keyHash := sha256.Sum256(key)
 	if os.Getenv("NEZHA_TEST_FRONTEND") == "1" {
-		for _, path := range []string{"/", "/dashboard/"} {
+		for _, path := range []string{"/", "/dashboard/", "/dashboard/telegram-bot", "/dashboard/server-expiry"} {
 			resp, err := client.Get(base + path)
 			require.NoError(t, err)
 			html, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
