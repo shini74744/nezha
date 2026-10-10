@@ -1007,7 +1007,7 @@
   {
     "key": "analytics",
     "title": "Google Analytics",
-    "description": "第三方统计服务，仍需连接 Google；不会加载 jm/xjs",
+    "description": "Google 访问统计",
     "defaults": {
       "enabled": true,
       "measurementId": "G-S5CPS1PHE4"

@@ -47,7 +47,7 @@ export default function DetectionPrioritySettings() {
     }
     return <details className="rounded-xl border bg-card/50 p-4" data-detection-priority>
         <summary className="cursor-pointer text-sm font-semibold">自动检测优先级{dirty ? " · 未保存" : ""}</summary>
-        <p className="mt-3 text-xs leading-6 text-muted-foreground">按编号由小到大优先执行。同一节点的到期自动任务依次进行，前一项结束后再启动下一项；不同节点保留有限并发。调整不会打断正在运行的任务，也不改变原检测周期。流媒体仍沿用连通性的自动周期。手动检测不受此排序限制。</p>
+        <p className="mt-3 text-xs leading-6 text-muted-foreground">编号越小越先执行，下次自动检测时生效。不影响正在运行的任务和检测周期；手动检测不受此排序限制。</p>
         {error && <p role="alert" className="my-3 text-sm text-destructive">{error}</p>}
         <ol className="my-3 grid gap-2 sm:grid-cols-2">
             {order.map((kind, index) => <li key={kind} className="flex min-w-0 items-center gap-2 rounded-lg border p-2">

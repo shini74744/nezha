@@ -535,7 +535,7 @@ export function CronEditor({
                             </label>
                             <p className={draft.cover === 1 ? "cron-note" : "cron-help"}>
                                 {coverageSummary(draft.cover, draft.servers.length)}
-                                。权限仍由后端校验。
+                                。
                             </p>
                             {draft.task_type === 0 && draft.cover === 2 && (
                                 <p role="alert" className="cron-error">

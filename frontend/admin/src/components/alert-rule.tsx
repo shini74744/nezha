@@ -201,8 +201,7 @@ function AlertRuleEditor({ data, mutate, close }: AlertRuleCardProps & { close: 
                         )}
                         {mode === "json" && (
                             <p className="text-sm text-muted-foreground">
-                                兼容说明：高级 JSON 的 duration 仍是采样次数，1 次约 3
-                                秒；可视化表单会自动换算为秒，旧数据无需修改。
+                                duration 按采样次数填写，每次约 3 秒；可视化编辑中按秒填写。
                             </p>
                         )}
                         {mode === "json" ? (
@@ -304,7 +303,7 @@ function AlertRuleEditor({ data, mutate, close }: AlertRuleCardProps & { close: 
                         <AlertHelp title="触发、恢复与去重说明">
                             持续触发：异常期间会反复尝试通知及触发任务；通知仍受后台去重限制，并不是每秒发送。
                             单次触发：进入异常时触发一次，恢复后下一次异常可以再次触发。两种模式均会在恢复时尝试通知并执行恢复任务。
-                            周期流量在新周期统计恢复正常后可重新触发。本次不修改后端的判断、去重或任务执行逻辑。
+                            周期流量在新周期统计恢复正常后可重新触发。
                         </AlertHelp>
                         <AlertSelection
                             title="报警时触发的任务"

@@ -33,10 +33,10 @@ export default function DashboardAppearancePage(){
   }catch(e){toast.error(String(e).includes("changed")?"配置已变化，请重新读取后再保存。":"保存失败："+String(e))}finally{setBusy(false)}
  };
  return <div className="space-y-6"><h1 className="text-2xl font-semibold">后台美化设置</h1>
-  <div className="rounded-lg border bg-card p-4 space-y-3"><p>仅作用于后台，与前台美化独立保存。字体、背景、品牌、点击特效、Ping/TCPing/Ping0 和时间转换均由面板内置。</p>
+  <div className="rounded-lg border bg-card p-4 space-y-3"><p>仅调整后台外观，不影响前台。</p>
    <label className="flex items-center gap-3"><Switch aria-label="启用后台美化" checked={config.enabled} onCheckedChange={enabled=>setConfig(c=>({...c,enabled}))}/>启用后台美化</label>
    <details><summary className="cursor-pointer">读取以前的仪表板自定义代码</summary><div className="space-y-3 pt-3">
-    <p className="text-sm text-muted-foreground">只读取 NZ_DASHBOARD_CONFIG 中的静态配置，不执行粘贴的脚本；未知扩展不会自动丢弃。保存迁移时归档原代码。</p>
+    <p className="text-sm text-muted-foreground">读取原有外观设置，不执行粘贴的脚本。保存后会备份并停用旧代码。</p>
     <Textarea aria-label="原仪表板自定义代码" rows={8} value={source} onChange={e=>setSource(e.target.value)}/>
     <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={!source.trim()} onClick={readSource}>读取旧代码配置</Button><Button type="button" variant="outline" disabled={!source&&!saved?.archived_code} onClick={exportSource}>导出旧代码备份</Button></div>
    </div></details>{imported&&<p className="text-amber-600">待保存：已读取原参数，旧代码将备份并停止执行。</p>}

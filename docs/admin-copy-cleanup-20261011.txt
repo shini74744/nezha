@@ -1,0 +1,193 @@
+后台说明文字清理 — custom-2026.10.11.1
+
+仅修改可见文案，不改变功能、权限、数据或配置。保留删除、ID 重排、密码、令牌、IP 隐私、实际发送测试等警告。
+
+1. 警报规则 / 高级编辑
+位置：frontend/admin/src/components/alert-rule.tsx
+原文：兼容说明：高级 JSON 的 duration 仍是采样次数，1 次约 3 秒；可视化表单会自动换算为秒，旧数据无需修改。
+现文：duration 按采样次数填写，每次约 3 秒；可视化编辑中按秒填写。
+
+2. 警报规则 / 触发说明
+位置：frontend/admin/src/components/alert-rule.tsx
+原文：周期流量在新周期统计恢复正常后可重新触发。本次不修改后端的判断、去重或任务执行逻辑。
+现文：周期流量在新周期统计恢复正常后可重新触发。
+
+3. 警报规则 / 检测窗口
+位置：frontend/admin/src/components/alert-condition-editor.tsx
+原文：每 3 秒采样一次，窗口按秒填写，须为 3 秒的整数倍；现有规则的实际时长保持不变。
+现文：检测窗口按秒填写，须为 3 秒的整数倍。
+
+4. 警报规则 / 周期单位
+位置：frontend/admin/src/components/alert-condition-editor.tsx
+原文：{rule.cycle_unit}（后端按小时）
+现文：{rule.cycle_unit}（按小时计算）
+
+5. 警报规则 / 周期流量
+位置：frontend/admin/src/components/alert-condition-editor.tsx
+原文：检查最近一次周期流量统计；后台按现有间隔刷新，并非实时更新。周期按后端日历规则滚动，月底行为保持原样。
+现文：按最近一次更新的周期流量判断，数据并非实时更新。
+
+6. 警报规则 / 指标名称
+位置：frontend/admin/src/lib/alert-rule-editor.ts
+原文：GPU 最高使用率（兼容类型）
+现文：GPU 最高使用率（旧版）
+
+7. 警报规则 / 校验提示
+位置：frontend/admin/src/lib/alert-rule-editor.ts
+原文：指标类型不受当前后端支持，请检查高级 JSON。
+现文：不支持此监控指标，请重新选择或检查高级 JSON。
+
+8. 任务 / 执行服务器
+位置：frontend/admin/src/components/cron.tsx
+原文：。权限仍由后端校验。
+现文：。
+
+9. 服务器编辑 / 公开备注
+位置：frontend/admin/src/components/server.tsx
+原文：支持中文或旧英文字段；识别到的套餐信息会自动回填。保存使用兼容格式，未知字段保留。
+现文：支持中文或英文字段，可自动填入套餐信息。
+
+10. 通知 / TG 模板预览
+位置：frontend/admin/src/components/telegram-notification-editor.tsx
+原文：此处为旧版通用测试预览；实际发送测试使用下方选择的事件状态和数据源。
+现文：实际测试消息以下方选择的事件和数据为准。
+
+11. 通知 / TG 消息格式
+位置：frontend/admin/src/components/telegram-notification-editor.tsx
+原文：纯文本不会因特殊符号导致格式错误。HTML / Markdown 要遵循 Telegram 的格式与转义规则，系统目前仅做 JSON / URL 转义，不自动转义排版语法。
+现文：推荐使用纯文本。选择 HTML / Markdown 时，请按 Telegram 要求处理特殊符号。
+
+12. 通知 / TG 关联设置
+位置：frontend/admin/src/components/telegram-notification-editor.tsx
+原文：aria-label="TG 发送逻辑"
+现文：aria-label="TG 通知关联"
+
+13. 通知 / TG 关联设置
+位置：frontend/admin/src/components/telegram-notification-editor.tsx
+原文：<h3 className="font-medium">发送逻辑</h3>
+现文：<h3 className="font-medium">通知关联</h3>
+
+14. 通知 / TG 关联设置
+位置：frontend/admin/src/components/telegram-notification-editor.tsx
+原文：事件满足条件 → 对应通知组 → 当前 Telegram → 指定接收人。模板只决定内容，不会自动创建告警规则。
+现文：请将此通知加入对应通知组，并在告警、服务或任务中选择该通知组。
+
+15. 通知 / TG 提醒频率
+位置：frontend/admin/src/components/telegram-notification-editor.tsx
+原文：告警从异常恢复为正常时发送恢复通知，同时清除另一状态的去重缓存。
+现文：告警恢复正常时发送恢复通知。
+
+16. 通知 / TG 提醒频率
+位置：frontend/admin/src/components/telegram-notification-editor.tsx
+原文：带去重标识的同一事件：首次立即发送，初始冷却 15 分钟，后续间隔翻倍，最长 24 小时。不同事件分开计时；无去重标识的消息不套用此规则。
+现文：同一事件的重复提醒通常从 15 分钟起逐次延长，最长间隔 24 小时。
+
+17. 通知 / TG 提醒频率
+位置：frontend/admin/src/components/telegram-notification-editor.tsx
+原文：去重保存在内存中，重启或缓存过期后会重置。保存测试不经过上述去重流程。
+现文：重启后可能再次提醒；测试消息不受提醒间隔限制。
+
+18. 通知 / 事件模块说明
+位置：frontend/admin/src/components/notification-event-modules.tsx
+原文：模块只选择提示内容，不会创建告警或开启 IP 变更监控。关闭总开关恢复使用原模板；单个模块选择“不发送”只停用当前通知渠道的该类消息，不影响报警规则、其他渠道或触发任务。自选内容以纯文本发送，IP 跟随系统脱敏设置；事件没有提供的字段会自动省略。
+现文：这里只设置通知内容，告警和 IP 变更监控需另行开启。关闭后使用通用模板；选择“不发送”仅停用当前渠道的对应通知。IP 按系统设置脱敏。
+
+19. 通知 / DDNS 事件
+位置：frontend/admin/src/components/notification-event-modules.tsx
+原文：需要在 DDNS 配置中选择包含当前 TG 的结果通知组；只在每个域名/记录的重试结束后发送最终结果，失败通知受去重限制。
+现文：请在 DDNS 配置中选择包含此 TG 通知的通知组；更新完成后发送最终结果。
+
+20. 通知 / IP 变更事件
+位置：frontend/admin/src/components/notification-event-modules.tsx
+原文：需要先开启 IP 变更通知并选择通知组。历史保留最近 7 次变更前的旧 IP（包括本次旧 IP），按新到旧排列；时间为检测到变更的时间，重启保留。首次上报只建立基线，测试不会写入历史。
+现文：请先开启 IP 变更通知并选择通知组。显示最近 7 次旧 IP，按新到旧排列。
+
+21. 通知 / 事件发送说明
+位置：frontend/admin/src/components/notification-event-modules.tsx
+原文：发送仍由原有事件条件、通知组和去重逻辑决定。
+现文：满足对应事件的通知条件时发送。
+
+22. 系统设置 / 自动检测优先级
+位置：frontend/admin/src/components/DetectionPrioritySettings.tsx
+原文：按编号由小到大优先执行。同一节点的到期自动任务依次进行，前一项结束后再启动下一项；不同节点保留有限并发。调整不会打断正在运行的任务，也不改变原检测周期。流媒体仍沿用连通性的自动周期。手动检测不受此排序限制。
+现文：编号越小越先执行，下次自动检测时生效。不影响正在运行的任务和检测周期；手动检测不受此排序限制。
+
+23. 通知 / 服务器到期通知
+位置：frontend/admin/src/routes/server-expiry.tsx
+原文：每分钟检查；每台机器、同一到期日期、每个阶段只提醒一次，重启后不会重复。按最新到期日期计算；启用时只补当前阶段，不连续补发过去阶段。到期超过 24 小时不补发。发送失败会重试。
+现文：同一到期日期，每个阶段提醒一次。启用时仅补发当前阶段，到期超过 24 小时不补发。
+
+24. 通知 / 到期日期说明
+位置：frontend/admin/src/routes/server-expiry.tsx
+原文：日期统一按北京时间推算；保留首次购买日期和原始到期日期。跟随服务器卡片的自动续费设置：勾选后按日、周、月、季、半年、年、两年或三年周期推算最新到期日期并提醒；未勾选按原始到期日期提醒，不代表实际付款；无法识别的自定义周期按原始到期日期提醒。
+现文：时间按北京时间计算。开启自动续费后按付款周期推算到期日，不代表已实际付款；未开启或周期无法识别时，使用原始到期日。
+
+25. 后台美化 / 顶部说明
+位置：frontend/admin/src/routes/dashboard-appearance.tsx
+原文：仅作用于后台，与前台美化独立保存。字体、背景、品牌、点击特效、Ping/TCPing/Ping0 和时间转换均由面板内置。
+现文：仅调整后台外观，不影响前台。
+
+26. 后台美化 / 导入说明
+位置：frontend/admin/src/routes/dashboard-appearance.tsx
+原文：只读取 NZ_DASHBOARD_CONFIG 中的静态配置，不执行粘贴的脚本；未知扩展不会自动丢弃。保存迁移时归档原代码。
+现文：读取原有外观设置，不执行粘贴的脚本。保存后会备份并停用旧代码。
+
+27. 前台美化 / Google 统计
+位置：frontend/admin/src/lib/appearance-manifest.json
+原文：第三方统计服务，仍需连接 Google；不会加载 jm/xjs
+现文：Google 访问统计
+
+28. 连通性 / 图标上传
+位置：frontend/admin/src/components/ConnectivityIconPicker.tsx
+原文：MiB。图片保存到面板，前端不直连此网址。请勿使用含密钥或私密信息的链接。
+现文：MiB。请勿使用含密钥或私密信息的链接。
+
+29. 服务器编辑 / 厂商图标帮助
+位置：frontend/admin/src/components/ProviderLogoEditor.tsx
+原文：在图标库按名称搜索选择，修改库条目后自动同步；删除库条目会保留最后图标。桌面默认以到期进度条的实际左右边界为宽度范围并居中；无到期信息时保留同起点的 70px 区域，手机在 CPU 与内存标题上方区域显示。图片等比例适配、不裁切；默认不放大小图，手动放大不会提高原图清晰度。
+现文：按名称搜索图标，修改图标库后自动同步。图片等比例显示；放大小图不会提高其清晰度。
+
+30. 服务器编辑 / 图标位置帮助
+位置：frontend/admin/src/components/ProviderLayoutEditor.tsx
+原文：每台服务器单独保存。负值向左/向上，正值向右/向下。缩放保持比例，不改变原图。手机默认只占 CPU—内存标题上方的左侧空白；长名称挤占空白时会缩小，完全无空白则不显示，不推移原内容。手动放大或偏移过多仍可能遮住文字。预览复用前台卡片，未连接到实时状态时使用示例数据。保存服务器后才生效。
+现文：负值向左或向上，正值向右或向下。放大或偏移过多可能遮挡文字。预览可能使用示例数据，保存服务器后生效。
+
+31. 前台美化 / IP 查询
+位置：frontend/admin/src/components/visitor-ip-settings.tsx
+原文：并行查询，采用第一个有效结果。接口须支持浏览器跨域读取并返回 JSON（ip/query、country_name/country、city/region、asn、org/isp 等字段）。地址会下发到公开前台，不要填写密钥或内部地址；HTTPS 网站请使用 HTTPS 接口。
+现文：接口须支持浏览器跨域读取并返回 IP、地区等 JSON 数据。地址会公开，请勿填写密钥或内部地址；HTTPS 网站请使用 HTTPS 接口。
+
+32. 前台美化 / 缓存
+位置：frontend/admin/src/components/visitor-ip-settings.tsx
+原文：缓存有效期 0 表示不读取缓存。变更查询接口后不会沿用旧接口缓存。
+现文：缓存有效期设为 0 可关闭缓存。
+
+33. 通用错误提示
+位置：frontend/admin/src/locales/zh-CN/translation.json
+原文：意外错误，请查看控制台了解详细信息。
+现文：操作失败，请稍后重试。
+
+34. 服务器排序 / ID 提示
+位置：frontend/admin/src/locales/zh-CN/translation.json
+原文：普通排序只需点击“保存”。红色按钮会更改数据库系统 ID，并迁移关联记录与历史监控数据。
+现文：普通排序只需点击“保存”。重新分配系统 ID 会同时调整关联记录，请谨慎操作。
+
+35. 系统设置 / MCP
+位置：frontend/admin/src/locales/zh-CN/translation.json
+原文：启用 MCP 接入（默认关闭；启用前请确认已审阅 API 令牌 scope 与服务器白名单）
+现文：启用 MCP 接入（请先检查 API 令牌权限及允许访问的服务器）
+
+36. API 令牌 / 安全说明
+位置：frontend/admin/src/locales/zh-CN/translation.json
+原文：请像密码一样妥善保管。任何持有者都可在 scope 内以你的身份操作。
+现文：请像密码一样妥善保管。任何持有者都可在授权范围内以你的身份操作。
+
+37. API 令牌 / 校验提示
+位置：frontend/admin/src/locales/zh-CN/translation.json
+原文：至少选择一个 scope。
+现文：至少选择一项权限。
+
+38. 服务器终端 / 连接错误
+位置：frontend/admin/src/components/terminal.tsx
+原文：toast("Websocket error", { description: "View console for details." })
+现文：toast("终端连接失败", { description: "请检查服务器连接后重试。" })

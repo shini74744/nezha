@@ -79,8 +79,8 @@ export default function ServerExpiryPage() {
                         <span className="block text-xs text-muted-foreground">逗号分隔，默认 7,3,1,0；0 表示到期时，按日期中的具体时分秒计算。</span>
                     </label>
                 </div>
-                <p className="text-xs text-muted-foreground">每分钟检查；每台机器、同一到期日期、每个阶段只提醒一次，重启后不会重复。按最新到期日期计算；启用时只补当前阶段，不连续补发过去阶段。到期超过 24 小时不补发。发送失败会重试。</p>
-                <p className="text-xs text-muted-foreground">日期统一按北京时间推算；保留首次购买日期和原始到期日期。跟随服务器卡片的自动续费设置：勾选后按日、周、月、季、半年、年、两年或三年周期推算最新到期日期并提醒；未勾选按原始到期日期提醒，不代表实际付款；无法识别的自定义周期按原始到期日期提醒。</p>
+                <p className="text-xs text-muted-foreground">同一到期日期，每个阶段提醒一次。启用时仅补发当前阶段，到期超过 24 小时不补发。</p>
+                <p className="text-xs text-muted-foreground">时间按北京时间计算。开启自动续费后按付款周期推算到期日，不代表已实际付款；未开启或周期无法识别时，使用原始到期日。</p>
                 <Button disabled={saving || isLoading || !!error} onClick={save}>{saving ? "保存中…" : "保存到期通知设置"}</Button>
                 {error && <p role="alert" className="text-red-500">加载失败：{error.message}</p>}
             </section>

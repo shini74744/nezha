@@ -193,7 +193,7 @@ export function AlertCondition({
             </div>
             {!cycle && (
                 <p className="text-xs text-muted-foreground">
-                    每 3 秒采样一次，窗口按秒填写，须为 3 秒的整数倍；现有规则的实际时长保持不变。
+                    检测窗口按秒填写，须为 3 秒的整数倍。
                 </p>
             )}
             {pendingType && (
@@ -316,7 +316,7 @@ export function AlertCondition({
                         >
                             {rule.cycle_unit && !(rule.cycle_unit.toLowerCase() in cycleUnits) && (
                                 <option value={rule.cycle_unit}>
-                                    {rule.cycle_unit}（后端按小时）
+                                    {rule.cycle_unit}（按小时计算）
                                 </option>
                             )}
                             {Object.entries(cycleUnits).map(([key, name]) => (
@@ -355,7 +355,7 @@ export function AlertCondition({
                 {offline
                     ? "超过约 6 秒未收到心跳开始视为离线；检测窗口内的采样全部离线才触发。"
                     : cycle
-                      ? "检查最近一次周期流量统计；后台按现有间隔刷新，并非实时更新。周期按后端日历规则滚动，月底行为保持原样。"
+                      ? "按最近一次更新的周期流量判断，数据并非实时更新。"
                       : "检测窗口内超过 70% 的采样异常才触发，不要求每一秒都超限。"}
                 {!offline &&
                     " 上下限留空或不大于 0 时不启用该边界；两项都设置时，高于上限或低于下限均算异常。"}

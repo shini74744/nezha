@@ -271,8 +271,7 @@ export function TelegramNotificationEditor({
                                 ) && <option value={draft.parseMode}>{draft.parseMode}</option>}
                             </select>
                             <Help title="消息格式">
-                                纯文本不会因特殊符号导致格式错误。HTML / Markdown 要遵循 Telegram
-                                的格式与转义规则，系统目前仅做 JSON / URL 转义，不自动转义排版语法。
+                                推荐使用纯文本。选择 HTML / Markdown 时，请按 Telegram 要求处理特殊符号。
                             </Help>
                         </label>
                         <div className="flex flex-wrap gap-4 text-sm">
@@ -343,7 +342,7 @@ export function TelegramNotificationEditor({
                         )}
                         {scenario === "test" && /#SERVER\./.test(draft.text) && (
                             <p className="text-xs text-amber-600">
-                                此处为旧版通用测试预览；实际发送测试使用下方选择的事件状态和数据源。
+                                实际测试消息以下方选择的事件和数据为准。
                             </p>
                         )}
                         {preview.unknown.length > 0 && (
@@ -370,11 +369,10 @@ export function TelegramNotificationEditor({
                     TG 机器人设置
                 </Link>
             </p>
-            <section className="rounded-lg border p-3 space-y-2 text-sm" aria-label="TG 发送逻辑">
-                <h3 className="font-medium">发送逻辑</h3>
+            <section className="rounded-lg border p-3 space-y-2 text-sm" aria-label="TG 通知关联">
+                <h3 className="font-medium">通知关联</h3>
                 <p>
-                    事件满足条件 → 对应通知组 → 当前 Telegram →
-                    指定接收人。模板只决定内容，不会自动创建告警规则。
+                    请将此通知加入对应通知组，并在告警、服务或任务中选择该通知组。
                 </p>
                 <p>
                     关联通知组：
@@ -415,13 +413,12 @@ export function TelegramNotificationEditor({
                         <li>
                             单次触发：从正常变为异常时通知；持续触发：异常持续时继续检查，但仍受去重限制。
                         </li>
-                        <li>告警从异常恢复为正常时发送恢复通知，同时清除另一状态的去重缓存。</li>
+                        <li>告警恢复正常时发送恢复通知。</li>
                         <li>
-                            带去重标识的同一事件：首次立即发送，初始冷却 15 分钟，后续间隔翻倍，最长
-                            24 小时。不同事件分开计时；无去重标识的消息不套用此规则。
+                            同一事件的重复提醒通常从 15 分钟起逐次延长，最长间隔 24 小时。
                         </li>
                         <li>
-                            去重保存在内存中，重启或缓存过期后会重置。保存测试不经过上述去重流程。
+                            重启后可能再次提醒；测试消息不受提醒间隔限制。
                         </li>
                     </ul>
                 </details>

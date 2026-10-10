@@ -140,7 +140,7 @@ export default function ConnectivityIconPicker({
                     </Button>
                     <p className="text-xs text-muted-foreground">
                         导入 PNG/JPEG/WebP/GIF/ICO 或安全 SVG，最大 2
-                        MiB。图片保存到面板，前端不直连此网址。请勿使用含密钥或私密信息的链接。
+                        MiB。请勿使用含密钥或私密信息的链接。
                     </p>
                     {!pending && (
                         <p role="status" className="text-xs text-muted-foreground">
