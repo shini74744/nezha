@@ -3,6 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import { useStatisticsView } from "@/hooks/use-statistics-view";
 
 describe("statistics preferences", () => {
+	it("restores the independent server cycle view", () => {
+		localStorage.setItem("statisticsView", "cycle");
+		const { result } = renderHook(() => useStatisticsView("", true, false));
+		expect(result.current[0]).toBe("cycle");
+	});
 	it("starts closed, keeps themes independent and restores explicit choices", () => {
 		localStorage.setItem("statisticsView","traffic");
 		const {result,rerender}=renderHook(({prefix})=>useStatisticsView(prefix,true,true),{initialProps:{prefix:"doraemon:"}});

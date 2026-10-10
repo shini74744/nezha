@@ -14,6 +14,9 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	/* Guard neighbouring controls while images and fonts establish their size. */
+	overflow-x: clip;
+	overflow-y: visible;
 }
 .nz-native-sponsor {
 	position: relative;
@@ -22,12 +25,13 @@
 	max-width: none;
 	z-index: 1;
 	opacity: 1;
-	transform: scale(var(--bm-fit, 1));
+	transform: scale(var(--bm-fit, 0));
 	transform-origin: center;
-	transition: opacity var(--bm-fade-duration, 0.5s) ease, transform var(--bm-fade-duration, 0.5s) ease;
+	/* Content still shrinks smoothly; only the safety fit is immediate. */
+	transition: opacity var(--bm-fade-duration, 0.5s) ease;
 }
 .nz-native-sponsor.bm-pc-hidden {
-	transform: scale(var(--bm-fit, 1));
+	transform: scale(var(--bm-fit, 0));
 	opacity: 0;
 	pointer-events: none;
 }
@@ -89,6 +93,27 @@
 .nz-native-sponsor.bm-compact .bm-logo {
 	height: 28px;
 }
+/* Fit uses stable layout dimensions; only this inner transform is animated. */
+.nz-sponsor-fit {
+	flex: none;
+	width: max-content;
+	transform: scale(var(--bm-fit, 0));
+	transform-origin: center;
+}
+.nz-sponsor-fit > .nz-native-sponsor {
+	transform: scale(1);
+}
+.nz-sponsor-fit > .nz-native-sponsor.bm-compact {
+	transform: scale(var(--bm-motion-end, 1));
+	animation: nz-sponsor-shrink var(--bm-shrink-duration, 15s) ease both;
+}
+@keyframes nz-sponsor-shrink {
+	from { transform: scale(1); }
+	to { transform: scale(var(--bm-motion-end, 1)); }
+}
+.nz-sponsor-fit .bottom-marquee { height: 42px; transition: none; }
+.nz-sponsor-fit .bm-item { font-size: 14px; line-height: 42px; transition: none; }
+.nz-sponsor-fit .bm-logo { height: 28px; transition: none; }
 .nz-sponsor-detail {
 	max-width: 100%;
 	margin-top: 24px;

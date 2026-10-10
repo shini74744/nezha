@@ -15,18 +15,22 @@ function config() {
 function styles(c = config()) {
     return render(
         <DashboardAppearanceProvider raw={JSON.stringify(c)}>
-            <div className="dashboard-page-surface">服务器</div>
+            <section className="dashboard-page-frame"><div className="dashboard-page-surface">服务器</div></section>
         </DashboardAppearanceProvider>,
     )
 }
-test("background gets light-only contrast floors without changing saved settings", () => {
+test("whole light page follows saved opacity while controls keep contrast", () => {
     const c = config(), before = JSON.stringify(c)
     const view = styles(c)
     const css = view.container.querySelector("style")!.textContent!
     expect(css).toContain(light + "{")
-    expect(css).toContain("background-color:rgb(255 255 255 / 0.64)")
+    expect(css).toContain("background-color:rgb(255 255 255 / 0.48)")
+    expect(css).toContain("--background:0 0% 100% / 0.48")
+    expect(css).toContain("height:auto;min-height:100vh;min-height:100dvh")
+    expect(css).toContain("flex:1 0 auto;background-color:transparent")
+    expect(css).not.toContain("background-color:rgb(255 255 255 / 0.64)")
     expect(css).toContain("--popover:0 0% 100% / 0.96")
-    expect(css).toContain("--muted-foreground:215 20% 22%")
+    expect(css).toContain("--muted-foreground:0 0% 5%")
     expect(css).toContain("html[data-nz-dashboard].dark{--background:0 0% 5% / 0.58")
     expect(JSON.stringify(c)).toBe(before)
 })
@@ -64,4 +68,13 @@ test("mobile fixed wallpaper has its own viewport layer; scroll backgrounds are 
     c.features.background.attachment = "scroll"
     view.rerender(<DashboardAppearanceProvider raw={JSON.stringify(c)}><div /></DashboardAppearanceProvider>)
     expect(view.container.querySelector("style")!.textContent).not.toContain('body::before')
+})
+
+test.each([0, .1, .48, 1])("main background opacity %s is not silently clamped", value => {
+    const c = config()
+    c.features.appearance.lightBackgroundOpacity = value
+    const view = styles(c)
+    const css = view.container.querySelector("style")!.textContent!
+    expect(css).toContain("background-color:rgb(255 255 255 / " + value + ")")
+    expect(css).toContain("--background:0 0% 100% / " + value)
 })

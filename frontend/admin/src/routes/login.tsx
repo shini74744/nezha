@@ -1,4 +1,5 @@
 import { Oauth2RequestType, getOauth2RedirectURL } from "@/api/oauth2"
+import { OAuthTOTPChallenge } from "@/components/oauth-totp-challenge"
 import { Button } from "@/components/ui/button"
 import {
     Form,
@@ -15,7 +16,7 @@ import { useAuth } from "@/hooks/useAuth"
 import useSetting from "@/hooks/useSetting"
 import { zodResolver } from "@hookform/resolvers/zod"
 import i18next from "i18next"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
@@ -28,11 +29,17 @@ const formSchema = z.object({
     password: z.string().min(1, {
         message: i18next.t("Results.PasswordRequired"),
     }),
+    code: z.string().max(64),
 })
 
 function Login() {
     const { login, loginOauth2 } = useAuth()
     const { data: settingData } = useSetting()
+    const [needsTOTP, setNeedsTOTP] = useState(false)
+    const [recovery, setRecovery] = useState(false)
+    const [oauthChallenge, setOAuthChallenge] = useState(
+        () => new URLSearchParams(window.location.search).get("oauth2_totp") === "1",
+    )
 
     useEffect(() => {
         const oauth2 = new URLSearchParams(window.location.search).get("oauth2")
@@ -46,11 +53,33 @@ function Login() {
         defaultValues: {
             username: "",
             password: "",
+            code: "",
         },
     })
 
-    function onSubmit(values: z.infer<typeof formSchema>) {
-        login(values.username, values.password)
+    const username = form.watch("username"),
+        password = form.watch("password")
+    useEffect(() => {
+        setNeedsTOTP(false)
+        form.setValue("code", "")
+    }, [username, password, form])
+    useEffect(() => {
+        if (needsTOTP) form.setFocus("code")
+    }, [needsTOTP, form])
+    async function onSubmit(values: z.infer<typeof formSchema>) {
+        if (needsTOTP && !values.code.trim()) {
+            form.setError("code", { message: recovery ? "请输入恢复码" : "请输入 6 位动态验证码" })
+            return
+        }
+        if (
+            (await login(
+                values.username,
+                values.password,
+                needsTOTP ? values.code.trim() : undefined,
+            )) === "totp-required"
+        ) {
+            setNeedsTOTP(true)
+        }
     }
 
     async function loginWith(provider: string) {
@@ -63,6 +92,16 @@ function Login() {
     }
 
     const { t } = useTranslation()
+
+    if (oauthChallenge)
+        return (
+            <OAuthTOTPChallenge
+                onBack={() => {
+                    window.history.replaceState({}, document.title, window.location.pathname)
+                    setOAuthChallenge(false)
+                }}
+            />
+        )
 
     return (
         <div className="mt-28 sm:max-w-sm m-auto max-w-xs">
@@ -99,7 +138,47 @@ function Login() {
                             </FormItem>
                         )}
                     />
+                    {needsTOTP && (
+                        <div className="space-y-2">
+                            <FormField
+                                control={form.control}
+                                name="code"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>{recovery ? "恢复码" : "动态验证码"}</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                {...field}
+                                                placeholder={
+                                                    recovery
+                                                        ? "输入一组未使用的恢复码"
+                                                        : "输入验证器中的 6 位数字"
+                                                }
+                                                inputMode={recovery ? "text" : "numeric"}
+                                                autoComplete={recovery ? "off" : "one-time-code"}
+                                                maxLength={recovery ? 64 : 6}
+                                                spellCheck={false}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <button
+                                type="button"
+                                className="text-xs text-muted-foreground underline underline-offset-4"
+                                onClick={() => {
+                                    setRecovery(!recovery)
+                                    form.setValue("code", "")
+                                    form.clearErrors("code")
+                                }}
+                            >
+                                {recovery ? "使用验证器动态码" : "无法使用验证器？使用恢复码"}
+                            </button>
+                        </div>
+                    )}
                     <Button
+                        disabled={form.formState.isSubmitting}
                         type="submit"
                         className="w-full rounded-lg shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]"
                     >

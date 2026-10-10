@@ -1,5 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -74,7 +74,7 @@ describe("Tab and group switches", () => {
 		).toHaveClass("text-black");
 	});
 
-	it("restores saved groups and hides itself when only All exists", async () => {
+	it("does not override page-owned selection and hides itself when only All exists", () => {
 		const setCurrentTab = vi.fn();
 		sessionStorage.setItem("selectedGroup", "Edge");
 
@@ -86,9 +86,10 @@ describe("Tab and group switches", () => {
 			/>,
 		);
 
-		await waitFor(() => {
-			expect(setCurrentTab).toHaveBeenCalledWith("Edge");
-		});
+		expect(setCurrentTab).not.toHaveBeenCalled();
+		expect(screen.getByRole("button", { pressed: true })).toHaveTextContent(
+			"group.all",
+		);
 
 		rerender(
 			<GroupSwitch
@@ -99,6 +100,57 @@ describe("Tab and group switches", () => {
 		);
 
 		expect(container).toBeEmptyDOMElement();
+	});
+
+	it("keeps compact groups keyboard accessible with a clear selection", async () => {
+		const user = userEvent.setup();
+		const setCurrentTab = vi.fn();
+		render(
+			<GroupSwitch
+				tabs={["All", "Asia"]}
+				currentTab="All"
+				setCurrentTab={setCurrentTab}
+			/>,
+		);
+		const all = screen.getByRole("button", { pressed: true });
+		const asia = screen.getByRole("button", { name: "Asia" });
+		expect(all).toHaveClass("h-[30px]", "min-w-[44px]");
+		asia.focus();
+		await user.keyboard("{Enter}");
+		expect(setCurrentTab).toHaveBeenCalledWith("Asia");
+	});
+
+	it("binds horizontal scrolling after groups load and preserves browser zoom", () => {
+		const setCurrentTab = vi.fn();
+		const { container, rerender } = render(
+			<GroupSwitch
+				tabs={["All"]}
+				currentTab="All"
+				setCurrentTab={setCurrentTab}
+			/>,
+		);
+		rerender(
+			<GroupSwitch
+				tabs={["All", "Asia"]}
+				currentTab="All"
+				setCurrentTab={setCurrentTab}
+			/>,
+		);
+		const scroller = container.querySelector(
+			"[data-group-scroll]",
+		) as HTMLElement;
+		Object.defineProperty(scroller, "scrollWidth", {
+			configurable: true,
+			value: 320,
+		});
+		Object.defineProperty(scroller, "clientWidth", {
+			configurable: true,
+			value: 100,
+		});
+		fireEvent.wheel(scroller, { deltaX: 40 });
+		expect(scroller.scrollLeft).toBe(40);
+		fireEvent.wheel(scroller, { deltaY: 40, ctrlKey: true });
+		expect(scroller.scrollLeft).toBe(40);
 	});
 
 	it("scrolls overflowing group tabs and applies custom background styling", async () => {
@@ -129,7 +181,7 @@ describe("Tab and group switches", () => {
 		expect(scrollIntoView).not.toHaveBeenCalled();
 		expect(
 			container.querySelector(".relative.flex.items-center")?.className,
-		).toContain("bg-stone-100/70");
+		).toContain("bg-stone-100/60");
 	});
 });
 

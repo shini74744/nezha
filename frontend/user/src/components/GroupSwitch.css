@@ -1,0 +1,47 @@
+.group-tabs-viewport {
+	min-width: 0;
+	width: calc(var(--group-visible-count, 3) * (var(--group-tab-width, 44px) + 2px) - 2px);
+	overflow-x: auto;
+	overflow-y: hidden;
+	border-radius: 999px;
+}
+.group-tabs-track {
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: var(--group-tab-width, 44px);
+	gap: 2px;
+	width: max-content;
+}
+.group-tabs-track .group-tab { width: var(--group-tab-width, 44px); }
+
+/* Compact labels must not squeeze the view controls or sort menu on phones. */
+@media (max-width: 640px) {
+	.server-overview-controls:has([data-group-switch]) {
+		display: grid;
+		grid-template-columns: repeat(3, auto) minmax(0, 1fr);
+		align-items: center;
+		gap: 8px;
+	}
+	.server-overview-controls:has([data-group-switch])
+		> section:not(.nz-native-sponsor) {
+		display: contents;
+	}
+	.server-overview-controls:has([data-group-switch]) > section > button {
+		grid-row: 1;
+		flex-shrink: 0;
+	}
+	.server-overview-controls [data-group-switch] {
+		grid-column: 1 / -1;
+		grid-row: 2;
+		justify-self: start;
+		max-width: 100%;
+	}
+	.server-overview-controls:has([data-group-switch])
+		> div:not([data-native-sponsor-slot]) {
+		grid-column: 4;
+		grid-row: 1;
+		justify-self: end;
+		min-width: 0;
+		max-width: 100%;
+	}
+}

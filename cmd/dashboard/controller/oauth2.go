@@ -207,6 +207,9 @@ func oauth2callback(jwtConfig *jwt.GinJWTMiddleware) func(c *gin.Context) (any, 
 		if err := singleton.DB.First(&bindUser, bind.UserID).Error; err != nil {
 			return nil, newGormError("%v", err)
 		}
+		if state.Action != model.RTypeBind && strings.EqualFold(state.Provider, "github") && bindUser.TOTPGitHub {
+			return beginOAuthTOTP(c, &bindUser)
+		}
 		claims, err := issueJWTSession(c, &bindUser, singleton.Conf.JWTTimeout)
 		if err != nil {
 			return nil, err

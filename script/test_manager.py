@@ -63,6 +63,7 @@ class ManagerTest(unittest.TestCase):
   (self.dash/"data"/"config.yaml").write_text("listen_port: 8008\n")
   (self.dash/"data"/"sqlite.db").write_bytes(b"existing-user-data")
   (self.dash/"data"/"terminal-commands.key").write_bytes(b"test-only-encryption-key"*2)
+  (self.dash/"data"/"totp.key").write_bytes(b"test-only-totp-key".ljust(32,b"0"))
   self.old=b"#!/bin/sh\necho old-version\n"
   (self.dash/"app").write_bytes(self.old);(self.dash/"app").chmod(0o755)
   self.assets=self.root/"assets";self.assets.mkdir()
@@ -108,6 +109,7 @@ class ManagerTest(unittest.TestCase):
   backups=list((self.base/"backups").glob("*/app.previous"))
   self.assertEqual(len(backups),1);self.assertEqual(backups[0].read_bytes(),self.old)
   self.assertEqual((backups[0].parent/"terminal-commands.key").read_bytes(),(self.dash/"data"/"terminal-commands.key").read_bytes())
+  self.assertEqual((backups[0].parent/"totp.key").read_bytes(),(self.dash/"data"/"totp.key").read_bytes())
  def test_failed_start_rolls_back_binary_without_replacing_data(self):
   self.state["fail_first_start"]=True;self.save()
   p=self.run_manager("update");self.assertNotEqual(p.returncode,0,p.stdout+p.stderr)

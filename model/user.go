@@ -29,6 +29,17 @@ type User struct {
 	AgentSecret    string `json:"agent_secret,omitempty" gorm:"type:char(32)"`
 	RejectPassword bool   `json:"reject_password,omitempty"`
 	TokenVersion   uint64 `json:"-" gorm:"not null;default:0"`
+	TOTPEnabled    bool   `json:"totp_enabled" gorm:"not null;default:false"`
+	TOTPGitHub     bool   `json:"totp_github" gorm:"column:totp_github;not null;default:false"`
+	// Inverse default preserves password MFA for already-enrolled accounts.
+	TOTPPasswordDisabled bool   `json:"totp_password_disabled" gorm:"column:totp_password_disabled;not null;default:false"`
+	TOTPSecret           string `json:"-"`
+	TOTPPending          string `json:"-"`
+	TOTPPendingUntil     int64  `json:"-" gorm:"not null;default:0"`
+	TOTPLastStep         int64  `json:"-" gorm:"not null;default:0"`
+	TOTPRecovery         string `json:"-"`
+	TOTPAttempts         int    `json:"-" gorm:"not null;default:0"`
+	TOTPWindowStart      int64  `json:"-" gorm:"not null;default:0"`
 }
 
 type UserInfo struct {

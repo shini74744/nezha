@@ -113,6 +113,9 @@ func InitDBFromPath(path string) error {
 	if err := initTerminalCommandCipher(path); err != nil {
 		return err
 	}
+	if err := initTOTPCipher(path); err != nil {
+		return err
+	}
 
 	if err := initPlanTraffic(DB, time.Now()); err != nil {
 		return err

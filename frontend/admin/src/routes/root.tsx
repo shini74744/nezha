@@ -45,7 +45,7 @@ export default function Root() {
         <ThemeProvider defaultTheme="system">
             <DashboardAppearanceProvider raw={settingData?.config?.dashboard_appearance_config}>
             <DashboardUTCText/>
-            <section className="text-sm mx-auto h-full flex flex-col justify-between">
+            <section className="dashboard-page-frame text-sm mx-auto h-full flex flex-col justify-between">
                 <div className="dashboard-page-surface">
                     <Header />
                     <div className="dashboard-shell dashboard-content">

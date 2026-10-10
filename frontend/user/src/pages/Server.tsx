@@ -19,6 +19,7 @@ import ServerCardInline from "@/components/ServerCardInline";
 import ServerOverview from "@/components/ServerOverview";
 import { ServiceTracker } from "@/components/ServiceTracker";
 import StatisticsMenu from "@/components/StatisticsMenu";
+import ServerPlanTraffic from "@/components/ServerPlanTraffic";
 import { useStatisticsView } from "@/hooks/use-statistics-view";
 import SortMetricSelect from "@/components/SortMetricSelect";
 import { useSort } from "@/hooks/use-sort";
@@ -241,6 +242,13 @@ export default function Servers({
 		],
 		[groupData?.data],
 	);
+	// The page owns theme-scoped selection; wait for groups before validating it.
+	useEffect(() => {
+		if (groupData?.success && !groupTabs.includes(currentGroup)) {
+			setCurrentGroup("All");
+			sessionStorage.setItem(preference("selectedGroup"), "All");
+		}
+	}, [groupData?.success, groupTabs, currentGroup, preference]);
 	const {
 		down,
 		downSpeed,
@@ -550,7 +558,9 @@ export default function Servers({
 				<GlobalMap now={nezhaWsData.now} serverList={nezhaWsData.servers} />
 			)}
 			{hasServers && !displaySettingsLoading && statisticsView !== "closed" && (
-				<ServiceTracker serverList={filteredServers} view={statisticsSplit ? statisticsView : "both"} onClose={() => selectStatisticsView("closed")} />
+				statisticsView === "cycle"
+					? <ServerPlanTraffic serverList={filteredServers} onClose={() => selectStatisticsView("closed")} />
+					: <ServiceTracker serverList={filteredServers} view={statisticsSplit ? statisticsView : "both"} onClose={() => selectStatisticsView("closed")} />
 			)}
 			{!hasServers ? (
 				<ServerEmptyState />

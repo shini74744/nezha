@@ -2,8 +2,12 @@ import { geoEquirectangular, geoPath } from "d3-geo";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
 import { geoJsonString } from "@/lib/geo-json-string";
-import type { ReturnHop } from "@/lib/network-insight-api";
-import { returnMapData, returnMapFrame, returnUnlocatedReason } from "@/lib/return-route-map";
+import type { ReturnResult } from "@/lib/network-insight-api";
+import {
+	returnMapData,
+	returnMapFrame,
+	returnUnlocatedReason,
+} from "@/lib/return-route-map";
 import { cn } from "@/lib/utils";
 
 const world = JSON.parse(geoJsonString) as {
@@ -13,7 +17,8 @@ const world = JSON.parse(geoJsonString) as {
 		properties: Record<string, unknown>;
 	}>;
 };
-export default function ReturnRouteMap({ hops }: { hops: ReturnHop[] }) {
+export default function ReturnRouteMap({ result }: { result: ReturnResult }) {
+	const hops = useMemo(() => result.hops || [], [result.hops]);
 	const canvas = useRef<HTMLDivElement>(null);
 	const [{ width, height }, setSize] = useState({ width: 760, height: 380 });
 	useEffect(() => {
@@ -56,6 +61,10 @@ export default function ReturnRouteMap({ hops }: { hops: ReturnHop[] }) {
 				...p,
 				xy: projection([p.longitude, p.latitude])!,
 			})),
+			gaps: data.gaps.map((s) => ({
+				...s,
+				d: path({ type: "LineString", coordinates: [s.from, s.to] }),
+			})),
 			lines: data.segments.map((s) => ({
 				ttl: s.ttl,
 				d: path({ type: "LineString", coordinates: [s.from, s.to] }),
@@ -70,24 +79,21 @@ export default function ReturnRouteMap({ hops }: { hops: ReturnHop[] }) {
 					路由定位
 				</span>
 				<span className="text-muted-foreground">
-					已定位 {data.located} / {data.total} 个跳点记录
+					已定位 {data.located} / {data.total} 跳
 				</span>
 			</div>
 			{!!data.unlocated.length && (
-                <p className="rounded-lg bg-muted/30 px-3 py-2 text-xs leading-5 text-muted-foreground" data-return-map-missing>
-                    {data.unlocated.length} 条记录未绘制：{[...new Set(data.unlocated.map(returnUnlocatedReason))].map(reason => reason + " " + data.unlocated.filter(h => returnUnlocatedReason(h) === reason).length + " 条").join("；")}。不根据地址归属名称猜测坐标。
-                </p>
-            )}
-			{!!data.unlocated.length && (
-				<details className="rounded-lg bg-muted/30 px-3 py-2 text-xs">
+				<details
+					className="rounded-lg bg-muted/30 px-3 py-2 text-xs"
+					data-return-map-unlocated
+				>
 					<summary className="cursor-pointer">
-						为什么有些跳点没显示？（{data.unlocated.length} 条）
+						未定位跳点（{data.unlocated.length}）
 					</summary>
 					<ul className="mt-2 space-y-1 text-muted-foreground">
 						{data.unlocated.map((h, i) => (
 							<li key={i}>
-								第 {h.ttl} 跳 ·{" "}
-								{returnUnlocatedReason(h)}
+								第 {h.ttl} 跳 · {returnUnlocatedReason(h)}
 							</li>
 						))}
 					</ul>
@@ -95,6 +101,22 @@ export default function ReturnRouteMap({ hops }: { hops: ReturnHop[] }) {
 			)}
 			{data.points.length ? (
 				<>
+					<div
+						className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground"
+						aria-label="地图连线图例"
+					>
+						<span className="inline-flex items-center gap-1.5">
+							<span className="w-5 border-t-2 border-primary/65" aria-hidden />
+							相邻响应
+						</span>
+						<span className="inline-flex items-center gap-1.5">
+							<span
+								className="w-5 border-t-2 border-dashed border-primary/65"
+								aria-hidden
+							/>
+							中间信息不完整
+						</span>
+					</div>
 					<div
 						ref={canvas}
 						className="relative isolate h-[230px] overflow-hidden rounded-xl border bg-muted/35 sm:h-[320px]"
@@ -108,7 +130,7 @@ export default function ReturnRouteMap({ hops }: { hops: ReturnHop[] }) {
 							aria-label="回程路由地理位置示意图"
 						>
 							<title>
-								回程路由地理位置示意图，连接仅表示相邻 TTL 的观测顺序
+								回程路由地理位置示意图，实线为相邻响应，虚线为中间存在未知区段的顺序示意
 							</title>
 							<g
 								className="fill-muted-foreground/10 stroke-muted-foreground/25"
@@ -124,6 +146,19 @@ export default function ReturnRouteMap({ hops }: { hops: ReturnHop[] }) {
 								strokeWidth="2"
 								strokeLinecap="round"
 							>
+								{drawing.gaps.map((line) => (
+									<path
+										key={"gap-" + line.ttl}
+										d={line.d || ""}
+										strokeDasharray="5 5"
+										data-return-map-gap
+									>
+										<title>
+											第 {line.ttl} → {line.end} 跳：中间{" "}
+											{line.end - line.ttl - 1} 跳缺少定位或响应，仅示意顺序
+										</title>
+									</path>
+								))}
 								{drawing.lines.map((line) => (
 									<path key={line.ttl} d={line.d || ""} data-return-map-edge />
 								))}
@@ -217,15 +252,13 @@ export default function ReturnRouteMap({ hops }: { hops: ReturnHop[] }) {
 					<MapPin className="size-6 text-muted-foreground" aria-hidden />
 					<p className="text-sm font-medium">暂无可用定位数据</p>
 					<p className="text-xs leading-5 text-muted-foreground">
-						旧快照未保存坐标，可重新检测。未响应、地址隐藏或定位缺失的跳点不绘制。
+						本次记录暂无位置信息，可切换逐跳查看。
 					</p>
 				</div>
 			)}
 			<p className="text-[11px] leading-5 text-muted-foreground">
-				IP 定位仅供参考，不代表真实机房或光缆路径。连线仅表示相邻 TTL
-				的观测顺序；缺失定位、未响应和多路径之间不推测连线。同位置的跳点合并显示。
+				位置与连线仅供参考，不代表实际机房或光缆路径。
 			</p>
-
 		</div>
 	);
 }
