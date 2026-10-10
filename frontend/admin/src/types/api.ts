@@ -420,6 +420,7 @@ export interface ModelNATForm {
 }
 
 export interface ModelNotification {
+    telegram_menu?: import("@/lib/telegram-menu").TelegramMenuConfig
     event_templates?: import("@/lib/notification-events").EventConfig
     created_at: string
     id: number
@@ -435,6 +436,7 @@ export interface ModelNotification {
 }
 
 export interface ModelNotificationForm {
+    telegram_menu?: import("@/lib/telegram-menu").TelegramMenuConfig
     /** Transient test request, never stored in notification settings. */
     test_event?: { kind: string; server_id?: number }
     event_templates?: import("@/lib/notification-events").EventConfig

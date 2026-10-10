@@ -133,6 +133,22 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 		require.NotEmpty(t, out.Token)
 		return out.Token
 	}
+	var telegramID uint64
+	checkTelegramConfig := func(token string) {
+		var bots []map[string]any
+		request("GET", "/api/v1/telegram-bot", token, nil, &bots)
+		require.Len(t, bots, 1)
+		require.Equal(t, float64(telegramID), bots[0]["id"])
+		require.Equal(t, true, bots[0]["eligible"])
+		config := bots[0]["config"].(map[string]any)
+		require.Equal(t, false, config["enabled"])
+		require.Equal(t, true, config["daily_traffic"])
+		require.Equal(t, false, config["items"].(map[string]any)["offline"])
+		raw, err := json.Marshal(bots)
+		require.NoError(t, err)
+		require.NotContains(t, string(raw), "fixture_token")
+		require.NotContains(t, string(raw), "request_body")
+	}
 	checkCommand := func(token string) {
 		var rows []struct{ Name, Command string }
 		request("GET", "/api/v1/terminal-commands", token, nil, &rows)
@@ -337,6 +353,17 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 	}
 	p := start(0)
 	token := login()
+	// Robot disabled: these integration checks must not contact Telegram.
+	var emptyBots []map[string]any
+	request("GET", "/api/v1/telegram-bot", token, nil, &emptyBots)
+	require.Empty(t, emptyBots)
+	request("POST", "/api/v1/notification", token, map[string]any{
+		"name": "TG fixture", "url": "https://api.telegram.org/bot123:fixture_token/sendMessage",
+		"request_method": 2, "request_type": 1, "request_body": `{"chat_id":12345678,"text":"#NEZHA#"}`, "skip_check": true,
+	}, &telegramID)
+	request("PATCH", fmt.Sprintf("/api/v1/notification/%d/telegram-menu", telegramID), token,
+		map[string]any{"telegram_menu": map[string]any{"enabled": false, "expiry_days": 7, "daily_traffic": true, "items": map[string]bool{"offline": false}}}, nil)
+	checkTelegramConfig(token)
 	var appearanceState struct{ Revision string }
 	request("GET", "/api/v1/setting/appearance", token, nil, &appearanceState)
 	request("PATCH", "/api/v1/setting/appearance", token, map[string]any{"revision": appearanceState.Revision, "config": appearance}, nil)
@@ -381,6 +408,14 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 			require.NoError(t, stopProcess(p.cmd))
 			select {
 			case err := <-p.done:
+				if err != nil {
+					output, _ := os.ReadFile(p.log)
+					for _, line := range strings.Split(string(output), "\n") {
+						if strings.Contains(line, "Graceful::") || strings.Contains(line, "panic:") || strings.Contains(line, "fatal error:") {
+							t.Log(line)
+						}
+					}
+				}
 				require.NoError(t, err)
 			case <-time.After(45 * time.Second):
 				t.Fatal("graceful shutdown timeout")
@@ -400,6 +435,7 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, keyHash, sha256.Sum256(key), "restart must preserve key")
 		token = login()
+		checkTelegramConfig(token)
 		checkAppearance(token)
 		checkReturnSaved(token)
 		checkCommand(token)

@@ -22,11 +22,13 @@ type PlanTrafficCheckpoint struct {
 	CoveredFrom int64
 }
 type PlanTrafficDay struct {
-	UUID      string `gorm:"primaryKey;size:64"`
-	Day       string `gorm:"primaryKey;size:10"`
-	In        uint64
-	Out       uint64
-	Estimated bool
+	UUID       string `gorm:"primaryKey;size:64"`
+	Day        string `gorm:"primaryKey;size:10"`
+	In         uint64
+	Out        uint64
+	Estimated  bool
+	Partial    bool `gorm:"not null;default:false"`
+	Unreliable bool `gorm:"not null;default:false"`
 }
 type TrafficPlan struct {
 	QuotaType string

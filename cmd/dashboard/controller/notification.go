@@ -1,9 +1,11 @@
 package controller
 
 import (
+	"errors"
 	"net/http"
 	"slices"
 	"strconv"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/copier"
@@ -14,6 +16,18 @@ import (
 )
 
 const notificationBatchDeleteMaxBodyBytes = 1 << 20
+
+var notificationMenuSaveMu sync.Mutex
+
+func checkTelegramMenuSave(c *gin.Context, n *model.Notification, requested *model.TelegramMenuConfig) error {
+	if _, pat := c.Get(model.CtxKeyAPIToken); pat && ((n.TelegramMenu != nil && (n.TelegramMenu.Enabled || n.TelegramMenu.LoginFailurePassword)) || (requested != nil && (requested.Enabled || requested.LoginFailurePassword))) {
+		return errors.New("服务器管理菜单只能通过浏览器登录账号设置")
+	}
+	if requested != nil {
+		n.TelegramMenu = requested
+	}
+	return singleton.ValidateTelegramMenuConfiguration(n)
+}
 
 // List notification
 // @Summary List notification
@@ -55,6 +69,8 @@ func listNotification(c *gin.Context) ([]*model.Notification, error) {
 // @Success 200 {object} model.CommonResponse[any]
 // @Router /notification [post]
 func createNotification(c *gin.Context) (uint64, error) {
+	notificationMenuSaveMu.Lock()
+	defer notificationMenuSaveMu.Unlock()
 	var nf model.NotificationForm
 	if err := c.ShouldBindJSON(&nf); err != nil {
 		return 0, err
@@ -69,6 +85,9 @@ func createNotification(c *gin.Context) (uint64, error) {
 	n.RequestBody = nf.RequestBody
 	n.URL = nf.URL
 	n.EventTemplates = nf.EventTemplates
+	if err := checkTelegramMenuSave(c, &n, nf.TelegramMenu); err != nil {
+		return 0, err
+	}
 	if err := n.ValidateEventTemplates(); err != nil {
 		return 0, err
 	}
@@ -114,6 +133,8 @@ func createNotification(c *gin.Context) (uint64, error) {
 // @Success 200 {object} model.CommonResponse[any]
 // @Router /notification/{id} [patch]
 func updateNotification(c *gin.Context) (any, error) {
+	notificationMenuSaveMu.Lock()
+	defer notificationMenuSaveMu.Unlock()
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
@@ -152,6 +173,9 @@ func updateNotification(c *gin.Context) (any, error) {
 		n.RequestBody = nf.RequestBody
 	}
 
+	if err := checkTelegramMenuSave(c, &n, nf.TelegramMenu); err != nil {
+		return nil, err
+	}
 	if nf.EventTemplates != nil {
 		n.EventTemplates = nf.EventTemplates
 	}

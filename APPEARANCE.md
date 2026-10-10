@@ -291,4 +291,4 @@ logic are unchanged. Disabling sponsor removes this scoped CSS.
 
 ## 2026-10-10 GitHub 源码同步
 
-上述阿里预览改动的源码、测试与文档已同步至 `main`，包括最新赞助条平滑缩放修复。历史验收记录保留；其中“GitHub 未推送”描述当时状态。本次不新建 Release，不更新已有安装包，阿里继续运行已验收构建。
+上述改动的源码、测试与文档已同步至 `main`，并纳入 custom-2026.10.10.2 的 Linux／Windows 安装包，包括赞助条平滑缩放修复。历史验收记录保留；其中“阿里预览”和“GitHub 未推送”仅描述当时状态。

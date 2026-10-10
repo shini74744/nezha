@@ -30,3 +30,13 @@ func notificationEditor(c *gin.Context) (*model.Notification, error) {
 	}
 	return &n, nil
 }
+
+// This status contains no bot credentials and is still owner/write scoped.
+func notificationTelegramMenuStatus(c *gin.Context) (*singleton.TelegramMenuStatus, error) {
+	n, err := notificationEditor(c)
+	if err != nil {
+		return nil, err
+	}
+	status := singleton.GetTelegramMenuStatus(n)
+	return &status, nil
+}

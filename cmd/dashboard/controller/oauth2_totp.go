@@ -68,6 +68,13 @@ func beginOAuthTOTP(c *gin.Context, user *model.User) (any, error) {
 
 func verifyOAuthTOTP(jwtConfig *jwt.GinJWTMiddleware) func(*gin.Context) (*model.LoginResponse, error) {
 	return func(c *gin.Context) (*model.LoginResponse, error) {
+		reason := singleton.LoginChallengeExpired
+		var noticeUser model.User
+		defer func() {
+			if reason != singleton.LoginSucceeded {
+				loginNotice(c, noticeUser.ID, noticeUser.Username, "GitHub", reason)
+			}
+		}()
 		c.Header("Cache-Control", "no-store")
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4096)
 		var form struct {
@@ -98,9 +105,15 @@ func verifyOAuthTOTP(jwtConfig *jwt.GinJWTMiddleware) func(*gin.Context) (*model
 		if !user.TOTPEnabled || !user.TOTPGitHub || user.TokenVersion != challenge.TokenVersion {
 			return nil, errOAuthTOTPExpired
 		}
+		noticeUser = user
 		if err := singleton.VerifyUserTOTP(singleton.DB, &user, form.Code, time.Now()); err != nil {
+			reason = singleton.LoginBadFactor
+			if errors.Is(err, singleton.ErrTOTPLimited) {
+				reason = singleton.LoginFactorLimited
+			}
 			return nil, err
 		}
+		reason = singleton.LoginInternalError
 		challenge.Used = true
 		singleton.Cache.Delete(oauthTOTPKey(token))
 		writeOAuthTOTPCookie(c, "", -1)
@@ -114,6 +127,8 @@ func verifyOAuthTOTP(jwtConfig *jwt.GinJWTMiddleware) func(*gin.Context) (*model
 		}
 		jwtConfig.SetCookie(c, signed)
 		setCSRFCookie(c)
+		reason = singleton.LoginSucceeded
+		loginNotice(c, user.ID, user.Username, "GitHub", singleton.LoginSucceeded)
 		return &model.LoginResponse{Token: signed, Expire: expire.Format(time.RFC3339)}, nil
 	}
 }

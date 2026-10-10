@@ -5,12 +5,12 @@ import { Textarea } from "@/components/ui/textarea"
 import { useNotification } from "@/hooks/useNotfication"
 import {
     NotificationDraft,
+    formatSpeedVariables,
     parseTelegram,
     previewTelegram,
     telegramPresets,
     telegramVariables,
     updateTelegram,
-    formatSpeedVariables,
     validateTelegram,
 } from "@/lib/telegram-notification"
 import type { ModelAlertRule } from "@/types"
@@ -226,9 +226,7 @@ export function TelegramNotificationEditor({
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    onClick={() =>
-                                        patch("text", formatSpeedVariables(draft.text))
-                                    }
+                                    onClick={() => patch("text", formatSpeedVariables(draft.text))}
                                 >
                                     改用 Mbps 网速
                                 </Button>
@@ -366,6 +364,12 @@ export function TelegramNotificationEditor({
                     </section>
                 </div>
             </details>
+            <p className="text-xs text-muted-foreground">
+                菜单、登录提醒及每日推送请前往{" "}
+                <Link className="underline" to="/dashboard/telegram-bot">
+                    TG 机器人设置
+                </Link>
+            </p>
             <section className="rounded-lg border p-3 space-y-2 text-sm" aria-label="TG 发送逻辑">
                 <h3 className="font-medium">发送逻辑</h3>
                 <p>
