@@ -178,6 +178,7 @@ func main() {
 	controller.InitUpgrader()
 	controller.StartConnectivityAutomation()
 	controller.StartNetworkInsightAutomation()
+	singleton.StartTelegramMenus()
 
 	muxHandler := newHTTPandGRPCMux(httpHandler, grpcHandler)
 	muxServerHTTP := &http.Server{

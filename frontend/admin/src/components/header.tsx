@@ -1,4 +1,4 @@
-import {useDashboardFeature} from "@/components/dashboard-appearance"
+import { useDashboardFeature } from "@/components/dashboard-appearance"
 import { ModeToggle } from "@/components/mode-toggle"
 import {
     Drawer,
@@ -21,7 +21,7 @@ import { useMainStore } from "@/hooks/useMainStore"
 import { useMediaQuery } from "@/hooks/useMediaQuery"
 import { cn } from "@/lib/utils"
 import i18next from "i18next"
-import { LogOut, Settings, User2, LayoutGrid } from "lucide-react"
+import { LayoutGrid, LogOut, Settings, User2 } from "lucide-react"
 import { DateTime } from "luxon"
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
@@ -54,7 +54,8 @@ const pages = [
 ]
 
 export default function Header() {
-    const brand=useDashboardFeature("brand"),animated=useDashboardFeature("animatedMan")
+    const brand = useDashboardFeature("brand"),
+        animated = useDashboardFeature("animatedMan")
     const { t } = useTranslation()
     const { logout } = useAuth()
     const profile = useMainStore((store) => store.profile)
@@ -68,8 +69,9 @@ export default function Header() {
 
     const navigate = useNavigate()
 
-    // @ts-expect-error DisableAnimatedMan is a global variable
-    const disableAnimatedMan = animated.enabled ? animated.disabled : window.DisableAnimatedMan as boolean
+    const disableAnimatedMan = animated.enabled
+        ? animated.disabled
+        : (window as Window & { DisableAnimatedMan?: boolean }).DisableAnimatedMan
 
     return isDesktop ? (
         <header className="flex pt-8 dark:bg-black/40 bg-muted border-b-[1px] overflow-visible">
@@ -96,8 +98,25 @@ export default function Header() {
                             }
                         >
                             <Link to={profile ? "/dashboard" : "#"}>
-                                <img className="h-7 mr-1" style={brand.enabled?{height:brand.logoHeight,width:"auto",objectFit:"contain"}:undefined} src={brand.enabled&&brand.logo?brand.logo:"/dashboard/logo.svg"} alt="" />
-                                {brand.enabled&&brand.title?brand.title:t("nezha")}
+                                <img
+                                    className="h-7 mr-1"
+                                    style={
+                                        brand.enabled
+                                            ? {
+                                                  height: brand.logoHeight,
+                                                  width: "auto",
+                                                  objectFit: "contain",
+                                              }
+                                            : undefined
+                                    }
+                                    src={
+                                        brand.enabled && brand.logo
+                                            ? brand.logo
+                                            : "/dashboard/logo.svg"
+                                    }
+                                    alt=""
+                                />
+                                {brand.enabled && brand.title ? brand.title : t("nezha")}
                             </Link>
                         </NavigationMenuLink>
 
@@ -117,11 +136,18 @@ export default function Header() {
                                         onOpenChange={setDropdownOpen}
                                     >
                                         <DropdownMenuTrigger asChild>
-                                            <Avatar role="button" tabIndex={0} aria-label="账户菜单" className="ml-1 h-8 w-8 cursor-pointer border-foreground border-[1px]">
+                                            <Avatar
+                                                role="button"
+                                                tabIndex={0}
+                                                aria-label="账户菜单"
+                                                className="ml-1 h-8 w-8 cursor-pointer border-foreground border-[1px]"
+                                            >
                                                 <AvatarImage
                                                     src={
-                                                        brand.enabled&&brand.avatar?brand.avatar:"https://api.dicebear.com/7.x/notionists/svg?seed=" +
-                                                        profile.username
+                                                        brand.enabled && brand.avatar
+                                                            ? brand.avatar
+                                                            : "https://api.dicebear.com/7.x/notionists/svg?seed=" +
+                                                              profile.username
                                                     }
                                                     alt={profile.username}
                                                 />
@@ -160,7 +186,20 @@ export default function Header() {
                                                         </div>
                                                     </DropdownMenuItem>
                                                 )}
-                                            {isAdmin && <DropdownMenuItem className="cursor-pointer" onClick={() => {setDropdownOpen(false);navigate("/dashboard/settings/cards")}}><div className="flex items-center gap-2 w-full"><LayoutGrid />卡片设置</div></DropdownMenuItem>}
+                                                {isAdmin && (
+                                                    <DropdownMenuItem
+                                                        className="cursor-pointer"
+                                                        onClick={() => {
+                                                            setDropdownOpen(false)
+                                                            navigate("/dashboard/settings/cards")
+                                                        }}
+                                                    >
+                                                        <div className="flex items-center gap-2 w-full">
+                                                            <LayoutGrid />
+                                                            卡片设置
+                                                        </div>
+                                                    </DropdownMenuItem>
+                                                )}
                                             </DropdownMenuGroup>
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem
@@ -215,7 +254,9 @@ export default function Header() {
                                     asChild
                                     active={
                                         location.pathname === "/dashboard/notification" ||
-                                        location.pathname === "/dashboard/alert-rule"
+                                        location.pathname === "/dashboard/alert-rule" ||
+                                        location.pathname === "/dashboard/server-expiry" ||
+                                        location.pathname === "/dashboard/telegram-bot"
                                     }
                                     className={navigationMenuTriggerStyle()}
                                 >
@@ -308,7 +349,17 @@ export default function Header() {
                 className="mx-2 my-2 inline-flex w-full items-center"
                 to={profile ? "/dashboard" : "#"}
             >
-                <img className="h-7 mr-1" style={brand.enabled?{height:brand.logoHeight,width:"auto",objectFit:"contain"}:undefined} src={brand.enabled&&brand.logo?brand.logo:"/dashboard/logo.svg"} alt="" /> {brand.enabled&&brand.title?brand.title:t("nezha")}
+                <img
+                    className="h-7 mr-1"
+                    style={
+                        brand.enabled
+                            ? { height: brand.logoHeight, width: "auto", objectFit: "contain" }
+                            : undefined
+                    }
+                    src={brand.enabled && brand.logo ? brand.logo : "/dashboard/logo.svg"}
+                    alt=""
+                />{" "}
+                {brand.enabled && brand.title ? brand.title : t("nezha")}
             </Link>
             <div className="ml-auto flex items-center gap-1">
                 <a
@@ -323,11 +374,18 @@ export default function Header() {
                     <>
                         <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
                             <DropdownMenuTrigger asChild>
-                                <Avatar role="button" tabIndex={0} aria-label="账户菜单" className="ml-1 h-8 w-8 cursor-pointer border-foreground border-[1px]">
+                                <Avatar
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-label="账户菜单"
+                                    className="ml-1 h-8 w-8 cursor-pointer border-foreground border-[1px]"
+                                >
                                     <AvatarImage
                                         src={
-                                            brand.enabled&&brand.avatar?brand.avatar:"https://api.dicebear.com/7.x/notionists/svg?seed=" +
-                                            profile.username
+                                            brand.enabled && brand.avatar
+                                                ? brand.avatar
+                                                : "https://api.dicebear.com/7.x/notionists/svg?seed=" +
+                                                  profile.username
                                         }
                                         alt={profile.username}
                                     />
@@ -364,7 +422,20 @@ export default function Header() {
                                             </div>
                                         </DropdownMenuItem>
                                     )}
-                                {isAdmin && <DropdownMenuItem className="cursor-pointer" onClick={() => {setDropdownOpen(false);navigate("/dashboard/settings/cards")}}><div className="flex items-center gap-2 w-full"><LayoutGrid />卡片设置</div></DropdownMenuItem>}
+                                    {isAdmin && (
+                                        <DropdownMenuItem
+                                            className="cursor-pointer"
+                                            onClick={() => {
+                                                setDropdownOpen(false)
+                                                navigate("/dashboard/settings/cards")
+                                            }}
+                                        >
+                                            <div className="flex items-center gap-2 w-full">
+                                                <LayoutGrid />
+                                                卡片设置
+                                            </div>
+                                        </DropdownMenuItem>
+                                    )}
                                 </DropdownMenuGroup>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={logout} className="cursor-pointer">

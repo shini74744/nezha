@@ -34,6 +34,7 @@ type NotificationServerBundle struct {
 
 type Notification struct {
 	Common
+	TelegramMenu      *TelegramMenuConfig      `json:"telegram_menu,omitempty" gorm:"serializer:json;type:text"`
 	EventTemplates    *NotificationEventConfig `json:"event_templates,omitempty" gorm:"serializer:json;type:text"`
 	Name              string                   `json:"name"`
 	URL               string                   `json:"url"`

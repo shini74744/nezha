@@ -23,6 +23,7 @@ import NATPage from "./routes/nat"
 import NotificationGroupPage from "./routes/notification-group"
 import ServerGroupPage from "./routes/server-group"
 import AlertRulePage from "./routes/alert-rule"
+import TelegramBotPage from "./routes/telegram-bot"
 import NotificationPage from "./routes/notification"
 import ServerExpiryPage from "./routes/server-expiry"
 import OnlineUserPage from "./routes/online-user"
@@ -81,6 +82,10 @@ const router = createBrowserRouter([
                         </NotificationProvider>
                     </ServerProvider>
                 ),
+            },
+            {
+                path: "/dashboard/telegram-bot",
+                element: <NotificationProvider withNotifierGroup><TelegramBotPage /></NotificationProvider>,
             },
             {
                 path: "/dashboard/server-expiry",

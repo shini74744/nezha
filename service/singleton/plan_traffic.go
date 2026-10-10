@@ -42,6 +42,7 @@ func initPlanTraffic(db *gorm.DB, now time.Time) error {
 				}
 				day.UUID = s.UUID
 				day.Estimated = true
+				day.Partial = true
 				if err := tx.Create(&day).Error; err != nil {
 					return err
 				}
@@ -100,19 +101,18 @@ func recordPlanTrafficTx(tx *gorm.DB, id uint64, uuid string, s model.RecordedSe
 		next.CoveredFrom = s.At
 	} else {
 		elapsed := (s.At - last.At) / 1000
-		reboot := s.State.Uptime < last.Uptime || (last.Uptime > 0 && s.State.Uptime > 0 && s.State.Uptime+10 < last.Uptime+uint64(elapsed))
+		// Uptime can be cached or delivered late. It must never turn monotonic
+		// counters into lifetime-sized deltas; handle each counter reset separately.
+		uptimeMismatch := s.State.Uptime < last.Uptime || (last.Uptime > 0 && s.State.Uptime > 0 && s.State.Uptime+10 < last.Uptime+uint64(elapsed))
 		delta := func(current, previous uint64) uint64 {
-			if reboot || current < previous {
+			if current < previous {
 				return current
 			}
 			return current - previous
 		}
 		in, out := delta(next.In, last.In), delta(next.Out, last.Out)
 		from := last.At
-		if reboot && s.State.Uptime > 0 {
-			from = max(from, s.At-int64(s.State.Uptime)*1000)
-		}
-		estimated := reboot || elapsed > 120 || next.In < last.In || next.Out < last.Out
+		estimated := uptimeMismatch || elapsed > 120 || next.In < last.In || next.Out < last.Out
 		for _, day := range splitTrafficDays(uuid, from, s.At, in, out, estimated) {
 			if err := tx.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "uuid"}, {Name: "day"}}, DoUpdates: clause.Assignments(map[string]any{
 				"in": gorm.Expr("plan_traffic_days.`in` + excluded.`in`"), "out": gorm.Expr("plan_traffic_days.`out` + excluded.`out`"),
@@ -183,12 +183,14 @@ func QueryPlanTraffic(server *model.Server, now time.Time) (*model.PlanTrafficSt
 			In        uint64
 			Out       uint64
 			Estimated bool
+			Partial   bool
 		}
-		if err := tx.Model(&model.PlanTrafficDay{}).Select("COALESCE(SUM(`in`),0) AS `in`,COALESCE(SUM(`out`),0) AS `out`,COALESCE(MAX(estimated),0) AS estimated").
+		if err := tx.Model(&model.PlanTrafficDay{}).Select("COALESCE(SUM(CASE WHEN unreliable THEN 0 ELSE `in` END),0) AS `in`,COALESCE(SUM(CASE WHEN unreliable THEN 0 ELSE `out` END),0) AS `out`,COALESCE(MAX(estimated),0) AS estimated,COALESCE(MAX(partial OR unreliable),0) AS partial").
 			Where("uuid = ? AND day >= ? AND day < ?", server.UUID, from.Format("2006-01-02"), to.Format("2006-01-02")).Scan(&sum).Error; err != nil {
 			return err
 		}
 		stat.In, stat.Out, stat.Estimated = sum.In, sum.Out, sum.Estimated
+		stat.Partial = stat.Partial || sum.Partial
 		switch plan.Direction {
 		case "1":
 			stat.Used = sum.In

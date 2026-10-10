@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -144,6 +145,13 @@ func unbindOauth2(c *gin.Context) (any, error) {
 // @Router /api/v1/oauth2/callback [get]
 func oauth2callback(jwtConfig *jwt.GinJWTMiddleware) func(c *gin.Context) (any, error) {
 	return func(c *gin.Context) (any, error) {
+		reason, method, report := singleton.LoginOAuthFailed, "OAuth2", true
+		var noticeUser model.User
+		defer func() {
+			if report {
+				loginNotice(c, noticeUser.ID, noticeUser.Username, method, reason)
+			}
+		}()
 		callbackData := &model.Oauth2Callback{
 			State: c.Query("state"),
 			Code:  c.Query("code"),
@@ -154,6 +162,12 @@ func oauth2callback(jwtConfig *jwt.GinJWTMiddleware) func(c *gin.Context) (any, 
 			return nil, err
 		}
 
+		if state.Action == model.RTypeBind {
+			report = false
+		}
+		if strings.EqualFold(state.Provider, "github") {
+			method = "GitHub"
+		}
 		o2confRaw, has := singleton.Conf.Oauth2[state.Provider]
 		if !has {
 			return nil, singleton.Localizer.ErrorT("provider not found")
@@ -199,6 +213,7 @@ func oauth2callback(jwtConfig *jwt.GinJWTMiddleware) func(c *gin.Context) (any, 
 			}
 		default:
 			if err := singleton.DB.Where("provider = ? AND open_id = ?", state.Provider, openId).First(&bind).Error; err != nil {
+				reason = singleton.LoginOAuthUnbound
 				return nil, singleton.Localizer.ErrorT("oauth2 user not binded yet")
 			}
 		}
@@ -207,9 +222,15 @@ func oauth2callback(jwtConfig *jwt.GinJWTMiddleware) func(c *gin.Context) (any, 
 		if err := singleton.DB.First(&bindUser, bind.UserID).Error; err != nil {
 			return nil, newGormError("%v", err)
 		}
+		noticeUser = bindUser
 		if state.Action != model.RTypeBind && strings.EqualFold(state.Provider, "github") && bindUser.TOTPGitHub {
-			return beginOAuthTOTP(c, &bindUser)
+			result, err := beginOAuthTOTP(c, &bindUser)
+			if errors.Is(err, errNoop) {
+				report = false
+			}
+			return result, err
 		}
+		reason = singleton.LoginInternalError
 		claims, err := issueJWTSession(c, &bindUser, singleton.Conf.JWTTimeout)
 		if err != nil {
 			return nil, err
@@ -219,6 +240,7 @@ func oauth2callback(jwtConfig *jwt.GinJWTMiddleware) func(c *gin.Context) (any, 
 			return nil, err
 		}
 
+		reason = singleton.LoginSucceeded
 		jwtConfig.SetCookie(c, tokenString)
 		setCSRFCookie(c)
 		c.Redirect(http.StatusFound, utils.IfOr(state.Action == model.RTypeBind, "/dashboard/profile?oauth2=true", "/dashboard/login?oauth2=true"))

@@ -111,7 +111,10 @@ func TestTOTPReplayAtomicAndPersisted(t *testing.T) {
 	require.Equal(t, int32(1), wins.Load())
 	require.NoError(t, DB.First(user, user.ID).Error)
 	require.ErrorIs(t, VerifyUserTOTP(DB, user, code, now), ErrTOTPInvalid)
-	next := now.Add(30 * time.Second)
+	// Failed concurrent replays may exhaust the five-attempt window, depending
+	// on where the successful transaction lands. Test reuse after that window;
+	// do not assume another attempt is allowed just because the code changed.
+	next := now.Add(5 * time.Minute)
 	code, err = totp.GenerateCode(secret, next)
 	require.NoError(t, err)
 	require.NoError(t, VerifyUserTOTP(DB, user, code, next))

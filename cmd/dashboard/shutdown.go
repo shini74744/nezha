@@ -81,6 +81,9 @@ func shutdownDashboard(ctx context.Context, servers ...*http.Server) error {
 	}
 	defer closeConnections()
 	defer rpc.CloseReceiptGate()
+	if err := singleton.StopTelegramMenus(ctx); err != nil {
+		return err
+	}
 	stopped := make(chan struct{})
 	close(stopped)
 	shutdown := monitoringShutdown{

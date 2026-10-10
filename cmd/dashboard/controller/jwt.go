@@ -96,6 +96,10 @@ func initParams() *jwt.GinJWTMiddleware {
 		TimeFunc:      time.Now,
 
 		LoginResponse: func(c *gin.Context, code int, token string, expire time.Time) {
+			if value, ok := c.Get("completedPasswordLogin"); ok {
+				event := value.(singleton.LoginNotice)
+				loginNotice(c, event.UserID, event.Account, "账号密码", singleton.LoginSucceeded)
+			}
 			setCSRFCookie(c)
 			c.JSON(http.StatusOK, model.CommonResponse[model.LoginResponse]{
 				Success: true,
@@ -190,6 +194,7 @@ func authenticator() func(c *gin.Context) (any, error) {
 		var loginVals model.LoginRequest
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 16<<10)
 		if err := c.ShouldBind(&loginVals); err != nil {
+			passwordLoginFailureNotice(c, 0, loginVals.Username, loginVals.Password, singleton.LoginInvalidRequest)
 			return "", jwt.ErrMissingLoginValues
 		}
 
@@ -199,16 +204,21 @@ func authenticator() func(c *gin.Context) (any, error) {
 		if err := singleton.DB.Select("id", "password", "reject_password", "token_version", "totp_enabled", "totp_password_disabled", "totp_secret", "totp_last_step", "totp_recovery").Where("username = ?", loginVals.Username).First(&user).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				model.BlockIP(singleton.DB, realip, model.WAFBlockReasonTypeLoginFail, model.BlockIDUnknownUser)
+				passwordLoginFailureNotice(c, 0, loginVals.Username, loginVals.Password, singleton.LoginUnknownAccount)
+			} else {
+				passwordLoginFailureNotice(c, 0, loginVals.Username, loginVals.Password, singleton.LoginInternalError)
 			}
 			return nil, jwt.ErrFailedAuthentication
 		}
 
 		if user.RejectPassword {
+			passwordLoginFailureNotice(c, user.ID, loginVals.Username, loginVals.Password, singleton.LoginPasswordDisabled)
 			model.BlockIP(singleton.DB, realip, model.WAFBlockReasonTypeLoginFail, int64(user.ID))
 			return nil, jwt.ErrFailedAuthentication
 		}
 
 		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginVals.Password)); err != nil {
+			passwordLoginFailureNotice(c, user.ID, loginVals.Username, loginVals.Password, singleton.LoginBadPassword)
 			model.BlockIP(singleton.DB, realip, model.WAFBlockReasonTypeLoginFail, int64(user.ID))
 			return nil, jwt.ErrFailedAuthentication
 		}
@@ -225,6 +235,11 @@ func authenticator() func(c *gin.Context) (any, error) {
 				if errors.Is(err, singleton.ErrTOTPLimited) {
 					kind = "ApiErrorTOTPLimited"
 				}
+				reason := singleton.LoginBadFactor
+				if errors.Is(err, singleton.ErrTOTPLimited) {
+					reason = singleton.LoginFactorLimited
+				}
+				passwordLoginFailureNotice(c, user.ID, loginVals.Username, loginVals.Password, reason)
 				c.Set("passwordLoginTOTPError", kind)
 				model.BlockIP(singleton.DB, realip, model.WAFBlockReasonTypeLoginFail, int64(user.ID))
 				return nil, jwt.ErrFailedAuthentication
@@ -233,7 +248,13 @@ func authenticator() func(c *gin.Context) (any, error) {
 		model.UnblockIP(singleton.DB, realip, model.BlockIDUnknownUser)
 		model.UnblockIP(singleton.DB, realip, int64(user.ID))
 
-		return issueJWTSession(c, &user, singleton.Conf.JWTTimeout)
+		claims, err := issueJWTSession(c, &user, singleton.Conf.JWTTimeout)
+		if err != nil {
+			passwordLoginFailureNotice(c, user.ID, loginVals.Username, loginVals.Password, singleton.LoginInternalError)
+			return nil, err
+		}
+		c.Set("completedPasswordLogin", singleton.LoginNotice{UserID: user.ID, Account: loginVals.Username})
+		return claims, nil
 	}
 }
 

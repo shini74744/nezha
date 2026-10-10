@@ -6,6 +6,7 @@ type NotificationTestEvent struct {
 }
 
 type NotificationForm struct {
+	TelegramMenu      *TelegramMenuConfig      `json:"telegram_menu,omitempty"`
 	TestEvent         *NotificationTestEvent   `json:"test_event,omitempty"`
 	EventTemplates    *NotificationEventConfig `json:"event_templates,omitempty"`
 	Name              string                   `json:"name,omitempty" minLength:"1"`

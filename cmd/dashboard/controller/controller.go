@@ -200,6 +200,9 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 
 	auth.GET("/notification", restScopeMiddleware(model.ScopeNotificationRead), listHandler(listNotification))
 	auth.GET("/notification/:id/editor", restScopeMiddleware(model.ScopeNotificationWrite), commonHandler(notificationEditor))
+	auth.GET("/notification/:id/telegram-menu/status", restScopeMiddleware(model.ScopeNotificationWrite), commonHandler(notificationTelegramMenuStatus))
+	auth.GET("/telegram-bot", restScopeMiddleware(model.ScopeNotificationWrite), commonHandler(telegramBotsResponse))
+	auth.PATCH("/notification/:id/telegram-menu", restScopeMiddleware(model.ScopeNotificationWrite), commonHandler(saveTelegramBot))
 	auth.POST("/notification", restScopeMiddleware(model.ScopeNotificationWrite), commonHandler(createNotification))
 	auth.PATCH("/notification/:id", restScopeMiddleware(model.ScopeNotificationWrite), commonHandler(updateNotification))
 	auth.POST("/batch-delete/notification", restScopeMiddleware(model.ScopeNotificationDelete), commonHandler(batchDeleteNotification))

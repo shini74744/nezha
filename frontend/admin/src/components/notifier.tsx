@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select"
 import { IconButton } from "@/components/xui/icon-button"
 import { eventGroups, eventKinds } from "@/lib/notification-events"
+import { validateTelegramMenu } from "@/lib/telegram-menu"
 import {
     NotificationDraft,
     notificationErrorHint,
@@ -56,10 +57,22 @@ import { Textarea } from "./ui/textarea"
 
 interface NotifierCardProps {
     data?: ModelNotification
+    triggerLabel?: string
     mutate: KeyedMutator<ModelNotification[]>
 }
 
 const notificationFormSchema = z.object({
+    telegram_menu: z
+        .object({
+            enabled: z.boolean(),
+            expiry_days: z.number().int(),
+            login_success: z.boolean().optional(),
+            login_failure: z.boolean().optional(),
+            login_failure_password: z.boolean().optional(),
+            daily_traffic: z.boolean().optional(),
+            items: z.record(z.string(), z.boolean()).optional(),
+        })
+        .optional(),
     event_templates: z
         .object({
             enabled: z.boolean(),
@@ -84,7 +97,7 @@ const notificationFormSchema = z.object({
     format_metric_units: asOptionalField(z.boolean()),
 })
 
-export const NotifierCard: React.FC<NotifierCardProps> = ({ data, mutate }) => {
+export const NotifierCard: React.FC<NotifierCardProps> = ({ data, mutate, triggerLabel }) => {
     const { t } = useTranslation()
     type NotificationFormInput = z.input<typeof notificationFormSchema>
     type NotificationFormData = z.output<typeof notificationFormSchema>
@@ -192,6 +205,11 @@ export const NotifierCard: React.FC<NotifierCardProps> = ({ data, mutate }) => {
 
     const onSubmit = async (values: NotificationFormData) => {
         setSaveError("")
+        const menuError = validateTelegramMenu(values)
+        if (menuError) {
+            setSaveError(menuError)
+            return
+        }
         if (mode === "telegram") {
             const tg = parseTelegram(values)
             const error = tg
@@ -213,6 +231,8 @@ export const NotifierCard: React.FC<NotifierCardProps> = ({ data, mutate }) => {
         }
         const payload = {
             ...values,
+            // Bot settings have a dedicated save endpoint; preserve concurrent edits there.
+            telegram_menu: undefined,
             ...(!values.skip_check && mode === "telegram"
                 ? { test_event: { kind: testKind, server_id: Number(testServer) } }
                 : {}),
@@ -251,6 +271,8 @@ export const NotifierCard: React.FC<NotifierCardProps> = ({ data, mutate }) => {
             <DialogTrigger asChild>
                 {data ? (
                     <IconButton variant="outline" icon="edit" aria-label="编辑通知" />
+                ) : triggerLabel ? (
+                    <Button type="button">{triggerLabel}</Button>
                 ) : (
                     <IconButton icon="plus" aria-label="添加通知" />
                 )}
@@ -315,6 +337,9 @@ export const NotifierCard: React.FC<NotifierCardProps> = ({ data, mutate }) => {
                                             id={data?.id}
                                             onChange={(next) => {
                                                 setSaveError("")
+                                                form.setValue("telegram_menu", next.telegram_menu, {
+                                                    shouldDirty: true,
+                                                })
                                                 form.setValue(
                                                     "event_templates",
                                                     next.event_templates,

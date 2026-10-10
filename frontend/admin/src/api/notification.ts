@@ -24,3 +24,26 @@ export const deleteNotification = async (id: number[]): Promise<void> => {
 export const getNotification = async (): Promise<ModelNotification[]> => {
     return fetcher<ModelNotification[]>(FetcherMethod.GET, "/api/v1/notification", null)
 }
+
+export const getTelegramMenuStatus = (
+    id: number,
+): Promise<import("@/lib/telegram-menu").TelegramMenuStatus> =>
+    fetcher(FetcherMethod.GET, `/api/v1/notification/${id}/telegram-menu/status`)
+
+export interface TelegramBotSettings {
+    id: number
+    name: string
+    config: import("@/lib/telegram-menu").TelegramMenuConfig
+    eligible: boolean
+    reason?: string
+    status: import("@/lib/telegram-menu").TelegramMenuStatus
+}
+export const getTelegramBots = (): Promise<TelegramBotSettings[]> =>
+    fetcher(FetcherMethod.GET, "/api/v1/telegram-bot")
+export const saveTelegramBot = (
+    id: number,
+    config: import("@/lib/telegram-menu").TelegramMenuConfig,
+): Promise<TelegramBotSettings> =>
+    fetcher(FetcherMethod.PATCH, `/api/v1/notification/${id}/telegram-menu`, {
+        telegram_menu: config,
+    })
