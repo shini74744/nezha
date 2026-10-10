@@ -3,8 +3,8 @@ import { type Page, expect, test } from "@playwright/test"
 import { createServer } from "../../../user/src/test/fixtures"
 
 test.use({ ignoreHTTPSErrors: true })
-async function setup(page: Page, theme: string, enabled = true, offline = false) {
-    const origin = theme === "doraemon" ? "https://127.0.0.1:18478" : "https://127.0.0.1:18477"
+async function setup(page: Page, theme: string, enabled = true, offline = false, color = "dark", richCharts = false) {
+    const origin = process.env.E2E_NETWORK_ORIGIN || (theme === "doraemon" ? "https://127.0.0.1:18478" : "https://127.0.0.1:18477")
     const state = { enabled, mode: "data", periods: [] as string[] }
     const now = Date.now(),
         last = now - 3600000
@@ -12,6 +12,9 @@ async function setup(page: Page, theme: string, enabled = true, offline = false)
         id: 7,
         name: "主站服务器",
         last_active: offline ? "0001-01-01T00:00:00Z" : new Date(now).toISOString(),
+        ...(richCharts ? { host: { gpu: ["Test GPU"] }, state: {
+            gpu: [25], disk_io_available: true, disk_read_speed: 1024, disk_write_speed: 2048,
+        } } : {}),
     })
     const names = [
         "重庆电信",
@@ -43,12 +46,12 @@ async function setup(page: Page, theme: string, enabled = true, offline = false)
         avg_delay: Array.from({ length: 60 }, (_, j) => 80 + i * 10 + Math.sin(j) * 20),
         packet_loss: Array(60).fill(i === 7 ? 20 : 0),
     }))
-    await page.addInitScript(() => {
+    await page.addInitScript((color) => {
         localStorage.setItem("language", "zh-CN")
-        localStorage.setItem("vite-ui-theme", "dark")
-        localStorage.setItem("doraemon-ui-theme", "dark")
-        localStorage.setItem("doraemon-sky", "dark")
-    })
+        localStorage.setItem("vite-ui-theme", color)
+        localStorage.setItem("doraemon-ui-theme", color)
+        localStorage.setItem("doraemon-sky", color)
+    }, color)
     await page.context().addCookies([{ name: "qa-session", value: "1", url: origin }])
     await page.routeWebSocket("**/api/v1/ws/server", (ws) =>
         ws.send(JSON.stringify({ now, servers: [server], online: offline ? 0 : 1 })),
@@ -80,7 +83,11 @@ async function setup(page: Page, theme: string, enabled = true, offline = false)
                 last_report_at: last,
                 snapshot: { at: last, host: server.host, state: server.state },
                 metrics: { cpu: 12, memory: 512, disk: 1024 },
-                recent: { cpu: [{ ts: last, value: 12 }] },
+                recent: richCharts ? Object.fromEntries(
+                    ["cpu", "memory", "swap", "disk", "process_count", "net_out_speed", "net_in_speed",
+                     "tcp_conn", "udp_conn", "gpu_0", "disk_read_speed", "disk_write_speed"].map((key) =>
+                        [key, [{ ts: last - 30000, value: 10 }, { ts: last, value: 12 }]])
+                ) : { cpu: [{ ts: last, value: 12 }] },
             }
         else if (u.pathname === "/api/v1/service") data = { services: {}, cycle_transfer_stats: {} }
         else if (u.pathname.endsWith("/metrics")) data = { data_points: [] }
@@ -281,3 +288,117 @@ for (const width of [320, 390, 1440])
             ])
         },
     )
+test.describe("network tooltip layering", () => {
+    test.use({ hasTouch: true })
+    for (const theme of ["default", "doraemon"])
+        for (const color of ["light", "dark"])
+            for (const width of [320, 390, 1440])
+                test(theme + " " + color + " " + width, async ({ page }, info) => {
+                    await page.setViewportSize({ width, height: 900 })
+                    const errors: string[] = []
+                    page.on("pageerror", (e) => errors.push(e.message))
+                    await setup(page, theme, true, false, color)
+                    const chart = page.locator("[data-server-network] [data-chart]")
+                    await expect(chart.locator(".recharts-line-curve")).toHaveCount(18)
+                    // Exercise both plain cards and the native background's translucent, blurred cards.
+                    for (const glass of [false, true]) {
+                        if (glass) await page.addStyleTag({ content: `
+                            body { background: linear-gradient(120deg, #878bd2, #4f777e); }
+                            .bg-card { background-color: rgba(100, 100, 160, .35); backdrop-filter: blur(10px); }
+                        ` })
+                        await chart.scrollIntoViewIfNeeded()
+                        const box = (await chart.locator(".recharts-surface").first().boundingBox())!
+                        const x = box.x + box.width * (glass ? .7 : .65), y = box.y + 30
+                        if (width < 500) await page.touchscreen.tap(x, y)
+                        await page.mouse.move(x, y)
+                        const tooltip = chart.locator(".recharts-tooltip-wrapper")
+                        const legend = chart.locator(".recharts-legend-wrapper")
+                        await expect(tooltip).toBeVisible()
+                        await expect(tooltip).toContainText("新加坡特殊监控1.yxvm")
+                        await page.screenshot({ path: info.outputPath(glass ? "glass-tooltip.png" : "tooltip.png") })
+                        const layers = await chart.evaluate((root) => {
+                            const tip = root.querySelector<HTMLElement>(".recharts-tooltip-wrapper")!
+                            const legend = root.querySelector<HTMLElement>(".recharts-legend-wrapper")!
+                            const tipBox = tip.getBoundingClientRect()
+                            const legendBox = legend.getBoundingClientRect()
+                            const left = Math.max(tipBox.left, legendBox.left), right = Math.min(tipBox.right, legendBox.right)
+                            const top = Math.max(tipBox.top, legendBox.top), bottom = Math.min(tipBox.bottom, legendBox.bottom)
+                            // Tooltips normally ignore pointer events. Enable only for this paint-order assertion.
+                            const pointerEvents = tip.style.pointerEvents
+                            tip.style.pointerEvents = "auto"
+                            const overlaps = right > left && bottom > top
+                            const hit = overlaps ? document.elementFromPoint((left + right) / 2, (top + bottom) / 2) : null
+                            const tooltipOnTop = !!hit && tip.contains(hit)
+                            tip.style.pointerEvents = pointerEvents
+                            return { overlaps, tooltipOnTop, isolation: getComputedStyle(root).isolation,
+                                zIndex: getComputedStyle(tip).zIndex, left: tipBox.left, right: tipBox.right }
+                        })
+                        expect(layers.overlaps).toBe(true)
+                        expect(layers.tooltipOnTop).toBe(true)
+                        expect(layers.isolation).toBe("isolate")
+                        expect(layers.left).toBeGreaterThanOrEqual(0)
+                        expect(layers.right).toBeLessThanOrEqual(width + 1)
+                        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
+                        await page.keyboard.press("Escape")
+                        await expect(tooltip).not.toBeVisible()
+                        await expect(legend).toBeVisible()
+                    }
+                    // The overlay must not block the monitor selection buttons.
+                    await page.locator("[data-server-network]").getByRole("button", { name: /重庆电信/ }).click()
+                    await expect(chart.locator(".recharts-line-curve")).toHaveCount(1)
+                    expect(errors).toEqual([])
+                })
+})
+
+test.describe("shared chart focus appearance", () => {
+    test.use({ hasTouch: true })
+    for (const theme of ["default", "doraemon"])
+        for (const color of ["light", "dark"])
+            for (const width of [390, 1440])
+                for (const offline of [false, true])
+                    test(theme + " " + color + " " + width + (offline ? " offline" : " online"), async ({ page }, info) => {
+                        await page.setViewportSize({ width, height: 900 })
+                        const errors: string[] = []
+                        page.on("pageerror", (e) => errors.push(e.message))
+                        await setup(page, theme, true, offline, color, true)
+                        // CPU, GPU, memory, disk, processes, transfer speed, connections and network monitor.
+                        const charts = page.locator("[data-chart]")
+                        await expect(charts).toHaveCount(8)
+                        const check = async (chart: ReturnType<Page["locator"]>) => {
+                            await chart.scrollIntoViewIfNeeded()
+                            const svg = chart.locator("svg.recharts-surface").first()
+                            await expect(svg).toHaveAttribute("tabindex", "0")
+                            const box = (await svg.boundingBox())!
+                            const position = { x: box.width * .6, y: 30 }
+                            // Locator actions wait for smooth scrolling and lazy-chart layout to settle.
+                            for (const input of ["touch", "mouse"]) {
+                                await page.mouse.move(0, 0)
+                                if (input === "touch") await svg.tap({ position })
+                                else await svg.click({ position })
+                                await expect.poll(() => svg.evaluate(e => e.contains(document.activeElement))).toBe(true)
+                                await expect(svg).toHaveCSS("outline-width", "0px")
+                                expect(await chart.evaluate(e => getComputedStyle(e.contains(document.activeElement) ? document.activeElement! : e).outlineWidth)).toBe("0px")
+                                await expect(chart.locator(".recharts-tooltip-wrapper"), input).toBeVisible()
+                            }
+                            await svg.focus()
+                            await page.keyboard.press("Shift+Tab")
+                            await page.keyboard.press("Tab")
+                            await expect(svg).toBeFocused()
+                            await expect(svg).toHaveCSS("outline-width", "2px")
+                            await expect(svg).toHaveCSS("outline-style", "solid")
+                            await page.keyboard.press("ArrowRight")
+                            await expect(chart.locator(".recharts-tooltip-wrapper")).toBeVisible()
+                            // Return to pointer input, without leaving a ring after keyboard navigation.
+                            await svg.click({ position })
+                            await expect(svg).toHaveCSS("outline-width", "0px")
+                        }
+                        for (let i = 0; i < await charts.count(); i++) await check(charts.nth(i))
+                        await page.screenshot({ path: info.outputPath("network-pointer.png") })
+                        await page.getByRole("button", { name: "点击切换到磁盘读写" }).click()
+                        const disk = page.locator('[data-disk-mode="io"] [data-chart]')
+                        await expect(disk).toHaveCount(1)
+                        await check(disk)
+                        await page.screenshot({ path: info.outputPath("disk-io-pointer.png") })
+                        expect(errors).toEqual([])
+                    })
+})

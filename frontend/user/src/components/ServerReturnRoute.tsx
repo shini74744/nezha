@@ -264,7 +264,7 @@ function RouteCard({
 									</p>
 								}
 							>
-								<ReturnRouteMap hops={hops} />
+								<ReturnRouteMap result={r} />
 							</Suspense>
 						) : hops.length ? (
 							<ol

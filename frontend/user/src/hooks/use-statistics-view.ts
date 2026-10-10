@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
-export type StatisticsView = "closed" | "traffic" | "uptime";
+export type StatisticsView = "closed" | "traffic" | "cycle" | "uptime";
 export function isStatisticsView(value: unknown): value is StatisticsView {
-	return value === "closed" || value === "traffic" || value === "uptime";
+	return value === "closed" || value === "traffic" || value === "cycle" || value === "uptime";
 }
 
 /** Restore only once per theme; polling must never override a user's selection. */

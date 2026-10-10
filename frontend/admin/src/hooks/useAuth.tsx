@@ -10,7 +10,7 @@ import { useMainStore } from "./useMainStore"
 const AuthContext = createContext<AuthContextProps>({
     profile: undefined,
     loading: true,
-    login: () => {},
+    login: async () => {},
     loginOauth2: () => {},
     logout: () => {},
 })
@@ -54,9 +54,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const navigate = useNavigate()
 
     const login = useCallback(
-        async (username: string, password: string) => {
+        async (
+            username: string,
+            password: string,
+            code?: string,
+        ): Promise<"totp-required" | void> => {
             try {
-                await loginRequest(username, password)
+                await loginRequest(username, password, code)
                 const user = await getProfile()
                 authEpoch.current++
                 user.role = normalizeRole(user.role)
@@ -64,6 +68,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 navigate("/dashboard")
             } catch (error: any) {
                 const msg = error?.message
+                if (msg === "ApiErrorTOTPRequired") return "totp-required"
+                if (msg === "ApiErrorTOTPInvalid" || msg === "ApiErrorTOTPLimited") {
+                    toast(
+                        msg === "ApiErrorTOTPLimited"
+                            ? "验证尝试过多，请 5 分钟后重试"
+                            : "验证码或恢复码无效，已使用的验证码不能重复使用",
+                    )
+                    return "totp-required"
+                }
                 if (msg === "ApiErrorUnauthorized" || msg === "Unauthorized") {
                     toast(t("InvalidUsernameOrPassword"))
                 } else {

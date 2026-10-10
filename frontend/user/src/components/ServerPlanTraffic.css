@@ -1,0 +1,17 @@
+/* Keep accounting caveats alongside usage, never below the transfer counters. */
+.cycle-traffic-summary {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 2px 8px;
+}
+.cycle-traffic-usage { order: 1; min-width: 0; max-width: 100%; }
+.cycle-traffic-percent { order: 2; flex: none; margin-left: auto; }
+.cycle-traffic-note { order: 3; flex-basis: 100%; overflow-wrap: anywhere; }
+
+@media (min-width: 480px) {
+	.cycle-traffic-summary { flex-wrap: nowrap; }
+	.cycle-traffic-usage { flex-shrink: 0; }
+	.cycle-traffic-note { order: 2; flex: 1; min-width: 0; text-align: center; }
+	.cycle-traffic-percent { order: 3; }
+}

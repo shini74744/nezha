@@ -21,11 +21,14 @@ export function hasReturnCoordinates(
 		(h.latitude !== 0 || h.longitude !== 0)
 	);
 }
-export function returnMapData(input: ReturnHop[]) {
-	const hops = input
+export function orderedReturnHops(input: ReturnHop[]) {
+	return input
 		.filter((h) => Number.isInteger(h.ttl) && h.ttl >= 1 && h.ttl <= 30)
 		.slice(0, 90)
 		.sort((a, b) => a.ttl - b.ttl);
+}
+export function returnMapData(input: ReturnHop[]) {
+	const hops = orderedReturnHops(input);
 	const points = new Map<string, MapPoint>(),
 		byTTL = new Map<number, ReturnHop[]>();
 	for (const hop of hops) {
@@ -60,9 +63,39 @@ export function returnMapData(input: ReturnHop[]) {
 			ttl,
 		});
 	}
+	// Dashed guides bridge unknown sections in TTL order, never assert adjacency.
+	// A multi-reply TTL breaks the guide: the probe has not identified a branch.
+	const gaps: Array<{
+		from: [number, number];
+		to: [number, number];
+		ttl: number;
+		end: number;
+	}> = [];
+	let anchor: (ReturnHop & { latitude: number; longitude: number }) | undefined;
+	for (const [ttl, rows] of byTTL) {
+		if (rows.length !== 1) {
+			anchor = undefined;
+			continue;
+		}
+		const hop = rows[0];
+		if (!hasReturnCoordinates(hop)) continue;
+		if (
+			anchor &&
+			ttl > anchor.ttl + 1 &&
+			(anchor.latitude !== hop.latitude || anchor.longitude !== hop.longitude)
+		)
+			gaps.push({
+				from: [anchor.longitude, anchor.latitude],
+				to: [hop.longitude, hop.latitude],
+				ttl: anchor.ttl,
+				end: ttl,
+			});
+		anchor = hop;
+	}
 	return {
 		points: [...points.values()],
 		segments,
+		gaps,
 		located: hops.filter(hasReturnCoordinates).length,
 		total: hops.length,
 		unlocated: hops.filter((h) => !hasReturnCoordinates(h)),
@@ -98,16 +131,21 @@ export function returnMapFrame(points: MapPoint[]) {
 }
 
 export function returnUnlocatedReason(h: ReturnHop): string {
- if (!h.samples) return "未响应";
- if (h.ip_hidden) return "地址已隐藏";
- const ip = h.ip?.toLowerCase() || "";
- const parts = ip.split(".").map(Number);
- const internal4 = parts.length === 4 && parts.every(v => Number.isInteger(v) && v >= 0 && v <= 255) && (
-  parts[0] === 10 || parts[0] === 127 || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
-  (parts[0] === 192 && parts[1] === 168) || (parts[0] === 169 && parts[1] === 254) ||
-  (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127)
- );
- const internal6 = ip.includes(":") && (/^(fc|fd|fe[89ab])/i.test(ip) || ip === "::1");
- if (internal4 || internal6) return "内网或本地地址，无公网定位";
- return "数据源缺少有效经纬度";
+	if (!h.samples) return "未响应";
+	if (h.ip_hidden) return "地址已隐藏";
+	const ip = h.ip?.toLowerCase() || "";
+	const parts = ip.split(".").map(Number);
+	const internal4 =
+		parts.length === 4 &&
+		parts.every((v) => Number.isInteger(v) && v >= 0 && v <= 255) &&
+		(parts[0] === 10 ||
+			parts[0] === 127 ||
+			(parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+			(parts[0] === 192 && parts[1] === 168) ||
+			(parts[0] === 169 && parts[1] === 254) ||
+			(parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127));
+	const internal6 =
+		ip.includes(":") && (/^(fc|fd|fe[89ab])/i.test(ip) || ip === "::1");
+	if (internal4 || internal6) return "内网或本地地址";
+	return "暂无定位信息";
 }

@@ -152,7 +152,7 @@ backup_before_update() {
  [[ ! -f "$DASHBOARD/app" ]] || cp -p "$DASHBOARD/app" "$backup_dir/app.previous"
  # The service has stopped. Preserve credentials and a consistent SQLite copy;
  # no database is replaced on a binary rollback.
- for name in config.yaml sqlite.db sqlite.db-wal sqlite.db-shm terminal-commands.key; do
+ for name in config.yaml sqlite.db sqlite.db-wal sqlite.db-shm terminal-commands.key totp.key; do
   [[ ! -f "$DASHBOARD/data/$name" ]] || cp -p "$DASHBOARD/data/$name" "$backup_dir/$name"
  done
  step "[备份] 旧程序及配置/数据库保留在 $backup_dir"

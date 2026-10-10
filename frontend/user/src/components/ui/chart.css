@@ -1,0 +1,21 @@
+/* Reset the entire native SVG outline, including Recharts' internal focusable
+   z-index groups. Resetting outline-style on the root SVG alone is insufficient. */
+[data-chart] :is(.recharts-surface, .recharts-surface [tabindex]),
+[data-chart] :is(.recharts-surface, .recharts-surface [tabindex]):focus {
+	outline: 0;
+}
+
+/* Keep keyboard feedback without blurring or disabling chart navigation.
+   Pointer input can leave :focus-visible set on an already focused SVG. */
+[data-chart]:not([data-chart-input="pointer"])
+	:is(.recharts-surface, .recharts-surface [tabindex]):focus-visible {
+	outline: 2px solid hsl(var(--ring));
+	outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+	[data-chart]:not([data-chart-input="pointer"])
+		:is(.recharts-surface, .recharts-surface [tabindex]):focus-visible {
+		outline-color: Highlight;
+	}
+}

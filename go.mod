@@ -52,6 +52,11 @@ require (
 )
 
 require (
+	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
+	github.com/pquerna/otp v1.5.0
+)
+
+require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/VictoriaMetrics/easyproto v1.2.0 // indirect
 	github.com/VictoriaMetrics/fastcache v1.13.3 // indirect

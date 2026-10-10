@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
 	ChartContainer,
@@ -29,6 +29,43 @@ const chartConfig = {
 };
 
 describe("chart primitives", () => {
+	it("tracks chart input without swallowing caller events or removing keyboard focus", () => {
+		const pointer = vi.fn(), keyboard = vi.fn(), focus = vi.fn(), blur = vi.fn();
+		const { container } = render(
+			<ChartContainer config={chartConfig} onPointerDownCapture={pointer}
+				onKeyDownCapture={keyboard} onFocusCapture={focus} onBlurCapture={blur}>
+				<svg data-testid="plot" className="recharts-surface" tabIndex={0} />
+			</ChartContainer>,
+		);
+		const plot = screen.getByTestId("plot");
+		const root = container.querySelector("[data-chart]");
+		fireEvent.pointerDown(plot);
+		expect(root).toHaveAttribute("data-chart-input", "pointer");
+		fireEvent.keyDown(plot, { key: "ArrowRight" });
+		expect(root).toHaveAttribute("data-chart-input", "keyboard");
+		plot.focus();
+		expect(plot).toHaveFocus();
+		fireEvent.pointerDown(plot);
+		expect(root).toHaveAttribute("data-chart-input", "pointer");
+		expect(plot).toHaveFocus();
+		expect(pointer).toHaveBeenCalledTimes(2);
+		expect(keyboard).toHaveBeenCalledTimes(1);
+		expect(focus).toHaveBeenCalledTimes(1);
+		plot.blur();
+		expect(root).not.toHaveAttribute("data-chart-input");
+		expect(blur).toHaveBeenCalledTimes(1);
+	});
+
+	it("keeps the tooltip layer above the legend and scoped to its chart", () => {
+		const { container } = render(
+			<ChartContainer config={chartConfig}><div>chart</div></ChartContainer>,
+		);
+		expect(container.querySelector("[data-chart]")).toHaveClass(
+			"isolate",
+			"[&_.recharts-tooltip-wrapper]:z-10",
+		);
+	});
+
 	it("renders tooltip rows with config labels, icons, and formatted values", () => {
 		const formatter = vi.fn((value: number, name: string) => (
 			<span>{`${name}:${value.toFixed(1)}`}</span>

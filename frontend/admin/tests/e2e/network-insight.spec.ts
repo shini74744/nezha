@@ -1272,8 +1272,12 @@ test(`return map responsive isolated ${theme} ${light} ${width}`,async({page},in
  await dialog.getByRole("button",{name:"地图",exact:true}).click();
  await expect(dialog.locator("[data-return-map-canvas]")).toBeVisible();
  await expect(dialog.locator("[data-return-map-point]")).toHaveCount(3);
- await expect(dialog.locator("[data-return-map-missing]")).toContainText("地址已隐藏 1 条");
- await expect(dialog.locator("[data-return-map-missing]")).toContainText("未响应 1 条");
+ await expect(dialog.locator("[data-return-map-missing]")).toHaveCount(0);
+ await expect(dialog.locator("[data-return-journey]")).toHaveCount(0);
+ await expect(dialog.locator("[data-return-map-unlocated]")).not.toHaveAttribute("open", "");
+ await dialog.locator("[data-return-map-unlocated] > summary").click();
+ await expect(dialog.locator("[data-return-map-unlocated]")).toContainText("地址已隐藏");
+ await expect(dialog.locator("[data-return-map-unlocated]")).toContainText("未响应");
  await expect(dialog.locator("[data-return-map-edge]")).toHaveCount(2);
  await expect(dialog.getByRole("button",{name:"逐跳显示未响应",exact:true})).toHaveCount(0);
  await dialog.getByRole("button",{name:"第 4、5 跳",exact:true}).click();

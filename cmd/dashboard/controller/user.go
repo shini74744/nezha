@@ -86,8 +86,15 @@ func updateProfile(c *gin.Context) (any, error) {
 	user.Password = string(hash)
 	user.RejectPassword = pf.RejectPassword
 	user.TokenVersion += 1
-	if err := singleton.DB.Save(&user).Error; err != nil {
-		return nil, newGormError("%v", err)
+	// Update only profile fields: a concurrent factor enrollment/consumption must not be overwritten.
+	result := singleton.DB.Model(&model.User{}).Where("id = ? AND token_version = ?", user.ID, user.TokenVersion-1).UpdateColumns(map[string]any{
+		"username": user.Username, "password": user.Password, "reject_password": user.RejectPassword, "token_version": user.TokenVersion,
+	})
+	if result.Error != nil {
+		return nil, newGormError("%v", result.Error)
+	}
+	if result.RowsAffected != 1 {
+		return nil, singleton.Localizer.ErrorT("unauthorized")
 	}
 
 	singleton.OnUserUpdate(&user)

@@ -4,6 +4,7 @@ import * as React from "react";
 import * as RechartsPrimitive from "recharts";
 import { cn } from "@/lib/utils";
 import ChartMountBoundary from "../ChartMountBoundary";
+import "./chart.css";
 
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const;
@@ -70,7 +71,10 @@ const ChartContainer = React.forwardRef<
 			typeof RechartsPrimitive.ResponsiveContainer
 		>["children"];
 	}
->(({ id, className, children, config, deferMount = false, ...props }, ref) => {
+>(({
+	id, className, children, config, deferMount = false,
+	onPointerDownCapture, onKeyDownCapture, onBlurCapture, ...props
+}, ref) => {
 	const uniqueId = React.useId();
 	const chartId = `chart-${id || uniqueId.replace(/:/g, "")}`;
 	const useResponsiveContainer = shouldUseResponsiveContainer(children);
@@ -82,10 +86,26 @@ const ChartContainer = React.forwardRef<
 				data-chart={chartId}
 				ref={ref}
 				className={cn(
-					"flex aspect-video justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-hidden [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-sector]:outline-hidden [&_.recharts-surface]:outline-hidden",
+					// Keep the tooltip above the later legend without escaping this chart into dialogs or adjacent cards.
+					"isolate flex aspect-video justify-center text-xs [&_.recharts-tooltip-wrapper]:z-10 [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-hidden [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-sector]:outline-hidden [&_.recharts-surface]:outline-hidden",
 					className,
 				)}
 				{...props}
+				onPointerDownCapture={(event) => {
+					event.currentTarget.dataset.chartInput = "pointer";
+					onPointerDownCapture?.(event);
+				}}
+				onKeyDownCapture={(event) => {
+					event.currentTarget.dataset.chartInput = "keyboard";
+					onKeyDownCapture?.(event);
+				}}
+				onBlurCapture={(event) => {
+					// Reset on leaving the chart so a later Tab entry gets keyboard feedback.
+					if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+						delete event.currentTarget.dataset.chartInput;
+					}
+					onBlurCapture?.(event);
+				}}
 			>
 				<ChartStyle id={chartId} config={config} />
 				{deferMount ? <ChartMountBoundary>{content}</ChartMountBoundary> : content}

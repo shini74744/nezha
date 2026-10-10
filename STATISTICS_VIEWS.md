@@ -51,3 +51,18 @@ The following category-selection behavior applies when statistics splitting is O
 - Vitest covers selection, theme isolation, migration, loading/error/retry, filtering, split/combined rendering and sort metric/direction behavior. `sort-metric-select.test.tsx` verifies non-modal toggling, outside interaction and default-order reset; `Server.test.tsx` checks actual server ordering.
 - Playwright statistics-views.spec.ts covers native themes at 320/390/768/1440 px and dark mode, plus combined statistics. The scrollbar regressions explicitly enable classic Chromium scrollbars and compare viewport width, body geometry/styles and scroll position before/after repeated opening; sort cases cover 390/1366 px plus 320/390 px touch and keyboard/outside dismissal. statistics-universal.spec.ts covers all four independent themes in split/combined modes on phone/desktop. server-detail-network.spec.ts covers the global switches and native detail/network composition.
 - Go tests cover all six theme HTML responses, local overrides, no admin/404 injection, and frontend-password protection.
+
+## Server-owned billing-cycle traffic (2026-10-10 Alibaba preview)
+
+Source and tests are synchronized to `main`; Alibaba runs the verified preview. Existing GitHub Release binaries have not been updated with this section's features.
+
+Official and Doraemon add a third, independent **周期流量** menu choice when splitting is enabled. This is separate from the original monitoring-rule traffic section described above; independent community themes and combined mode are unchanged.
+
+- The new view reads the existing permission-filtered `GET /api/v1/server-traffic` endpoint and renders only the current filtered server list. It does not change accounting or monitoring rules.
+- Each row uses that server's backend-computed `from`/`to` boundaries (UTC+8), `used`, quota type, direction, outbound upload and inbound download. Monthly reset days still come from the server's plan configuration; subscription billing frequency is not reinterpreted as a traffic cycle.
+- Limited quotas show usage and bounded progress. Unlimited quotas have a blue non-percentage traffic bar; unset quotas have a grey non-percentage bar and remain explicitly unset. These visual bars do not represent quota consumption, expose a percentage, or use progressbar semantics. Missing, malformed and configuration-error rows are not represented as zero traffic.
+- Partial historical coverage and estimated records are labelled. A failed refresh shows an error/retry state instead of stale current-cycle percentages.
+- The selection is restored independently per native theme. Requests poll every 30 seconds while mounted and abort on close/switch. Existing rule traffic and uptime keep their data source and behavior.
+- Verification: `server-plan-traffic.spec.ts` covers both themes on phone/desktop, group filtering, saved selection, switching all three views, cycle rollover, failed refresh and retry. Unit tests cover direction labels, unlimited/unset/error rows and API response validation.
+
+Cycle cards use a compact layout: accounting caveats sit between usage and percentage above the progress bar, wrapping below usage on narrow screens. Transfer labels and values share a row where space allows; padding and card gaps are reduced without changing accounting, query keys or refresh behavior.

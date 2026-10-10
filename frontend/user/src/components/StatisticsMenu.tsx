@@ -49,6 +49,9 @@ export default function StatisticsMenu({ value, onChange, split = true, disabled
 					<DropdownMenuRadioItem value="traffic" className={itemClass} onSelect={() => selectView("traffic")}>
 						{t("statistics.traffic")}
 					</DropdownMenuRadioItem>
+					<DropdownMenuRadioItem value="cycle" className={itemClass} onSelect={() => selectView("cycle")}>
+						{t("statistics.cycle")}
+					</DropdownMenuRadioItem>
 					<DropdownMenuRadioItem value="uptime" className={itemClass} onSelect={() => selectView("uptime")}>
 						{t("statistics.uptime")}
 					</DropdownMenuRadioItem>

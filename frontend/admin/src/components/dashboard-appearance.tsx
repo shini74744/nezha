@@ -15,30 +15,34 @@ function dashboardCSS(c:DashboardAppearance){
  if(f.enabled)css+='html[data-nz-dashboard]{font-size:'+f.size+'}html[data-nz-dashboard] body,html[data-nz-dashboard] #root,html[data-nz-dashboard] #root *:not(.terminal-shell):not(.terminal-shell *){font-family:'+quote(f.family)+',"PingFang SC","Microsoft YaHei",Arial,sans-serif!important}html[data-nz-dashboard] body{text-shadow:'+f.shadow+';font-variant-numeric:tabular-nums;'+(f.color?'color:'+f.color+'!important;':'')+'}';
  if(b.enabled)css+='html[data-nz-dashboard] body{height:auto;min-height:100dvh;background-image:'+(b.image?'url('+quote(b.image)+')':'none')+'!important;background-position:'+b.position+';background-size:'+b.size+';background-repeat:'+b.repeat+';background-attachment:'+b.attachment+'}html[data-nz-dashboard] #root{background:transparent!important}@media(max-width:768px){html[data-nz-dashboard] body{background-attachment:scroll}}';
  if(a.enabled)css+='html[data-nz-dashboard]{--background:0 0% 100% / '+a.lightBackgroundOpacity+';--card:0 0% 100% / '+a.lightCardOpacity+';--popover:0 0% 100% / '+a.lightPopoverOpacity+';--muted:0 0% 100% / '+a.lightMutedOpacity+';--secondary:0 0% 100% / .72;--accent:0 0% 100% / .78}html[data-nz-dashboard].dark{--background:0 0% 5% / '+a.darkBackgroundOpacity+';--card:0 0% 5% / '+a.darkCardOpacity+';--popover:0 0% 5% / '+a.darkPopoverOpacity+';--muted:0 0% 7% / '+a.darkMutedOpacity+';--secondary:0 0% 8% / .72;--accent:0 0% 10% / .78}html[data-nz-dashboard] #root header{background-color:hsl(var(--muted))!important;backdrop-filter:blur('+a.blur+');-webkit-backdrop-filter:blur('+a.blur+');box-shadow:'+(a.headerShadow?'0 4px 20px #0002':'none')+'!important}html[data-nz-dashboard] :is(.bg-card,.bg-popover,[role=dialog],[role=menu],[role=listbox]){backdrop-filter:blur('+a.blur+');-webkit-backdrop-filter:blur('+a.blur+')}';
- // Keep wallpaper details visible: one translucent, unblurred page layer.
- // Darker text supplies contrast; stronger surfaces are reserved for controls and dialogs.
- // Saved opacity values, dark mode and public themes are unchanged.
+ // Paint the whole page, including short-page whitespace and the footer, once.
+ // Main opacity follows the saved value exactly; controls retain separate surfaces.
+ // These rules are light-wallpaper-only; dark mode and public themes are unchanged.
  if(b.enabled&&b.image){
   const light="html[data-nz-dashboard]:not(.dark)";
   const opacity=(key:string,min:number)=>Math.max(min,a.enabled?a[key]:1);
+  const pageOpacity=a.enabled?a.lightBackgroundOpacity:1;
   css+=`
    ${light}{
-    --foreground:222 25% 12%;--muted-foreground:215 20% 22%;
-    --border:215 16% 74%;--input:215 16% 46%;
-    --background:0 0% 100% / ${opacity("lightBackgroundOpacity",.78)};
+    --foreground:0 0% 4%;--muted-foreground:0 0% 5%;
+    --border:215 16% 74%;--input:215 16% 36%;
+    --background:0 0% 100% / ${pageOpacity};
     --card:0 0% 100% / ${opacity("lightCardOpacity",.82)};
     --popover:0 0% 100% / ${opacity("lightPopoverOpacity",.96)};
     --muted:210 20% 96% / ${opacity("lightMutedOpacity",.72)};
     --secondary:210 20% 96% / .94;--accent:210 20% 92% / .96;
    }
-   ${light} .dashboard-page-surface{
-    background-color:rgb(255 255 255 / ${opacity("lightBackgroundOpacity",.64)});
-    backdrop-filter:none;
-    -webkit-backdrop-filter:none;
+   ${light} .dashboard-page-frame{
+    height:auto;min-height:100vh;min-height:100dvh;
+    background-color:rgb(255 255 255 / ${pageOpacity});
     color:hsl(var(--foreground));text-shadow:none;
    }
+   ${light} .dashboard-page-surface{
+    flex:1 0 auto;background-color:transparent;
+    backdrop-filter:none;-webkit-backdrop-filter:none;
+   }
    ${light} #root footer{
-    background-color:rgb(255 255 255 / .72);color:hsl(var(--muted-foreground));text-shadow:none;
+    background-color:transparent;color:hsl(var(--muted-foreground));text-shadow:none;
    }
    ${light} #root header :is(a.opacity-50,p.opacity-50,p.opacity-45){opacity:.8}
   `;

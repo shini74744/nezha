@@ -25,6 +25,7 @@ import {
 	NativeFont,
 	NativeAnalytics,
 } from "@/appearance/native-environment";
+const originalResizeObserver = globalThis.ResizeObserver;
 let width = 1366;
 function config(keys: string[]) {
 	const c = defaults();
@@ -57,6 +58,7 @@ afterEach(() => {
 	vi.useRealTimers();
 	vi.restoreAllMocks();
 	vi.unstubAllGlobals();
+	globalThis.ResizeObserver = originalResizeObserver;
 });
 const advance = async (ms = 50) => {
 	await act(async () => {
@@ -95,7 +97,7 @@ describe("native layout and lifecycle", () => {
 			</div>,
 		);
 		const node = v.container.querySelector("#bmWrap")!;
-		expect(node.parentElement).toHaveAttribute("data-native-sponsor-slot");
+		expect(node.closest("[data-native-sponsor-slot]")).not.toBeNull();
 		expect(document.body.querySelector(":scope > #bmWrap")).toBeNull();
 		await advance(150);
 		await advance(350);
@@ -106,6 +108,47 @@ describe("native layout and lifecycle", () => {
 		expect(v.container.querySelector("#bmWrap")).toBeNull();
 		expect(vi.getTimerCount()).toBe(0);
 	});
+	it("fits synchronously when a late logo grows without waiting for React", () => {
+		const observers: { notify: () => void; disconnect: ReturnType<typeof vi.fn> }[] = [];
+		globalThis.ResizeObserver = class {
+			disconnect = vi.fn();
+			notify: () => void;
+			constructor(callback: ResizeObserverCallback) {
+				this.notify = () => callback([], this);
+				observers.push(this);
+			}
+			observe() {}
+			unobserve() {}
+		};
+		let slotWidth = 500, capsuleWidth = 300;
+		vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(function (this: HTMLElement) {
+			return this.hasAttribute("data-native-sponsor-slot") ? slotWidth : 0;
+		});
+		vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockImplementation(function (this: HTMLElement) {
+			return this.id === "bmWrap" ? capsuleWidth : 0;
+		});
+		vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(42);
+		const v = mount(config(["sponsor"]), <NativeDesktopSponsor />);
+		const node = v.container.querySelector<HTMLElement>("#bmWrap")!;
+		const frame = node.parentElement!;
+		expect(Number(frame.style.getPropertyValue("--bm-fit"))).toBeCloseTo(62 / 42);
+		expect(Number(frame.style.getPropertyValue("--bm-motion-end"))).toBeCloseTo(42 / 62);
+		act(() => {
+			capsuleWidth = 900;
+			observers[observers.length - 1]!.notify();
+			// Assert inside act, before React is allowed to flush its state update.
+			expect(Number(frame.style.getPropertyValue("--bm-fit"))).toBeCloseTo(476 / 900);
+			expect(Number(frame.style.getPropertyValue("--bm-motion-end"))).toBeCloseTo(1 / 1.12);
+		});
+		act(() => { slotWidth = 60; observers[observers.length - 1]!.notify(); });
+		expect(node).toHaveAttribute("aria-hidden", "true");
+		expect(node).toHaveAttribute("inert");
+		act(() => { slotWidth = 500; observers[observers.length - 1]!.notify(); });
+		expect(node).toHaveAttribute("aria-hidden", "false");
+		v.unmount();
+		expect(observers.every(o => o.disconnect.mock.calls.length > 0)).toBe(true);
+	});
+
 	it("desktop homeOnly and detail layout slots never duplicate", () => {
 		const c = config(["sponsor"]);
 		const v = mount(

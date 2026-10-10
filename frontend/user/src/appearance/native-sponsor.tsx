@@ -49,13 +49,14 @@ function SponsorContent({
 }
 function DesktopCapsule({ f }: { f: Feature }) {
 	const slot = useRef<HTMLDivElement>(null),
+		fit = useRef<HTMLDivElement>(null),
 		capsule = useRef<HTMLElement>(null);
 	const [compact, setCompact] = useState(false),
 		[phase, setPhase] = useState<"shrinking" | "staying" | "fading" | "hidden">(
 			"shrinking",
 		);
 	const [hovered, setHovered] = useState(false),
-		[fit, setFit] = useState({ scale: 1, visible: false });
+		[fitVisible, setFitVisible] = useState(false);
 	const remaining = useRef(Math.max(0, f.stayDuration));
 	useEffect(() => {
 		let second = 0;
@@ -94,35 +95,48 @@ function DesktopCapsule({ f }: { f: Feature }) {
 	}, [phase, f.fadeDuration]);
 	useLayoutEffect(() => {
 		const host = slot.current,
+			frame = fit.current,
 			node = capsule.current;
-		if (!host || !node) return;
+		if (!host || !frame || !node) return;
 		const update = () => {
-			const width = host.clientWidth,
-				scale = Math.min(
-					1,
-					Math.max(0, width - 24) / Math.max(1, node.offsetWidth),
-					65 / Math.max(1, node.offsetHeight),
-				);
-			setFit((previous) =>
-				previous.scale === scale && previous.visible === width >= 80
-					? previous
-					: { scale, visible: width >= 80 },
+			const width = host.clientWidth;
+			// Measure the fixed compact layout, never the animated rectangle.
+			// The outer frame fits the largest pose before paint; the inner
+			// transform only gets smaller and cannot feed back into this observer.
+			const start = Math.min(
+				62 / 42,
+				Math.max(0, width - 24) / Math.max(1, node.offsetWidth),
+				65 / Math.max(1, node.offsetHeight),
 			);
+			// Preserve the normal compact size when it fits. In tight slots keep
+			// a small visible shrink instead of cancelling the entire animation.
+			const end = Math.min(1, start / 1.12);
+			frame.style.setProperty("--bm-fit", String(start));
+			frame.style.setProperty("--bm-motion-end", String(start > 0 ? end / start : 1));
+			setFitVisible(width >= 80);
 		};
 		const observer = new ResizeObserver(update);
 		observer.observe(host);
 		observer.observe(node);
+		// Image intrinsic sizes are available in the load handler, before paint.
+		node.addEventListener("load", update, true);
+		node.addEventListener("error", update, true);
 		update();
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+			node.removeEventListener("load", update, true);
+			node.removeEventListener("error", update, true);
+		};
 	}, []);
 	return (
 		<div ref={slot} className="nz-sponsor-slot" data-native-sponsor-slot>
+			<div ref={fit} className="nz-sponsor-fit">
 			<section
 				ref={capsule}
 				id="bmWrap"
 				aria-label="赞助商"
-				aria-hidden={!fit.visible || phase === "hidden"}
-				inert={!fit.visible || phase === "hidden" || phase === "fading"}
+				aria-hidden={!fitVisible || phase === "hidden"}
+				inert={!fitVisible || phase === "hidden" || phase === "fading"}
 				className={
 					"bm-wrap nz-native-sponsor" +
 					(compact ? " bm-compact" : "") +
@@ -130,10 +144,9 @@ function DesktopCapsule({ f }: { f: Feature }) {
 				}
 				style={
 					{
-						"--bm-fit": fit.scale,
 						"--bm-shrink-duration": `${Math.max(0, f.shrinkDuration)}ms`,
 						"--bm-fade-duration": `${Math.max(0, f.fadeDuration)}ms`,
-						visibility: fit.visible ? "visible" : "hidden",
+						visibility: fitVisible ? "visible" : "hidden",
 						display: phase === "hidden" ? "none" : undefined,
 					} as CSSProperties
 				}
@@ -145,8 +158,9 @@ function DesktopCapsule({ f }: { f: Feature }) {
 						setHovered(false);
 				}}
 			>
-				<SponsorContent f={f} compact={compact} />
+				<SponsorContent f={f} compact />
 			</section>
+			</div>
 		</div>
 	);
 }

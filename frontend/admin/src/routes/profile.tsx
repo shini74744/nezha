@@ -1,6 +1,7 @@
 import { Oauth2RequestType, getOauth2RedirectURL, unbindOauth2 } from "@/api/oauth2"
 import { getProfile } from "@/api/user"
 import { ProfileCard } from "@/components/profile"
+import { TOTPSettings } from "@/components/totp-settings"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -145,6 +146,7 @@ export default function ProfilePage() {
                                 ))}
                             </CardContent>
                         </Card>
+                        <TOTPSettings passwordDisabled={profile.reject_password} />
                     </div>
                 </div>
             </div>

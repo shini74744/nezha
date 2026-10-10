@@ -53,7 +53,7 @@ async function setup(page: Page, mode: string | null = "light", variant = "norma
         }] }
         return route.fulfill({ json: { success: true, data } })
     })
-    return { writes, errors }
+    return { writes, errors, config }
 }
 // Composite ancestor backgrounds on an assumed wallpaper color, then compare
 // the browser's actual text/border color. This tests colors, not screenshot OCR.
@@ -91,7 +91,7 @@ for (const width of [390, 1920]) test("readable light server list, DDNS and sett
     await page.goto("/dashboard")
     const rows = page.locator("table tbody tr")
     await expect(rows).toHaveCount(8)
-    await expect(page.locator(".dashboard-page-surface")).toHaveCSS("background-color", "rgba(255, 255, 255, 0.64)")
+    await expect(page.locator(".dashboard-page-frame")).toHaveCSS("background-color", "rgba(255, 255, 255, 0.48)")
     for (const target of [page.getByRole("heading", { name: "服务器", exact: true }), rows.first().locator('[data-column="name"]'), page.locator('thead [data-column="name"]')])
         expect(await contrast(target)).toBeGreaterThanOrEqual(4.5)
     expect(await contrast(rows.first().getByRole("checkbox"), "border-top-color")).toBeGreaterThanOrEqual(3)
@@ -133,13 +133,13 @@ test("switching light dark and system preserves geometry and dark opacity", asyn
     await page.getByRole("button", { name: "Toggle theme" }).click()
     await page.getByRole("menuitem", { name: "暗色", exact: true }).click()
     await expect(page.locator("html")).toHaveClass("dark")
-    await expect(page.locator(".dashboard-page-surface")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
+    await expect(page.locator(".dashboard-page-frame")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
     expect(await page.locator("html").evaluate(el => getComputedStyle(el).getPropertyValue("--background").trim())).toBe("0 0% 5% / 0.58")
     expect(await region.boundingBox()).toEqual(before)
     await page.emulateMedia({ colorScheme: "light" })
     await page.getByRole("button", { name: "Toggle theme" }).click()
     await page.getByRole("menuitem", { name: "跟随系统", exact: true }).click()
-    await expect(page.locator(".dashboard-page-surface")).toHaveCSS("background-color", "rgba(255, 255, 255, 0.64)")
+    await expect(page.locator(".dashboard-page-frame")).toHaveCSS("background-color", "rgba(255, 255, 255, 0.48)")
     expect(await region.boundingBox()).toEqual(before)
 })
 for (const variant of ["disabled", "background-off", "empty-image", "low-opacity", "appearance-off"])
@@ -147,10 +147,11 @@ test("light contrast guard " + variant, async ({ page }) => {
     await setup(page, "light", variant)
     await page.goto("/dashboard")
     await expect(page.locator("tbody tr")).toHaveCount(8)
-    const surface = page.locator(".dashboard-page-surface")
+    const surface = page.locator(".dashboard-page-frame")
     const active = variant === "low-opacity" || variant === "appearance-off"
-    await expect(surface).toHaveCSS("background-color", !active ? "rgba(0, 0, 0, 0)" : variant === "appearance-off" ? "rgb(255, 255, 255)" : "rgba(255, 255, 255, 0.64)")
-    if (active) expect(await contrast(page.locator('thead [data-column="name"]'))).toBeGreaterThanOrEqual(4.5)
+    await expect(surface).toHaveCSS("background-color", !active ? "rgba(0, 0, 0, 0)" : variant === "appearance-off" ? "rgb(255, 255, 255)" : "rgba(255, 255, 255, 0)")
+    // Zero page opacity is now an explicit user choice, not a contrast floor.
+    if (variant === "appearance-off") expect(await contrast(page.locator('thead [data-column="name"]'))).toBeGreaterThanOrEqual(4.5)
 })
 
 for (const width of [320, 390, 454]) test("mobile settings compact grid and visible wallpaper " + width, async ({ page }, info) => {
@@ -169,8 +170,8 @@ for (const width of [320, 390, 454]) test("mobile settings compact grid and visi
         expect(boxes[i].y).toBe(boxes[i+1].y)
         expect(boxes[i].height).toBeGreaterThanOrEqual(44)
     }
-    await expect(page.locator(".dashboard-page-surface")).toHaveCSS("backdrop-filter", "none")
-    await expect(page.locator(".dashboard-page-surface")).toHaveCSS("background-color", "rgba(255, 255, 255, 0.64)")
+    await expect(page.locator(".dashboard-page-frame")).toHaveCSS("backdrop-filter", "none")
+    await expect(page.locator(".dashboard-page-frame")).toHaveCSS("background-color", "rgba(255, 255, 255, 0.48)")
     const background = await page.locator("body").evaluate(el => {
         const s = getComputedStyle(el, "::before")
         return { position: s.position, image: s.backgroundImage, height: parseFloat(s.height), scrollHeight: el.scrollHeight }
@@ -201,7 +202,9 @@ test("dashboard and public theme storage are independent across reloads", async 
     await expect(page.locator("html")).toHaveClass("light")
     async function choose(label: string) {
         await page.getByRole("button", { name: "Toggle theme" }).click()
-        await page.getByRole("menuitem", { name: label, exact: true }).click()
+        const item = page.getByRole("menuitem", { name: label, exact: true })
+        await item.click()
+        await expect(item).toBeHidden()
     }
     await choose("暗色")
     await expect(page.locator("html")).toHaveClass("dark")
@@ -306,4 +309,50 @@ test("touch help toggles and outside dismissal preserve the page width", async (
     } finally {
         await context.close()
     }
+})
+for (const width of [320, 390, 1920]) for (const showFooter of [false, true]) {
+    test("one continuous light layer on short and long DDNS pages " + width + " footer " + showFooter, async ({ page }, info) => {
+        await page.setViewportSize({ width, height: 900 })
+        const state = await setup(page)
+        state.config.features.appearance.hideFooter = !showFooter
+        await page.goto("/dashboard/ddns")
+        await expect(page.locator("[data-ddns-id='7']")).toBeVisible()
+        const frame = page.locator(".dashboard-page-frame")
+        await expect(frame).toHaveCSS("background-color", "rgba(255, 255, 255, 0.48)")
+        await expect(page.locator(".dashboard-page-surface")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
+        if (showFooter) {
+            await expect(page.locator("footer")).toBeVisible()
+            await expect(page.locator("footer")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
+        } else await expect(page.locator("footer")).toBeHidden()
+        async function coversPage() {
+            const bounds = await frame.evaluate(el => {
+                const b = el.getBoundingClientRect()
+                return { top:b.top+scrollY, bottom:b.bottom+scrollY, height:b.height, page:document.documentElement.scrollHeight, viewport:innerHeight, width:document.documentElement.scrollWidth }
+            })
+            expect(bounds.top).toBe(0)
+            expect(bounds.height).toBeGreaterThanOrEqual(bounds.viewport)
+            expect(bounds.bottom).toBeGreaterThanOrEqual(bounds.page-1)
+            expect(bounds.width).toBeLessThanOrEqual(width)
+        }
+        await coversPage()
+        await page.screenshot({ path: info.outputPath("short-page.png") })
+        // A long route must stretch the same layer, not create a second overlay.
+        await page.route("**/api/v1/ddns", route => route.fulfill({ json: { success:true, data:Array.from({length:30},(_,i)=>({id:i+1,name:"长页面节点 "+i,provider:"cloudflare",domains:["n"+i+".example.com"],enable_ipv4:true,max_retries:3})) } }))
+        await page.getByRole("button", {name:"刷新 DDNS"}).click()
+        await expect(page.locator("[data-ddns-id]")).toHaveCount(30)
+        await page.evaluate(()=>scrollTo({ top:document.documentElement.scrollHeight, behavior:"instant" }))
+        await expect.poll(()=>page.evaluate(()=>Math.abs(scrollY+innerHeight-document.documentElement.scrollHeight))).toBeLessThanOrEqual(1)
+        await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))))
+        await coversPage()
+        await page.screenshot({ path: info.outputPath("long-page-bottom.png") })
+        expect(state.writes).toEqual([])
+        expect(state.errors).toEqual([])
+    })
+}
+test("saved page opacity can be zero without a hidden minimum",async({page})=>{
+    await setup(page,"light","low-opacity")
+    await page.goto("/dashboard/ddns")
+    await expect(page.locator("[data-ddns-id='7']")).toBeVisible()
+    await expect(page.locator(".dashboard-page-frame")).toHaveCSS("background-color","rgba(255, 255, 255, 0)")
+    expect(await page.locator("html").evaluate(el=>getComputedStyle(el).getPropertyValue("--background").trim())).toBe("0 0% 100% / 0")
 })

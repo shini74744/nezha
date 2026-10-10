@@ -534,7 +534,7 @@ describe("Servers page", () => {
 		expect(screen.getByTestId("service-tracker")).toHaveAttribute("data-view", "uptime");
 		expect(localStorage.getItem("statisticsView")).toBe("uptime");
 		await user.click(controls[1]);
-		expect(screen.getAllByRole("menuitemradio")).toHaveLength(2);
+		expect(screen.getAllByRole("menuitemradio")).toHaveLength(3);
 		expect(screen.queryByRole("menuitemradio", { name: "statistics.close" })).not.toBeInTheDocument();
 		await user.click(screen.getByRole("menuitemradio", { name: "statistics.uptime" }));
 		expect(screen.queryByTestId("service-tracker")).not.toBeInTheDocument();

@@ -3,7 +3,9 @@ package controller
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
@@ -186,6 +188,7 @@ func identityHandler() func(c *gin.Context) any {
 func authenticator() func(c *gin.Context) (any, error) {
 	return func(c *gin.Context) (any, error) {
 		var loginVals model.LoginRequest
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 16<<10)
 		if err := c.ShouldBind(&loginVals); err != nil {
 			return "", jwt.ErrMissingLoginValues
 		}
@@ -193,7 +196,7 @@ func authenticator() func(c *gin.Context) (any, error) {
 		var user model.User
 		realip := c.GetString(model.CtxKeyRealIPStr)
 
-		if err := singleton.DB.Select("id", "password", "reject_password", "token_version").Where("username = ?", loginVals.Username).First(&user).Error; err != nil {
+		if err := singleton.DB.Select("id", "password", "reject_password", "token_version", "totp_enabled", "totp_password_disabled", "totp_secret", "totp_last_step", "totp_recovery").Where("username = ?", loginVals.Username).First(&user).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				model.BlockIP(singleton.DB, realip, model.WAFBlockReasonTypeLoginFail, model.BlockIDUnknownUser)
 			}
@@ -210,6 +213,23 @@ func authenticator() func(c *gin.Context) (any, error) {
 			return nil, jwt.ErrFailedAuthentication
 		}
 
+		// Password proof is required before revealing whether a second factor is enabled.
+		if user.TOTPEnabled && !user.TOTPPasswordDisabled {
+			c.Header("Cache-Control", "no-store")
+			if strings.TrimSpace(loginVals.Code) == "" {
+				c.Set("passwordLoginTOTPError", "ApiErrorTOTPRequired")
+				return nil, jwt.ErrFailedAuthentication
+			}
+			if err := singleton.VerifyUserTOTP(singleton.DB, &user, loginVals.Code, time.Now()); err != nil {
+				kind := "ApiErrorTOTPInvalid"
+				if errors.Is(err, singleton.ErrTOTPLimited) {
+					kind = "ApiErrorTOTPLimited"
+				}
+				c.Set("passwordLoginTOTPError", kind)
+				model.BlockIP(singleton.DB, realip, model.WAFBlockReasonTypeLoginFail, int64(user.ID))
+				return nil, jwt.ErrFailedAuthentication
+			}
+		}
 		model.UnblockIP(singleton.DB, realip, model.BlockIDUnknownUser)
 		model.UnblockIP(singleton.DB, realip, int64(user.ID))
 
@@ -226,9 +246,13 @@ func authorizator() func(data any, c *gin.Context) bool {
 
 func unauthorized() func(c *gin.Context, code int, message string) {
 	return func(c *gin.Context, code int, message string) {
+		message = "ApiErrorUnauthorized"
+		if factorError := c.GetString("passwordLoginTOTPError"); factorError != "" {
+			message = factorError
+		}
 		c.JSON(http.StatusOK, model.CommonResponse[any]{
 			Success: false,
-			Error:   "ApiErrorUnauthorized",
+			Error:   message,
 		})
 	}
 }
