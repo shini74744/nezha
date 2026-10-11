@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -21,6 +22,9 @@ func TestInstallLogCommandsRejectUntrustedPaths(t *testing.T) {
 	}
 }
 func TestInstallLogIsAvailableBeforeCommandFinishesAndCleaned(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("tmux installation commands execute on Linux nodes, not on the dashboard host")
+	}
 	bin := t.TempDir()
 	for _, name := range []string{"sh", "timeout", "grep", "mkdir", "rm", "rmdir", "tail", "chmod", "sleep"} {
 		source, err := exec.LookPath(name)
