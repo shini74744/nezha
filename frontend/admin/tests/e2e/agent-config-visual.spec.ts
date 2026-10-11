@@ -28,6 +28,27 @@ for (const width of [320, 390, 844, 1440]) for (const theme of ["light", "dark"]
         await expect(dialog.getByRole("heading", { name: "批量配置 Agent" })).toBeVisible()
         await expect(dialog.getByRole("button", { name: "检查改动" })).toBeDisabled()
         expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe("INPUT")
+        await dialog.evaluate(async el => {
+            await Promise.all(el.getAnimations().map(animation => animation.finished.catch(() => undefined)))
+        })
+        const first = dialog.locator('[data-config-field="gpu"]')
+        const second = dialog.locator('[data-config-field="temperature"]')
+        const firstBox = await first.boundingBox()
+        const secondBox = await second.boundingBox()
+        expect(firstBox).not.toBeNull()
+        expect(secondBox).not.toBeNull()
+        expect(firstBox!.height).toBeLessThanOrEqual(112)
+        if (width >= 640) {
+            expect(Math.abs(firstBox!.y - secondBox!.y)).toBeLessThan(2)
+            expect(secondBox!.x).toBeGreaterThan(firstBox!.x + firstBox!.width)
+        } else {
+            expect(Math.abs(firstBox!.x - secondBox!.x)).toBeLessThan(2)
+            expect(secondBox!.y).toBeGreaterThan(firstBox!.y + firstBox!.height)
+            expect(await first.locator("label").evaluate(el => el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44)
+        }
+        await expect(dialog.getByRole("button", { name: "检查改动" })).toBeInViewport()
+        expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true)
+        await page.screenshot({ animations: "disabled", path: info.outputPath("compact-overview.png") })
         const search = dialog.getByRole("textbox", { name: "搜索配置项" })
         await search.fill("上报")
         await dialog.getByRole("checkbox", { name: "修改状态上报间隔", exact: true }).check()
@@ -94,4 +115,38 @@ test("NIC rows, lists and deselection generate only explicit edits", async ({ pa
     await dialog.getByRole("button", { name: "确认下发" }).click()
     await expect(dialog.getByText("已下发：1 台")).toBeVisible()
     expect(JSON.parse(writes[0].config)).toEqual({ hard_drive_partition_allowlist: ["/", "/data"], nic_allowlist: { eth0: false } })
+})
+
+test.describe("compact touch layout", () => {
+    test.use({ hasTouch: true, isMobile: true })
+    test("landscape keeps 44px targets and expands complex fields", async ({ page }, info) => {
+        await page.setViewportSize({ width: 844, height: 390 })
+        await page.route("**/api/v1/**", route => {
+            const path = new URL(route.request().url()).pathname
+            let data: any = []
+            if (path === "/api/v1/profile") data = { id: 1, username: "admin", role: 0 }
+            if (path === "/api/v1/setting") data = { config: { language: "zh-CN" }, version: "test" }
+            if (path === "/api/v1/server") data = [{ id: 7, name: "测试节点", uuid: "test", display_index: 1, user_id: 1, host: {} }]
+            expect(route.request().method()).toBe("GET")
+            return route.fulfill({ json: { success: true, data } })
+        })
+        await page.goto("/dashboard")
+        await page.getByRole("checkbox", { name: "Select all", exact: true }).check()
+        await page.getByRole("button", { name: "批量配置 Agent", exact: true }).click()
+        const dialog = page.getByRole("dialog")
+        await dialog.evaluate(async el => {
+            await Promise.all(el.getAnimations().map(animation => animation.finished.catch(() => undefined)))
+        })
+        expect(await page.evaluate(() => matchMedia("(pointer: coarse)").matches)).toBe(true)
+        expect(await dialog.locator('[data-config-field="gpu"] label').evaluate(el => el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44)
+        expect(await dialog.getByRole("textbox", { name: "搜索配置项" }).evaluate(el => el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44)
+        await dialog.getByRole("checkbox", { name: "修改监控网卡", exact: true }).check()
+        const card = dialog.locator('[data-config-field="nic_allowlist"]')
+        expect(await card.evaluate(el => getComputedStyle(el).gridColumn)).toBe("span 2 / span 2")
+        await dialog.getByRole("button", { name: "添加网卡" }).click()
+        await expect(dialog.getByRole("textbox", { name: "网卡名称 1" })).toBeVisible()
+        await expect(dialog.getByRole("button", { name: "检查改动" })).toBeInViewport()
+        expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true)
+        await page.screenshot({ animations: "disabled", path: info.outputPath("touch-landscape.png") })
+    })
 })
