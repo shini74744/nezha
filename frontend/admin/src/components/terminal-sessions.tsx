@@ -19,6 +19,9 @@ export function TerminalSessionsPanel({ serverId, open, mode, current, disconnec
     const [creating, setCreating] = useState(false)
     const [name, setName] = useState("")
     const [windowName, setWindowName] = useState("main")
+    const [addingWindow, setAddingWindow] = useState<number | null>(null)
+    const [newWindowName, setNewWindowName] = useState("")
+    const windowAction = useRef(false)
     const [install, setInstall] = useState<InstallState>({ state: "idle", message: "" })
     const panelRef = useRef<HTMLElement>(null)
     const generation = useRef(0)
@@ -136,6 +139,36 @@ export function TerminalSessionsPanel({ serverId, open, mode, current, disconnec
         const next = await sessionRequest<SessionTerminal>("tmux/create", { server_id: serverId, name: name.trim(), window: windowName.trim() })
         setCreating(false); setName(""); return next
     })
+    const mutateWindow = async (row: SessionRow, win?: SessionRow["windows"][number]) => {
+        if (busy || windowAction.current) return
+        windowAction.current = true
+        setBusy(true)
+        try {
+            if (win && !await confirm({
+                kind: "end", title: "结束这个窗口？",
+                description: `会话“${row.name}”的窗口“${win.index} · ${win.name}”及其中的任务将终止。\n此会话的其他窗口将保留。`,
+                cancelLabel: "保留窗口", confirmLabel: "结束窗口",
+            })) return
+            const result = await sessionRequest<{ session_closed: boolean; windows: SessionRow["windows"] }>(
+                win ? "tmux/window/end" : "tmux/window/create",
+                { server_id: serverId, record_id: row.id, ...(win ? { window: win.id, confirm: true } : { name: newWindowName.trim() }) })
+            // Invalidate older scans before applying the authoritative mutation result.
+            generation.current++
+            setLoading(false)
+            setList(previous => previous && ({ ...previous, tmux: result.session_closed
+                ? previous.tmux.filter(item => item.id !== row.id)
+                : previous.tmux.map(item => item.id === row.id ? { ...item, windows: result.windows } : item) }))
+            if (!win) { setAddingWindow(null); setNewWindowName(""); toast.success("窗口已新增，点击窗口即可进入") }
+            if (result.session_closed && current?.kind === "tmux" && current.record_id === row.id) {
+                try { onSelect(await createSessionTerminal(serverId)) }
+                catch (e) { toast.error("会话已结束，普通终端连接失败：" + message(e)) }
+            }
+        } catch (e) {
+            toast.error(message(e) + "；请刷新列表确认操作结果后再重试")
+            await load()
+        } finally { windowAction.current = false; setBusy(false) }
+    }
+    useEffect(() => { setAddingWindow(null); setNewWindowName("") }, [serverId, mode, open])
     const renderRow = (row: SessionRow, kind: "native" | "tmux") => {
         const active = kind === "native" ? row.stream_id === current?.session_id : current?.kind === "tmux" && row.id === current.record_id
         return <article className={"terminal-session-card" + (active ? " is-current" : "")} key={row.id}>
@@ -143,14 +176,32 @@ export function TerminalSessionsPanel({ serverId, open, mode, current, disconnec
                 <strong title={row.name}>{row.name}</strong>
                 <span>{active ? "当前" : kind === "native" ? (row.attached ? "使用中" : "已保持") : row.source === "panel" ? "面板创建" : "已有会话"}</span>
             </div>
-            {kind === "tmux" && <div className="terminal-session-windows">
-                {row.windows.map(win => <button key={win.id} disabled={busy} onClick={() => enter(row, kind, win.id)} title={win.name}>{win.index} · {win.name}<ArrowRight size={12} /></button>)}
-            </div>}
+            {kind === "tmux" && <>
+                <div className="terminal-session-windows">
+                    {row.windows.map(win => <div className="terminal-session-window" key={win.id}>
+                        <button disabled={busy} onClick={() => enter(row, kind, win.id)} title={win.name}>{win.index} · {win.name}<ArrowRight size={12} /></button>
+                        {row.windows.length === 1 ?
+                            <button className="window-end" disabled={busy} aria-label={`在会话 ${row.name} 添加窗口`}
+                                onClick={() => { setAddingWindow(addingWindow === row.id ? null : row.id); setNewWindowName("") }}><Plus size={14}/>添加窗口</button> :
+                            <button className="danger window-end" disabled={busy} onClick={() => void mutateWindow(row, win)}
+                                title="结束此窗口" aria-label={`结束窗口 ${win.index} · ${win.name}`}><X size={14}/>结束窗口</button>}
+                    </div>)}
+                </div>
+                {row.windows.length > 1 && <button className="terminal-window-add" disabled={busy} aria-label={`在会话 ${row.name} 新增窗口`}
+                    onClick={() => { setAddingWindow(addingWindow === row.id ? null : row.id); setNewWindowName("") }}><Plus size={14}/>新增窗口</button>}
+                {addingWindow === row.id && <form className="terminal-session-create" onSubmit={event => { event.preventDefault(); void mutateWindow(row) }}>
+                    <label>窗口名称<input aria-label="新增窗口名称" value={newWindowName} disabled={busy}
+                        onChange={event => setNewWindowName(event.target.value)} placeholder="例如 日志" maxLength={60} required /></label>
+                    <small className="terminal-session-hint">只新增窗口，不切换或结束当前任务。</small>
+                    <div><button type="button" disabled={busy} onClick={() => setAddingWindow(null)}>取消</button>
+                        <button type="submit" disabled={busy || !newWindowName.trim()}>添加窗口</button></div>
+                </form>}
+            </>}
             <div className="terminal-session-actions">
                 <button disabled={busy || (kind === "native" && row.attached && !active)} onClick={() => enter(row, kind)}><ArrowRight size={14}/>{active ? "进入" : "连接"}</button>
                 {kind === "tmux" && active && <button disabled={busy} title="退出当前连接，保留会话和运行中的任务"
                     onClick={() => void switchTo(() => createSessionTerminal(serverId))}><LogOut size={14}/>退出</button>}
-                <button className="danger" disabled={busy} onClick={() => void end(row, kind)}><Square size={12}/>结束</button>
+                <button className="danger" disabled={busy} onClick={() => void end(row, kind)}><Square size={12}/>{kind === "tmux" ? "结束会话" : "结束"}</button>
             </div>
         </article>
     }

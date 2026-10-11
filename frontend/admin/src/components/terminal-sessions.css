@@ -22,3 +22,9 @@
 
 @media(max-width:1023px){.terminal-sessions button{min-height:44px;min-width:44px}.terminal-session-create input{min-height:44px;font-size:16px}}
 @media(max-width:1023px) and (max-height:500px){.terminal-sessions header{padding:6px 12px}.terminal-sessions header small{display:none}.terminal-sessions-body{padding:8px 12px}.terminal-session-hint{margin:6px 0;line-height:1.4}}
+
+.terminal-session-window{display:flex;align-items:stretch;width:100%;max-width:100%;min-width:0}
+.terminal-session-window>button:first-child{flex:1;min-width:0;border-radius:8px 0 0 8px}
+.terminal-session-window>.window-end{flex:0 0 auto;border-left:0;border-radius:0 8px 8px 0;min-width:32px}
+.terminal-sessions .terminal-window-add{margin-top:8px;font-size:12px;min-height:36px}
+@media(max-width:1023px){.terminal-session-window>.window-end{min-width:44px}.terminal-sessions .terminal-window-add{min-height:44px}}

@@ -1,9 +1,15 @@
-@import "@xterm/xterm/css/xterm.css";
-:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--tg-theme-text-color,#e6eef3);background:var(--tg-theme-bg-color,#0c1118);color-scheme:dark;--muted:var(--tg-theme-hint-color,#8797a6);--line:#ffffff18;--accent:var(--tg-theme-button-color,#2caa99)}
-*{box-sizing:border-box}body{margin:0}button,input{font:inherit}button{cursor:pointer;touch-action:manipulation}button:disabled{cursor:default;opacity:.45}button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
-#app{max-width:1000px;margin:auto;padding:calc(16px + env(safe-area-inset-top)) 16px calc(12px + env(safe-area-inset-bottom))}
-header,.shell-heading,.filters,.search-row{display:flex;align-items:center;justify-content:space-between;gap:12px}header{margin-bottom:14px}.eyebrow{font-size:10px;letter-spacing:.15em;color:var(--muted)}h1{font-size:23px;margin:6px 0}#badge{font-size:12px;border:1px solid var(--line);border-radius:99px;padding:6px 10px}#status{font-size:13px;color:var(--muted);line-height:1.6;margin:8px 0 16px}#status.error{color:#ef8a8a}
-.search label{font-size:14px;font-weight:600;display:block;margin-bottom:9px}input[type=search]{min-width:0;flex:1;width:100%;border:1px solid var(--line);background:var(--tg-theme-secondary-bg-color,#151e28);color:inherit;border-radius:12px;padding:12px}button{border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:var(--tg-theme-secondary-bg-color,#17222c);color:inherit;white-space:nowrap}.filters{font-size:12px;color:var(--muted);margin:14px 0}input[type=checkbox]{accent-color:var(--accent)}#servers{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))}
-.server{display:flex;align-items:center;gap:12px;text-align:left;min-height:72px;padding:13px 15px;width:100%;white-space:normal}.server .meta{min-width:0;flex:1}.server strong{display:block;font-size:14px;overflow-wrap:anywhere}.server small{display:block;margin-top:5px;color:var(--muted);font-size:12px}.dot{width:8px;height:8px;border-radius:50%;background:#6b7781;flex:none}.dot.online{background:#2dc89a}.connect-label{font-size:12px;color:var(--accent);flex:none}.empty{padding:36px 16px;text-align:center;color:var(--muted);font-size:14px}
-.shell-heading{font-size:14px;padding:8px 0 12px}.shell-heading strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.shell-heading button{font-size:12px;padding:9px}#screen{height:var(--screen-height,60dvh);min-height:150px;background:#080c12;border-radius:10px;padding:8px;border:1px solid var(--line);overflow:hidden}#keys{display:flex;gap:6px;overflow-x:auto;padding:10px 0;scrollbar-width:thin}#keys button{min-width:42px;padding:10px;font:13px ui-monospace,monospace}#keys button.active{background:var(--accent)}.footnote{font-size:11px;color:var(--muted);text-align:center;margin:16px 0 0}
-[hidden]{display:none!important}@media(prefers-color-scheme:light){:root{color-scheme:light;--line:#00000018}}
+.tg-terminal{min-height:100dvh;background:hsl(var(--background));color:hsl(var(--foreground));padding-bottom:env(safe-area-inset-bottom)}
+.tg-header{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;padding:8px max(12px,env(safe-area-inset-right)) 8px max(12px,env(safe-area-inset-left));border-bottom:1px solid hsl(var(--border))}
+.tg-picker{max-width:720px;padding:20px 12px;margin:auto}
+.tg-search{display:flex;align-items:center;gap:10px;min-height:46px;padding:0 12px;border:1px solid hsl(var(--border));border-radius:var(--radius)}
+.tg-search input{min-width:0;flex:1;background:transparent;outline:none;font-size:16px;padding:10px 0}
+.tg-search:focus-within{outline:2px solid hsl(var(--ring));outline-offset:2px}
+.tg-servers{display:grid;gap:10px}
+.tg-server{display:flex;gap:12px;align-items:center;width:100%;padding:14px;border:1px solid hsl(var(--border));border-radius:var(--radius);background:hsl(var(--card))}
+.tg-server:hover:not(:disabled){background:hsl(var(--accent))}
+.tg-server:focus-visible{outline:2px solid hsl(var(--ring));outline-offset:2px}
+.tg-server:disabled{opacity:.5;cursor:not-allowed}
+.tg-dot{width:8px;height:8px;border-radius:50%;background:#94a3b8;flex-shrink:0}.tg-dot.online{background:#16a34a}
+.tg-terminal .terminal-page{max-width:1920px;margin:auto}
+.tg-terminal button{touch-action:manipulation}
+@media(max-width:640px){.tg-terminal .terminal-page>div:first-of-type{margin-top:8px}.tg-header button{min-height:44px}}

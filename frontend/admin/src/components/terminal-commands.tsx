@@ -1,3 +1,4 @@
+import { telegramTerminalOwner } from "@/lib/terminal-transport"
 import { FetcherMethod, fetcher } from "@/api/api"
 import { useAuth } from "@/hooks/useAuth"
 import { terminalCommandError, terminalCommandsURL, type SavedTerminalCommand } from "@/lib/terminal-commands"
@@ -15,7 +16,8 @@ interface Props {
 
 export function TerminalCommandsPanel(props: Props) {
     const { profile } = useAuth()
-    return <CommandLibrary key={profile?.id ?? "guest"} {...props} ownerId={profile?.id} />
+    const ownerId = telegramTerminalOwner() ?? profile?.id
+    return <CommandLibrary key={ownerId ?? "guest"} {...props} ownerId={ownerId} />
 }
 
 function CommandLibrary({ open, connected, onClose, onExecute, ownerId }: Props & { ownerId?: number }) {

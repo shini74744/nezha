@@ -1,3 +1,5 @@
+import { isTelegramTerminal, telegramUIRequest } from "@/lib/terminal-transport"
+
 interface CommonResponse<T> {
     success: boolean
     error: string
@@ -60,6 +62,7 @@ function csrfHeaders(method: FetcherMethod, path: string): Record<string, string
 }
 
 export async function fetcher<T>(method: FetcherMethod, path: string, data?: any): Promise<T> {
+    if (isTelegramTerminal()) return telegramUIRequest<T>(method, path, data)
     let response
     if (method === FetcherMethod.GET || method === FetcherMethod.DELETE) {
         response = await fetch(buildUrl(path, data), {

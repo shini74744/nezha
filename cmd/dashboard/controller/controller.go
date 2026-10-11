@@ -156,6 +156,8 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	auth.POST("/terminal-sessions/tmux/create", patForbidden, commonHandler(createTmuxSession))
 	auth.POST("/terminal-sessions/tmux/attach", patForbidden, commonHandler(attachTmuxSession))
 	auth.POST("/terminal-sessions/tmux/end", patForbidden, commonHandler(endTmuxSession))
+	auth.POST("/terminal-sessions/tmux/window/create", patForbidden, commonHandler(createTmuxWindow))
+	auth.POST("/terminal-sessions/tmux/window/end", patForbidden, commonHandler(endTmuxWindow))
 	auth.POST("/terminal-sessions/tmux/install", patForbidden, commonHandler(installTmux))
 	auth.POST("/terminal-sessions/tmux/install-status", patForbidden, commonHandler(tmuxInstallStatus))
 	auth.POST("/terminal", restScopeMiddleware(model.ScopeServerExec), commonHandler(createTerminal))
