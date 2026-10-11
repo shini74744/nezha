@@ -245,11 +245,11 @@ export const ServerConfigCardBatch = ({ sid, ...props }: ServerConfigCardBatchPr
                         triggerRef.current?.focus()
                     }}
                 >
-                    <DialogHeader className="shrink-0 border-b p-4 pr-12 text-left sm:p-6 sm:pr-12">
+                    <DialogHeader className="shrink-0 border-b px-4 py-3 pr-12 text-left sm:px-5 sm:pr-12">
                         <DialogTitle>
                             {result ? "配置下发结果" : review ? "确认配置改动" : "批量配置 Agent"}
                         </DialogTitle>
-                        <DialogDescription className="pt-1 leading-relaxed">
+                        <DialogDescription className="text-xs leading-5 sm:text-sm">
                             已选择 {targets.length} 台服务器 ·{" "}
                             {result
                                 ? "下发结果不代表配置已生效"
@@ -261,7 +261,7 @@ export const ServerConfigCardBatch = ({ sid, ...props }: ServerConfigCardBatchPr
                     <div
                         ref={bodyRef}
                         tabIndex={-1}
-                        className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 outline-none sm:p-6"
+                        className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 outline-none sm:px-5 sm:py-4"
                         data-testid="agent-config-scroll"
                     >
                         {result ? (
@@ -350,8 +350,8 @@ export const ServerConfigCardBatch = ({ sid, ...props }: ServerConfigCardBatchPr
                                 </details>
                             </div>
                         ) : (
-                            <div className="space-y-5">
-                                <div className="rounded-xl border bg-muted/40 p-3 text-sm leading-relaxed text-muted-foreground">
+                            <div className="space-y-3">
+                                <div className="rounded-lg border bg-muted/40 px-3 py-2 text-xs leading-5 text-muted-foreground">
                                     不读取各节点当前值。勾选后显示的是
                                     <strong className="font-medium text-foreground">
                                         本次要设置的值
@@ -359,9 +359,9 @@ export const ServerConfigCardBatch = ({ sid, ...props }: ServerConfigCardBatchPr
                                     ，请按需调整。
                                 </div>
                                 <div className="relative">
-                                    <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
+                                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                                     <Input
-                                        className="h-11 pl-9"
+                                        className="h-11 pl-9 sm:h-9 [@media(pointer:coarse)]:h-11"
                                         aria-label="搜索配置项"
                                         placeholder="搜索配置，例如：更新、网卡、终端"
                                         value={search}
@@ -374,101 +374,116 @@ export const ServerConfigCardBatch = ({ sid, ...props }: ServerConfigCardBatchPr
                                     return (
                                         <section
                                             key={group}
-                                            className="space-y-3"
+                                            className="space-y-2"
                                             aria-label={group}
                                         >
                                             <h3 className="text-sm font-semibold">{group}</h3>
-                                            {fields.map((field) => {
-                                                const selected =
-                                                    Object.prototype.hasOwnProperty.call(
-                                                        draft,
-                                                        field.key,
-                                                    )
-                                                const error = parsed.errors[field.key]
-                                                return (
-                                                    <div
-                                                        key={field.key}
-                                                        data-config-field={field.key}
-                                                        className={cn(
-                                                            "rounded-xl border p-3 transition-colors sm:p-4",
-                                                            selected &&
-                                                                "border-emerald-500/70 bg-emerald-500/5",
-                                                        )}
-                                                    >
-                                                        <label className="flex min-h-11 cursor-pointer items-center gap-3">
-                                                            <Checkbox
-                                                                aria-label={"修改" + field.label}
-                                                                checked={selected}
-                                                                onCheckedChange={(checked) => {
-                                                                    setDraft((previous) => {
-                                                                        const next = { ...previous }
-                                                                        if (checked === true)
-                                                                            next[field.key] =
-                                                                                Array.isArray(
-                                                                                    field.initial,
-                                                                                )
-                                                                                    ? []
-                                                                                    : field.initial
-                                                                        else delete next[field.key]
-                                                                        return next
-                                                                    })
-                                                                    setError("")
-                                                                }}
-                                                            />
-                                                            <span className="min-w-0 flex-1 text-sm font-medium">
-                                                                {field.label}
-                                                            </span>
-                                                            <span
-                                                                className={cn(
-                                                                    "shrink-0 text-xs",
-                                                                    selected
-                                                                        ? "text-emerald-700 dark:text-emerald-400"
-                                                                        : "text-muted-foreground",
-                                                                )}
-                                                            >
-                                                                {selected ? "本次修改" : "不修改"}
-                                                            </span>
-                                                        </label>
-                                                        <p
-                                                            id={
-                                                                "batch-config-" +
-                                                                field.key +
-                                                                "-help"
-                                                            }
-                                                            className="mt-1 text-sm leading-relaxed text-muted-foreground"
+                                            <div className="grid items-start gap-2 sm:grid-cols-2">
+                                                {fields.map((field) => {
+                                                    const selected =
+                                                        Object.prototype.hasOwnProperty.call(
+                                                            draft,
+                                                            field.key,
+                                                        )
+                                                    const error = parsed.errors[field.key]
+                                                    return (
+                                                        <div
+                                                            key={field.key}
+                                                            data-config-field={field.key}
+                                                            className={cn(
+                                                                "min-w-0 rounded-lg border px-3 pb-2.5 pt-1 transition-colors",
+                                                                selected &&
+                                                                    (field.kind === "lines" ||
+                                                                        field.kind === "nics") &&
+                                                                    "sm:col-span-2",
+                                                                selected &&
+                                                                    "border-emerald-500/70 bg-emerald-500/5",
+                                                            )}
                                                         >
-                                                            {field.description}
-                                                        </p>
-                                                        {selected && (
-                                                            <div className="mt-3">
-                                                                <ConfigValue
-                                                                    field={field}
-                                                                    value={draft[field.key]}
-                                                                    onChange={(value) =>
-                                                                        update(field.key, value)
+                                                            <label className="flex min-h-11 cursor-pointer items-center gap-2 sm:min-h-9 [@media(pointer:coarse)]:min-h-11">
+                                                                <Checkbox
+                                                                    aria-label={
+                                                                        "修改" + field.label
                                                                     }
+                                                                    checked={selected}
+                                                                    onCheckedChange={(checked) => {
+                                                                        setDraft((previous) => {
+                                                                            const next = {
+                                                                                ...previous,
+                                                                            }
+                                                                            if (checked === true)
+                                                                                next[field.key] =
+                                                                                    Array.isArray(
+                                                                                        field.initial,
+                                                                                    )
+                                                                                        ? []
+                                                                                        : field.initial
+                                                                            else
+                                                                                delete next[
+                                                                                    field.key
+                                                                                ]
+                                                                            return next
+                                                                        })
+                                                                        setError("")
+                                                                    }}
                                                                 />
-                                                                {error && (
-                                                                    <p
-                                                                        role="alert"
-                                                                        className="mt-2 text-sm text-destructive"
-                                                                    >
-                                                                        {error}
-                                                                    </p>
-                                                                )}
-                                                                {field.warning &&
-                                                                    (field.kind !== "boolean" ||
-                                                                        draft[field.key] ===
-                                                                            false) && (
-                                                                        <p className="mt-2 text-sm leading-relaxed text-amber-800 dark:text-amber-300">
-                                                                            {field.warning}
+                                                                <span className="min-w-0 flex-1 text-sm font-medium">
+                                                                    {field.label}
+                                                                </span>
+                                                                <span
+                                                                    className={cn(
+                                                                        "shrink-0 text-xs",
+                                                                        selected
+                                                                            ? "text-emerald-700 dark:text-emerald-400"
+                                                                            : "text-muted-foreground",
+                                                                    )}
+                                                                >
+                                                                    {selected
+                                                                        ? "本次修改"
+                                                                        : "不修改"}
+                                                                </span>
+                                                            </label>
+                                                            <p
+                                                                id={
+                                                                    "batch-config-" +
+                                                                    field.key +
+                                                                    "-help"
+                                                                }
+                                                                className="text-xs leading-5 text-muted-foreground"
+                                                            >
+                                                                {field.description}
+                                                            </p>
+                                                            {selected && (
+                                                                <div className="mt-2 border-t pt-2">
+                                                                    <ConfigValue
+                                                                        field={field}
+                                                                        value={draft[field.key]}
+                                                                        onChange={(value) =>
+                                                                            update(field.key, value)
+                                                                        }
+                                                                    />
+                                                                    {error && (
+                                                                        <p
+                                                                            role="alert"
+                                                                            className="mt-2 text-sm text-destructive"
+                                                                        >
+                                                                            {error}
                                                                         </p>
                                                                     )}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )
-                                            })}
+                                                                    {field.warning &&
+                                                                        (field.kind !== "boolean" ||
+                                                                            draft[field.key] ===
+                                                                                false) && (
+                                                                            <p className="mt-2 text-sm leading-relaxed text-amber-800 dark:text-amber-300">
+                                                                                {field.warning}
+                                                                            </p>
+                                                                        )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
                                         </section>
                                     )
                                 })}
@@ -492,7 +507,7 @@ export const ServerConfigCardBatch = ({ sid, ...props }: ServerConfigCardBatchPr
                             </p>
                         )}
                     </div>
-                    <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t bg-background p-4 sm:px-6">
+                    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t bg-background px-3 py-2 sm:px-5">
                         <span className="text-sm text-muted-foreground">
                             {pending
                                 ? "正在下发，请稍候…"
