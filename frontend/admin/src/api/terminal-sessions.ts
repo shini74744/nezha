@@ -7,7 +7,7 @@ export interface SessionRow {
     windows: Array<{ id: string; index: number; name: string }>
 }
 export interface SessionList { native: SessionRow[]; tmux: SessionRow[]; installed: boolean; tmux_error?: string }
-export interface InstallState { state: "idle" | "running" | "done" | "failed"; message: string }
+export interface InstallState { state: "idle" | "running" | "done" | "failed"; message: string; log?: string }
 export const sessionRequest = <T,>(action: string, data: object) =>
     fetcher<T>(FetcherMethod.POST, "/api/v1/terminal-sessions/" + action, data)
 export const createSessionTerminal = (serverId: number) =>

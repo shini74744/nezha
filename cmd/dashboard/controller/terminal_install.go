@@ -1,21 +1,24 @@
 package controller
 
 import (
-	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/nezhahq/nezha/model"
 	"github.com/nezhahq/nezha/pkg/terminalsession"
 	"github.com/nezhahq/nezha/service/rpc"
 	"github.com/nezhahq/nezha/service/singleton"
-	"strings"
-	"sync"
-	"time"
 )
 
 type tmuxInstallView struct {
 	State   string `json:"state"`
 	Message string `json:"message"`
+	Log     string `json:"log,omitempty"`
 }
 type tmuxInstallJob struct {
 	View    tmuxInstallView
@@ -31,11 +34,11 @@ var runTmuxInstall = rpc.RunTerminalInstallCommand
 
 func installResult(raw string, err error) tmuxInstallView {
 	if err != nil {
-		return tmuxInstallView{"failed", err.Error() + "；结果未确认，请刷新检查后再尝试"}
+		return tmuxInstallView{State: "failed", Message: err.Error() + "；结果未确认，请刷新检查后再尝试"}
 	}
 	code := strings.TrimSpace(raw)
 	if code == "NZX_INSTALLED" {
-		return tmuxInstallView{"done", "tmux 已安装，可以创建会话"}
+		return tmuxInstallView{State: "done", Message: "tmux 已安装，可以创建会话"}
 	}
 	messages := map[string]string{
 		"NZX_PERMISSION":   "安装需要节点上的 root 权限，或文件系统不允许写入",
@@ -53,7 +56,7 @@ func installResult(raw string, err error) tmuxInstallView {
 	if !ok {
 		message = "未能确认安装结果，请刷新检查"
 	}
-	return tmuxInstallView{"failed", message}
+	return tmuxInstallView{State: "failed", Message: message}
 }
 func installTmux(c *gin.Context) (*tmuxInstallView, error) {
 	var form struct {
@@ -73,6 +76,14 @@ func installTmux(c *gin.Context) (*tmuxInstallView, error) {
 	if s.GetTaskStream() == nil {
 		return nil, errors.New("服务器离线")
 	}
+	token := make([]byte, 16)
+	if _, e = rand.Read(token); e != nil {
+		return nil, errors.New("无法创建安装任务")
+	}
+	install, read, cleanup, e := terminalsession.InstallTmuxLoggedCommands(hex.EncodeToString(token))
+	if e != nil {
+		return nil, e
+	}
 	tmuxInstalls.Lock()
 	for id, old := range tmuxInstalls.rows {
 		if old.View.State != "running" && time.Since(old.Started) > time.Hour {
@@ -80,11 +91,15 @@ func installTmux(c *gin.Context) (*tmuxInstallView, error) {
 		}
 	}
 	if job := tmuxInstalls.rows[s.UUID]; job != nil && (job.View.State == "running" || time.Since(job.Started) < time.Minute) {
+		if job.Owner != u.ID {
+			tmuxInstalls.Unlock()
+			return nil, errors.New("此节点已有其他用户的安装任务，请稍后重试")
+		}
 		v := job.View
 		tmuxInstalls.Unlock()
 		return &v, nil
 	}
-	job := &tmuxInstallJob{View: tmuxInstallView{"running", "正在安装 tmux，请稍候"}, Owner: u.ID, Started: time.Now()}
+	job := &tmuxInstallJob{View: tmuxInstallView{State: "running", Message: "正在安装 tmux，请稍候"}, Owner: u.ID, Started: time.Now()}
 	tmuxInstalls.rows[s.UUID] = job
 	tmuxInstalls.Unlock()
 	audit := model.TerminalSessionEvent{Common: model.Common{UserID: u.ID}, ServerUUID: s.UUID, Action: "install_tmux", Name: "tmux"}
@@ -94,32 +109,23 @@ func installTmux(c *gin.Context) (*tmuxInstallView, error) {
 		tmuxInstalls.Unlock()
 		return nil, errors.New("安装记录保存失败")
 	}
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 335*time.Second)
-		defer cancel()
-		raw, err := runTmuxInstall(ctx, s, terminalsession.InstallTmuxCommand)
-		v := installResult(raw, err)
-		tmuxInstalls.Lock()
-		job.View = v
-		tmuxInstalls.Unlock()
-	}()
-	v := tmuxInstallView{"running", "正在安装 tmux，请稍候"}
-	return &v, nil
+	go executeTmuxInstall(job, s, install, read, cleanup, runTmuxInstall, runTmuxInstallLog)
+	return &tmuxInstallView{State: "running", Message: "正在安装 tmux，请稍候"}, nil
 }
 func tmuxInstallStatus(c *gin.Context) (*tmuxInstallView, error) {
 	var form terminalListForm
 	if e := bindTerminalSession(c, &form); e != nil {
 		return nil, e
 	}
-	_, s, e := terminalAuthorizedServer(c, form.ServerID)
+	u, s, e := terminalAuthorizedServer(c, form.ServerID)
 	if e != nil {
 		return nil, e
 	}
 	tmuxInstalls.Lock()
 	defer tmuxInstalls.Unlock()
-	if job := tmuxInstalls.rows[s.UUID]; job != nil {
+	if job := tmuxInstalls.rows[s.UUID]; job != nil && job.Owner == u.ID {
 		v := job.View
 		return &v, nil
 	}
-	return &tmuxInstallView{"idle", ""}, nil
+	return &tmuxInstallView{State: "idle"}, nil
 }

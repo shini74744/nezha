@@ -1,0 +1,28 @@
+.terminal-confirm-overlay{position:fixed;inset:0;z-index:150;background:rgba(15,23,42,.42);backdrop-filter:blur(3px)}
+.terminal-confirm{--confirm-accent:#087eaa;--confirm-tint:#e7f5fb;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:151;width:min(420px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;border:1px solid #dbe3ec;border-radius:18px;background:#fff;color:#172b3e;padding:24px;box-shadow:0 24px 80px #0003;text-shadow:none;outline:none}
+.terminal-confirm[data-kind=keep]{--confirm-accent:#b66508;--confirm-tint:#fff3de}
+.terminal-confirm[data-kind=end]{--confirm-accent:#d33142;--confirm-tint:#fff0f1}
+.terminal-confirm-heading{display:flex;align-items:center;gap:12px}
+.terminal-confirm-icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 40px;height:40px;border-radius:12px;background:var(--confirm-tint);color:var(--confirm-accent)}
+.terminal-confirm-title{font-size:18px;font-weight:650;line-height:1.4;margin:0;overflow-wrap:anywhere}
+.terminal-confirm-description{font-size:13px;line-height:1.85;color:#596b7d;margin:14px 0 22px;white-space:pre-line;overflow-wrap:anywhere}
+.terminal-confirm-actions{display:flex;justify-content:flex-end;gap:10px}
+.terminal-confirm-actions button{border-radius:10px;min-height:40px;padding:9px 15px;font:inherit;font-size:13px;font-weight:550;line-height:1.5;cursor:pointer;transition:background .15s,box-shadow .15s}
+.terminal-confirm-cancel{background:#fff;color:#334155;border:1px solid #dbe3ec}
+.terminal-confirm-cancel:hover{background:#f1f5f9}
+.terminal-confirm-accept{background:var(--confirm-accent);color:#fff;border:1px solid transparent}
+.terminal-confirm-accept:hover{filter:brightness(.93)}
+.terminal-confirm-actions button:focus-visible{outline:2px solid var(--confirm-accent);outline-offset:3px}
+html.dark .terminal-confirm{background:#15181d;border-color:#303641;color:#edf2f7;--confirm-accent:#087eaa;--confirm-tint:#15303b}
+html.dark .terminal-confirm[data-kind=keep]{--confirm-accent:#b66508;--confirm-tint:#352816}
+html.dark .terminal-confirm[data-kind=end]{--confirm-accent:#c93a49;--confirm-tint:#362026}
+html.dark .terminal-confirm-icon{color:#87d9fa}
+html.dark .terminal-confirm[data-kind=keep] .terminal-confirm-icon{color:#f5c573}
+html.dark .terminal-confirm[data-kind=end] .terminal-confirm-icon{color:#ff9ba5}
+html.dark .terminal-confirm-description{color:#aeb9c8}
+html.dark .terminal-confirm-cancel{background:#20252d;border-color:#394251;color:#dce4ef}
+html.dark .terminal-confirm-cancel:hover{background:#29313c}
+@media(max-width:480px){.terminal-confirm{padding:20px;border-radius:16px}.terminal-confirm-actions button{flex:1;padding:10px 8px}.terminal-confirm-title{font-size:17px}}
+@media(prefers-reduced-motion:no-preference){.terminal-confirm[data-state=open]{animation:terminal-confirm-enter .15s ease-out}.terminal-confirm-overlay[data-state=open]{animation:terminal-confirm-fade .15s ease-out}}
+@keyframes terminal-confirm-enter{from{opacity:0;transform:translate(-50%,-48%) scale(.98)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+@keyframes terminal-confirm-fade{from{opacity:0}to{opacity:1}}

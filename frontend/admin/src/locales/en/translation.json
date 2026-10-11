@@ -1,5 +1,10 @@
 {
     "nezha": "Nezha Monitoring",
+    "ServerPositionPlaceholder": "Pos.",
+    "ServerPositionInput": "Target position for {{name}}",
+    "ServerPositionApply": "Move {{name}} to target position",
+    "ServerMoveTo": "Move",
+    "ServerPositionInvalid": "Enter a whole-number position from 1 to {{total}}",
     "ShowNetworkInDetail": "Show network in server details",
     "ShowNetworkInDetailDescription": "When enabled, network monitoring appears below the server detail charts. When disabled, use the separate Network view.",
     "UUIDActions": "UUID actions",
