@@ -31,6 +31,10 @@ func (c *ServerClass) UpdateManualOrder(ctx *gin.Context, ids []uint64) error {
 	if ServerIDReassignmentInProgress.Load() {
 		return errors.New("服务器 ID 正在调整，请稍后重试")
 	}
+	// Serialize registration through database and cache publication. The lock
+	// order matches registration/deletion: mutation before lifecycle.
+	ServerMutationMu.Lock()
+	defer ServerMutationMu.Unlock()
 	c.lockLifecycleWrite()
 	defer c.unlockLifecycleWrite()
 	var servers []model.Server

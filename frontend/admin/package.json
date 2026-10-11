@@ -5,8 +5,8 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "tsc -b && vite build",
-        "build-ignore-error": "vite build",
+        "build": "tsc -b && vite build && vite build --config vite.telegram.config.ts",
+        "build-ignore-error": "vite build && vite build --config vite.telegram.config.ts",
         "lint": "oxlint .",
         "lint:fix": "oxlint --fix .",
         "format": "prettier --write .",

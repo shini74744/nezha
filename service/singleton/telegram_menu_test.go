@@ -128,6 +128,11 @@ func TestTelegramMenuWorkerOffsetDisableAndNoForeignReplies(t *testing.T) {
 		for _, disabled := range []bool{false, true} {
 			t.Run(command.Command+fmt.Sprint(disabled), func(t *testing.T) {
 				n := telegramSetup(t)
+				if command.Category == "terminal" {
+					n.TelegramMenu.Terminal = true
+					n.TelegramMenu.TerminalOrigin = "https://terminal.example"
+					require.NoError(t, DB.Model(n).Select("TelegramMenu").Updates(n).Error)
+				}
 				target, err := n.TelegramMenuTarget()
 				require.NoError(t, err)
 				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -147,7 +152,7 @@ func TestTelegramMenuWorkerOffsetDisableAndNoForeignReplies(t *testing.T) {
 						require.Equal(t, float64(target.ChatID), body["scope"].(map[string]any)["chat_id"])
 						require.Equal(t, "chat", body["scope"].(map[string]any)["type"])
 						got, _ := json.Marshal(body["commands"])
-						want, _ := json.Marshal(telegramCommandList())
+						want, _ := json.Marshal(telegramCommandList(n.TelegramMenu))
 						require.JSONEq(t, string(want), string(got))
 						return telegramTestResponse(true), nil
 					case "setChatMenuButton":

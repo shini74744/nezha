@@ -134,6 +134,26 @@ export function TelegramMenuSettings({
                         )}
                     </details>
                     <details className="rounded-lg border p-3">
+                        <summary className="cursor-pointer text-sm font-medium">网页终端</summary>
+                        <div className="mt-3 flex items-center justify-between gap-3 text-sm">
+                            <label htmlFor={control + "-terminal"}>启用独立终端菜单</label>
+                            <Switch id={control + "-terminal"} checked={!!menu.terminal}
+                                onCheckedChange={(terminal) => change({
+                                    terminal,
+                                    terminal_origin: menu.terminal_origin || window.location.origin,
+                                })} />
+                        </div>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                            仅绑定的 TG 账号可直接操作服务器。请保护好 TG 账号和已登录设备。
+                        </p>
+                        {menu.terminal && <div className="mt-3 space-y-2">
+                            <label htmlFor={control + "-terminal-origin"} className="text-sm">网站 HTTPS 地址</label>
+                            <Input id={control + "-terminal-origin"} value={menu.terminal_origin || ""}
+                                placeholder="https://example.com"
+                                onChange={(e) => change({ terminal_origin: e.target.value.trim().replace(/\/+$/, "") })} />
+                        </div>}
+                    </details>
+                    <details className="rounded-lg border p-3">
                         <summary className="cursor-pointer text-sm font-medium">
                             登录提醒与流量推送
                         </summary>

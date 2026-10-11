@@ -17,6 +17,7 @@ var telegramMenuCommands = [...]telegramMenuCommand{
 	{Command: "offline", Description: "🔴 离线服务器", Category: "offline"},
 	{Command: "expiring", Description: "⏳ 即将到期服务器", Category: "expiry"},
 	{Command: "traffic", Description: "📊 今日流量统计", Category: "traffic"},
+	{Command: "terminal", Description: "⌨️ 网页终端", Category: "terminal"},
 }
 
 func telegramCommandList(configs ...*model.TelegramMenuConfig) []map[string]string {

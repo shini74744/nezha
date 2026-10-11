@@ -2,6 +2,8 @@ import type { NotificationDraft } from "./telegram-notification"
 import { parseTelegram } from "./telegram-notification"
 
 export type TelegramMenuConfig = {
+    terminal?: boolean
+    terminal_origin?: string
     items?: Partial<Record<"home" | "online" | "offline" | "expiry" | "traffic", boolean>>
     enabled: boolean
     expiry_days: number

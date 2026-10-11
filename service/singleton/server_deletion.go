@@ -95,10 +95,24 @@ func CreateServerWithLowestAvailableID(userID uint64, uuid, name string) (*model
 			}
 			break
 		}
+		// Display order is independent of reusable system IDs. Append after
+		// the actual current tail, including negative legacy indices.
+		var tail struct{ Minimum *int }
+		if err := tx.Model(&model.Server{}).Select("MIN(display_index) AS minimum").Scan(&tail).Error; err != nil {
+			return err
+		}
+		position := 1
+		if tail.Minimum != nil {
+			if *tail.Minimum == -int(^uint(0)>>1)-1 {
+				return fmt.Errorf("server order exhausted; save manual order to normalize it")
+			}
+			position = *tail.Minimum - 1
+		}
 		server = model.Server{
-			Common: model.Common{ID: nextID, UserID: userID},
-			UUID:   uuid,
-			Name:   name,
+			DisplayIndex: position,
+			Common:       model.Common{ID: nextID, UserID: userID},
+			UUID:         uuid,
+			Name:         name,
 		}
 		if err := tx.Create(&server).Error; err != nil {
 			return err

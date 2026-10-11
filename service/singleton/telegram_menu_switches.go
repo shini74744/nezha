@@ -18,6 +18,10 @@ func telegramFilterKeyboard(keyboard telegramKeyboard, config *model.TelegramMen
 	for _, row := range keyboard.Rows {
 		kept := make([]telegramButton, 0, len(row))
 		for _, button := range row {
+			if button.WebApp != nil && telegramMenuItemEnabled(config, "terminal") {
+				kept = append(kept, button)
+				continue
+			}
 			kind, _, valid := telegramParseCallback(button.Data)
 			if valid && telegramMenuItemEnabled(config, kind) {
 				kept = append(kept, button)
@@ -34,6 +38,9 @@ func telegramFilterKeyboard(keyboard telegramKeyboard, config *model.TelegramMen
 func telegramConfiguredView(ctx context.Context, n *model.Notification, kind string, page int, now time.Time) (telegramMenuView, error) {
 	if !telegramMenuItemEnabled(n.TelegramMenu, kind) {
 		return telegramMenuView{Text: "该功能已关闭，请选择其他功能。", Markup: telegramFilterKeyboard(telegramKeyboard{Rows: append(telegramCategoryButtons(), []telegramButton{{Text: "服务器概览", Data: "nzsm:home:0"}})}, n.TelegramMenu)}, nil
+	}
+	if kind == "terminal" {
+		return telegramTerminalView(n, now)
 	}
 	rows, err := telegramServerRows(n.UserID, now)
 	if err != nil {

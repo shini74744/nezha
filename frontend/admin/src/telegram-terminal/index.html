@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="referrer" content="no-referrer"><title>网页终端</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script></head>
+<body><main id="app">
+<header><div><span class="eyebrow">TELEGRAM · TERMINAL</span><h1>网页终端</h1></div><span id="badge">身份验证中</span></header>
+<p id="status" role="status">正在验证 TG 身份…</p>
+<section id="picker" hidden aria-label="选择服务器">
+<div class="search"><label for="search">选择服务器</label><div class="search-row"><input id="search" type="search" placeholder="搜索名称或 ID，例如 HK、香港、17" autocomplete="off" maxlength="120"><button id="refresh" type="button">刷新</button></div></div>
+<div class="filters"><label><input id="online" type="checkbox"> 只看在线</label><span id="count"></span></div>
+<div id="servers" aria-live="polite"></div></section>
+<section id="shell" hidden aria-label="服务器终端"><div class="shell-heading"><strong id="server-name"></strong><button id="disconnect" type="button">断开 / 换服务器</button></div>
+<div id="screen"></div><div id="keys" aria-label="终端快捷键"></div>
+</section>
+<p class="footnote">仅限绑定的 TG 账号 · 空闲 5 分钟自动断开</p>
+</main><script type="module" src="./main.ts"></script></body></html>
