@@ -216,7 +216,7 @@ export function ServerSortDialog({ servers, mutate }: ServerSortDialogProps) {
                             onDragStart={(event) => event.preventDefault()}
                             onPointerDown={(event) => drag.onPointerDown(event, server.id)}
                             data-dragging={drag.preview?.id === server.id || undefined}
-                            className="relative flex cursor-grab select-none items-center gap-2 rounded-lg border bg-background p-3 active:cursor-grabbing data-[dragging]:border-primary data-[dragging]:opacity-50"
+                            className="relative flex cursor-grab select-none items-center gap-2 rounded-lg border bg-background p-3 active:cursor-grabbing data-[dragging]:border-primary data-[dragging]:opacity-50 max-sm:grid max-sm:grid-cols-[24px_20px_minmax(0,1fr)]"
                         >
                             {drag.preview?.target?.id === server.id &&
                                 drag.preview.id !== server.id && (
@@ -242,7 +242,7 @@ export function ServerSortDialog({ servers, mutate }: ServerSortDialogProps) {
                                     ID {server.id}
                                 </div>
                             </div>
-                            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1 max-sm:max-w-[7.5rem]">
+                            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1 max-sm:col-span-2 max-sm:col-start-2 max-sm:justify-start max-sm:[&_button]:min-h-11 max-sm:[&_button]:min-w-11">
                                 <ServerPositionInput server={server} total={ordered.length} busy={interactionBusy}
                                     onMove={position => setOrdered(current => moveServerToPosition(current, server.id, position))}/>
                                 <Button

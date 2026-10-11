@@ -1,4 +1,4 @@
-import { act, render, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, expect, test, vi } from "vitest"
 
 import { FMComponent } from "../components/fm"
@@ -80,10 +80,7 @@ vi.mock("../components/xui/icon-button", () => ({
 vi.mock("../components/xui/virtulized-data-table", () => ({
     DataTable: () => <div data-testid="data-table" />,
 }))
-vi.mock("lucide-react", () => ({
-    File: () => <div data-testid="file-icon" />,
-    Folder: () => <div data-testid="folder-icon" />,
-}))
+// Keep the real icons so new toolbar actions exercise their accessible button labels.
 
 const translate = (key: string) => key
 
@@ -198,8 +195,6 @@ const encodeFileNameMessage = (path: string) => {
     return payload.buffer
 }
 
-const encodeCompleteMessage = () => new Uint8Array([0x4e, 0x5a, 0x55, 0x50]).buffer
-
 const decodeListPath = (data: SentWebSocketData) => {
     if (!ArrayBuffer.isView(data)) return null
 
@@ -230,20 +225,34 @@ test("FM websocket lifecycle reuses the socket on path changes", async () => {
 
     await waitFor(() => {
         expect(webSockets).toHaveLength(1)
-        expect(decodeListPath(socket.sent[socket.sent.length - 1])).toBe("/new/path")
+        expect((screen.getByRole("textbox", { name: "目录路径" }) as HTMLInputElement).value).toBe("/new/path")
     })
 
     socket.sent.length = 0
-    await act(async () => {
-        await socket.onmessage?.call(
-            socket,
-            new MessageEvent("message", { data: encodeCompleteMessage() }),
-        )
-    })
+    fireEvent.click(screen.getByRole("button", { name: "刷新" }))
 
     expect(webSockets).toHaveLength(1)
     expect(decodeListPath(socket.sent[socket.sent.length - 1])).toBe("/new/path")
 
     unmount()
     expect(socket.readyState).toBe(MockWebSocket.CLOSED)
+})
+
+test.each([
+    ["/opt/nezha/agent", "/opt/nezha"],
+    ["/opt/", "/"],
+    ["C:\\Users\\Admin", "C:/Users"],
+    ["C:\\Users", "C:/"],
+    ["C:\\", "C:/"],
+])("up directory keeps filesystem roots for %s", async (path, parent) => {
+    const { unmount } = render(<FMComponent wsUrl="/ws/file/parent" />)
+    const socket = webSockets[0]
+    act(() => socket.open())
+    await act(async () => {
+        await socket.onmessage?.call(socket, new MessageEvent("message", { data: encodeFileNameMessage(path) }))
+    })
+    fireEvent.click(screen.getByRole("button", { name: "上级" }))
+    expect(decodeListPath(socket.sent.at(-1)!)).toBe(parent)
+    expect(webSockets).toHaveLength(1)
+    unmount()
 })
