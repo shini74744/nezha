@@ -56,7 +56,7 @@ func insightCommandRunner(server *model.Server, kind string) func(context.Contex
 	id, uuid, owner, stream := server.ID, server.UUID, server.GetUserID(), server.GetTaskStream()
 	return func(parent context.Context, command string, timeout time.Duration) (*pb.TaskResult, string) {
 		valid := func(s *model.Server) bool {
-			enabled := s != nil && ((kind == "bgp" && !s.BGPDisabled) || (kind == "streaming" && !s.StreamingDisabled) || (kind == "return-route" && !s.ReturnRouteDisabled))
+			enabled := s != nil && ((kind == "bgp" && !s.BGPDisabled) || (kind == "streaming" && !s.StreamingDisabled) || (kind == "return-route" && !s.ReturnRouteDisabled) || kind == "terminal-session")
 			return enabled && s.UUID == uuid && s.GetUserID() == owner && s.GetTaskStream() == stream && ConnectivityOnline(s) && !singleton.ServerIDReassignmentInProgress.Load() && !singleton.IsDeletedServerUUID(uuid)
 		}
 		current, ok := singleton.ServerShared.Get(id)
@@ -73,6 +73,9 @@ func insightCommandRunner(server *model.Server, kind string) func(context.Contex
 		limit := 4096
 		if kind == "return-route" {
 			limit = networkinsight.ReturnOutputLimit
+		}
+		if kind == "terminal-session" {
+			limit = 256 * 1024
 		}
 		waiter := &mediaWaiter{serverID: id, stream: stream, result: make(chan *pb.TaskResult, 1), maxBytes: limit}
 		mediaWaiters.Store(taskID, waiter)

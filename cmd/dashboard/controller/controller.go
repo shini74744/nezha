@@ -149,6 +149,15 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	//     删除 server / server-group）。这是管理后台清单管理动作。
 	//   - nezha:server:*    —— 对已知 server 的运行态操作（exec、文件读写、编辑配置、
 	//     force-update、batch-move）。
+	auth.POST("/terminal-sessions/list", patForbidden, commonHandler(listTerminalSessions))
+	auth.POST("/terminal-sessions/keep", patForbidden, commonHandler(keepTerminalSession))
+	auth.POST("/terminal-sessions/resume", patForbidden, commonHandler(resumeNativeTerminal))
+	auth.POST("/terminal-sessions/stop", patForbidden, commonHandler(stopNativeTerminal))
+	auth.POST("/terminal-sessions/tmux/create", patForbidden, commonHandler(createTmuxSession))
+	auth.POST("/terminal-sessions/tmux/attach", patForbidden, commonHandler(attachTmuxSession))
+	auth.POST("/terminal-sessions/tmux/end", patForbidden, commonHandler(endTmuxSession))
+	auth.POST("/terminal-sessions/tmux/install", patForbidden, commonHandler(installTmux))
+	auth.POST("/terminal-sessions/tmux/install-status", patForbidden, commonHandler(tmuxInstallStatus))
 	auth.POST("/terminal", restScopeMiddleware(model.ScopeServerExec), commonHandler(createTerminal))
 	auth.GET("/ws/terminal/:id", restScopeMiddleware(model.ScopeServerExec), commonHandler(terminalStream))
 	auth.POST("/file", restScopeAllOf(model.ScopeServerRead, model.ScopeServerWrite, model.ScopeServerDelete), commonHandler(createFM))
