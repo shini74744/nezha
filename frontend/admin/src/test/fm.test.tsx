@@ -252,7 +252,7 @@ test.each([
         await socket.onmessage?.call(socket, new MessageEvent("message", { data: encodeFileNameMessage(path) }))
     })
     fireEvent.click(screen.getByRole("button", { name: "上级" }))
-    expect(decodeListPath(socket.sent.at(-1)!)).toBe(parent)
+    expect(decodeListPath(socket.sent[socket.sent.length - 1])).toBe(parent)
     expect(webSockets).toHaveLength(1)
     unmount()
 })
