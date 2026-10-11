@@ -35,6 +35,9 @@ func createTerminal(c *gin.Context) (*model.CreateTerminalResponse, error) {
 		return nil, err
 	}
 
+	if createTerminalReq.Protocol == "session-v1" {
+		return newManagedTerminal(c, createTerminalReq.ServerID, "native", 0, "")
+	}
 	server, _ := singleton.ServerShared.Get(createTerminalReq.ServerID)
 	if server == nil {
 		return nil, singleton.Localizer.ErrorT("server not found or not connected")
@@ -89,6 +92,13 @@ func createTerminal(c *gin.Context) (*model.CreateTerminalResponse, error) {
 // @Router /ws/terminal/{id} [get]
 func terminalStream(c *gin.Context) (any, error) {
 	streamId := c.Param("id")
+	if managedLookup(streamId) != nil {
+		m, err := managedForRequest(c, streamId)
+		if err != nil {
+			return nil, err
+		}
+		return managedTerminalStream(c, m)
+	}
 	// GHSA-style fix: io_stream sessions must be reachable only by their creator
 	// (or an admin). Without this, any authenticated user who learns a stream
 	// UUID — via Referer leak, access logs, browser history — can hijack a live

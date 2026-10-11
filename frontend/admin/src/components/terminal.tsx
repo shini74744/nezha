@@ -1,18 +1,10 @@
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import useTerminal from "@/hooks/useTerminal"
+import { createSessionTerminal, keepSession, SessionTerminal } from "@/api/terminal-sessions"
+import { TerminalSessionsPanel } from "./terminal-sessions"
 import { type TerminalKey, controlSequenceForInput, terminalKeySequence } from "@/lib/terminal-keys"
 import { FitAddon } from "@xterm/addon-fit"
 import { Terminal } from "@xterm/xterm"
 import "@xterm/xterm/css/xterm.css"
-import { PanelRight, Terminal as TerminalIcon } from "lucide-react"
+import { PanelRight, Layers, Pin, Terminal as TerminalIcon } from "lucide-react"
 import { TerminalCommandsPanel } from "./terminal-commands"
 import { terminalCommandError } from "@/lib/terminal-commands"
 import {
@@ -36,6 +28,7 @@ interface XtermProps {
     wsUrl: string
     setClose: React.Dispatch<React.SetStateAction<boolean>>
     commandsOpen?: boolean
+    sessionPanel?: React.ReactNode
     onCommandsOpenChange?: (open: boolean) => void
 }
 
@@ -57,7 +50,7 @@ const terminalKeys: Array<{ key: TerminalKey; label: string; ariaLabel: string }
 const maxClipboardBytes = 512 * 1024
 
 export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.IntrinsicElements["div"]>(
-    ({ wsUrl, setClose, commandsOpen: controlledCommandsOpen, onCommandsOpenChange, className = "", ...props }, ref) => {
+    ({ wsUrl, setClose, commandsOpen: controlledCommandsOpen, onCommandsOpenChange, sessionPanel, className = "", ...props }, ref) => {
         const shellRef = useRef<HTMLDivElement>(null)
         const screenRef = useRef<HTMLDivElement>(null)
         const terminalRef = useRef<Terminal | null>(null)
@@ -367,6 +360,7 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
                 </div>
                 </div>
                 <TerminalCommandsPanel open={commandsOpen} connected={connectionState === "connected"} onClose={() => setCommandsOpen(false)} onExecute={executeCommand} />
+                {sessionPanel}
             </div>
         )
     },
@@ -374,66 +368,70 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
 
 export const TerminalPage = () => {
     const { id } = useParams<{ id: string }>()
+    const serverId = Number(id)
     const [open, setOpen] = useState(false)
-    const [commandsOpen, setCommandsOpen] = useState(() => window.innerWidth >= 1024)
-    const terminal = useTerminal(id ? parseInt(id) : undefined)
+    const [commandsOpen, setCommandsOpen] = useState(false)
+    const [sessionsOpen, setSessionsOpen] = useState(true)
+    const [terminal, setTerminal] = useState<SessionTerminal | null>(null)
+    const [error, setError] = useState("")
+    const [keeping, setKeeping] = useState(false)
+    const [connection, setConnection] = useState(0)
     const terminalIdRef = useRef<HTMLDivElement>(null)
+    useEffect(() => {
+        if (!Number.isSafeInteger(serverId) || serverId < 1) return
+        let cancelled = false
+        setTerminal(null); setError("")
+        void createSessionTerminal(serverId).then(next => { if (!cancelled) setTerminal(next) })
+            .catch(e => { if (!cancelled) setError(e instanceof Error ? e.message : "终端连接失败") })
+        return () => { cancelled = true }
+    }, [serverId])
+    const select = (next: SessionTerminal) => { setOpen(false); setTerminal(next); setConnection(v => v + 1) }
+    const keep = async () => {
+        if (!terminal?.session_id || keeping) return
+        if (terminal.keep && !window.confirm("关闭保持后，下次断开网页将结束这个终端。是否继续？")) return
+        setKeeping(true)
+        try {
+            const next = await keepSession(terminal.session_id, !terminal.keep)
+            setTerminal(next)
+            toast.success(next.keep ? "已保持，关闭网页后可从会话列表接回" : "已关闭保持")
+        } catch (e) { toast.error(e instanceof Error ? e.message : "设置失败") }
+        finally { setKeeping(false) }
+    }
+    const setCommands = (value: boolean) => { setCommandsOpen(value); if (value) setSessionsOpen(false) }
+    const panel = <TerminalSessionsPanel serverId={serverId} open={sessionsOpen} current={terminal}
+        onClose={() => setSessionsOpen(false)} onSelect={select} onUpdate={setTerminal}/>
     return (
         <div className="terminal-page px-3 sm:px-8">
-            <div className="flex mt-3 sm:mt-6 mb-3 sm:mb-4 items-center gap-2">
-                <h1 className="min-w-0 flex-1 truncate text-xl sm:text-3xl font-bold tracking-tight" title={`Terminal (${id})`}>{`Terminal (${id})`}</h1>
-                <div className="flex ml-auto gap-2 shrink-0">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        className="h-10 gap-1.5 px-2 sm:px-3"
-                        aria-label="快捷命令"
-                        aria-controls="terminal-command-panel"
-                        aria-expanded={commandsOpen}
-                        title={commandsOpen ? "收起快捷命令" : "打开快捷命令"}
-                        disabled={!terminal?.session_id}
-                        onClick={() => setCommandsOpen(value => !value)}
-                    >
-                        <PanelRight className="h-4 w-4" aria-hidden />
-                        <span className="hidden sm:inline">快捷命令</span>
-                        <span className="sm:hidden">命令</span>
+            <div className="flex flex-wrap mt-3 sm:mt-6 mb-3 sm:mb-4 items-center gap-2">
+                <h1 className="min-w-0 basis-full sm:basis-auto flex-1 truncate text-xl sm:text-3xl font-bold tracking-tight" title={terminal?.server_name || `Terminal (${id})`}>{terminal?.server_name || `Terminal (${id})`}</h1>
+                <div className="flex ml-auto gap-1 sm:gap-2 shrink-0">
+                    <Button type="button" variant={terminal?.keep ? "default" : "outline"} className="h-10 gap-1.5 px-2 sm:px-3"
+                        aria-pressed={!!terminal?.keep} disabled={!terminal?.session_id || terminal.kind === "tmux" || keeping || open}
+                        title={terminal?.kind === "tmux" ? "当前为 tmux，会话会自动保留" : "保持当前终端，关闭网页后任务继续运行"}
+                        onClick={() => void keep()}>
+                        <Pin className="h-4 w-4" aria-hidden/>{terminal?.kind === "tmux" ? "tmux" : terminal?.keep ? "已保持" : "保持"}
                     </Button>
-                    <IconButton
-                        icon="expand"
-                        onClick={async () => {
-                            await terminalIdRef.current?.requestFullscreen()
-                        }}
-                    />
-                    <FMCard id={id} />
+                    <Button type="button" variant="outline" className="h-10 gap-1.5 px-2 sm:px-3" aria-expanded={sessionsOpen}
+                        aria-controls="terminal-session-panel" onClick={() => { setSessionsOpen(v => !v); setCommandsOpen(false) }}>
+                        <Layers className="h-4 w-4" aria-hidden/>会话
+                    </Button>
+                    <Button type="button" variant="outline" className="h-10 gap-1.5 px-2 sm:px-3" aria-label="快捷命令"
+                        aria-controls="terminal-command-panel" aria-expanded={commandsOpen} disabled={!terminal?.session_id}
+                        onClick={() => setCommands(!commandsOpen)}>
+                        <PanelRight className="h-4 w-4" aria-hidden/><span className="hidden sm:inline">快捷命令</span><span className="sm:hidden">命令</span>
+                    </Button>
+                    <IconButton icon="expand" onClick={async () => { await terminalIdRef.current?.requestFullscreen() }}/>
+                    <FMCard id={id}/>
                 </div>
             </div>
-            {terminal?.session_id ? (
-                <XtermComponent
-                    ref={terminalIdRef}
-                    className="mb-3 sm:mb-5"
-                    wsUrl={`/api/v1/ws/terminal/${terminal.session_id}`}
-                    setClose={setOpen}
-                    commandsOpen={commandsOpen}
-                    onCommandsOpenChange={setCommandsOpen}
-                />
-            ) : (
-                <p>The server does not exist, or have not been connected yet.</p>
-            )}
-            <AlertDialog open={open} onOpenChange={setOpen}>
-                <AlertDialogContent className="sm:max-w-lg">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Session completed</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            You may close this window now.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogAction asChild>
-                            <Button onClick={window.close}>Close</Button>
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            {error && <p role="alert" className="text-destructive mb-3">{error}</p>}
+            {open && <div role="status" className="mb-3 rounded-lg border p-3 text-sm">连接已断开。已保持的终端或 tmux 会话可从“会话”重新进入。
+                <button className="ml-2 underline" onClick={() => { setSessionsOpen(true); setCommandsOpen(false); setOpen(false) }}>查看会话</button>
+            </div>}
+            {terminal?.session_id ? <XtermComponent ref={terminalIdRef} className="mb-3 sm:mb-5"
+                wsUrl={`/api/v1/ws/terminal/${terminal.session_id}?connection=${connection}`} setClose={setOpen} commandsOpen={commandsOpen}
+                onCommandsOpenChange={setCommands} sessionPanel={panel}/>
+                : <div className="terminal-shell relative flex" style={{ minHeight: 320 }}><p className="flex-1 p-4">{error || "正在连接…"}</p>{panel}</div>}
         </div>
     )
 }

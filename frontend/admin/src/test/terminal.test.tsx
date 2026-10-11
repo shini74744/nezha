@@ -16,7 +16,11 @@ vi.mock("@/components/terminal-commands", () => ({
     TerminalCommandsPanel: ({ open, onClose, onExecute }: { open: boolean; onClose: () => void; onExecute: (value: string) => boolean }) => open
         ? <><button onClick={onClose}>收起快捷命令栏</button><button onClick={() => onExecute("printf ok")}>Test execute</button><button onClick={() => onExecute("ls\n")}>Test invalid</button></> : null,
 }))
-vi.mock("@/hooks/useTerminal", () => ({ default: () => ({ session_id: "test-session" }) }))
+vi.mock("@/api/terminal-sessions", () => ({
+    createSessionTerminal: vi.fn(async () => ({ session_id: "test-session", kind: "native", keep: false })),
+    sessionRequest: vi.fn(async (action: string) => action === "list" ? ({ native: [], tmux: [], installed: true }) : ({ state: "idle", message: "" })),
+    keepSession: vi.fn(async (stream_id: string, enabled: boolean) => ({ session_id: stream_id, kind: "native", keep: enabled })),
+}))
 vi.mock("@/components/fm", () => ({ FMCard: () => <button>Files</button> }))
 const toastMock = vi.hoisted(() => vi.fn())
 vi.mock("sonner", () => ({ toast: toastMock }))
@@ -304,14 +308,15 @@ test.each([1280, 320])("page toggle remains available after closing commands at 
             <Routes><Route path="/terminal/:id" element={<TerminalPage />} /></Routes>
         </MemoryRouter>,
     )
+    await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(1))
     const header = container.querySelector("h1")!.parentElement!
     const topToggle = within(header).getByRole("button", { name: "快捷命令" })
     const bottomToggle = within(screen.getByRole("toolbar")).getByRole("button", { name: "快捷命令" })
     const socket = FakeWebSocket.instances[0]
     act(() => socket.open())
     socket.send.mockClear()
-    expect(topToggle.getAttribute("aria-expanded")).toBe(String(width >= 1024))
-    if (width < 1024) fireEvent.click(topToggle)
+    expect(topToggle.getAttribute("aria-expanded")).toBe("false")
+    fireEvent.click(topToggle)
     for (let cycle = 0; cycle < 3; cycle++) {
         fireEvent.click(screen.getByRole("button", { name: "收起快捷命令栏" }))
         expect(topToggle.isConnected).toBe(true)
