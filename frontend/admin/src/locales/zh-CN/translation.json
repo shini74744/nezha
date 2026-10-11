@@ -1,5 +1,10 @@
 {
     "nezha": "哪吒监控",
+    "ServerPositionPlaceholder": "位置",
+    "ServerPositionInput": "将 {{name}} 移到第几位",
+    "ServerPositionApply": "移动 {{name}} 到指定位置",
+    "ServerMoveTo": "移到",
+    "ServerPositionInvalid": "请输入 1～{{total}} 的整数位置",
     "ShowNetworkInDetail": "详细页同时显示网络监控",
     "ShowNetworkInDetailDescription": "开启后，网络监控显示在服务器详细图表下方；关闭后仍可通过“网络”页单独查看。",
     "UUIDActions": "UUID 操作",

@@ -50,6 +50,37 @@ export function reorderServers(
     return next
 }
 
+export function moveServerToPosition(current: ModelServer[], id: number, position: number): ModelServer[] {
+    if (!Number.isInteger(position) || position < 1 || position > current.length) return current
+    const from = current.findIndex(server => server.id === id)
+    if (from < 0 || from === position - 1) return current
+    return reorderServers(current, id, current[position - 1].id, from < position - 1)
+}
+
+function ServerPositionInput({ server, total, busy, onMove }: {
+    server: ModelServer; total: number; busy: boolean; onMove: (position: number) => void
+}) {
+    const { t } = useTranslation()
+    const [value, setValue] = useState("")
+    const apply = () => {
+        if (busy || !value.trim()) return
+        const position = Number(value)
+        if (!Number.isInteger(position) || position < 1 || position > total) {
+            toast.error(t("ServerPositionInvalid", { total })); return
+        }
+        onMove(position); setValue("")
+    }
+    return <div className="flex items-center gap-1" onPointerDown={event => event.stopPropagation()}>
+        <input type="number" inputMode="numeric" min={1} max={total} step={1} value={value} disabled={busy}
+            placeholder={t("ServerPositionPlaceholder")} aria-label={t("ServerPositionInput", { name: server.name })}
+            className="h-9 w-14 min-w-0 rounded-md border bg-background px-1.5 text-center text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            onChange={event => setValue(event.target.value)}
+            onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); event.stopPropagation(); apply() } }}/>
+        <Button type="button" size="sm" variant="outline" className="h-9 px-2" disabled={busy || !value.trim()}
+            aria-label={t("ServerPositionApply", { name: server.name })} onClick={apply}>{t("ServerMoveTo")}</Button>
+    </div>
+}
+
 export function ServerSortDialog({ servers, mutate }: ServerSortDialogProps) {
     const { t } = useTranslation()
     const [open, setOpen] = useState(false)
@@ -156,7 +187,7 @@ export function ServerSortDialog({ servers, mutate }: ServerSortDialogProps) {
                                         data-sort-drop={
                                             drag.preview.target.after ? "after" : "before"
                                         }
-                                        className={`pointer-events-none absolute -left-px -right-px z-10 h-0.5 rounded bg-primary ${drag.preview.target.after ? "-bottom-1.5" : "-top-1.5"}`}
+                                        className={`pointer-events-none absolute -left-px -right-px z-10 h-0.5 rounded bg-emerald-500 ${drag.preview.target.after ? "-bottom-1.5" : "-top-1.5"}`}
                                     />
                                 )}
                             <span data-sort-handle className="touch-none shrink-0 p-1">
@@ -174,7 +205,9 @@ export function ServerSortDialog({ servers, mutate }: ServerSortDialogProps) {
                                     ID {server.id}
                                 </div>
                             </div>
-                            <div className="flex shrink-0 gap-1">
+                            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1 max-sm:max-w-[7.5rem]">
+                                <ServerPositionInput server={server} total={ordered.length} busy={interactionBusy}
+                                    onMove={position => setOrdered(current => moveServerToPosition(current, server.id, position))}/>
                                 <Button
                                     size="icon"
                                     variant="ghost"

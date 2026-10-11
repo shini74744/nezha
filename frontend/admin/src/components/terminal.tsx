@@ -1,5 +1,7 @@
-import { createSessionTerminal, keepSession, SessionTerminal } from "@/api/terminal-sessions"
+import { createSessionTerminal, InstallState, keepSession, SessionTerminal } from "@/api/terminal-sessions"
 import { TerminalSessionsPanel } from "./terminal-sessions"
+import { useTerminalConfirm } from "./terminal-confirm"
+import { TerminalInstallLog } from "./terminal-install-log"
 import { type TerminalKey, controlSequenceForInput, terminalKeySequence } from "@/lib/terminal-keys"
 import { FitAddon } from "@xterm/addon-fit"
 import { Terminal } from "@xterm/xterm"
@@ -29,6 +31,7 @@ interface XtermProps {
     setClose: React.Dispatch<React.SetStateAction<boolean>>
     commandsOpen?: boolean
     sessionPanel?: React.ReactNode
+    installPanel?: React.ReactNode
     onCommandsOpenChange?: (open: boolean) => void
 }
 
@@ -50,11 +53,13 @@ const terminalKeys: Array<{ key: TerminalKey; label: string; ariaLabel: string }
 const maxClipboardBytes = 512 * 1024
 
 export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.IntrinsicElements["div"]>(
-    ({ wsUrl, setClose, commandsOpen: controlledCommandsOpen, onCommandsOpenChange, sessionPanel, className = "", ...props }, ref) => {
+    ({ wsUrl, setClose, commandsOpen: controlledCommandsOpen, onCommandsOpenChange, sessionPanel, installPanel, className = "", ...props }, ref) => {
         const shellRef = useRef<HTMLDivElement>(null)
         const screenRef = useRef<HTMLDivElement>(null)
         const terminalRef = useRef<Terminal | null>(null)
         const wsRef = useRef<WebSocket | null>(null)
+        const installVisibleRef = useRef(!!installPanel)
+        installVisibleRef.current = !!installPanel
         const fitAddonRef = useRef<FitAddon | null>(null)
         const fitFrameRef = useRef(0)
         const lastSizeRef = useRef("")
@@ -142,7 +147,7 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
             setConnectionState("connecting")
 
             const sendText = (data: string, applyControl: boolean) => {
-                if (ws.readyState !== WebSocket.OPEN) return
+                if (ws.readyState !== WebSocket.OPEN || installVisibleRef.current) return
                 let outgoing = data
                 if (applyControl && controlActiveRef.current) {
                     outgoing = controlSequenceForInput(data) ?? data
@@ -156,7 +161,7 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
                 sendText(data, !pasteInProgressRef.current)
             })
             const binarySubscription = terminal.onBinary((data) => {
-                if (ws.readyState !== WebSocket.OPEN) return
+                if (ws.readyState !== WebSocket.OPEN || installVisibleRef.current) return
                 const message = new Uint8Array(data.length + 1)
                 for (let index = 0; index < data.length; index += 1) {
                     message[index + 1] = data.charCodeAt(index) & 0xff
@@ -252,7 +257,7 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
             const requestID = ++pasteRequestRef.current
             try {
                 const text = await navigator.clipboard.readText()
-                if (pasteRequestRef.current !== requestID) return
+                if (pasteRequestRef.current !== requestID || installVisibleRef.current) return
                 if (!text) {
                     toast("Clipboard is empty")
                     return
@@ -286,7 +291,7 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
         const executeCommand = (command: string) => {
             const ws = wsRef.current
             const terminal = terminalRef.current
-            if (!ws || ws.readyState !== WebSocket.OPEN || !terminal || terminalCommandError(command)) return false
+            if (installVisibleRef.current || !ws || ws.readyState !== WebSocket.OPEN || !terminal || terminalCommandError(command)) return false
             updateControl(false)
             pasteInProgressRef.current = true
             try {
@@ -315,9 +320,10 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
                 data-connection-state={connectionState}
                 {...props}
             >
-                <div className="terminal-main">
-                <div ref={screenRef} className="terminal-screen" />
-                <div className="terminal-keyboard" role="toolbar" aria-label="Terminal controls">
+                <div className="terminal-main relative">
+                <div ref={screenRef} className="terminal-screen" inert={!!installPanel}/>
+                {installPanel}
+                <div inert={!!installPanel} className="terminal-keyboard" role="toolbar" aria-label="Terminal controls">
                     <button type="button" className="terminal-key terminal-key-commands"
                         aria-label="快捷命令" aria-expanded={commandsOpen} aria-controls="terminal-command-panel"
                         onClick={() => setCommandsOpen(!commandsOpen)}>
@@ -371,12 +377,25 @@ export const TerminalPage = () => {
     const serverId = Number(id)
     const [open, setOpen] = useState(false)
     const [commandsOpen, setCommandsOpen] = useState(false)
-    const [sessionsOpen, setSessionsOpen] = useState(true)
+    const [sessionsOpen, setSessionsOpen] = useState(false)
+    const [sessionMode, setSessionMode] = useState<"native" | "tmux">("native")
+    const [reconnecting, setReconnecting] = useState(false)
+    const [install, setInstall] = useState<InstallState>({ state: "idle", message: "" })
+    const [installOpen, setInstallOpen] = useState(false)
+    const installStateRef = useRef("idle")
+    const updateInstall = useCallback((next: InstallState) => {
+        if (next.state === "running" && installStateRef.current !== "running") setInstallOpen(true)
+        if (next.state === "idle") setInstallOpen(false)
+        installStateRef.current = next.state; setInstall(next)
+    }, [])
+    const showInstall = useCallback(() => { setInstallOpen(true); if (window.innerWidth < 1024) setSessionsOpen(false) }, [])
+    const reconnectingRef = useRef(false)
     const [terminal, setTerminal] = useState<SessionTerminal | null>(null)
     const [error, setError] = useState("")
     const [keeping, setKeeping] = useState(false)
     const [connection, setConnection] = useState(0)
     const terminalIdRef = useRef<HTMLDivElement>(null)
+    const { confirm, dialog } = useTerminalConfirm(`${serverId}:${terminal?.session_id || ""}`)
     useEffect(() => {
         if (!Number.isSafeInteger(serverId) || serverId < 1) return
         let cancelled = false
@@ -388,49 +407,71 @@ export const TerminalPage = () => {
     const select = (next: SessionTerminal) => { setOpen(false); setTerminal(next); setConnection(v => v + 1) }
     const keep = async () => {
         if (!terminal?.session_id || keeping) return
-        if (terminal.keep && !window.confirm("关闭保持后，下次断开网页将结束这个终端。是否继续？")) return
         setKeeping(true)
         try {
+            if (terminal.keep && !await confirm({
+                kind: "keep", title: "关闭会话保持？",
+                description: "当前终端不会立即结束。关闭网页或断开连接后，此终端及其中运行的任务将结束。",
+                cancelLabel: "继续保持", confirmLabel: "关闭保持",
+            })) return
             const next = await keepSession(terminal.session_id, !terminal.keep)
             setTerminal(next)
             toast.success(next.keep ? "已保持，关闭网页后可从会话列表接回" : "已关闭保持")
         } catch (e) { toast.error(e instanceof Error ? e.message : "设置失败") }
         finally { setKeeping(false) }
     }
+    const reconnect = async () => {
+        if (reconnectingRef.current) return
+        reconnectingRef.current = true; setReconnecting(true); setError("")
+        try { select(await createSessionTerminal(serverId)) }
+        catch (e) { setError(e instanceof Error ? e.message : "终端连接失败，请重试") }
+        finally { reconnectingRef.current = false; setReconnecting(false) }
+    }
+    const showSessions = (mode: "native" | "tmux") => {
+        setSessionsOpen(value => sessionMode === mode ? !value : true)
+        setSessionMode(mode); setCommandsOpen(false)
+    }
     const setCommands = (value: boolean) => { setCommandsOpen(value); if (value) setSessionsOpen(false) }
-    const panel = <TerminalSessionsPanel serverId={serverId} open={sessionsOpen} current={terminal}
-        onClose={() => setSessionsOpen(false)} onSelect={select} onUpdate={setTerminal}/>
+    const panel = <TerminalSessionsPanel serverId={serverId} open={sessionsOpen} mode={sessionMode} current={terminal}
+        onClose={() => setSessionsOpen(false)} onSelect={select} onInstall={updateInstall} onShowInstall={showInstall}/>
     return (
         <div className="terminal-page px-3 sm:px-8">
+            {dialog}
             <div className="flex flex-wrap mt-3 sm:mt-6 mb-3 sm:mb-4 items-center gap-2">
                 <h1 className="min-w-0 basis-full sm:basis-auto flex-1 truncate text-xl sm:text-3xl font-bold tracking-tight" title={terminal?.server_name || `Terminal (${id})`}>{terminal?.server_name || `Terminal (${id})`}</h1>
-                <div className="flex ml-auto gap-1 sm:gap-2 shrink-0">
+                <div className="flex flex-wrap justify-end ml-auto gap-1 sm:gap-2 min-w-0">
                     <Button type="button" variant={terminal?.keep ? "default" : "outline"} className="h-10 gap-1.5 px-2 sm:px-3"
                         aria-pressed={!!terminal?.keep} disabled={!terminal?.session_id || terminal.kind === "tmux" || keeping || open}
                         title={terminal?.kind === "tmux" ? "当前为 tmux，会话会自动保留" : "保持当前终端，关闭网页后任务继续运行"}
                         onClick={() => void keep()}>
-                        <Pin className="h-4 w-4" aria-hidden/>{terminal?.kind === "tmux" ? "tmux" : terminal?.keep ? "已保持" : "保持"}
+                        <Pin className="h-4 w-4" aria-hidden/>{terminal?.kind === "tmux" ? "tmux 已连接" : terminal?.keep ? "已保持" : "保持当前"}
                     </Button>
-                    <Button type="button" variant="outline" className="h-10 gap-1.5 px-2 sm:px-3" aria-expanded={sessionsOpen}
-                        aria-controls="terminal-session-panel" onClick={() => { setSessionsOpen(v => !v); setCommandsOpen(false) }}>
-                        <Layers className="h-4 w-4" aria-hidden/>会话
+                    <Button type="button" variant="outline" className="h-10 gap-1.5 px-2 sm:px-3" aria-expanded={sessionsOpen && sessionMode === "native"}
+                        aria-controls="terminal-session-panel" onClick={() => showSessions("native")}>
+                        <Layers className="h-4 w-4" aria-hidden/>面板保持
+                    </Button>
+                    <Button type="button" variant="outline" className="h-10 gap-1.5 px-2 sm:px-3" aria-expanded={sessionsOpen && sessionMode === "tmux"}
+                        aria-controls="terminal-session-panel" onClick={() => showSessions("tmux")}>
+                        <TerminalIcon className="h-4 w-4" aria-hidden/>tmux 会话
                     </Button>
                     <Button type="button" variant="outline" className="h-10 gap-1.5 px-2 sm:px-3" aria-label="快捷命令"
                         aria-controls="terminal-command-panel" aria-expanded={commandsOpen} disabled={!terminal?.session_id}
                         onClick={() => setCommands(!commandsOpen)}>
                         <PanelRight className="h-4 w-4" aria-hidden/><span className="hidden sm:inline">快捷命令</span><span className="sm:hidden">命令</span>
                     </Button>
+                    {install.state !== "idle" && <Button type="button" variant="outline" className="h-10 px-2 sm:px-3" onClick={showInstall}>安装进度</Button>}
                     <IconButton icon="expand" onClick={async () => { await terminalIdRef.current?.requestFullscreen() }}/>
                     <FMCard id={id}/>
                 </div>
             </div>
             {error && <p role="alert" className="text-destructive mb-3">{error}</p>}
-            {open && <div role="status" className="mb-3 rounded-lg border p-3 text-sm">连接已断开。已保持的终端或 tmux 会话可从“会话”重新进入。
-                <button className="ml-2 underline" onClick={() => { setSessionsOpen(true); setCommandsOpen(false); setOpen(false) }}>查看会话</button>
+            {open && <div role="status" className="mb-3 rounded-lg border p-3 text-sm">连接已断开。可重新连接普通终端，或从对应列表进入已保留的会话。
+                <button className="ml-2 underline disabled:opacity-50" disabled={reconnecting} onClick={() => void reconnect()}>{reconnecting ? "正在连接…" : "连接普通终端"}</button>
             </div>}
             {terminal?.session_id ? <XtermComponent ref={terminalIdRef} className="mb-3 sm:mb-5"
                 wsUrl={`/api/v1/ws/terminal/${terminal.session_id}?connection=${connection}`} setClose={setOpen} commandsOpen={commandsOpen}
-                onCommandsOpenChange={setCommands} sessionPanel={panel}/>
+                onCommandsOpenChange={setCommands} sessionPanel={panel}
+                installPanel={installOpen && install.state !== "idle" ? <TerminalInstallLog state={install} onClose={() => setInstallOpen(false)}/> : null}/>
                 : <div className="terminal-shell relative flex" style={{ minHeight: 320 }}><p className="flex-1 p-4">{error || "正在连接…"}</p>{panel}</div>}
         </div>
     )

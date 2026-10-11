@@ -55,7 +55,7 @@ for (const width of [320, 390, 768, 1440])
             await page.getByRole("button", { name: "服务器排序", exact: true }).click()
             const dialog = page.getByRole("dialog")
             await expect(dialog).not.toContainText("权重")
-            await expect(dialog.getByRole("spinbutton")).toHaveCount(0)
+            await expect(dialog.getByRole("spinbutton")).toHaveCount(12)
             await expect(dialog.getByRole("button", { name: "保存", exact: true })).toBeDisabled()
             await expect(
                 dialog.getByRole("button", { name: "上移 服务器1", exact: true }),
@@ -243,6 +243,8 @@ for (const theme of ["light", "dark"])
         await expect(
             list.locator('[data-sort-server="' + target + '"] [data-sort-drop="after"]'),
         ).toHaveCount(1)
+        await expect(list.locator("[data-sort-drop]")).toHaveClass(/bg-emerald-500/)
+        await page.screenshot({ path: "test-results/server-sort-green-" + theme + ".png" })
         await page.mouse.up()
         const expected = Array.from({ length: 40 }, (_, i) => i + 1).filter((id) => id !== 1)
         expected.splice(expected.indexOf(target) + 1, 0, 1)
@@ -374,4 +376,56 @@ test.describe("touch server order", () => {
         await expect(dialog.getByRole("button", { name: "保存", exact: true })).toBeEnabled()
         await expect(list.locator("[data-dragging]")).toHaveCount(0)
     })
+})
+
+for (const width of [390, 1440]) test("move position 14 to 11 without changing system IDs " + width, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    let servers = Array.from({ length: 16 }, (_, i) => ({
+        id: 101 + i, name: "位置服务器" + (i + 1), uuid: "position-" + i, display_index: 100 - i, user_id: 1,
+        host: {}, public_note: "", note: "preserve", hide_for_guest: false, hide_for_display: false, enable_ddns: false,
+    }))
+    const writes: { path: string; body: { server_ids: number[] } }[] = []
+    await page.route("**/api/v1/**", async route => {
+        const path = new URL(route.request().url()).pathname
+        let data: unknown = []
+        if (path === "/api/v1/profile") data = { id: 1, username: "admin", role: 0 }
+        if (path === "/api/v1/setting") data = { config: { language: "zh-CN" }, version: "fixture" }
+        if (path === "/api/v1/server") data = servers
+        if (route.request().method() === "POST") {
+            const body = route.request().postDataJSON()
+            writes.push({ path, body })
+            expect(path).toBe("/api/v1/server/order")
+            servers = body.server_ids.map((id: number, index: number) => ({ ...servers.find(s => s.id === id)!, display_index: servers.length - index }))
+        }
+        await route.fulfill({ json: { success: true, data } })
+    })
+    await page.goto("/dashboard")
+    await page.getByRole("button", { name: "服务器排序", exact: true }).click()
+    const dialog = page.getByRole("dialog")
+    const row = dialog.locator('[data-sort-server="114"]')
+    const input = row.getByRole("spinbutton")
+    await input.fill("17")
+    await input.press("Enter")
+    await expect(row.locator("[data-sort-position]")).toHaveText("14")
+    await input.fill("11")
+    await input.press("Enter")
+    await expect(row.locator("[data-sort-position]")).toHaveText("11")
+    await expect(row.getByText("ID 114", { exact: true })).toBeVisible()
+    const ids = () => dialog.locator("[data-sort-server]").evaluateAll(rows => rows.map(row => Number(row.getAttribute("data-sort-server"))))
+    const expected = Array.from({ length: 16 }, (_, i) => 101 + i)
+    expected.splice(13, 1); expected.splice(10, 0, 114)
+    expect(await ids()).toEqual(expected)
+    await expect(dialog.locator('[data-sort-server="111"] [data-sort-position]')).toHaveText("12")
+    await expect(dialog.locator('[data-sort-server="112"] [data-sort-position]')).toHaveText("13")
+    await expect(dialog.locator('[data-sort-server="113"] [data-sort-position]')).toHaveText("14")
+    expect(writes).toHaveLength(0)
+    expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true)
+    await page.screenshot({ path: "test-results/server-position-input-" + width + ".png" })
+    await dialog.getByRole("button", { name: "保存", exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    expect(writes).toEqual([{ path: "/api/v1/server/order", body: { server_ids: expected } }])
+    await page.reload()
+    await page.getByRole("button", { name: "服务器排序", exact: true }).click()
+    expect(await ids()).toEqual(expected)
+    expect(servers.every(s => s.uuid === "position-" + (s.id - 101) && s.note === "preserve")).toBe(true)
 })
