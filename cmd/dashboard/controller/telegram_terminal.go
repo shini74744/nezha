@@ -46,7 +46,7 @@ func registerTelegramTerminalRoutes(r *gin.Engine, dist fs.FS) {
 	if err == nil {
 		r.GET("/telegram-terminal/*path", func(c *gin.Context) {
 			tgTerminalHeaders(c)
-			c.Header("Content-Security-Policy", "default-src 'none'; script-src 'self' https://telegram.org; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors https://web.telegram.org https://*.telegram.org")
+			c.Header("Content-Security-Policy", "default-src 'none'; script-src 'self' https://telegram.org; style-src 'self' 'unsafe-inline'; connect-src 'self'; worker-src 'self' blob:; img-src 'self' data: blob:; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors https://web.telegram.org https://*.telegram.org")
 			path := strings.TrimPrefix(c.Param("path"), "/")
 			if path == "" {
 				path = "index.html"
@@ -69,6 +69,9 @@ func registerTelegramTerminalRoutes(r *gin.Engine, dist fs.FS) {
 	api.POST("/servers", tgTerminalServers)
 	api.POST("/connect", tgTerminalConnect)
 	api.GET("/ws", tgTerminalWebSocket)
+	api.POST("/ui", tgTerminalUI)
+	api.POST("/ui-ticket", tgTerminalUITicket)
+	api.GET("/ui-ws", tgTerminalUISocket)
 }
 func cloneTelegramStaticRequest(r *http.Request, path string) *http.Request {
 	copy := r.Clone(r.Context())
@@ -162,7 +165,7 @@ func tgTerminalBootstrap(c *gin.Context) {
 		tgTerminalDeny(c)
 		return
 	}
-	c.JSON(200, gin.H{"token": token, "expires_in": 900})
+	c.JSON(200, gin.H{"token": token, "expires_in": 900, "user_id": user.ID})
 }
 func tgTerminalSession(c *gin.Context) (tgTerminalGrant, *model.User, bool) {
 	header := c.GetHeader("Authorization")

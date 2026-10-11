@@ -1,3 +1,4 @@
+import { createTerminalSocket, type TerminalSocket } from "@/lib/terminal-transport"
 import { createFM } from "@/api/fm"
 import { useMediaQuery } from "@/hooks/useMediaQuery"
 import { copyToClipboard, createFMWorker, fm, formatPath } from "@/lib/utils"
@@ -79,7 +80,7 @@ export function FMComponent({
     const [transfer, setTransferState] = useState<Transfer | null>(null)
     const [uploadChoice, setUploadChoice] = useState<UploadChoice | null>(null)
     const transferRef = useRef<Transfer | null>(null)
-    const wsRef = useRef<WebSocket | null>(null)
+    const wsRef = useRef<TerminalSocket | null>(null)
     const pathRef = useRef("")
     const listingRef = useRef(false)
     const workerRef = useRef<Worker | null>(null)
@@ -150,7 +151,7 @@ export function FMComponent({
         let active = true
         const url = new URL(wsUrl, window.location.origin)
         url.protocol = url.protocol.replace("http", "ws")
-        const ws = new WebSocket(url)
+        const ws = createTerminalSocket(url)
         ws.binaryType = "arraybuffer"
         wsRef.current = ws
         setConnection("connecting")

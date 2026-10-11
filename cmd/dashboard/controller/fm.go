@@ -95,7 +95,7 @@ func fmStream(c *gin.Context) (any, error) {
 	}
 	defer rpc.NezhaHandlerSingleton.CloseStream(streamId)
 
-	wsConn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	wsConn, err := upgradeTerminalSocket(c)
 	if err != nil {
 		return nil, newWsError("%v", err)
 	}

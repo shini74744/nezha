@@ -1,7 +1,7 @@
 import { expect, test, Page, WebSocketRoute } from "@playwright/test"
 
 async function fixture(page: Page, installed = true, installFails = false) {
-    const state = { creates: 0, connects: 0, closed: [] as string[], resumes: 0, keeps: 0, ends: 0, installs: 0, failCreate: false, failEnd: false, failAttach: false }
+    const state = { windowCreates: 0, windowEnds: 0, failWindow: false, creates: 0, connects: 0, closed: [] as string[], resumes: 0, keeps: 0, ends: 0, installs: 0, failCreate: false, failEnd: false, failAttach: false }
     const held = new Set<string>()
     let polls = 0
     const sockets = new Map<string, WebSocketRoute>()
@@ -35,6 +35,19 @@ async function fixture(page: Page, installed = true, installFails = false) {
             const id = body.record_id || 4
             if (!body.record_id) tmux.push({ id, name: body.name, source: "panel", windows: [{ id: "@4", index: 0, name: body.window }] })
             data = { session_id: "tmux-" + id, record_id: id, kind: "tmux", server_id: 63 }
+        } else if (path.endsWith("/tmux/window/create") || path.endsWith("/tmux/window/end")) {
+            if (state.failWindow) return fail()
+            const row = tmux.find(row => row.id === body.record_id)!
+            if (path.endsWith("/create")) {
+                state.windowCreates++
+                row.windows.push({ id: "@" + (10 + state.windowCreates), index: row.windows.length, name: body.name })
+            } else {
+                expect(body.confirm).toBe(true)
+                expect(row.windows.length).toBeGreaterThan(1)
+                state.windowEnds++
+                row.windows = row.windows.filter(win => win.id !== body.window)
+            }
+            data = { session_closed: false, windows: row.windows }
         } else if (path.endsWith("/stop") || path.endsWith("/tmux/end")) {
             state.ends++
             if (state.failEnd) return fail()
@@ -129,7 +142,7 @@ test("tmux creation never keeps ordinary terminal and ending current returns fre
     await page.getByRole("alertdialog").getByRole("button", { name: "结束旧终端并切换" }).click()
     await expect(page.getByRole("button", { name: "tmux 已连接" })).toBeVisible()
     expect(state.keeps).toBe(0)
-    await card(page, "网站维护").getByRole("button", { name: "结束", exact: true }).click()
+    await card(page, "网站维护").getByRole("button", { name: "结束会话", exact: true }).click()
     await page.getByRole("alertdialog").getByRole("button", { name: "结束会话", exact: true }).click()
     await expect.poll(() => state.connects).toBe(3)
     await expect(page.getByRole("button", { name: "保持当前", exact: true })).toBeEnabled()
@@ -143,11 +156,11 @@ test("ending other tmux does not replace current shell; failure does not reconne
     await page.goto("/dashboard/terminal/63")
     await page.getByRole("button", { name: "tmux 会话", exact: true }).click()
     state.failEnd = true
-    await card(page, "manual-ssh").getByRole("button", { name: "结束", exact: true }).click()
+    await card(page, "manual-ssh").getByRole("button", { name: "结束会话", exact: true }).click()
     await page.getByRole("alertdialog").getByRole("button", { name: "结束会话", exact: true }).click()
     await expect(card(page, "manual-ssh")).toBeVisible()
     state.failEnd = false
-    await card(page, "manual-ssh").getByRole("button", { name: "结束", exact: true }).click()
+    await card(page, "manual-ssh").getByRole("button", { name: "结束会话", exact: true }).click()
     await page.getByRole("alertdialog").getByRole("button", { name: "结束会话", exact: true }).click()
     await expect(card(page, "manual-ssh")).toHaveCount(0)
     expect(state.creates).toBe(1); expect(state.connects).toBe(1)
@@ -168,7 +181,7 @@ test("failed fresh connection can retry without ending tmux again", async ({ pag
     await page.goto("/dashboard/terminal/63")
     await enterTmux(page)
     state.failCreate = true
-    await card(page, "build-session").getByRole("button", { name: "结束", exact: true }).click()
+    await card(page, "build-session").getByRole("button", { name: "结束会话", exact: true }).click()
     await page.getByRole("alertdialog").getByRole("button", { name: "结束会话", exact: true }).click()
     await expect(page.getByRole("button", { name: "连接普通终端", exact: true })).toBeVisible()
     await expect.poll(() => state.creates).toBe(2)
@@ -278,4 +291,71 @@ test("current held session enters without duplicate resume and removing keep upd
     await expect.poll(() => state.resumes).toBe(1)
     await expect.poll(() => state.connects).toBe(2)
     expect(state.ends).toBe(0)
+})
+
+for (const width of [320, 390, 1440]) for (const theme of ["light", "dark"]) test("window controls add end last protection " + width + " " + theme, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.addInitScript(theme => localStorage.setItem("nezha-dashboard-theme", theme), theme)
+    const { state } = await fixture(page)
+    await page.goto("/dashboard/terminal/63")
+    await page.getByRole("button", { name: "收起快捷命令栏" }).click()
+    await page.getByRole("button", { name: "tmux 会话", exact: true }).click()
+    const row = card(page, "manual-ssh")
+    await expect(row.getByRole("button", { name: /结束窗口/ })).toHaveCount(0)
+    await row.getByRole("button", { name: "在会话 manual-ssh 添加窗口" }).click()
+    await row.getByRole("textbox", { name: "新增窗口名称" }).fill("新增工作窗口")
+    await row.getByRole("button", { name: "添加窗口", exact: true }).click()
+    await expect(row.getByRole("button", { name: "1 · 新增工作窗口", exact: true })).toBeVisible()
+    expect(state.windowCreates).toBe(1)
+    expect(state.creates).toBe(1)
+    expect(state.connects).toBe(1)
+    await expect(row.getByRole("button", { name: /结束窗口/ })).toHaveCount(2)
+    await expect(row.getByRole("button", { name: "在会话 manual-ssh 新增窗口" })).toBeVisible()
+    expect(await panel(page).evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true)
+    await page.screenshot({ path: info.outputPath("tmux-multiple-windows.png") })
+    await row.getByRole("button", { name: "结束窗口 1 · 新增工作窗口" }).click()
+    const confirm = page.getByRole("alertdialog")
+    await expect(confirm).toContainText("其他窗口将保留")
+    await confirm.getByRole("button", { name: "保留窗口", exact: true }).click()
+    expect(state.windowEnds).toBe(0)
+    await row.getByRole("button", { name: "结束窗口 1 · 新增工作窗口" }).click()
+    await confirm.getByRole("button", { name: "结束窗口", exact: true }).click()
+    await expect(row.getByRole("button", { name: "在会话 manual-ssh 添加窗口" })).toBeVisible()
+    await expect(row.getByRole("button", { name: /结束窗口/ })).toHaveCount(0)
+    await expect(row.getByRole("button", { name: "0 · 手动创建", exact: true })).toBeVisible()
+    await expect(card(page, "build-session").getByRole("button", { name: /结束窗口/ })).toHaveCount(2)
+    expect(state.windowEnds).toBe(1)
+    expect(state.connects).toBe(1)
+    await page.screenshot({ path: info.outputPath("tmux-last-window.png") })
+    await row.getByRole("button", { name: "结束会话", exact: true }).click()
+    await confirm.getByRole("button", { name: "结束会话", exact: true }).click()
+    await expect(row).toHaveCount(0)
+    expect(state.ends).toBe(1)
+    expect(state.connects).toBe(1)
+})
+
+test("ending current tmux window preserves connection and failed create preserves draft", async ({ page }) => {
+    const { state } = await fixture(page)
+    await page.goto("/dashboard/terminal/63")
+    await enterTmux(page)
+    await expect.poll(() => state.connects).toBe(2)
+    const row = card(page, "build-session")
+    const connections = state.connects
+    await row.getByRole("button", { name: "结束窗口 0 · 编译窗口" }).click()
+    await page.getByRole("alertdialog").getByRole("button", { name: "结束窗口", exact: true }).click()
+    await expect(row.getByRole("button", { name: "在会话 build-session 添加窗口" })).toBeVisible()
+    expect(state.connects).toBe(connections)
+    expect(state.closed).not.toContain("tmux-2")
+    state.failWindow = true
+    await row.getByRole("button", { name: "在会话 build-session 添加窗口" }).click()
+    await row.getByRole("textbox", { name: "新增窗口名称" }).fill("保留草稿")
+    await row.getByRole("button", { name: "添加窗口", exact: true }).click()
+    await expect(row.getByRole("textbox", { name: "新增窗口名称" })).toHaveValue("保留草稿")
+    await expect(row.getByRole("button", { name: "添加窗口", exact: true })).toBeEnabled()
+    expect(state.windowCreates).toBe(0)
+    state.failWindow = false
+    await row.getByRole("button", { name: "添加窗口", exact: true }).click()
+    await expect(row.getByRole("button", { name: "1 · 保留草稿", exact: true })).toBeVisible()
+    expect(state.windowCreates).toBe(1)
+    expect(state.connects).toBe(connections)
 })

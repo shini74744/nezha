@@ -1,3 +1,4 @@
+import { createTerminalSocket, type TerminalSocket } from "@/lib/terminal-transport"
 import { createSessionTerminal, InstallState, keepSession, SessionTerminal } from "@/api/terminal-sessions"
 import { TerminalSessionsPanel } from "./terminal-sessions"
 import { useTerminalConfirm } from "./terminal-confirm"
@@ -58,7 +59,7 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
         const shellRef = useRef<HTMLDivElement>(null)
         const screenRef = useRef<HTMLDivElement>(null)
         const terminalRef = useRef<Terminal | null>(null)
-        const wsRef = useRef<WebSocket | null>(null)
+        const wsRef = useRef<TerminalSocket | null>(null)
         const installVisibleRef = useRef(!!installPanel)
         installVisibleRef.current = !!installPanel
         const fitAddonRef = useRef<FitAddon | null>(null)
@@ -144,7 +145,7 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
 
             const url = new URL(wsUrl, window.location.origin)
             url.protocol = url.protocol.replace("http", "ws")
-            const ws = new WebSocket(url)
+            const ws = createTerminalSocket(url)
             ws.binaryType = "arraybuffer"
             wsRef.current = ws
             pasteInProgressRef.current = false
@@ -386,8 +387,9 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
     },
 )
 
-export const TerminalPage = () => {
-    const { id } = useParams<{ id: string }>()
+export const TerminalPage = ({ targetServerId, telegram = false }: { targetServerId?: number; telegram?: boolean } = {}) => {
+    const { id: routeId } = useParams<{ id: string }>()
+    const id = targetServerId === undefined ? routeId : String(targetServerId)
     const serverId = Number(id)
     const [open, setOpen] = useState(false)
     const [commandsOpen, setCommandsOpen] = useState(true)
@@ -454,7 +456,7 @@ export const TerminalPage = () => {
             <div className="flex flex-wrap mt-3 sm:mt-6 mb-3 sm:mb-4 items-center gap-2">
                 <h1 className="min-w-0 basis-full sm:basis-auto flex-1 truncate text-xl sm:text-3xl font-bold tracking-tight" title={terminal?.server_name || `Terminal (${id})`}>{terminal?.server_name || `Terminal (${id})`}</h1>
                 <div className="flex flex-wrap justify-end ml-auto gap-1 sm:gap-2 min-w-0">
-                    <Button type="button" variant={terminal?.keep ? "default" : "outline"} className="h-10 gap-1.5 px-2 sm:px-3"
+                    {!telegram && <><Button type="button" variant={terminal?.keep ? "default" : "outline"} className="h-10 gap-1.5 px-2 sm:px-3"
                         aria-pressed={!!terminal?.keep} disabled={!terminal?.session_id || terminal.kind === "tmux" || keeping || open}
                         title={terminal?.kind === "tmux" ? "当前为 tmux，会话会自动保留" : "保持当前终端，关闭网页后任务继续运行"}
                         onClick={() => void keep()}>
@@ -463,7 +465,7 @@ export const TerminalPage = () => {
                     <Button type="button" variant="outline" className="h-10 gap-1.5 px-2 sm:px-3" aria-expanded={sessionsOpen && sessionMode === "native"}
                         aria-controls="terminal-session-panel" onClick={() => showSessions("native")}>
                         <Layers className="h-4 w-4" aria-hidden/>面板保持
-                    </Button>
+                    </Button></>}
                     <Button type="button" variant="outline" className="h-10 gap-1.5 px-2 sm:px-3" aria-expanded={sessionsOpen && sessionMode === "tmux"}
                         aria-controls="terminal-session-panel" onClick={() => showSessions("tmux")}>
                         <TerminalIcon className="h-4 w-4" aria-hidden/>tmux 会话
@@ -474,7 +476,10 @@ export const TerminalPage = () => {
                         <PanelRight className="h-4 w-4" aria-hidden/><span className="hidden sm:inline">快捷命令</span><span className="sm:hidden">命令</span>
                     </Button>
                     {install.state !== "idle" && <Button type="button" variant="outline" className="h-10 px-2 sm:px-3" onClick={showInstall}>安装进度</Button>}
-                    <IconButton icon="expand" onClick={async () => { await terminalIdRef.current?.requestFullscreen() }}/>
+                    <IconButton icon="expand" aria-label="全屏终端" title="全屏终端" onClick={async () => {
+                        try { if (!terminalIdRef.current?.requestFullscreen) throw new Error(); await terminalIdRef.current.requestFullscreen() }
+                        catch { toast.info("当前浏览器暂不支持全屏，请使用横屏操作") }
+                    }}/>
                     <FMCard id={id}/>
                 </div>
             </div>

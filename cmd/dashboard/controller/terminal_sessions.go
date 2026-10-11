@@ -22,6 +22,7 @@ import (
 )
 
 type managedTerminal struct {
+	TGAccess                                    *tgUIAccess
 	mu                                          sync.Mutex
 	ID                                          string
 	UserID, ServerID, ServerOwner, TokenVersion uint64
@@ -76,6 +77,9 @@ func managedLookup(id string) *managedTerminal {
 	return managedTerminals.rows[id]
 }
 func (m *managedTerminal) valid() bool {
+	if m.TGAccess != nil && !m.TGAccess.valid() {
+		return false
+	}
 	if singleton.DB == nil || singleton.ServerShared == nil || singleton.ServerIDReassignmentInProgress.Load() {
 		return false
 	}
@@ -127,7 +131,7 @@ func newManagedTerminal(c *gin.Context, serverID uint64, kind string, rowID uint
 	if err = handler.CreateStreamWithPurpose(id, u.ID, s.ID, rpc.PurposeTerminal); err != nil {
 		return nil, err
 	}
-	m := &managedTerminal{ID: id, UserID: u.ID, ServerID: s.ID, ServerOwner: s.GetUserID(), ServerUUID: s.UUID, TokenVersion: u.TokenVersion, Role: u.Role, Name: s.Name, Kind: kind, RowID: rowID, Created: time.Now(), Bridge: terminalsession.New(), Handler: handler}
+	m := &managedTerminal{TGAccess: tgUIAccessFor(c), ID: id, UserID: u.ID, ServerID: s.ID, ServerOwner: s.GetUserID(), ServerUUID: s.UUID, TokenVersion: u.TokenVersion, Role: u.Role, Name: s.Name, Kind: kind, RowID: rowID, Created: time.Now(), Bridge: terminalsession.New(), Handler: handler}
 	if err = handler.UserConnected(id, m.Bridge); err != nil {
 		m.close()
 		return nil, err
@@ -179,7 +183,7 @@ func managedForRequest(c *gin.Context, id string) (*managedTerminal, error) {
 		return nil, e
 	}
 	m := managedLookup(id)
-	if m == nil || m.UserID != u.ID || !m.valid() {
+	if m == nil || m.UserID != u.ID || !m.valid() || !sameTerminalAccess(m.TGAccess, tgUIAccessFor(c)) {
 		return nil, errors.New("会话已结束或无权访问")
 	}
 	return m, nil
@@ -203,7 +207,7 @@ func managedTerminalStream(c *gin.Context, m *managedTerminal) (any, error) {
 			m.close()
 		}
 	}()
-	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	ws, err := upgradeTerminalSocket(c)
 	if err != nil {
 		return nil, err
 	}
