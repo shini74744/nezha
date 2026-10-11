@@ -33,5 +33,7 @@ export interface FMWorkerData {
     error: string
     blob?: Blob
     progress?: string
+    received?: number
+    total?: number
     fileName?: string
 }

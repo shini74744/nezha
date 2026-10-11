@@ -127,7 +127,7 @@ export const fm = {
     },
 }
 
-export const fmWorker = new FMWorker()
+export const createFMWorker = () => new FMWorker()
 
 export function formatPath(path: string) {
     return path.replace(/\/{2,}/g, "/")

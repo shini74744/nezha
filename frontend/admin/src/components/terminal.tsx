@@ -23,6 +23,7 @@ import { useParams } from "react-router-dom"
 import { toast } from "sonner"
 
 import { FMCard } from "./fm"
+import { useMediaQuery } from "@/hooks/useMediaQuery"
 import { Button } from "./ui/button"
 import { IconButton } from "./xui/icon-button"
 
@@ -68,6 +69,11 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
         const pasteRequestRef = useRef(0)
         const [localCommandsOpen, setLocalCommandsOpen] = useState(() => window.innerWidth >= 1024)
         const commandsOpen = controlledCommandsOpen ?? localCommandsOpen
+        const mobileCommands = useMediaQuery("(max-width: 1023px)") && commandsOpen
+        const commandsBlockedRef = useRef(mobileCommands)
+        commandsBlockedRef.current = mobileCommands
+        const executingCommandRef = useRef(false)
+        const inputBlocked = () => installVisibleRef.current || (commandsBlockedRef.current && !executingCommandRef.current)
         const setCommandsOpen = (next: boolean) => {
             if (controlledCommandsOpen === undefined) setLocalCommandsOpen(next)
             onCommandsOpenChange?.(next)
@@ -147,7 +153,7 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
             setConnectionState("connecting")
 
             const sendText = (data: string, applyControl: boolean) => {
-                if (ws.readyState !== WebSocket.OPEN || installVisibleRef.current) return
+                if (ws.readyState !== WebSocket.OPEN || inputBlocked()) return
                 let outgoing = data
                 if (applyControl && controlActiveRef.current) {
                     outgoing = controlSequenceForInput(data) ?? data
@@ -161,7 +167,7 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
                 sendText(data, !pasteInProgressRef.current)
             })
             const binarySubscription = terminal.onBinary((data) => {
-                if (ws.readyState !== WebSocket.OPEN || installVisibleRef.current) return
+                if (ws.readyState !== WebSocket.OPEN || inputBlocked()) return
                 const message = new Uint8Array(data.length + 1)
                 for (let index = 0; index < data.length; index += 1) {
                     message[index + 1] = data.charCodeAt(index) & 0xff
@@ -174,7 +180,7 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
                 lastSizeRef.current = ""
                 setConnectionState("connected")
                 fit()
-                terminal.focus()
+                if (!inputBlocked() && !document.activeElement?.closest('[role="dialog"], [role="alertdialog"]')) terminal.focus()
             }
             ws.onmessage = (event) => {
                 if (!active) return
@@ -243,8 +249,14 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
             }
         }, [fit, setClose, updateControl, wsUrl])
 
+        const wasCommandsBlocked = useRef(false)
+        useEffect(() => {
+            if (wasCommandsBlocked.current && !mobileCommands && !installVisibleRef.current) terminalRef.current?.focus()
+            wasCommandsBlocked.current = mobileCommands
+        }, [mobileCommands])
+
         const pasteClipboard = async () => {
-            if (pasteBusy || connectionState !== "connected") return
+            if (inputBlocked() || pasteBusy || connectionState !== "connected") return
             if (!navigator.clipboard?.readText) {
                 toast("Clipboard unavailable", {
                     description: "Use HTTPS and allow clipboard permission in your browser.",
@@ -257,7 +269,7 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
             const requestID = ++pasteRequestRef.current
             try {
                 const text = await navigator.clipboard.readText()
-                if (pasteRequestRef.current !== requestID || installVisibleRef.current) return
+                if (pasteRequestRef.current !== requestID || inputBlocked()) return
                 if (!text) {
                     toast("Clipboard is empty")
                     return
@@ -294,19 +306,21 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
             if (installVisibleRef.current || !ws || ws.readyState !== WebSocket.OPEN || !terminal || terminalCommandError(command)) return false
             updateControl(false)
             pasteInProgressRef.current = true
+            executingCommandRef.current = true
             try {
                 terminal.paste(command.trim())
                 ws.send("\r")
             } finally {
+                executingCommandRef.current = false
                 pasteInProgressRef.current = false
             }
-            terminal.focus()
+            if (!commandsBlockedRef.current) terminal.focus()
             return true
         }
 
         const sendKey = (key: TerminalKey) => {
             const ws = wsRef.current
-            if (!ws || ws.readyState !== WebSocket.OPEN) return
+            if (!ws || ws.readyState !== WebSocket.OPEN || inputBlocked()) return
             const withControl = controlActiveRef.current
             updateControl(false)
             ws.send(terminalKeySequence(key, withControl))
@@ -321,9 +335,9 @@ export const XtermComponent = forwardRef<HTMLDivElement, XtermProps & JSX.Intrin
                 {...props}
             >
                 <div className="terminal-main relative">
-                <div ref={screenRef} className="terminal-screen" inert={!!installPanel}/>
+                <div ref={screenRef} className="terminal-screen" inert={!!installPanel || mobileCommands}/>
                 {installPanel}
-                <div inert={!!installPanel} className="terminal-keyboard" role="toolbar" aria-label="Terminal controls">
+                <div inert={!!installPanel || mobileCommands} className="terminal-keyboard" role="toolbar" aria-label="Terminal controls">
                     <button type="button" className="terminal-key terminal-key-commands"
                         aria-label="快捷命令" aria-expanded={commandsOpen} aria-controls="terminal-command-panel"
                         onClick={() => setCommandsOpen(!commandsOpen)}>

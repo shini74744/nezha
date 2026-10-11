@@ -98,6 +98,7 @@ beforeEach(() => {
     FakeWebSocket.instances = []
     terminalMocks.instances = []
     toastMock.mockReset()
+    vi.stubGlobal("matchMedia", vi.fn((query: string) => ({ matches: query.includes("max-width") ? window.innerWidth <= Number(query.match(/\\d+/)?.[0]) : window.innerWidth >= Number(query.match(/\\d+/)?.[0]), addEventListener: vi.fn(), removeEventListener: vi.fn() })))
     ;(globalThis as { WebSocket: typeof WebSocket }).WebSocket =
         FakeWebSocket as unknown as typeof WebSocket
     vi.stubGlobal(
