@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Plus, RefreshCw, X, ArrowRight, Download, Square } from "lucide-react"
+import { Plus, RefreshCw, X, ArrowRight, Download, Square, LogOut } from "lucide-react"
 import { toast } from "sonner"
 import { createSessionTerminal, InstallState, sessionRequest, SessionList, SessionRow, SessionTerminal } from "@/api/terminal-sessions"
 import "./terminal-sessions.css"
@@ -7,11 +7,11 @@ import { useTerminalConfirm } from "./terminal-confirm"
 
 const message = (error: unknown) => error instanceof Error ? error.message : "操作失败，请重试"
 interface Props {
-    serverId: number; open: boolean; mode: "native" | "tmux"; current: SessionTerminal | null
+    serverId: number; open: boolean; mode: "native" | "tmux"; current: SessionTerminal | null; disconnected: boolean
     onClose: () => void; onSelect: (terminal: SessionTerminal) => void
     onInstall: (state: InstallState) => void; onShowInstall: () => void
 }
-export function TerminalSessionsPanel({ serverId, open, mode, current, onClose, onSelect, onInstall, onShowInstall }: Props) {
+export function TerminalSessionsPanel({ serverId, open, mode, current, disconnected, onClose, onSelect, onInstall, onShowInstall }: Props) {
     const [list, setList] = useState<SessionList | null>(null)
     const [error, setError] = useState("")
     const [loading, setLoading] = useState(false)
@@ -39,7 +39,7 @@ export function TerminalSessionsPanel({ serverId, open, mode, current, onClose, 
         void sessionRequest<InstallState>("tmux/install-status", { server_id: serverId }).then(setInstall).catch(() => {})
         return () => { generation.current++ }
     }, [serverId, load])
-    useEffect(() => { if (open) void load() }, [open, mode, load])
+    useEffect(() => { if (open) void load() }, [open, mode, load, current?.session_id, current?.keep])
     useEffect(() => { onInstall(install) }, [install, onInstall])
     useEffect(() => {
         if (install.state !== "running") return
@@ -84,7 +84,9 @@ export function TerminalSessionsPanel({ serverId, open, mode, current, onClose, 
         finally { setBusy(false) }
     }
     const enter = (row: SessionRow, kind: "native" | "tmux", windowId = "") => {
-        if (kind === "native" && row.attached && row.stream_id === current?.session_id) { onClose(); return }
+        const active = kind === "native" ? current?.kind !== "tmux" && row.stream_id === current?.session_id
+            : current?.kind === "tmux" && row.id === current.record_id
+        if (active && !disconnected && !windowId) { onClose(); return }
         void switchTo(() => sessionRequest<SessionTerminal>(kind === "native" ? "resume" : "tmux/attach",
             kind === "native" ? { stream_id: row.stream_id } : { server_id: serverId, record_id: row.id, window: windowId }))
     }
@@ -146,10 +148,13 @@ export function TerminalSessionsPanel({ serverId, open, mode, current, onClose, 
             </div>}
             <div className="terminal-session-actions">
                 <button disabled={busy || (kind === "native" && row.attached && !active)} onClick={() => enter(row, kind)}><ArrowRight size={14}/>{active ? "进入" : "连接"}</button>
+                {kind === "tmux" && active && <button disabled={busy} title="退出当前连接，保留会话和运行中的任务"
+                    onClick={() => void switchTo(() => createSessionTerminal(serverId))}><LogOut size={14}/>退出</button>}
                 <button className="danger" disabled={busy} onClick={() => void end(row, kind)}><Square size={12}/>结束</button>
             </div>
         </article>
     }
+    const nativeRows = list?.native.filter(row => !(row.stream_id === current?.session_id && current?.kind !== "tmux" && !current?.keep)) ?? []
     if (!open) return null
     return <>
         {dialog}
@@ -172,8 +177,8 @@ export function TerminalSessionsPanel({ serverId, open, mode, current, onClose, 
                 {error && <p role="alert" className="terminal-session-error">{error}</p>}
                 {mode === "native" && <section><h3>已保持的终端<button disabled={busy} onClick={() => void switchTo(() => createSessionTerminal(serverId))}><Plus size={14}/>新终端</button></h3>
                     <p className="terminal-session-hint">保持当前任务，关闭网页后可重新连接。面板或 Agent 重启后不能恢复。</p>
-                    {list?.native.map(row => renderRow(row, "native"))}
-                    {list && !list.native.length && <p className="terminal-session-empty">暂无已保持的终端</p>}
+                    {nativeRows.map(row => renderRow(row, "native"))}
+                    {list && !nativeRows.length && <p className="terminal-session-empty">暂无已保持的终端</p>}
                 </section>}
                 {mode === "tmux" && <section><h3>服务器会话<button disabled={busy || !list?.installed} onClick={() => setCreating(v => !v)}><Plus size={14}/>新建</button></h3>
                     <p className="terminal-session-hint">包含节点当前系统用户的已有会话。新建会话不会接管普通终端里已运行的任务。</p>

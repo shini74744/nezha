@@ -376,7 +376,7 @@ export const TerminalPage = () => {
     const { id } = useParams<{ id: string }>()
     const serverId = Number(id)
     const [open, setOpen] = useState(false)
-    const [commandsOpen, setCommandsOpen] = useState(false)
+    const [commandsOpen, setCommandsOpen] = useState(true)
     const [sessionsOpen, setSessionsOpen] = useState(false)
     const [sessionMode, setSessionMode] = useState<"native" | "tmux">("native")
     const [reconnecting, setReconnecting] = useState(false)
@@ -432,7 +432,7 @@ export const TerminalPage = () => {
         setSessionMode(mode); setCommandsOpen(false)
     }
     const setCommands = (value: boolean) => { setCommandsOpen(value); if (value) setSessionsOpen(false) }
-    const panel = <TerminalSessionsPanel serverId={serverId} open={sessionsOpen} mode={sessionMode} current={terminal}
+    const panel = <TerminalSessionsPanel serverId={serverId} open={sessionsOpen} mode={sessionMode} current={terminal} disconnected={open}
         onClose={() => setSessionsOpen(false)} onSelect={select} onInstall={updateInstall} onShowInstall={showInstall}/>
     return (
         <div className="terminal-page px-3 sm:px-8">

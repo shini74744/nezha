@@ -332,3 +332,43 @@ func TestTmuxInstallCoalescesClicksAndRetainsResult(t *testing.T) {
 		return e == nil && v.State == "done"
 	}, time.Second, 10*time.Millisecond)
 }
+
+func TestManagedDisableKeepContinuesUntilBrowserCloses(t *testing.T) {
+	m := sessionFixture(t)
+	previous := upgrader
+	upgrader = &websocket.Upgrader{CheckOrigin: checkSameOrigin}
+	defer func() { upgrader = previous }()
+	_, err := keepTerminalSession(sessionRequestContext(t, map[string]any{"stream_id": m.ID, "enabled": true}))
+	require.NoError(t, err)
+	done := make(chan struct{})
+	r := gin.New()
+	r.GET("/ws", func(c *gin.Context) { defer close(done); _, _ = managedTerminalStream(c, m) })
+	srv := httptest.NewServer(r)
+	defer srv.Close()
+	ws, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(srv.URL, "http")+"/ws", http.Header{"Origin": {srv.URL}})
+	require.NoError(t, err)
+	defer ws.Close()
+	view, err := keepTerminalSession(sessionRequestContext(t, map[string]any{"stream_id": m.ID, "enabled": false}))
+	require.NoError(t, err)
+	require.False(t, view.Keep)
+	require.True(t, m.Bridge.Attached())
+	require.Same(t, m, managedLookup(m.ID))
+	_, err = m.Bridge.Write([]byte("still running"))
+	require.NoError(t, err)
+	require.NoError(t, ws.SetReadDeadline(time.Now().Add(time.Second)))
+	_, output, err := ws.ReadMessage()
+	require.NoError(t, err)
+	require.Equal(t, "still running", string(output))
+	require.NoError(t, ws.Close())
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("terminal did not close after browser disconnected")
+	}
+	require.Nil(t, managedLookup(m.ID))
+	select {
+	case <-m.Bridge.Done():
+	default:
+		t.Fatal("agent bridge remains open")
+	}
+}

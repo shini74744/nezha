@@ -62,22 +62,58 @@ function ServerPositionInput({ server, total, busy, onMove }: {
 }) {
     const { t } = useTranslation()
     const [value, setValue] = useState("")
+    const [editing, setEditing] = useState(false)
+    const inputRef = useRef<HTMLInputElement>(null)
+    const triggerRef = useRef<HTMLButtonElement>(null)
+    const editorRef = useRef<HTMLDivElement>(null)
+    const restoreFocus = useRef(false)
+    useEffect(() => {
+        if (editing) inputRef.current?.focus({ preventScroll: true })
+        else if (restoreFocus.current) {
+            restoreFocus.current = false
+            triggerRef.current?.focus({ preventScroll: true })
+        }
+    }, [editing])
+    useEffect(() => {
+        if (!editing) return
+        const outside = (event: PointerEvent) => {
+            if (editorRef.current?.contains(event.target as Node)) return
+            restoreFocus.current = false
+            setEditing(false); setValue("")
+        }
+        document.addEventListener("pointerdown", outside, true)
+        return () => document.removeEventListener("pointerdown", outside, true)
+    }, [editing])
+    const close = (focusTrigger = false) => {
+        restoreFocus.current = focusTrigger
+        setEditing(false)
+        setValue("")
+    }
     const apply = () => {
         if (busy || !value.trim()) return
         const position = Number(value)
         if (!Number.isInteger(position) || position < 1 || position > total) {
             toast.error(t("ServerPositionInvalid", { total })); return
         }
-        onMove(position); setValue("")
+        onMove(position); close(true)
     }
-    return <div className="flex items-center gap-1" onPointerDown={event => event.stopPropagation()}>
-        <input type="number" inputMode="numeric" min={1} max={total} step={1} value={value} disabled={busy}
-            placeholder={t("ServerPositionPlaceholder")} aria-label={t("ServerPositionInput", { name: server.name })}
-            className="h-9 w-14 min-w-0 rounded-md border bg-background px-1.5 text-center text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            onChange={event => setValue(event.target.value)}
-            onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); event.stopPropagation(); apply() } }}/>
-        <Button type="button" size="sm" variant="outline" className="h-9 px-2" disabled={busy || !value.trim()}
-            aria-label={t("ServerPositionApply", { name: server.name })} onClick={apply}>{t("ServerMoveTo")}</Button>
+    return <div ref={editorRef} className="flex items-center gap-1" data-position-editor={editing || undefined}
+        onPointerDown={event => event.stopPropagation()}
+        onKeyDown={event => { if (editing && event.key === "Escape") { event.preventDefault(); event.stopPropagation(); close(true) } }}
+        onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) close() }}>
+        {editing ? <>
+            <input ref={inputRef} type="number" inputMode="numeric" min={1} max={total} step={1} value={value} disabled={busy}
+                placeholder={t("ServerPositionPlaceholder")} aria-label={t("ServerPositionInput", { name: server.name })}
+                className="h-9 w-14 min-w-0 rounded-md border bg-background px-1.5 text-center text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                onChange={event => setValue(event.target.value)}
+                onKeyDown={event => {
+                    if (event.key === "Enter") { event.preventDefault(); event.stopPropagation(); apply() }
+                }}/>
+            <Button type="button" size="sm" variant="outline" className="h-9 px-2" disabled={busy || !value.trim()}
+                aria-label={t("ServerPositionApply", { name: server.name })} onClick={apply}>{t("ServerMoveTo")}</Button>
+        </> : <Button ref={triggerRef} type="button" size="sm" variant="outline" className="h-9 w-14 px-2" disabled={busy}
+            aria-label={t("ServerPositionInput", { name: server.name })} aria-expanded={false}
+            onClick={() => setEditing(true)}>{t("ServerPositionPlaceholder")}</Button>}
     </div>
 }
 
@@ -155,7 +191,8 @@ export function ServerSortDialog({ servers, mutate }: ServerSortDialogProps) {
             <DialogTrigger asChild>
                 <IconButton icon="menu" title={t("ServerSort")} aria-label={t("ServerSort")} />
             </DialogTrigger>
-            <DialogContent className="flex max-h-[92dvh] w-[calc(100%-1rem)] flex-col overflow-hidden rounded-lg p-4 sm:max-w-xl sm:p-6">
+            <DialogContent className="flex max-h-[92dvh] w-[calc(100%-1rem)] flex-col overflow-hidden rounded-lg p-4 sm:max-w-xl sm:p-6"
+                onEscapeKeyDown={event => { if ((event.target as HTMLElement)?.closest('[data-position-editor="true"]')) event.preventDefault() }}>
                 <DialogHeader className="shrink-0">
                     <DialogTitle>{t("ServerSort")}</DialogTitle>
                     <DialogDescription>{t("ServerSortHint")}</DialogDescription>
