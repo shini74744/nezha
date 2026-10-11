@@ -6,12 +6,16 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 )
 
 func TestInstallScriptUsesOnlyTmuxAndClassifiesFailure(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("tmux installation commands execute on Linux nodes, not on the dashboard host")
+	}
 	for _, failure := range []string{"", "Temporary failure resolving example.invalid", "Could not get lock", "No space left on device", "Connection timed out"} {
 		t.Run(failure, func(t *testing.T) {
 			bin := t.TempDir()
