@@ -1,7 +1,7 @@
 import { expect, test, Page, WebSocketRoute } from "@playwright/test"
 
 async function fixture(page: Page, installed = true, installFails = false) {
-    const state = { creates: 0, connects: 0, keeps: 0, ends: 0, installs: 0, failCreate: false, failEnd: false, failAttach: false }
+    const state = { creates: 0, connects: 0, closed: [] as string[], resumes: 0, keeps: 0, ends: 0, installs: 0, failCreate: false, failEnd: false, failAttach: false }
     const held = new Set<string>()
     let polls = 0
     const sockets = new Map<string, WebSocketRoute>()
@@ -29,7 +29,7 @@ async function fixture(page: Page, installed = true, installFails = false) {
             state.keeps++
             if (body.enabled) held.add(body.stream_id); else held.delete(body.stream_id)
             data = { session_id: body.stream_id, server_id: 63, kind: "native", keep: body.enabled }
-        } else if (path.endsWith("/resume")) data = { session_id: body.stream_id, server_id: 63, kind: "native", keep: true }
+        } else if (path.endsWith("/resume")) { state.resumes++; data = { session_id: body.stream_id, server_id: 63, kind: "native", keep: true } }
         else if (path.endsWith("/tmux/attach") || path.endsWith("/tmux/create")) {
             if (state.failAttach) return fail()
             const id = body.record_id || 4
@@ -63,12 +63,14 @@ async function fixture(page: Page, installed = true, installFails = false) {
         sockets.set(new URL(ws.url()).pathname.split("/").pop()!, ws)
         ws.send(Buffer.from("root@fixture:~# "))
         ws.onMessage(() => {})
+        ws.onClose(() => { state.closed.push(new URL(ws.url()).pathname.split("/").pop()!) })
     })
     return { state, disconnect: () => sockets.get("native-1")?.close() }
 }
 const panel = (page: Page) => page.locator("#terminal-session-panel")
 const card = (page: Page, name: string) => page.locator(".terminal-session-card").filter({ hasText: name })
 async function enterTmux(page: Page) {
+    if ((page.viewportSize()?.width || 1440) < 1024 && await page.locator("#terminal-command-panel").isVisible()) await page.getByRole("button", { name: "收起快捷命令栏" }).click()
     await page.getByRole("button", { name: "tmux 会话", exact: true }).click()
     await page.getByRole("button", { name: "0 · 编译窗口", exact: true }).click()
     await page.getByRole("alertdialog").getByRole("button", { name: "结束旧终端并切换" }).click()
@@ -79,6 +81,8 @@ for (const width of [390, 1440]) {
         await page.setViewportSize({ width, height: 900 })
         const { state } = await fixture(page)
         await page.goto("/dashboard/terminal/63")
+        await expect(page.locator("#terminal-command-panel")).toBeVisible()
+        await page.getByRole("button", { name: "收起快捷命令栏" }).click()
         await expect(page.getByRole("button", { name: "保持当前", exact: true })).toBeEnabled()
         await page.getByRole("button", { name: "保持当前", exact: true }).click()
         await page.getByRole("button", { name: "面板保持", exact: true }).click()
@@ -185,6 +189,7 @@ test("install confirmation, live output, failure and return preserve original co
     await page.setViewportSize({ width: 390, height: 900 })
     const { state } = await fixture(page, false, true)
     await page.goto("/dashboard/terminal/63")
+    await page.getByRole("button", { name: "收起快捷命令栏" }).click()
     await page.getByRole("button", { name: "tmux 会话", exact: true }).click()
     await page.getByRole("button", { name: "安装 tmux", exact: true }).click()
     await expect(page.getByRole("alertdialog").getByRole("button", { name: "取消" })).toBeFocused()
@@ -212,4 +217,65 @@ test("fullscreen confirmation is placed inside fullscreen element", async ({ pag
     await expect(page.getByRole("alertdialog")).toBeVisible()
     expect(await page.getByRole("alertdialog").evaluate(el => document.fullscreenElement?.contains(el))).toBe(true)
     await page.getByRole("alertdialog").getByRole("button", { name: "取消" }).click()
+})
+
+for (const width of [390, 1440]) test("default commands and tmux exit preserve session " + width, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const { state } = await fixture(page)
+    await page.goto("/dashboard/terminal/63")
+    const commands = page.locator("#terminal-command-panel")
+    await expect(commands).toBeVisible()
+    await page.screenshot({ path: "test-results/commands-default-" + width + ".png" })
+    await enterTmux(page)
+    await expect(commands).toHaveCount(0)
+    if (width < 1024) await page.getByRole("button", { name: "tmux 会话", exact: true }).click()
+    const current = card(page, "build-session")
+    await expect(current.getByRole("button", { name: "退出", exact: true })).toBeVisible()
+    await expect(card(page, "manual-ssh").getByRole("button", { name: "退出", exact: true })).toHaveCount(0)
+    state.failCreate = true
+    await current.getByRole("button", { name: "退出", exact: true }).click()
+    await expect(page.getByText("测试连接失败", { exact: true })).toBeVisible()
+    await expect(current).toHaveClass(/is-current/)
+    expect(state.closed).not.toContain("tmux-2")
+    state.failCreate = false
+    await page.screenshot({ path: "test-results/tmux-exit-" + width + ".png" })
+    await current.getByRole("button", { name: "退出", exact: true }).click()
+    await expect(page.getByRole("button", { name: "保持当前", exact: true })).toBeEnabled()
+    await expect.poll(() => state.closed.includes("tmux-2")).toBe(true)
+    await expect.poll(() => state.connects).toBe(3)
+    expect(state.ends).toBe(0); expect(state.keeps).toBe(0)
+    if (width < 1024) await page.getByRole("button", { name: "tmux 会话", exact: true }).click()
+    await expect(current).not.toHaveClass(/is-current/)
+    await expect(current.getByRole("button", { name: "退出", exact: true })).toHaveCount(0)
+    await expect(current.getByRole("button", { name: "0 · 编译窗口", exact: true })).toBeVisible()
+    await current.getByRole("button", { name: "连接", exact: true }).click()
+    await page.getByRole("alertdialog").getByRole("button", { name: "结束旧终端并切换" }).click()
+    await expect(page.getByRole("button", { name: "tmux 已连接", exact: true })).toBeVisible()
+    await expect.poll(() => state.connects).toBe(4)
+    expect(state.ends).toBe(0); expect(state.keeps).toBe(0)
+})
+
+test("current held session enters without duplicate resume and removing keep updates list", async ({ page }) => {
+    const { state, disconnect } = await fixture(page)
+    await page.goto("/dashboard/terminal/63")
+    await page.getByRole("button", { name: "面板保持", exact: true }).click()
+    await page.getByRole("button", { name: "保持当前", exact: true }).click()
+    await expect(card(page, "构建任务")).toBeVisible()
+    await card(page, "构建任务").getByRole("button", { name: "进入", exact: true }).click()
+    await expect(panel(page)).toHaveCount(0)
+    expect(state.resumes).toBe(0); expect(state.connects).toBe(1); expect(state.closed).toHaveLength(0)
+    await page.getByRole("button", { name: "面板保持", exact: true }).click()
+    await page.getByRole("button", { name: "已保持", exact: true }).click()
+    await page.getByRole("alertdialog").getByRole("button", { name: "关闭保持", exact: true }).click()
+    await expect(card(page, "构建任务")).toHaveCount(0)
+    await expect(page.getByText("暂无已保持的终端")).toBeVisible()
+    expect(state.resumes).toBe(0); expect(state.connects).toBe(1); expect(state.closed).toHaveLength(0)
+    await page.getByRole("button", { name: "保持当前", exact: true }).click()
+    await expect(card(page, "构建任务")).toBeVisible()
+    disconnect()
+    await expect(page.getByRole("button", { name: "连接普通终端", exact: true })).toBeVisible()
+    await card(page, "构建任务").getByRole("button", { name: "进入", exact: true }).click()
+    await expect.poll(() => state.resumes).toBe(1)
+    await expect.poll(() => state.connects).toBe(2)
+    expect(state.ends).toBe(0)
 })

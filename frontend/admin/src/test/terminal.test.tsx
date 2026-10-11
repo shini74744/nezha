@@ -315,8 +315,9 @@ test.each([1280, 320])("page toggle remains available after closing commands at 
     const socket = FakeWebSocket.instances[0]
     act(() => socket.open())
     socket.send.mockClear()
-    expect(topToggle.getAttribute("aria-expanded")).toBe("false")
-    fireEvent.click(topToggle)
+    expect(topToggle.getAttribute("aria-expanded")).toBe("true")
+    expect(bottomToggle.getAttribute("aria-expanded")).toBe("true")
+    expect(screen.queryByRole("button", { name: "收起快捷命令栏" })).not.toBeNull()
     for (let cycle = 0; cycle < 3; cycle++) {
         fireEvent.click(screen.getByRole("button", { name: "收起快捷命令栏" }))
         expect(topToggle.isConnected).toBe(true)
