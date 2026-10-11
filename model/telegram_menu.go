@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -13,6 +14,8 @@ import (
 // Opt-in and private-chat only. The recipient's numeric chat ID is also the
 // Telegram user allowlist; membership in a group never grants panel access.
 type TelegramMenuConfig struct {
+	Terminal             bool            `json:"terminal"`
+	TerminalOrigin       string          `json:"terminal_origin,omitempty"`
 	Enabled              bool            `json:"enabled"`
 	ExpiryDays           int             `json:"expiry_days"`
 	LoginSuccess         bool            `json:"login_success"`
@@ -25,6 +28,8 @@ type TelegramMenuConfig struct {
 // Missing switches retain the original menu behavior when upgrading.
 func (m *TelegramMenuConfig) ItemEnabled(kind string) bool {
 	switch kind {
+	case "terminal":
+		return m != nil && m.Terminal
 	case "home", "online", "offline", "expiry", "traffic":
 		if m != nil {
 			if enabled, exists := m.Items[kind]; exists {
@@ -92,6 +97,12 @@ func (n *Notification) ValidateTelegramMenu() error {
 		case "home", "online", "offline", "expiry", "traffic":
 		default:
 			return errors.New("无效的 TG 菜单选项")
+		}
+	}
+	if n.TelegramMenu.Terminal {
+		u, err := url.Parse(n.TelegramMenu.TerminalOrigin)
+		if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || u.Opaque != "" || u.Path != "" {
+			return errors.New("网页终端需要有效的 HTTPS 网站地址（不含路径）")
 		}
 	}
 	if !n.TelegramMenu.Enabled {

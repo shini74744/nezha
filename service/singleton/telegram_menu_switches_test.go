@@ -15,7 +15,12 @@ func TestTelegramMenuSwitchesDefaultsAndDisabledRequests(t *testing.T) {
 	require.Len(t, telegramCommandList(&legacy), 5)
 	for _, command := range telegramMenuCommands {
 		config := &model.TelegramMenuConfig{Enabled: true, ExpiryDays: 7, Items: map[string]bool{command.Category: false}}
-		require.Len(t, telegramCommandList(config), 4)
+		if command.Category == "terminal" {
+			config.Items = nil // Independent terminal switch is opt-in, unlike legacy items.
+			require.Len(t, telegramCommandList(config), 5)
+		} else {
+			require.Len(t, telegramCommandList(config), 4)
+		}
 		// No database is set up: a disabled request must return before data access.
 		view, err := telegramConfiguredView(context.Background(), &model.Notification{TelegramMenu: config}, command.Category, 0, time.Now())
 		require.NoError(t, err)

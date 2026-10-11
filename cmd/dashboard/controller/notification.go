@@ -20,7 +20,7 @@ const notificationBatchDeleteMaxBodyBytes = 1 << 20
 var notificationMenuSaveMu sync.Mutex
 
 func checkTelegramMenuSave(c *gin.Context, n *model.Notification, requested *model.TelegramMenuConfig) error {
-	if _, pat := c.Get(model.CtxKeyAPIToken); pat && ((n.TelegramMenu != nil && (n.TelegramMenu.Enabled || n.TelegramMenu.LoginFailurePassword)) || (requested != nil && (requested.Enabled || requested.LoginFailurePassword))) {
+	if _, pat := c.Get(model.CtxKeyAPIToken); pat && ((n.TelegramMenu != nil && (n.TelegramMenu.Enabled || n.TelegramMenu.Terminal || n.TelegramMenu.LoginFailurePassword)) || (requested != nil && (requested.Enabled || requested.Terminal || requested.LoginFailurePassword))) {
 		return errors.New("服务器管理菜单只能通过浏览器登录账号设置")
 	}
 	if requested != nil {

@@ -13,8 +13,9 @@ import (
 )
 
 type telegramButton struct {
-	Text string `json:"text"`
-	Data string `json:"callback_data"`
+	Text   string          `json:"text"`
+	Data   string          `json:"callback_data,omitempty"`
+	WebApp *telegramWebApp `json:"web_app,omitempty"`
 }
 type telegramKeyboard struct {
 	Rows [][]telegramButton `json:"inline_keyboard"`
