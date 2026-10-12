@@ -27,7 +27,7 @@ func RecordServerIPChange(server *model.Server, next model.IP, at time.Time) (ol
 			history = nil
 			changed = false
 			var count int64
-			if e := tx.Model(&model.Server{}).Where("id = ? AND uuid = ?", server.ID, server.UUID).Count(&count).Error; e != nil {
+			if e := tx.Model(&model.Server{}).Where("id = ? AND uuid = ? AND machine_generation = ?", server.ID, server.UUID, server.MachineGeneration).Count(&count).Error; e != nil {
 				return e
 			}
 			if count != 1 {

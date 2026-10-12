@@ -68,7 +68,7 @@ func NewNezhaHandler() *NezhaHandler {
 // panic.
 func attachRequestTaskStream(clientID uint64, stream pb.NezhaService_RequestTaskServer) (*model.Server, bool) {
 	server, ok := singleton.ServerShared.Get(clientID)
-	if !ok || server == nil || singleton.IsDeletedServerUUID(server.UUID) {
+	if !ok || server == nil || singleton.IsDeletedServerUUID(server.UUID) || !server.MachineRuntimeActive() {
 		return nil, false
 	}
 	server.SetTaskStream(stream)
@@ -109,6 +109,9 @@ func (s *NezhaHandler) RequestTask(stream pb.NezhaService_RequestTaskServer) err
 		return err
 	}
 
+	if err := waitReplacementReport(stream.Context()); err != nil {
+		return err
+	}
 	server, ok := attachRequestTaskStream(clientID, stream)
 	if !ok {
 		return nil
@@ -212,8 +215,9 @@ func (s *NezhaHandler) RequestTask(stream pb.NezhaService_RequestTaskServer) err
 			}
 			if model.IsServiceSentinelNeeded(result.GetType()) {
 				singleton.ServiceSentinelShared.Dispatch(singleton.ReportData{
-					Data:     result,
-					Reporter: clientID,
+					Data:              result,
+					Reporter:          clientID,
+					MachineGeneration: server.MachineGeneration,
 				})
 			}
 		}
@@ -235,8 +239,15 @@ func (s *NezhaHandler) ReportSystemState(stream pb.NezhaService_ReportSystemStat
 	if singleton.IsDeletedServerUUID(server.UUID) {
 		return status.Error(codes.PermissionDenied, "server UUID was permanently deleted")
 	}
-	lease := server.AttachStateStream(stream)
-	defer lease.Clear()
+	pending, err := pendingReplacement(stream.Context())
+	if err != nil {
+		return err
+	}
+	var lease model.StateStreamLease
+	if !pending {
+		lease = server.AttachStateStream(stream)
+	}
+	defer func() { lease.Clear() }()
 	var state *pb.State
 	var stateCount uint64
 	report := reportLease{gate: &s.reportGate}
@@ -259,6 +270,14 @@ func (s *NezhaHandler) ReportSystemState(stream pb.NezhaService_ReportSystemStat
 		}
 		stateCount++
 		innerState := model.PB2State(state)
+		if pending {
+			server, err = completeReplacementReport(stream.Context(), &innerState)
+			if err != nil {
+				return err
+			}
+			lease = server.AttachStateStream(stream)
+			pending = false
+		}
 
 		lastActive := time.Now()
 		accepted := lease.UpdateStateWithSnapshot(&innerState, lastActive, func(snapshotID uint64, snapshotUUID string, snapshot model.RecordedServerState) error {
@@ -351,12 +370,17 @@ func (s *NezhaHandler) onReportSystemInfo(c context.Context, r *pb.Host) (model.
 		return model.HostReportResult{}, status.Error(codes.PermissionDenied, "server UUID was permanently deleted")
 	}
 
-	/**
-	 * 这里的 singleton 中的数据都是关机前的旧数据
-	 * 当 agent 重启时，bootTime 变大，agent 端会先上报 host 信息，然后上报 state 信息
-	 * 这时可以借助上报顺序的空档，立即记录停机前的数据并重置 Prev* 数据，并由接下来的 state 方法重新赋值
-	 */
-	return server.RuntimeHandle().ApplyHostReport(&host, time.Now(), singleton.PersistTransfer)
+	if pending, err := pendingReplacement(c); err != nil {
+		return model.HostReportResult{}, err
+	} else if pending {
+		if err := stageReplacementHost(c, server.UUID, host); err != nil {
+			return model.HostReportResult{}, err
+		}
+		return model.HostReportResult{ServerID: server.ID, UUID: server.UUID}, nil
+	}
+	// A newly connected machine is authoritative even when it booted earlier.
+	// A changed boot time resets counter baselines, never monitoring history.
+	return singleton.ApplyAgentHostReport(server, &host)
 }
 
 func (s *NezhaHandler) ReportSystemInfo(c context.Context, r *pb.Host) (*pb.Receipt, error) {

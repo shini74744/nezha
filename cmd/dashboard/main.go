@@ -205,7 +205,10 @@ func main() {
 
 	// Allow accepted report queues to drain before systemd terminates the process.
 	graceful.DefaultShutdownTimeout = 30 * time.Second
-	if err := graceful.Graceful(func() error {
+	shutdownContext, requestDashboardShutdown := context.WithCancel(context.Background())
+	defer requestDashboardShutdown()
+	controller.SetDashboardRestartHandler(requestDashboardShutdown)
+	if err := graceful.GracefulContext(shutdownContext, func() error {
 		log.Printf("NEZHA>> Dashboard::START ON %s:%d", singleton.Conf.ListenHost, singleton.Conf.ListenPort)
 		if singleton.Conf.HTTPS.ListenPort != 0 {
 			go func() {

@@ -454,3 +454,9 @@ func (m *Manager) HasCached(key string) bool {
 	e := m.entries[key]
 	return e != nil && (e.snapshot.State == "running" || m.now().Sub(e.touched) < m.ttl)
 }
+
+func (m *Manager) Forget(key string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.entries, key)
+}

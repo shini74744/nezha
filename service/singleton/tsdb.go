@@ -86,8 +86,13 @@ func CloseTSDB() error {
 	// Paused storage can discard buffered writes. Do not report a fully
 	// persisted shutdown merely because the underlying Close returned nil.
 	paused := TSDBShared.WritesPaused()
+	if ServerIDReassignmentInProgress.Load() {
+		// Reassignment deliberately pauses normal ingestion; its migrated rows
+		// still need a durable close. Disk-pressure pauses remain failures.
+		paused = TSDBShared.WritesPausedForDisk()
+	}
 	err := TSDBShared.Close()
-	if paused || TSDBShared.WritesPaused() {
+	if paused || TSDBShared.WritesPausedForDisk() {
 		err = errors.Join(err, errors.New("TSDB writes paused; complete persistence cannot be confirmed"))
 	}
 	return err

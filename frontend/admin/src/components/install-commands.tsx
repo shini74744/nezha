@@ -1,3 +1,4 @@
+import { ServerReplacementCommand } from "@/components/server-replacement-command"
 import { Button, ButtonProps } from "@/components/ui/button"
 import {
     DropdownMenu,
@@ -14,7 +15,7 @@ import useSettings from "@/hooks/useSetting"
 import { copyToClipboard } from "@/lib/utils"
 import { ModelProfile, ModelSetting } from "@/types"
 import i18next from "i18next"
-import { Check, Clipboard, Copy, Download } from "lucide-react"
+import { Check, Clipboard, Copy, Download, RefreshCw } from "lucide-react"
 import { forwardRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
@@ -27,14 +28,16 @@ enum OSTypes {
 
 type InstallCommandsMenuProps = ButtonProps & {
     uuid?: string
+    serverName?: string
     iconOnly?: boolean
     menuItem?: boolean
     uuidActions?: boolean
 }
 
 export const InstallCommandsMenu = forwardRef<HTMLButtonElement, InstallCommandsMenuProps>(
-    ({ uuid, iconOnly = false, menuItem = false, uuidActions = false, ...props }, ref) => {
+    ({ uuid, serverName, iconOnly = false, menuItem = false, uuidActions = false, ...props }, ref) => {
         const [copy, setCopy] = useState(false)
+        const [replacementOpen, setReplacementOpen] = useState(false)
         const { data: settings } = useSettings()
         const { profile } = useAuth()
 
@@ -89,6 +92,7 @@ export const InstallCommandsMenu = forwardRef<HTMLButtonElement, InstallCommands
         ))
 
         return (
+            <>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     {uuidActions ? (
@@ -166,12 +170,15 @@ export const InstallCommandsMenu = forwardRef<HTMLButtonElement, InstallCommands
                                     </DropdownMenuSubContent>
                                 </DropdownMenuPortal>
                             </DropdownMenuSub>
+                            {profile?.role === 0 && <DropdownMenuItem disabled={!uuid || !settings?.config?.install_host} onSelect={() => setReplacementOpen(true)}><RefreshCw className="size-4" />清理数据换机安装命令</DropdownMenuItem>}
                         </>
                     ) : (
                         osItems
                     )}
                 </DropdownMenuContent>
             </DropdownMenu>
+            {uuid && profile && settings?.config && <ServerReplacementCommand uuid={uuid} name={serverName} open={replacementOpen} onOpenChange={setReplacementOpen} generate={(type, secret) => generateCommand(type, settings.config, { ...profile, agent_secret: secret }, uuid)} />}
+            </>
         )
     },
 )

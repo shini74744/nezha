@@ -1,6 +1,7 @@
 package networkinsight
 
 type Record struct {
+	ServerUUID  string `gorm:"index"`
 	ID          uint64 `gorm:"primaryKey"`
 	Identity    string `gorm:"index:idx_insight_identity_time,priority:1"`
 	Kind        string `gorm:"index:idx_insight_identity_time,priority:2"`

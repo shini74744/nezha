@@ -122,3 +122,17 @@ func TestNonDiskStoragePanicIsNotHidden(t *testing.T) {
 	}))
 	assert.PanicsWithValue(t, "storage invariant failed", db.Flush)
 }
+
+func TestMaintenancePauseDoesNotHideDiskPressure(t *testing.T) {
+	db := newDiskGuardTestDB(t)
+	checker := &testReadOnlyChecker{}
+	db.readOnly = checker
+	require.NoError(t, db.PauseWritesForMaintenance())
+	require.True(t, db.WritesPaused())
+	require.False(t, db.WritesPausedForDisk())
+	checker.value.Store(true)
+	require.True(t, db.WritesPausedForDisk())
+	checker.value.Store(false)
+	db.diskFullPaused.Store(true)
+	require.True(t, db.WritesPausedForDisk())
+}

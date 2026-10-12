@@ -71,7 +71,7 @@ export default function ServerGroupPage() {
             accessorFn: (row) => row.group.name,
             cell: ({ row }) => {
                 const s = row.original
-                return <div className="max-w-48 whitespace-normal break-words">{s.group.name}</div>
+                return <div className="min-w-32 max-w-48 whitespace-normal break-words">{s.group.name}</div>
             },
         },
         {
@@ -96,7 +96,7 @@ export default function ServerGroupPage() {
                     <ActionButtonGroup
                         className="flex gap-2"
                         delete={{
-                            fn: deleteServerGroups,
+                            fn: (ids) => deleteServerGroups(ids, data ?? []),
                             id: s.group.id,
                             mutate: mutate,
                         }}
@@ -116,6 +116,7 @@ export default function ServerGroupPage() {
         features: selectableTableFeatures,
         data: dataCache,
         columns,
+        getRowId: (row) => `${row.group.id}:${row.revision ?? row.group.created_at}`,
     })
 
     const selectedRows = table.getSelectedRowModel().rows
@@ -127,7 +128,7 @@ export default function ServerGroupPage() {
                 <HeaderButtonGroup
                     className="flex ml-auto self-end sm:self-auto gap-2 flex-wrap shrink-0"
                     delete={{
-                        fn: deleteServerGroups,
+                        fn: (ids) => deleteServerGroups(ids, data ?? []),
                         id: selectedRows.map((r) => r.original.group.id),
                         mutate: mutate,
                     }}
@@ -135,13 +136,17 @@ export default function ServerGroupPage() {
                     <ServerGroupCard mutate={mutate} />
                 </HeaderButtonGroup>
             </div>
-            <Table>
+            <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+                删除分组后，剩余分组系统 ID 自动从 1 连续编号；服务器 ID 不变。
+                <span className="block sm:hidden">左右滑动表格查看服务器及操作。</span>
+            </p>
+            <Table className="min-w-[520px]">
                 <TableHeader>
                     {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id}>
                             {headerGroup.headers.map((header) => {
                                 return (
-                                    <TableHead key={header.id} className="text-sm">
+                                    <TableHead key={header.id} className="text-sm whitespace-nowrap">
                                         {header.isPlaceholder
                                             ? null
                                             : flexRender(

@@ -235,7 +235,7 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 		defer cancel()
 		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("client-secret", secret, "client-uuid", "7e6a3847-ad45-405f-a73b-e74c350f1500"))
 		agent := pb.NewNezhaServiceClient(conn)
-		_, err = agent.ReportSystemInfo2(ctx, &pb.Host{Platform: "linux", Arch: "amd64", MemTotal: 1048576, BootTime: 1})
+		_, err = agent.ReportSystemInfo2(ctx, &pb.Host{Platform: "linux", Arch: "amd64", Cpu: []string{"test"}, MemTotal: 1048576, BootTime: 1})
 		require.NoError(t, err)
 		_, err = agent.ReportGeoIP(ctx, &pb.GeoIP{Ip: &pb.IP{Ipv4: "8.8.8.8"}})
 		require.NoError(t, err)
@@ -442,6 +442,65 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 		checkDatabase()
 	}
 	report(3)
+	// Exercise the new HTTP routes and replacement handshake in the real binary.
+	var history model.Value[[]model.ServerOperationLog]
+	request("GET", "/api/v1/server/operations?uuid=7e6a3847-ad45-405f-a73b-e74c350f1500&field=cpu", token, nil, &history)
+	require.Len(t, history.Value, 1, "identical inventory survives restarts without duplicate history")
+	require.Len(t, history.Value[0].Changes, 1)
+	require.Equal(t, "cpu", history.Value[0].Changes[0].Field)
+	var cards model.Value[[]struct {
+		Position   int
+		Count      int
+		ServerUUID string `json:"server_uuid"`
+	}]
+	request("GET", "/api/v1/server/operation-servers?field=cpu", token, nil, &cards)
+	require.Len(t, cards.Value, 1)
+	require.Equal(t, 1, cards.Value[0].Position)
+	var ticket struct {
+		Secret    string
+		ExpiresAt time.Time `json:"expires_at"`
+	}
+	request("POST", "/api/v1/server/replacement-command", token, map[string]any{"uuid": "7e6a3847-ad45-405f-a73b-e74c350f1500", "confirmed": true}, &ticket)
+	require.True(t, strings.HasPrefix(ticket.Secret, "nzreplace_"))
+	require.True(t, ticket.ExpiresAt.After(time.Now()))
+	checkReturnSaved(token) // Issuing a command must not clear data.
+	replacementConn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+	defer replacementConn.Close()
+	replacementContext, cancelReplacement := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancelReplacement()
+	replacementContext = metadata.NewOutgoingContext(replacementContext, metadata.Pairs("client-secret", ticket.Secret, "client-uuid", "7e6a3847-ad45-405f-a73b-e74c350f1500"))
+	replacementAgent := pb.NewNezhaServiceClient(replacementConn)
+	_, err = replacementAgent.ReportSystemInfo2(replacementContext, &pb.Host{Platform: "ubuntu", PlatformVersion: "24.04", Cpu: []string{"replacement CPU"}, BootTime: 0})
+	require.NoError(t, err)
+	checkReturnSaved(token) // Host alone is still not completion.
+	stateConn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+	defer stateConn.Close()
+	replacementStream, err := pb.NewNezhaServiceClient(stateConn).ReportSystemState(replacementContext)
+	require.NoError(t, err)
+	require.NoError(t, replacementStream.Send(&pb.State{NetInTransfer: 99999999, NetOutTransfer: 88888888, Uptime: 20}))
+	accepted, err := replacementStream.Recv()
+	require.NoError(t, err)
+	require.True(t, accepted.Proced)
+	_ = replacementStream.CloseSend()
+	request("GET", "/api/v1/server/operations?uuid=7e6a3847-ad45-405f-a73b-e74c350f1500&field=cpu", token, nil, &history)
+	require.Len(t, history.Value, 2)
+	require.Equal(t, "test", history.Value[0].Changes[0].Before)
+	require.Equal(t, "replacement CPU", history.Value[0].Changes[0].After)
+	proof := openDB()
+	var remainingDetections, generation int
+	require.NoError(t, proof.QueryRow("SELECT count(*) FROM network_insight_records").Scan(&remainingDetections))
+	require.Zero(t, remainingDetections)
+	require.NoError(t, proof.QueryRow("SELECT machine_generation FROM servers WHERE id=1").Scan(&generation))
+	require.Equal(t, 1, generation)
+	_ = proof.Close()
+	var deleted uint64
+	request("POST", "/api/v1/server/operations/delete", token, map[string]any{"uuid": "7e6a3847-ad45-405f-a73b-e74c350f1500", "id": history.Value[0].ID}, &deleted)
+	require.EqualValues(t, 1, deleted)
+	request("GET", "/api/v1/server/operations?uuid=7e6a3847-ad45-405f-a73b-e74c350f1500&field=cpu", token, nil, &history)
+	require.Len(t, history.Value, 1)
+	t.Log("inventory category/date persistence, replacement admission/cleanup and manual history deletion passed")
 	require.NoError(t, stopProcess(p.cmd))
 	select {
 	case err := <-p.done:

@@ -30,6 +30,9 @@ func operationPage(c *gin.Context) (int, int) {
 func listServerOperations(c *gin.Context) (*model.Value[[]model.ServerOperationLog], error) {
 	limit, offset := operationPage(c)
 	query := singleton.DB.Model(&model.ServerOperationLog{})
+	if uuid := c.Query("uuid"); uuid != "" {
+		query = query.Where("server_uuid = ?", uuid)
+	}
 	if q := strings.TrimSpace(c.Query("q")); q != "" {
 		if len([]rune(q)) > 200 {
 			q = string([]rune(q)[:200])
@@ -45,6 +48,10 @@ func listServerOperations(c *gin.Context) (*model.Value[[]model.ServerOperationL
 	if action := c.Query("action"); action != "" {
 		query = query.Where("action = ?", action)
 	}
+	query, fields, filterErr := filterOperationFields(c, query)
+	if filterErr != nil {
+		return nil, filterErr
+	}
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
 		return nil, err
@@ -53,6 +60,7 @@ func listServerOperations(c *gin.Context) (*model.Value[[]model.ServerOperationL
 	if err := query.Order("id DESC").Limit(limit).Offset(offset).Find(&rows).Error; err != nil {
 		return nil, err
 	}
+	onlyOperationFields(rows, fields)
 	return &model.Value[[]model.ServerOperationLog]{Value: rows, Pagination: model.Pagination{Total: total, Offset: offset, Limit: limit}}, nil
 }
 

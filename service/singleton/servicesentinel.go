@@ -32,8 +32,9 @@ type serviceResponseItem struct {
 }
 
 type ReportData struct {
-	Data     *pb.TaskResult
-	Reporter uint64
+	Data              *pb.TaskResult
+	Reporter          uint64
+	MachineGeneration uint64
 }
 
 // _TodayStatsOfService 今日监控记录
@@ -585,6 +586,9 @@ func (ss *ServiceSentinel) processReport(r ReportData, serverShared *ServerClass
 
 	cs, _ := ss.Get(r.Data.GetId())
 	reporter, _ := serverShared.Get(r.Reporter)
+	if reporter != nil && reporter.MachineGeneration != r.MachineGeneration {
+		return
+	}
 	// 入站结果必须匹配出站任务派发边界，避免 agent 伪造其他服务 ID 写入监控状态。
 	if !canReportServiceResult(cs, reporter, r.Data.GetType()) {
 		log.Printf("NEZHA>> Incorrect service monitor report %+v", r)

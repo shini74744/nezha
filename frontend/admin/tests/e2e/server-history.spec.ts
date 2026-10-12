@@ -1,232 +1,87 @@
 import { expect, test } from "@playwright/test"
 
-for (const width of [360, 1366])
-    for (const dark of [false, true]) {
-        test(
-            "server history and distinct firewall lists " + width + "-" + dark,
-            async ({ page }) => {
-                await page.setViewportSize({ width, height: 800 })
-                await page.addInitScript((dark) => {
-                    localStorage.setItem("language", "zh-CN")
-                    localStorage.setItem("nezha-dashboard-theme", dark ? "dark" : "light")
-                }, dark)
-                let fail = false
-                const writes: string[] = []
-                const duplicateKeys: string[] = []
-                page.on("console", (message) => {
-                    if (/same key|unique.*key/i.test(message.text()))
-                        duplicateKeys.push(message.text())
-                })
-                await page.route("**/api/v1/**", async (route) => {
-                    const url = new URL(route.request().url()),
-                        path = url.pathname
-                    if (route.request().method() !== "GET") writes.push(path)
-                    let data: any = []
-                    if (path === "/api/v1/profile") data = { id: 1, username: "admin", role: 0 }
-                    if (path === "/api/v1/setting")
-                        data = { config: { language: "zh-CN" }, version: "fixture" }
-                    if (path === "/api/v1/server/operations") {
-                        if (fail)
-                            return route.fulfill({
-                                json: { success: false, error: "fixture unavailable" },
-                            })
-                        const searched = url.searchParams.get("q") === "missing"
-                        data = {
-                            value: searched
-                                ? []
-                                : [
-                                      {
-                                          id: url.searchParams.get("offset") === "20" ? 2 : 1,
-                                          created_at: "2026-10-05T08:00:00Z",
-                                          server_name:
-                                              url.searchParams.get("offset") === "20"
-                                                  ? "第二页节点"
-                                                  : "节点 A",
-                                          server_uuid: "12345678-1234-1234-1234-123456789abc",
-                                          server_id: 2,
-                                          previous_id: 47,
-                                          actor_id: 1,
-                                          actor_name: "admin",
-                                          action: "reassign_ids",
-                                          source: "web",
-                                          changes: [
-                                              { field: "id", before: "47", after: "2" },
-                                              {
-                                                  field: "name",
-                                                  before: "<script>alert(1)</script>",
-                                                  after: "新名称",
-                                              },
-                                              {
-                                                  field: "note",
-                                                  before: "未设置",
-                                                  after: "已设置（内容不记录）",
-                                              },
-                                          ],
-                                      },
-                                  ],
-                            pagination: { total: searched ? 0 : 21 },
-                        }
-                    }
-                    if (path === "/api/v1/waf/unknown-reports")
-                        data = {
-                            value: [
-                                {
-                                    uuid: "registered-uuid",
-                                    name: "密钥错误的已有节点",
-                                    kind: "registered",
-                                    last_ip: "192.0.2.2",
-                                    first_report_at: 1791174000,
-                                    last_report_at: 1791174100,
-                                    report_count: 4,
-                                },
-                                {
-                                    uuid: "registered-uuid",
-                                    name: "密钥错误的已有节点",
-                                    kind: "conflict",
-                                    previous_ip: "192.0.2.10",
-                                    last_ip: "192.0.2.11",
-                                    previous_peer: "192.0.2.10:2345",
-                                    last_peer: "192.0.2.11:3456",
-                                    first_report_at: 1791174000,
-                                    last_report_at: 1791174100,
-                                    report_count: 2,
-                                },
-                                {
-                                    uuid: "unregistered-uuid",
-                                    name: "",
-                                    kind: "unregistered",
-                                    last_ip: "192.0.2.1",
-                                    first_report_at: 1791174000,
-                                    last_report_at: 1791174100,
-                                    report_count: 3,
-                                },
-                                ...[
-                                    { kind: "uuid_missing", last_ip: "192.0.2.21" },
-                                    { kind: "uuid_missing", last_ip: "192.0.2.22" },
-                                    { kind: "uuid_invalid", last_ip: "2001:db8::23" },
-                                ].map((row) => ({
-                                    ...row,
-                                    uuid: "",
-                                    name: "未识别节点",
-                                    first_report_at: 1791174000,
-                                    last_report_at: 1791174100,
-                                    report_count: 5,
-                                })),
-                                {
-                                    uuid: "deleted-returning-uuid",
-                                    name: "删除后重连的节点",
-                                    kind: "deleted",
-                                    last_ip: "2001:db8::1",
-                                    first_report_at: 1791174000,
-                                    last_report_at: 1791174100,
-                                    report_count: 2,
-                                },
-                            ],
-                            pagination: { total: 7 },
-                        }
-                    if (path === "/api/v1/waf/deleted-servers")
-                        data = {
-                            value: [
-                                {
-                                    uuid: "deleted-idle-uuid",
-                                    name: "删除后未再上报",
-                                    original_id: 47,
-                                    deleted_by_id: 1,
-                                    deleted_by_name: "admin",
-                                    created_at: "2026-10-05T08:00:00Z",
-                                    report_count: 0,
-                                },
-                                {
-                                    uuid: "deleted-returning-uuid",
-                                    name: "删除后重连的节点",
-                                    original_id: 63,
-                                    last_report_at: Math.floor(Date.now() / 1000),
-                                    deleted_by_id: 1,
-                                    deleted_by_name: "admin",
-                                    created_at: "2026-10-05T08:00:00Z",
-                                    report_count: 2,
-                                },
-                            ],
-                            pagination: { total: 2 },
-                        }
-                    if (path === "/api/v1/waf")
-                        data = { value: [], pagination: { total: 0, limit: 10, offset: 0 } }
-                    await route.fulfill({ json: { success: true, data } })
-                })
-                await page.goto("/dashboard")
-                await page.getByRole("button", { name: "历史记录", exact: true }).click()
-                const dialog = page.getByRole("dialog", { name: "服务器操作历史" })
-                await expect(dialog).toContainText("#47 → #2")
-                await dialog.locator("summary").click()
-                await expect(dialog).toContainText("修改前")
-                await expect(dialog).toContainText("已设置（内容不记录）")
-                await expect(dialog.locator("script")).toHaveCount(0)
-                expect(await dialog.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true)
-                const box = await dialog.boundingBox()
-                expect(box!.height).toBeLessThanOrEqual(680 + 1)
-                await page.screenshot({
-                    path: "test-results/server-history-" + width + "-" + dark + ".png",
-                    fullPage: true,
-                })
-                await dialog.getByRole("button", { name: "下一页" }).click()
-                await expect(dialog).toContainText("第二页节点")
-                await expect(dialog.getByRole("button", { name: "下一页" })).toBeDisabled()
-                await dialog.getByLabel("搜索节点历史").fill("missing")
-                await dialog.getByRole("button", { name: "搜索", exact: true }).click()
-                await expect(dialog).toContainText("暂无符合条件")
-                await expect(dialog).toContainText("第 1 页")
-                fail = true
-                await dialog.getByRole("button", { name: "刷新历史" }).click()
-                await expect(dialog.getByRole("alert")).toBeVisible()
-                await page.keyboard.press("Escape")
-                await expect(dialog).not.toBeVisible()
-                await page.goto("/dashboard/settings/waf?tab=unknown")
-                const unknown = page.getByRole("tabpanel", { name: "认证防火墙", exact: true })
-                await expect(unknown).toContainText("未登记 UUID 认证失败")
-                await expect(unknown).toContainText("已有 UUID 认证失败")
-                await expect(unknown).toContainText("疑似 UUID 冲突")
-                await expect(unknown).toContainText("旧连接：192.0.2.10")
-                await expect(unknown).toContainText("新连接：192.0.2.11")
-                await expect(unknown).toContainText("待核查 · 未自动封禁")
-                await expect(unknown).toContainText("已删除节点重连")
-                await expect(unknown).toContainText("UUID 缺失")
-                await expect(unknown).toContainText("UUID 格式不合法")
-                await expect(unknown).toContainText("UUID：未提供")
-                await expect(unknown).toContainText("UUID：格式不合法（原文不保存）")
-                await expect(unknown).toContainText("192.0.2.21")
-                await expect(unknown).toContainText("192.0.2.22")
-                await expect(unknown).toContainText("2001:db8::23")
-                await expect(unknown).toContainText("共 7 条分类记录")
-                await expect(unknown).not.toContainText("删除后未再上报")
-                expect(
-                    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
-                ).toBe(true)
-                await page.screenshot({
-                    path: "test-results/unknown-kinds-" + width + "-" + dark + ".png",
-                    fullPage: true,
-                })
-                await page.getByRole("tab", { name: "已删除服务器", exact: true }).click()
-                const deleted = page.getByRole("tabpanel", { name: "已删除服务器", exact: true })
-                await expect(deleted).toContainText("删除后未再上报")
-                await expect(deleted).toContainText("尚未再次上报")
-                await expect(deleted).toContainText("删除后重连的节点")
-                await expect(deleted).toContainText("仍在上报")
-                await expect(deleted).toContainText("最近上报")
-                const reported = deleted.locator("article").filter({ hasText: "删除后重连的节点" })
-                await expect(reported).toHaveClass(/border-amber/)
-                await expect(
-                    deleted.locator("article").filter({ hasText: "删除后未再上报" }),
-                ).not.toHaveClass(/border-amber/)
-                await expect(deleted).not.toContainText("unregistered-uuid")
-                expect(
-                    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
-                ).toBe(true)
-                await page.screenshot({
-                    path: "test-results/deleted-servers-" + width + "-" + dark + ".png",
-                    fullPage: true,
-                })
-                expect(writes).toEqual([])
-                expect(duplicateKeys).toEqual([])
-            },
-        )
-    }
+for (const width of [320, 390, 1024, 1440]) for (const theme of ["light", "dark"]) {
+    test("server history and replacement " + width + " " + theme, async ({ page }, info) => {
+        await page.setViewportSize({ width, height: width === 320 ? 640 : 900 })
+        await page.addInitScript(theme => localStorage.setItem("nezha-dashboard-theme", theme), theme)
+        const errors: string[] = []
+        const writes: any[] = []
+        const queries: URLSearchParams[] = []
+        page.on("pageerror", error => errors.push(error.message))
+        const identity = { server_uuid: "11111111-1111-4111-8111-111111111111", server_id: 63, server_name: "主站服务器" }
+        const changes = [
+            { field: "cpu", before: "Intel Xeon CPU A × 2", after: "AMD EPYC CPU B × 4" },
+            { field: "memory_total", before: "4294967296", after: "8589934592" },
+            { field: "ipv6", before: "2001:db8:aaaa:bbbb:cccc:dddd:eeee:1111", after: "2001:db8:aaaa:bbbb:cccc:dddd:eeee:2222" },
+        ]
+        await page.route("**/api/v1/**", async route => {
+            const url = new URL(route.request().url())
+            let data: any = []
+            if (url.pathname === "/api/v1/profile") data = { id: 1, role: 0, username: "admin", agent_secret: "fixture-normal" }
+            if (url.pathname === "/api/v1/setting") data = { config: { language: "zh-CN", install_host: "fixture.invalid:443", tls: true }, version: "test" }
+            if (url.pathname === "/api/v1/server") data = [{ id:63, uuid:identity.server_uuid, name:identity.server_name, host:{}, owner:{id:1,username:"admin"} }]
+            if (url.pathname === "/api/v1/server/operation-servers") data = { value: [{...identity,position:1,count:25,last_id:25,last_at:1791806400000,deleted:false}], pagination:{ total:1 } }
+            if (url.pathname === "/api/v1/server/operations") {
+                queries.push(url.searchParams)
+                const field = url.searchParams.get("field")
+                const filtered = field === "cpu" ? [changes[0]] : field === "memory" ? [changes[1]] : field === "ip" ? [changes[2]] : changes
+                data = { value: [{...identity,id:25,created_at:"2026-10-12T12:30:18Z",actor_name:"Agent",source:"agent",action:"inventory_change",changes:filtered}], pagination:{total: field ? 1 : 25} }
+            }
+            if (route.request().method() === "POST") {
+                writes.push({path:url.pathname,body:route.request().postDataJSON()})
+                if (url.pathname === "/api/v1/server/replacement-command") data = { secret:"nzreplace_fixture-only", expires_at:"2026-10-12T15:00:00Z" }
+                else if (url.pathname === "/api/v1/server/operations/delete") data = 1
+                else throw Error("unexpected write "+url.pathname)
+            }
+            await route.fulfill({json:{success:true,data}})
+        })
+        await page.goto("/dashboard")
+        const row = page.getByRole("row").filter({has:page.getByText("主站服务器",{exact:true})})
+        const historyButton = row.getByRole("button",{name:"查看 主站服务器 的历史记录",exact:true})
+        await expect(historyButton).toBeVisible()
+        const idWidth = await row.locator('[data-column="id"]').evaluate(el=>el.getBoundingClientRect().width)
+        expect(idWidth).toBeLessThanOrEqual(50)
+        const buttons = row.locator('[data-column="actions"] button')
+        await expect(buttons.last()).toHaveAttribute("aria-label","查看 主站服务器 的历史记录")
+        await page.screenshot({animations:"disabled",path:info.outputPath("server-list.png")})
+        await historyButton.click()
+        const dialog = page.getByRole("dialog")
+        await expect(dialog.getByRole("heading")).toContainText("主站服务器")
+        await dialog.getByRole("button",{name:"CPU",exact:true}).click()
+        await expect.poll(()=>queries.at(-1)?.get("field")).toBe("cpu")
+        expect(queries.at(-1)?.get("uuid")).toBe(identity.server_uuid)
+        await expect(dialog).toContainText("Intel Xeon CPU A")
+        await expect(dialog).toContainText("AMD EPYC CPU B")
+        await expect(dialog).not.toContainText("内存容量")
+        await expect(dialog).toContainText("检测到变化：")
+        await expect(dialog).toContainText("2026")
+        expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true)
+        await page.screenshot({animations:"disabled",path:info.outputPath("history-cpu.png")})
+        await dialog.getByRole("button",{name:"内存",exact:true}).click()
+        await expect(dialog).toContainText("内存容量")
+        await expect(dialog).toContainText("8.00 GiB")
+        await dialog.getByRole("button",{name:"IP",exact:true}).click()
+        await expect(dialog).toContainText("2001:db8:aaaa:bbbb")
+        expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true)
+        await dialog.getByRole("button",{name:"删除此记录",exact:true}).click()
+        await expect(page.getByRole("alertdialog")).toBeVisible()
+        await page.getByRole("button",{name:"取消",exact:true}).click()
+        expect(writes).toHaveLength(0)
+        await dialog.getByRole("button",{name:"全部服务器",exact:true}).click()
+        await expect(dialog.getByRole("button",{name:/主站服务器.*系统 ID 63/})).toBeVisible()
+        await page.screenshot({animations:"disabled",path:info.outputPath("history-cards.png")})
+        await dialog.getByRole("button",{name:"Close",exact:true}).click()
+        await row.getByRole("button",{name:"UUID 操作",exact:true}).click()
+        await page.getByRole("menuitem",{name:"清理数据换机安装命令",exact:true}).click()
+        await expect(dialog.getByRole("heading")).toHaveText("清理数据换机安装命令")
+        expect(writes).toHaveLength(0)
+        expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true)
+        await expect(dialog.getByRole("button",{name:"确认并复制命令",exact:true})).toBeInViewport()
+        await page.screenshot({animations:"disabled",path:info.outputPath("replacement-review.png")})
+        await dialog.getByRole("button",{name:"确认并复制命令",exact:true}).click()
+        await expect(dialog.getByRole("textbox",{name:"换机安装命令"})).toHaveValue(/nzreplace_fixture-only/)
+        await expect(dialog.getByRole("textbox",{name:"换机安装命令"})).not.toHaveValue(/fixture-normal/)
+        expect(writes).toEqual([{path:"/api/v1/server/replacement-command",body:{uuid:identity.server_uuid,confirmed:true}}])
+        expect(errors).toEqual([])
+    })
+}

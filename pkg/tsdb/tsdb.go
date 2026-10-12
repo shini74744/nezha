@@ -123,10 +123,13 @@ func diskFullPanicError(recovered any) error {
 // WritesPaused reports whether new samples are currently being discarded.
 // Queries remain available while VictoriaMetrics is in read-only mode.
 func (db *TSDB) WritesPaused() bool {
-	if db.diskFullPaused.Load() || db.maintenancePaused.Load() {
-		return true
-	}
-	return db.readOnly != nil && db.readOnly.IsReadOnly()
+	return db.maintenancePaused.Load() || db.WritesPausedForDisk()
+}
+
+// WritesPausedForDisk excludes an intentional maintenance pause, which has
+// already drained the old-ID writer before rewriting historical series.
+func (db *TSDB) WritesPausedForDisk() bool {
+	return db.diskFullPaused.Load() || (db.readOnly != nil && db.readOnly.IsReadOnly())
 }
 
 func (db *TSDB) acceptsWrites() bool {

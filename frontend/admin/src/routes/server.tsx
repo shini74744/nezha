@@ -170,7 +170,7 @@ export default function ServerPage() {
             header: "UUID",
             cell: ({ row }) => {
                 const s = row.original
-                return <InstallCommandsMenu uuid={s.uuid} uuidActions />
+                return <InstallCommandsMenu uuid={s.uuid} serverName={s.name} uuidActions />
             },
         },
         {
@@ -179,12 +179,13 @@ export default function ServerPage() {
             cell: ({ row }) => {
                 const s = row.original
                 return (
-                    <div className="flex min-w-[272px] flex-nowrap gap-2">
+                    <div className="flex min-w-[320px] flex-nowrap gap-2">
                         <ServerCard mutate={mutate} data={s} />
                         <TerminalButton id={s.id} />
                         <ServerConfigCard sid={s.id} variant="outline" />
                         <InstallCommandsMenu uuid={s.uuid} iconOnly variant="outline" />
                         <ServerDeleteButton ids={[s.id]} onUpdated={() => mutate()} />
+                        {profile?.role === 0 && <ServerOperationHistory server={{ server_uuid: s.uuid || "", server_id: s.id, server_name: s.name }} />}
                     </div>
                 )
             },
@@ -266,7 +267,7 @@ export default function ServerPage() {
                     <InstallCommandsMenu className="shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] bg-blue-700 text-white hover:bg-blue-600 dark:hover:bg-blue-800 rounded-lg" />
                 </div>
             </div>
-            <p className="mb-2 text-xs text-muted-foreground lg:hidden">
+            <p className="mb-2 text-xs text-muted-foreground xl:hidden">
                 表格可左右滑动，查看完整信息和操作按钮
             </p>
             <div
@@ -287,13 +288,13 @@ export default function ServerPage() {
                                             className={cn(
                                                 "px-2 text-sm leading-tight whitespace-normal break-words",
                                                 header.column.id === "select" && "w-12",
-                                                header.column.id === "id" && "w-24",
+                                                header.column.id === "id" && "w-12",
                                                 header.column.id === "groups" && "w-16",
                                                 header.column.id === "enableDDNS" && "w-20",
                                                 header.column.id === "hideForGuest" && "w-20",
                                                 header.column.id === "note" && "w-16",
                                                 header.column.id === "uuid" && "w-16",
-                                                header.column.id === "actions" && "w-[288px]",
+                                                header.column.id === "actions" && "w-[336px]",
                                             )}
                                         >
                                             {header.isPlaceholder
@@ -328,13 +329,13 @@ export default function ServerPage() {
                                             className={cn(
                                                 "px-2 text-xsm whitespace-normal break-words",
                                                 cell.column.id === "select" && "w-12",
-                                                cell.column.id === "id" && "w-24",
+                                                cell.column.id === "id" && "w-12",
                                                 cell.column.id === "groups" && "w-16",
                                                 cell.column.id === "enableDDNS" && "w-20",
                                                 cell.column.id === "hideForGuest" && "w-20",
                                                 cell.column.id === "note" && "w-16",
                                                 cell.column.id === "uuid" && "w-16",
-                                                cell.column.id === "actions" && "w-[288px]",
+                                                cell.column.id === "actions" && "w-[336px]",
                                             )}
                                         >
                                             {flexRender(

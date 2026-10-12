@@ -625,12 +625,14 @@ export interface ModelServerGroup {
 }
 
 export interface ModelServerGroupForm {
+    revision?: string
     /** @minLength 1 */
     name: string
     servers: number[]
 }
 
 export interface ModelServerGroupResponseItem {
+    revision?: string
     group: ModelServerGroup
     servers: number[]
 }

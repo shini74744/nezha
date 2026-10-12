@@ -3,7 +3,6 @@ package controller
 import (
 	"errors"
 	"fmt"
-	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -20,8 +19,14 @@ import (
 
 var (
 	serverIDReassignMu sync.Mutex
-	restartDashboard   = func() { os.Exit(0) }
+	restartDashboard   func()
 )
+
+// SetDashboardRestartHandler connects maintenance to the main process's
+// graceful shutdown path. It must be configured before serving requests.
+func SetDashboardRestartHandler(restart func()) {
+	restartDashboard = restart
+}
 
 type serverOrderForm struct {
 	ServerIDs []uint64 `json:"server_ids" binding:"required"`
@@ -84,6 +89,16 @@ func reassignServerIDs(c *gin.Context) (*serverIDReassignResult, error) {
 	}
 	serverIDReassignMu.Lock()
 	defer serverIDReassignMu.Unlock()
+	// Flush current counters before remapping, then serialize database identities
+	// with registration, group edits and late Agent reports.
+	if err := singleton.RecordTransferHourlyUsage(); err != nil {
+		return nil, err
+	}
+	singleton.ServerMutationMu.Lock()
+	defer singleton.ServerMutationMu.Unlock()
+	if singleton.ServerIDReassignmentInProgress.Load() {
+		return nil, errors.New("服务器 ID 正在调整，请稍后重试")
+	}
 	if err := validateCompleteServerOrder(singleton.DB, form.ServerIDs); err != nil {
 		return nil, err
 	}
@@ -96,6 +111,9 @@ func reassignServerIDs(c *gin.Context) (*serverIDReassignResult, error) {
 	}
 	if !changed {
 		return &serverIDReassignResult{Mapping: mapping}, nil
+	}
+	if restartDashboard == nil {
+		return nil, errors.New("graceful restart handler is not configured")
 	}
 
 	singleton.ServerIDReassignmentInProgress.Store(true)
@@ -197,6 +215,13 @@ func reassignServerIDsInDB(tx *gorm.DB, order []uint64, mapping map[uint64]uint6
 			tempToFinal[tempID] = mapping[oldID]
 		}
 		if err := moveServerIDColumn(tx, ref[0], ref[1], tempToFinal); err != nil {
+			return err
+		}
+	}
+	// Terminal metadata is UUID-bound; do not rebind abandoned sessions from a
+	// different machine which previously used the same numeric ID.
+	if tx.Migrator().HasTable(&model.TerminalSession{}) {
+		if err := tx.Exec("UPDATE terminal_sessions SET server_id = (SELECT id FROM servers WHERE uuid = terminal_sessions.server_uuid) WHERE EXISTS (SELECT 1 FROM servers WHERE uuid = terminal_sessions.server_uuid)").Error; err != nil {
 			return err
 		}
 	}

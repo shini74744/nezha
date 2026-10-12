@@ -4,12 +4,12 @@
 .server-list-table { min-width:1400px; }
 .server-list-table [data-column="host_version"] { width:80px; }
 .server-list-table .server-text { max-width:none; overflow-wrap:anywhere; }
-@media (max-width:1023px) {
+@media (max-width:1279px) {
  .server-list-table [data-column="name"] { width:144px; }
  .server-list-table [data-column="owner"] { width:160px; }
  .server-list-table [data-column="ip"] { width:232px; }
 }
-@media (min-width:1024px) {
+@media (min-width:1280px) {
  .server-list-scroll { overflow:visible; }
  .server-list-table { min-width:0; }
 }

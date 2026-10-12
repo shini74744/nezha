@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"encoding/json"
+	"errors"
 	"slices"
 	"strconv"
 
@@ -21,8 +23,14 @@ import (
 // @Success 200 {object} model.CommonResponse[[]model.ServerGroupResponseItem]
 // @Router /server-group [get]
 func listServerGroup(c *gin.Context) ([]*model.ServerGroupResponseItem, error) {
+	singleton.ServerMutationMu.Lock()
+	defer singleton.ServerMutationMu.Unlock()
+	if singleton.ServerIDReassignmentInProgress.Load() {
+		return nil, errors.New("服务器 ID 正在调整，请稍后重试")
+	}
+
 	var sg []model.ServerGroup
-	if err := singleton.DB.Find(&sg).Error; err != nil {
+	if err := singleton.DB.Order("id ASC").Find(&sg).Error; err != nil {
 		return nil, err
 	}
 
@@ -70,8 +78,9 @@ func listServerGroup(c *gin.Context) ([]*model.ServerGroupResponseItem, error) {
 			continue
 		}
 		sgRes = append(sgRes, &model.ServerGroupResponseItem{
-			Group:   s,
-			Servers: groupServers[s.ID],
+			Group:    s,
+			Servers:  groupServers[s.ID],
+			Revision: model.ServerGroupRevision(s),
 		})
 	}
 
@@ -90,6 +99,12 @@ func listServerGroup(c *gin.Context) ([]*model.ServerGroupResponseItem, error) {
 // @Success 200 {object} model.CommonResponse[uint64]
 // @Router /server-group [post]
 func createServerGroup(c *gin.Context) (uint64, error) {
+	singleton.ServerMutationMu.Lock()
+	defer singleton.ServerMutationMu.Unlock()
+	if singleton.ServerIDReassignmentInProgress.Load() {
+		return 0, errors.New("服务器 ID 正在调整，请稍后重试")
+	}
+
 	var sgf model.ServerGroupForm
 	if err := c.ShouldBindJSON(&sgf); err != nil {
 		return 0, err
@@ -151,6 +166,12 @@ func createServerGroup(c *gin.Context) (uint64, error) {
 // @Success 200 {object} model.CommonResponse[any]
 // @Router /server-group/{id} [patch]
 func updateServerGroup(c *gin.Context) (any, error) {
+	singleton.ServerMutationMu.Lock()
+	defer singleton.ServerMutationMu.Unlock()
+	if singleton.ServerIDReassignmentInProgress.Load() {
+		return nil, errors.New("服务器 ID 正在调整，请稍后重试")
+	}
+
 	idStr := c.Param("id")
 
 	id, err := strconv.ParseUint(idStr, 10, 64)
@@ -179,6 +200,10 @@ func updateServerGroup(c *gin.Context) (any, error) {
 
 	if !patGroupMembershipAccessAllowed(c, sgDB.ID) {
 		return nil, singleton.Localizer.ErrorT("permission denied")
+	}
+
+	if sg.Revision == "" || sg.Revision != model.ServerGroupRevision(sgDB) {
+		return nil, errors.New("分组已变化或 ID 已重新分配，请刷新列表后重试")
 	}
 
 	sgDB.Name = sg.Name
@@ -229,15 +254,27 @@ func updateServerGroup(c *gin.Context) (any, error) {
 // @Tags auth required
 // @Accept json
 // @param request body []uint64 true "id list"
+// @Param revisions query string true "JSON object mapping each ID to its revision from GET /server-group"
 // @Produce json
 // @Success 200 {object} model.CommonResponse[any]
 // @Router /batch-delete/server-group [post]
 func batchDeleteServerGroup(c *gin.Context) (any, error) {
+	singleton.ServerMutationMu.Lock()
+	defer singleton.ServerMutationMu.Unlock()
+	if singleton.ServerIDReassignmentInProgress.Load() {
+		return nil, errors.New("服务器 ID 正在调整，请稍后重试")
+	}
+
 	var sgs []uint64
 	if err := c.ShouldBindJSON(&sgs); err != nil {
 		return nil, err
 	}
 
+	if len(sgs) == 0 {
+		return nil, nil
+	}
+	slices.Sort(sgs)
+	sgs = slices.Compact(sgs)
 	var sg []model.ServerGroup
 	if err := singleton.DB.Where("id in (?)", sgs).Find(&sg).Error; err != nil {
 		return nil, err
@@ -261,6 +298,15 @@ func batchDeleteServerGroup(c *gin.Context) (any, error) {
 		}
 	}
 
+	var revisions map[uint64]string
+	if err := json.Unmarshal([]byte(c.Query("revisions")), &revisions); err != nil || len(sg) != len(sgs) {
+		return nil, errors.New("分组已变化或 ID 已重新分配，请刷新列表后重试")
+	}
+	for _, group := range sg {
+		if revisions[group.ID] != model.ServerGroupRevision(group) {
+			return nil, errors.New("分组已变化或 ID 已重新分配，请刷新列表后重试")
+		}
+	}
 	err := model.WithServerOperation(singleton.DB, model.ServerOperationActorFromContext(c), "group", nil, func(tx *gorm.DB) error {
 		if err := tx.Unscoped().Delete(&model.ServerGroup{}, "id in (?)", sgs).Error; err != nil {
 			return err
@@ -268,7 +314,7 @@ func batchDeleteServerGroup(c *gin.Context) (any, error) {
 		if err := tx.Unscoped().Delete(&model.ServerGroupServer{}, "server_group_id in (?)", sgs).Error; err != nil {
 			return err
 		}
-		return nil
+		return model.CompactServerGroupIDs(tx)
 	})
 
 	if err != nil {

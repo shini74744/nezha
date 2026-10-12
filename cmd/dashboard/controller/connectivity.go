@@ -26,7 +26,11 @@ type connectivityResponse struct {
 }
 
 func connectivityKey(server *model.Server) string {
-	return fmt.Sprintf("%d:%s:%d", server.ID, server.UUID, server.GetUserID())
+	key := fmt.Sprintf("%d:%s:%d", server.ID, server.UUID, server.GetUserID())
+	if server.MachineGeneration > 0 {
+		key += fmt.Sprintf(":%d", server.MachineGeneration)
+	}
+	return key
 }
 func canRunConnectivity(c *gin.Context, server *model.Server) bool {
 	if !userCanViewServer(c, server) || !server.HasPermission(c) {

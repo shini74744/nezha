@@ -26,3 +26,19 @@ func TestRecordTransferHourlyUsageReturnsWriteFailure(t *testing.T) {
 	require.NoError(t, DB.Migrator().DropTable(&model.Transfer{}))
 	require.Error(t, RecordTransferHourlyUsage(reporter))
 }
+
+func TestCloseTSDBCompletesExpectedReassignmentPause(t *testing.T) {
+	previous, previousReassigning := TSDBShared, ServerIDReassignmentInProgress.Load()
+	db, err := tsdb.Open(&tsdb.Config{DataPath: t.TempDir(), MaxMemoryMB: 32, MinFreeDiskSpaceGB: 1})
+	require.NoError(t, err)
+	TSDBShared = db
+	ServerIDReassignmentInProgress.Store(true)
+	t.Cleanup(func() {
+		_ = db.Close()
+		TSDBShared = previous
+		ServerIDReassignmentInProgress.Store(previousReassigning)
+	})
+	require.NoError(t, db.PauseWritesForMaintenance())
+	require.NoError(t, CloseTSDB())
+	require.True(t, db.IsClosed())
+}

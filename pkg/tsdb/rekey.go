@@ -3,6 +3,7 @@ package tsdb
 import (
 	"fmt"
 	"log"
+	"sort"
 	"strconv"
 	"time"
 
@@ -138,27 +139,38 @@ func (db *TSDB) RemapServerIDs(mapping map[uint64]uint64) error {
 		MinTimestamp: time.Now().Add(-time.Duration(db.config.RetentionDays+2) * 24 * time.Hour).UnixMilli(),
 		MaxTimestamp: time.Now().Add(time.Hour).UnixMilli(),
 	}
-	for original, temporary := range backup {
-		if err := db.copyServerSeriesLocked(original, temporary, tr); err != nil {
+	originals := keys(backup)
+	sort.Strings(originals)
+	for index, original := range originals {
+		if err := db.copyServerSeriesLocked(original, backup[original], tr); err != nil {
 			_ = db.deleteServerSeriesLocked(values(backup))
 			return fmt.Errorf("back up server series %s: %w", original, err)
 		}
+		// Finish one server before starting the next, bounding the pending bulk
+		// import and making maintenance progress visible on smaller hosts.
+		db.storage.DebugFlush()
+		log.Printf("NEZHA>> TSDB rekey backup %d/%d server=%s", index+1, len(originals), original)
+		time.Sleep(100 * time.Millisecond)
 	}
-	db.storage.DebugFlush()
 
 	if err := db.deleteServerSeriesLocked(keys(affected)); err != nil {
 		_ = db.restoreServerSeriesLocked(invert(backup), tr)
 		return fmt.Errorf("delete affected server series: %w", err)
 	}
 
-	for oldValue, newValue := range changed {
+	sources := keys(changed)
+	sort.Strings(sources)
+	for index, oldValue := range sources {
+		newValue := changed[oldValue]
 		if err := db.copyServerSeriesLocked(backup[oldValue], newValue, tr); err != nil {
 			_ = db.deleteServerSeriesLocked(keys(affected))
 			_ = db.restoreServerSeriesLocked(invert(backup), tr)
 			return fmt.Errorf("restore server %s as %s: %w", oldValue, newValue, err)
 		}
+		db.storage.DebugFlush()
+		log.Printf("NEZHA>> TSDB rekey restore %d/%d server=%s new=%s", index+1, len(sources), oldValue, newValue)
+		time.Sleep(100 * time.Millisecond)
 	}
-	db.storage.DebugFlush()
 	if err := db.deleteServerSeriesLocked(values(backup)); err != nil {
 		// The final labels are already complete. Treat temporary-label cleanup as
 		// non-fatal so the SQLite IDs can commit consistently with TSDB.
@@ -217,6 +229,17 @@ func (db *TSDB) copyServerSeriesLocked(source, target string, tr storage.TimeRan
 		var values []float64
 		timestamps, values = block.AppendRowsWithTimeRangeFilter(timestamps, values, tr)
 		for i := range timestamps {
+			// AddRows has a same-metric fast path which can reuse a cached TSID
+			// when crossing storage partitions. A reassigned target TSID may be
+			// deleted in only one partition. Keep each import call within one
+			// UTC day so the destination rechecks its deleted IDs on entry.
+			const millisecondsPerDay = int64(24 * time.Hour / time.Millisecond)
+			if len(rows) > 0 && rows[len(rows)-1].Timestamp/millisecondsPerDay != timestamps[i]/millisecondsPerDay {
+				if err := db.addMaintenanceRowsLocked(rows); err != nil {
+					return err
+				}
+				rows = rows[:0]
+			}
 			rows = append(rows, storage.MetricRow{
 				MetricNameRaw: metricNameRaw,
 				Timestamp:     timestamps[i],
