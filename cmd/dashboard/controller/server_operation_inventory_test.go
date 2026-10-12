@@ -14,12 +14,13 @@ func TestOperationCardsCurrentOrderAndUUID(t *testing.T) {
 	_, cleanup := setupServerOwnershipFixture(t)
 	defer cleanup()
 	require.NoError(t, singleton.DB.Exec("DELETE FROM servers").Error)
-	for _, s := range []model.Server{
+	servers := []model.Server{
 		{Common: model.Common{ID: 63}, UUID: "alpha", Name: "renamed", DisplayIndex: 10},
 		{Common: model.Common{ID: 47}, UUID: "beta", Name: "beta", DisplayIndex: 20},
 		{Common: model.Common{ID: 17}, UUID: "empty", Name: "empty", DisplayIndex: 0},
-	} {
-		require.NoError(t, singleton.DB.Create(&s).Error)
+	}
+	for i := range servers {
+		require.NoError(t, singleton.DB.Create(&servers[i]).Error)
 	}
 	require.NoError(t, singleton.DB.Create(&[]model.ServerOperationLog{
 		{ServerUUID: "alpha", ServerID: 3, PreviousID: 9, ServerName: "previous", Action: "edit"},
