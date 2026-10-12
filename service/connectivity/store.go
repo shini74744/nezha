@@ -5,12 +5,14 @@ import (
 	"errors"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"strings"
 	"time"
 )
 
 // Record contains private endpoint identities for safe cache reconciliation.
 // URLs never appear in public Snapshot JSON.
 type Record struct {
+	ServerUUID  string `gorm:"index"`
 	ID          uint64 `gorm:"primaryKey"`
 	Identity    string `gorm:"index:idx_connectivity_identity_time,priority:1;uniqueIndex:idx_connectivity_batch,priority:1"`
 	FinishedAt  int64  `gorm:"index;index:idx_connectivity_identity_time,priority:2;uniqueIndex:idx_connectivity_batch,priority:2"`
@@ -68,6 +70,9 @@ func (s Store) Save(key string, snapshot Snapshot) error {
 		return err
 	}
 	row := Record{Identity: key, FinishedAt: snapshot.FinishedAt, ScheduledAt: snapshot.ScheduledAt, Full: snapshot.Full, Payload: string(raw)}
+	if parts := strings.Split(key, ":"); len(parts) >= 2 {
+		row.ServerUUID = parts[1]
+	}
 	return s.DB.Clauses(clause.OnConflict{DoNothing: true}).Create(&row).Error
 }
 func (s Store) Latest(key string, cutoff int64) (Snapshot, bool, error) {

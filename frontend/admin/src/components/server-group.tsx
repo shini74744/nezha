@@ -65,15 +65,16 @@ export const ServerGroupCard: React.FC<ServerGroupCardProps> = ({ data, mutate }
     const onSubmit = async (values: z.infer<typeof serverGroupFormSchema>) => {
         try {
             if (data?.group.id) {
-                await updateServerGroup(data.group.id, values)
+                await updateServerGroup(data.group.id, { ...values, revision: data.revision })
             } else {
                 await createServerGroup(values)
             }
         } catch (e) {
             console.error(e)
             toast(t("Error"), {
-                description: t("Results.UnExpectedError"),
+                description: e instanceof Error ? e.message : t("Results.UnExpectedError"),
             })
+            await mutate()
             return
         }
         setOpen(false)

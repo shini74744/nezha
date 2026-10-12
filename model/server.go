@@ -23,8 +23,9 @@ type Server struct {
 
 	Name                   string `json:"name"`
 	UUID                   string `json:"uuid,omitempty" gorm:"unique"`
-	Note                   string `json:"note,omitempty"`                        // 管理员可见备注
-	PublicNote             string `json:"public_note,omitempty"`                 // 公开备注
+	Note                   string `json:"note,omitempty"`        // 管理员可见备注
+	PublicNote             string `json:"public_note,omitempty"` // 公开备注
+	MachineGeneration      uint64 `json:"-" gorm:"default:0"`
 	DisplayIndex           int    `json:"display_index"`                         // 展示排序，越大越靠前
 	HideForGuest           bool   `json:"hide_for_guest,omitempty"`              // 对游客隐藏
 	HideForDisplay         bool   `json:"hide_for_display" gorm:"default:false"` // 普通隐藏，仅前台展示筛选
@@ -85,6 +86,7 @@ type serverRuntimeHolder struct {
 	stream             pb.NezhaService_ReportSystemStateServer
 	generation         uint64
 	reportedGeneration uint64
+	retired            bool
 	state              *HostState
 	host               *Host
 	lastActive         time.Time
@@ -141,6 +143,16 @@ func (s *Server) RuntimeHandle() RuntimeHandle {
 }
 
 func (handle RuntimeHandle) ApplyHostReport(host *Host, createdAt time.Time, persist func(Transfer) error) (HostReportResult, error) {
+	return handle.applyHostReport(host, false, createdAt, persist)
+}
+
+// Authenticated live reports refresh host facts even if a reused UUID now
+// belongs to a machine that booted earlier. This does not infer replacement
+// or clear history; explicit replacement credentials own that operation.
+func (handle RuntimeHandle) RefreshHostReport(host *Host, createdAt time.Time, persist func(Transfer) error) (HostReportResult, error) {
+	return handle.applyHostReport(host, true, createdAt, persist)
+}
+func (handle RuntimeHandle) applyHostReport(host *Host, allowEarlier bool, createdAt time.Time, persist func(Transfer) error) (HostReportResult, error) {
 	if handle.holder == nil || host == nil {
 		return HostReportResult{}, errors.New("invalid runtime handle")
 	}
@@ -148,7 +160,7 @@ func (handle RuntimeHandle) ApplyHostReport(host *Host, createdAt time.Time, per
 	holder.mu.Lock()
 	defer holder.mu.Unlock()
 	canonical := holder.canonical
-	if canonical == nil {
+	if canonical == nil || holder.retired {
 		return HostReportResult{}, errors.New("runtime handle has no canonical server")
 	}
 	result := HostReportResult{ServerID: canonical.ID, UUID: canonical.UUID}
@@ -159,7 +171,7 @@ func (handle RuntimeHandle) ApplyHostReport(host *Host, createdAt time.Time, per
 		result.Initial = true
 		return result, nil
 	}
-	if host.BootTime < holder.host.BootTime {
+	if !allowEarlier && host.BootTime < holder.host.BootTime {
 		result.Stale = true
 		return result, nil
 	}
@@ -188,6 +200,10 @@ func (handle RuntimeHandle) ApplyHostReport(host *Host, createdAt time.Time, per
 	canonical.LastActive = time.Time{}
 	canonical.PrevTransferInSnapshot = 0
 	canonical.PrevTransferOutSnapshot = 0
+	if allowEarlier {
+		holder.generation++
+		holder.stream = nil
+	}
 	result.Applied = true
 	return result, nil
 }
@@ -223,7 +239,7 @@ func (lease StateStreamLease) updateState(receiver *Server, state *HostState, la
 	}
 	lease.holder.mu.Lock()
 	defer lease.holder.mu.Unlock()
-	if lease.holder.generation != lease.generation || lease.holder.stream == nil || lease.holder.canonical == nil || (receiver != nil && lease.holder.canonical != receiver) {
+	if lease.holder.retired || lease.holder.generation != lease.generation || lease.holder.stream == nil || lease.holder.canonical == nil || (receiver != nil && lease.holder.canonical != receiver) {
 		return false
 	}
 	canonical := lease.holder.canonical
@@ -385,6 +401,9 @@ func (s *Server) AttachStateStream(stream pb.NezhaService_ReportSystemStateServe
 	}
 	holder.mu.Lock()
 	defer holder.mu.Unlock()
+	if holder.retired {
+		return StateStreamLease{}
+	}
 	lease := StateStreamLease{holder: holder}
 	if holder.stream != nil && holder.reportedGeneration == holder.generation {
 		lease.predecessor = holder.stream.Context()
@@ -502,7 +521,7 @@ func (s *Server) TransferDeltaAndAdvance() (inbound, outbound uint64, deltaIn, d
 	runtimeHolderInitMu.Unlock()
 	holder.mu.Lock()
 	defer holder.mu.Unlock()
-	if holder.canonical != s || holder.state == nil {
+	if holder.retired || holder.canonical != s || holder.state == nil {
 		return 0, 0, 0, 0
 	}
 	inbound, outbound = holder.state.NetInTransfer, holder.state.NetOutTransfer

@@ -9,6 +9,7 @@ import (
 	"github.com/mattn/go-sqlite3"
 	"github.com/nezhahq/nezha/service/connectivity"
 	"github.com/nezhahq/nezha/service/networkinsight"
+	"github.com/nezhahq/nezha/service/singleton"
 	"gorm.io/gorm"
 )
 
@@ -59,15 +60,17 @@ func sqliteContention(err error) bool {
 // upgrade (which can fail immediately instead of observing SQLite's busy timeout).
 func persistNetworkInsightRecord(ctx context.Context, db *gorm.DB, record networkinsight.Record, validate func(*gorm.DB) error) error {
 	return retryDetectionPersistence(ctx, func(attempt context.Context) error {
+		singleton.ServerMutationMu.Lock()
+		defer singleton.ServerMutationMu.Unlock()
 		database := db.WithContext(attempt)
 		if err := validate(database); err != nil {
 			return err
 		}
 		return database.Exec(
-			"INSERT INTO network_insight_records (identity, kind, finished_at, scheduled_at, payload) "+
-				"SELECT ?, ?, ?, ?, ? WHERE NOT EXISTS "+
+			"INSERT INTO network_insight_records (server_uuid, identity, kind, finished_at, scheduled_at, payload) "+
+				"SELECT ?, ?, ?, ?, ?, ? WHERE NOT EXISTS "+
 				"(SELECT 1 FROM network_insight_records WHERE identity = ? AND kind = ? AND finished_at = ?)",
-			record.Identity, record.Kind, record.FinishedAt, record.ScheduledAt, record.Payload,
+			record.ServerUUID, record.Identity, record.Kind, record.FinishedAt, record.ScheduledAt, record.Payload,
 			record.Identity, record.Kind, record.FinishedAt,
 		).Error
 	})
@@ -75,6 +78,8 @@ func persistNetworkInsightRecord(ctx context.Context, db *gorm.DB, record networ
 
 func persistConnectivityRecord(ctx context.Context, db *gorm.DB, key string, snapshot connectivity.Snapshot, valid func() bool) error {
 	return retryDetectionPersistence(ctx, func(attempt context.Context) error {
+		singleton.ServerMutationMu.Lock()
+		defer singleton.ServerMutationMu.Unlock()
 		if !valid() {
 			return errDetectionIdentityChanged
 		}

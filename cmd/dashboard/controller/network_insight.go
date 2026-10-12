@@ -546,7 +546,7 @@ func launchInsightSelected(s *model.Server, kind string, automatic bool, selecti
 		if e != nil {
 			return
 		}
-		record := networkinsight.Record{Identity: identity, Kind: kind, FinishedAt: snap.FinishedAt, ScheduledAt: snap.ScheduledAt, Payload: string(raw)}
+		record := networkinsight.Record{ServerUUID: s.UUID, Identity: identity, Kind: kind, FinishedAt: snap.FinishedAt, ScheduledAt: snap.ScheduledAt, Payload: string(raw)}
 		e = persistNetworkInsightRecord(context.Background(), singleton.DB, record, func(db *gorm.DB) error {
 			current, ok := singleton.ServerShared.Get(s.ID)
 			if !ok || !insightEnabled(current, kind) {

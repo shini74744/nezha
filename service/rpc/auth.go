@@ -74,6 +74,18 @@ func (a *authHandler) check(ctx context.Context) (uint64, error) {
 		return 0, status.Error(codes.Unauthenticated, "客户端认证失败")
 	}
 
+	if singleton.IsReplacementSecret(clientSecret) {
+		_, server, err := singleton.AuthorizeServerReplacement(clientSecret, clientUUID)
+		if err != nil {
+			return 0, status.Error(codes.Unauthenticated, "replacement credential rejected")
+		}
+		return server.ID, nil
+	}
+
+	if singleton.ServerReplacementClearing(clientUUID) {
+		return 0, status.Error(codes.Unavailable, "machine replacement cleanup in progress")
+	}
+
 	// Per-transfer handshake secret path: ApplyConfig delivers a random
 	// per-transfer token instead of the destination user's global AgentSecret
 	// (see PushIfOnline). When the agent reconnects under that token the auth

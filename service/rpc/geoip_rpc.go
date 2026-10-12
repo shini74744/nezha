@@ -22,6 +22,11 @@ func (s *NezhaHandler) ReportGeoIP(ctx context.Context, report *pb.GeoIP) (*pb.G
 	if err != nil {
 		return nil, err
 	}
+	if pending, err := pendingReplacement(ctx); err != nil {
+		return nil, err
+	} else if pending {
+		return nil, fmt.Errorf("等待换机首次状态上报")
+	}
 	geoIP := model.PB2GeoIP(report)
 	if geoIP.IP.IPv4Addr == "" && geoIP.IP.IPv6Addr == "" {
 		ip, _ := ctx.Value(model.CtxKeyRealIP{}).(string)
@@ -34,6 +39,9 @@ func (s *NezhaHandler) ReportGeoIP(ctx context.Context, report *pb.GeoIP) (*pb.G
 	server, ok := singleton.ServerShared.Get(clientID)
 	if !ok || server == nil {
 		return nil, fmt.Errorf("server not found")
+	}
+	if !server.MachineRuntimeActive() {
+		return nil, fmt.Errorf("agent connection superseded")
 	}
 	oldIP, history, ipChanged, historyErr := singleton.RecordServerIPChange(server, geoIP.IP, time.Now())
 	if historyErr != nil {
@@ -68,6 +76,9 @@ func (s *NezhaHandler) ReportGeoIP(ctx context.Context, report *pb.GeoIP) (*pb.G
 		log.Printf("NEZHA>> geoip.Lookup: %v", err)
 	}
 	geoIP.CountryCode = location
+	if historyErr := singleton.RecordServerInventory(server.ID, server.UUID, model.GeoInventoryValues(&geoIP), server.MachineGeneration); historyErr != nil {
+		log.Printf("NEZHA>> Failed to record address history for server %d: %v", server.ID, historyErr)
+	}
 	server.GeoIP = &geoIP
 	server.SetSnapshotCountry(location)
 	return &pb.GeoIP{Ip: nil, CountryCode: location, DashboardBootTime: singleton.DashboardBootTime}, nil

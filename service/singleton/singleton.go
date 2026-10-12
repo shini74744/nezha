@@ -104,12 +104,20 @@ func InitDBFromPath(path string) error {
 		model.Cron{}, model.Transfer{}, model.ServerGroupServer{},
 		model.NAT{}, model.DDNSProfile{}, model.NotificationGroupNotification{},
 		model.WAF{}, model.Oauth2Bind{}, model.ServerTransfer{}, model.JWTSession{},
-		model.APIToken{}, model.MCPAuditLog{}, model.ServerOperationLog{}, model.UnknownAgentReport{}, model.AgentIdentityRejection{}, model.AgentUUIDConflict{}, model.ServerDeletionTombstone{}, model.ServerSnapshot{},
+		model.APIToken{}, model.MCPAuditLog{}, model.ServerOperationLog{}, model.ServerInventoryBaseline{}, model.ServerReplacement{}, model.UnknownAgentReport{}, model.AgentIdentityRejection{}, model.AgentUUIDConflict{}, model.ServerDeletionTombstone{}, model.ServerSnapshot{},
 		model.PlanTrafficCheckpoint{}, model.PlanTrafficDay{}, model.LogoLibraryEntry{}, model.LogoLibraryGroup{}, model.TerminalCommand{}, model.TerminalSession{}, model.TerminalSessionEvent{})
 	if err != nil {
 		return err
 	}
 
+	// Normalize legacy gaps before requests or background writers start.
+	if err := model.WithServerOperation(DB, model.ServerOperationActor{Name: "系统", Source: "system"},
+		"group", nil, model.CompactServerGroupIDs); err != nil {
+		return err
+	}
+	if err := initReplacementClearing(); err != nil {
+		return err
+	}
 	if err := initTerminalCommandCipher(path); err != nil {
 		return err
 	}
@@ -135,6 +143,11 @@ func InitDBFromPath(path string) error {
 
 // RecordTransferHourlyUsage 对流量记录进行打点
 func RecordTransferHourlyUsage(servers ...*model.Server) error {
+	ServerMutationMu.Lock()
+	defer ServerMutationMu.Unlock()
+	if ServerIDReassignmentInProgress.Load() {
+		return nil // Old runtime IDs must not be written between remapping and restart.
+	}
 	now := time.Now()
 	nowTrimSeconds := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), 0, 0, 0, now.Location())
 
