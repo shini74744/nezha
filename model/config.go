@@ -63,11 +63,16 @@ type ConfigDashboard struct {
 	// 为空时，OAuth2 回调放行请求 Host（信任请求头），不做强制重写。
 	DashboardHost string `koanf:"dashboard_host" json:"dashboard_host,omitempty"`
 
-	WebRealIPHeader      string `koanf:"web_real_ip_header" json:"web_real_ip_header,omitempty"`     // 前端真实IP
-	AgentRealIPHeader    string `koanf:"agent_real_ip_header" json:"agent_real_ip_header,omitempty"` // Agent真实IP
-	UserTemplate         string `koanf:"user_template" json:"user_template,omitempty"`
-	AdminTemplate        string `koanf:"admin_template" json:"admin_template,omitempty"`
-	FrontendPasswordHash string `koanf:"frontend_password_hash" json:"-"`
+	WebRealIPHeader           string                 `koanf:"web_real_ip_header" json:"web_real_ip_header,omitempty"`     // 前端真实IP
+	AgentRealIPHeader         string                 `koanf:"agent_real_ip_header" json:"agent_real_ip_header,omitempty"` // Agent真实IP
+	UserTemplate              string                 `koanf:"user_template" json:"user_template,omitempty"`
+	AdminTemplate             string                 `koanf:"admin_template" json:"admin_template,omitempty"`
+	FrontendPasswordSchedule  AccessPasswordSchedule `koanf:"frontend_password_schedule" json:"-"`
+	BackendPasswordSchedule   AccessPasswordSchedule `koanf:"backend_password_schedule" json:"-"`
+	FrontendPasswordHash      string                 `koanf:"frontend_password_hash" json:"-"`
+	BackendPasswordHash       string                 `koanf:"backend_password_hash" json:"-"`
+	BackendPasswordFailures   int                    `koanf:"backend_password_failures" json:"-"`
+	BackendPasswordBanMinutes int                    `koanf:"backend_password_ban_minutes" json:"-"`
 
 	EnablePlainIPInNotification bool `koanf:"enable_plain_ip_in_notification" json:"enable_plain_ip_in_notification,omitempty"` // 通知信息IP不打码
 	// AllowJWTIPChange disables the IP binding check for browser login sessions.
@@ -358,12 +363,17 @@ func (c *Config) save() error {
 	}
 	data, err := yaml.Marshal(struct {
 		*Config
-		ConnectivityConfig            string `json:"connectivity_config,omitempty"`
-		AppearanceLegacyCode          string `json:"appearance_legacy_code,omitempty"`
-		DashboardAppearanceLegacyCode string `json:"dashboard_appearance_legacy_code,omitempty"`
-		FrontendPasswordHash          string `json:"frontend_password_hash,omitempty"`
-		JWTSecretKey                  string `json:"jwt_secret_key,omitempty"`
-	}{Config: c, ConnectivityConfig: c.ConnectivityConfig, AppearanceLegacyCode: c.AppearanceLegacyCode, DashboardAppearanceLegacyCode: c.DashboardAppearanceLegacyCode, FrontendPasswordHash: c.FrontendPasswordHash, JWTSecretKey: persistedJWT})
+		ConnectivityConfig            string                 `json:"connectivity_config,omitempty"`
+		AppearanceLegacyCode          string                 `json:"appearance_legacy_code,omitempty"`
+		DashboardAppearanceLegacyCode string                 `json:"dashboard_appearance_legacy_code,omitempty"`
+		FrontendPasswordSchedule      AccessPasswordSchedule `json:"frontend_password_schedule"`
+		BackendPasswordSchedule       AccessPasswordSchedule `json:"backend_password_schedule"`
+		FrontendPasswordHash          string                 `json:"frontend_password_hash,omitempty"`
+		BackendPasswordHash           string                 `json:"backend_password_hash,omitempty"`
+		BackendPasswordFailures       int                    `json:"backend_password_failures,omitempty"`
+		BackendPasswordBanMinutes     int                    `json:"backend_password_ban_minutes,omitempty"`
+		JWTSecretKey                  string                 `json:"jwt_secret_key,omitempty"`
+	}{FrontendPasswordSchedule: c.FrontendPasswordSchedule, BackendPasswordSchedule: c.BackendPasswordSchedule, Config: c, ConnectivityConfig: c.ConnectivityConfig, AppearanceLegacyCode: c.AppearanceLegacyCode, DashboardAppearanceLegacyCode: c.DashboardAppearanceLegacyCode, FrontendPasswordHash: c.FrontendPasswordHash, BackendPasswordHash: c.BackendPasswordHash, BackendPasswordFailures: c.BackendPasswordFailures, BackendPasswordBanMinutes: c.BackendPasswordBanMinutes, JWTSecretKey: persistedJWT})
 	if err != nil {
 		return err
 	}

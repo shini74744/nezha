@@ -4,9 +4,9 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
-	"html"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -24,12 +24,22 @@ type frontendPasswordForm struct {
 }
 
 func frontendPasswordRequired() bool {
-	return singleton.Conf != nil && singleton.Conf.FrontendPasswordHash != ""
+	settingsMutationMu.Lock()
+	defer settingsMutationMu.Unlock()
+	return frontendPasswordRequiredLocked(time.Now())
+}
+func frontendPasswordRequiredLocked(now time.Time) bool {
+	return singleton.Conf != nil && singleton.Conf.FrontendPasswordHash != "" && singleton.Conf.FrontendPasswordSchedule.ActiveAt(now)
 }
 
 func frontendPasswordSignature() string {
-	mac := hmac.New(sha256.New, []byte(singleton.Conf.JWTSecretKey))
-	_, _ = mac.Write([]byte("nezha-frontend-password:" + singleton.Conf.FrontendPasswordHash))
+	settingsMutationMu.Lock()
+	defer settingsMutationMu.Unlock()
+	return frontendSignature(singleton.Conf.JWTSecretKey, singleton.Conf.FrontendPasswordHash)
+}
+func frontendSignature(secret, hash string) string {
+	mac := hmac.New(sha256.New, []byte(secret))
+	_, _ = mac.Write([]byte("nezha-frontend-password:" + hash))
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
@@ -68,32 +78,50 @@ func frontendPasswordLogin(c *gin.Context) {
 		writeFrontendPasswordFailure(c, "/", "请输入前台密码")
 		return
 	}
-	if !frontendPasswordRequired() {
-		writeFrontendPasswordSuccess(c, sanitizeFrontendNext(form.Next))
+	settingsMutationMu.Lock()
+	passwordHash, secret := singleton.Conf.FrontendPasswordHash, singleton.Conf.JWTSecretKey
+	required := frontendPasswordRequiredLocked(time.Now())
+	settingsMutationMu.Unlock()
+	if !required {
+		// Do not grant a credential that remains usable when the protected window begins.
+		finishFrontendPasswordSuccess(c, sanitizeFrontendNext(form.Next))
 		return
 	}
 	if bcrypt.CompareHashAndPassword(
-		[]byte(singleton.Conf.FrontendPasswordHash),
+		[]byte(passwordHash),
 		[]byte(form.Password),
 	) != nil {
 		writeFrontendPasswordFailure(c, sanitizeFrontendNext(form.Next), "密码错误")
 		return
 	}
-	writeFrontendPasswordSuccess(c, sanitizeFrontendNext(form.Next))
+	settingsMutationMu.Lock()
+	changed := passwordHash != singleton.Conf.FrontendPasswordHash || secret != singleton.Conf.JWTSecretKey
+	settingsMutationMu.Unlock()
+	if changed {
+		writeFrontendPasswordFailure(c, sanitizeFrontendNext(form.Next), "访问设置已更新，请重试")
+		return
+	}
+	writeFrontendPasswordSuccessWithSignature(c, sanitizeFrontendNext(form.Next), frontendSignature(secret, passwordHash))
 }
 func writeFrontendPasswordSuccess(c *gin.Context, next string) {
+	writeFrontendPasswordSuccessWithSignature(c, next, frontendPasswordSignature())
+}
+func writeFrontendPasswordSuccessWithSignature(c *gin.Context, next, signature string) {
 	secure := c.Request.URL.Scheme == "https" || c.Request.TLS != nil ||
 		strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https")
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie(
 		frontendPasswordCookie,
-		frontendPasswordSignature(),
+		signature,
 		30*24*60*60,
 		"/",
 		"",
 		secure,
 		true,
 	)
+	finishFrontendPasswordSuccess(c, next)
+}
+func finishFrontendPasswordSuccess(c *gin.Context, next string) {
 	if wantsHTML(c) {
 		c.Redirect(http.StatusSeeOther, next)
 		return
@@ -128,36 +156,8 @@ func sanitizeFrontendNext(next string) string {
 }
 
 func serveFrontendPasswordPage(c *gin.Context, next, message string, status int) {
-	next = sanitizeFrontendNext(next)
-	errorHTML := ""
-	if message != "" {
-		errorHTML = `<div class="error">` + html.EscapeString(message) + `</div>`
-	}
-	siteName := "哪吒监控"
-	if singleton.Conf != nil && singleton.Conf.SiteName != "" {
-		siteName = singleton.Conf.SiteName
-	}
-	c.Header("Content-Type", "text/html; charset=utf-8")
-	c.Header("Cache-Control", "no-store")
-	c.Status(status)
-	_, _ = c.Writer.WriteString(`<!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>` + html.EscapeString(siteName) + `</title>
-<style>
-*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;
-font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#f5f5f5;color:#171717}
-.card{width:min(92vw,380px);background:#fff;border:1px solid #e5e5e5;border-radius:16px;
-padding:28px;box-shadow:0 18px 45px rgba(0,0,0,.08)}
-h1{font-size:22px;margin:0 0 8px}p{color:#666;margin:0 0 22px}
-input{width:100%;height:44px;border:1px solid #d4d4d4;border-radius:9px;padding:0 12px;
-font-size:16px}button{width:100%;height:44px;margin-top:14px;border:0;border-radius:9px;
-background:#171717;color:white;font-size:15px;font-weight:600;cursor:pointer}
-.error{margin:0 0 12px;padding:9px 11px;border-radius:8px;background:#fee2e2;color:#b91c1c}
-</style></head><body><main class="card"><h1>` + html.EscapeString(siteName) + `</h1>
-<p>请输入前台访问密码</p>` + errorHTML + `
-<form method="post" action="/api/v1/frontend-auth">
-<input type="hidden" name="next" value="` + html.EscapeString(next) + `">
-<input type="password" name="password" autocomplete="current-password" autofocus required>
-<button type="submit">进入前台</button></form></main></body></html>`)
+	settingsMutationMu.Lock()
+	site := singleton.Conf.SiteName
+	settingsMutationMu.Unlock()
+	serveAccessPasswordPage(c, accessPasswordPage{Next: sanitizeFrontendNext(next), Message: message, Site: site}, status)
 }

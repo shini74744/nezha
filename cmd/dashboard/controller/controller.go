@@ -78,6 +78,7 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	api.POST("/login", authMiddleware.LoginHandler)
 	api.POST("/oauth2/totp", csrfMiddleware(), commonHandler(verifyOAuthTOTP(authMiddleware)))
 	api.POST("/frontend-auth", frontendPasswordLogin)
+	api.POST("/backend-auth", backendPasswordLogin)
 	api.GET("/oauth2/:provider", commonHandler(oauth2redirect))
 
 	fallbackAuthMw := fallbackAuthMiddleware(authMiddleware)
@@ -112,13 +113,14 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	// CSRF middleware applies group-wide. Safe methods short-circuit and
 	// PAT bearer requests bypass — so the only callers gated are
 	// cookie-JWT POST/PATCH/PUT/DELETE, which is exactly the H6 surface.
-	auth := api.Group("", authMw, csrfMiddleware())
-	auth.POST("/server/:id/bgp", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startBGP))
-	auth.POST("/server/:id/return-route", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startReturnRoute))
-	auth.POST("/server/:id/return-route/:target/:family", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startReturnRouteTarget))
-	auth.POST("/server/:id/streaming", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startStreaming))
-	auth.POST("/server/:id/connectivity/:target", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startConnectivityTarget))
-	auth.POST("/server/:id/connectivity", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startConnectivity))
+	frontAuth := api.Group("", authMw, csrfMiddleware())
+	auth := api.Group("", authMw, backendPasswordGate(), csrfMiddleware())
+	frontAuth.POST("/server/:id/bgp", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startBGP))
+	frontAuth.POST("/server/:id/return-route", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startReturnRoute))
+	frontAuth.POST("/server/:id/return-route/:target/:family", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startReturnRouteTarget))
+	frontAuth.POST("/server/:id/streaming", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startStreaming))
+	frontAuth.POST("/server/:id/connectivity/:target", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startConnectivityTarget))
+	frontAuth.POST("/server/:id/connectivity", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startConnectivity))
 
 	// 「自我管理」类端点 — 显式禁止 PAT 访问（避免 PAT 自我提权链）。
 	patForbidden := restPATForbiddenMiddleware()
@@ -259,6 +261,8 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	auth.GET("/online-user", restScopeMiddleware(model.ScopeAdminAll), pAdminHandler(listOnlineUser))
 	auth.POST("/online-user/batch-block", restScopeMiddleware(model.ScopeAdminAll), adminHandler(batchBlockOnlineUser))
 	auth.PATCH("/setting", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateConfig))
+	auth.GET("/setting/access-passwords", patForbidden, adminHandler(getAccessPasswordSettings))
+	auth.PATCH("/setting/access-passwords", patForbidden, adminHandler(updateAccessPasswordSettings))
 	auth.GET("/setting/dashboard-appearance", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getDashboardAppearance))
 	auth.PATCH("/setting/dashboard-appearance", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateDashboardAppearance))
 	auth.GET("/setting/display", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getDisplaySettings))
@@ -550,6 +554,14 @@ func fallbackToFrontend(frontendDist fs.FS) func(*gin.Context) {
 		fallbackStatusCode := getFallbackStatusCode(c.Request.URL.Path)
 		// Only /dashboard/ belongs to the admin frontend; /dashboard.. must not be trimmed into ../.
 		if strings.HasPrefix(c.Request.URL.Path, "/dashboard/") {
+			backendConfig := currentBackendAccessConfig()
+			if backendConfig.Hash != "" {
+				c.Header("Cache-Control", "no-store")
+				c.Header("Vary", "Cookie")
+			}
+			if !checkBackendAccess(c, backendConfig, c.Request.URL.RequestURI()) {
+				return
+			}
 			stripPath := strings.TrimPrefix(c.Request.URL.Path, "/dashboard/")
 			if checkLocalFileOrFs(c, frontendDist, singleton.Conf.AdminTemplate, stripPath, http.StatusOK) {
 				return
@@ -559,6 +571,8 @@ func fallbackToFrontend(frontendDist fs.FS) func(*gin.Context) {
 			}
 			return
 		}
+		// Re-evaluate access windows on every navigation, including currently free windows.
+		c.Header("Cache-Control", "no-store")
 		if frontendPasswordRequired() && !validFrontendPasswordCookie(c) {
 			serveFrontendPasswordPage(c, c.Request.URL.RequestURI(), "", http.StatusOK)
 			return

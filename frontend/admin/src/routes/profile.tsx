@@ -1,6 +1,7 @@
 import { Oauth2RequestType, getOauth2RedirectURL, unbindOauth2 } from "@/api/oauth2"
 import { getProfile } from "@/api/user"
 import { ProfileCard } from "@/components/profile"
+import { AccessPasswordSettings } from "@/components/access-password-settings"
 import { TOTPSettings } from "@/components/totp-settings"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -51,12 +52,12 @@ export default function ProfilePage() {
 
     return (
         profile && (
-            <div className={`flex p-8 gap-4 ${isDesktop ? "ml-6" : "flex-col"}`}>
+            <div className={`flex p-4 sm:p-8 gap-4 ${isDesktop ? "ml-6" : "flex-col"}`}>
                 <div
-                    className={`flex ${isDesktop ? "flex-col mr-6" : "gap-4 w-full items-center"}`}
+                    className={`flex ${isDesktop ? "flex-col mr-6 w-[300px] shrink-0" : "gap-3 w-full items-center min-w-0"}`}
                 >
                     <Avatar
-                        className={`${isDesktop ? "h-[300px] w-[300px]" : "h-[150px] w-[150px]"} border-foreground border-[1px]`}
+                        className={`${isDesktop ? "h-[300px] w-[300px]" : "h-20 w-20 sm:h-[150px] sm:w-[150px] shrink-0"} border-foreground border-[1px]`}
                     >
                         <AvatarImage
                             src={
@@ -67,18 +68,20 @@ export default function ProfilePage() {
                         />
                         <AvatarFallback>{profile.username}</AvatarFallback>
                     </Avatar>
-                    <div>
-                        <p className="justify-center text-3xl font-semibold">{profile.username}</p>
-                        <p className="text-gray-400">IP: {profile.login_ip || "Unknown"}</p>
+                    <div className="min-w-0">
+                        <p className="break-all text-xl sm:text-3xl font-semibold">{profile.username}</p>
+                        <p className="break-all text-gray-400">IP: {profile.login_ip || "Unknown"}</p>
                     </div>
                     {isDesktop && (
                         <ProfileCard className="flex mt-4 justify-center items-center max-w-[300px] rounded-lg" />
                     )}
+                    {isDesktop && profile.role === 0 && <div className="mt-4"><AccessPasswordSettings /></div>}
                 </div>
                 {!isDesktop && (
                     <ProfileCard className="flex justify-center items-center max-w-full rounded-lg" />
                 )}
-                <div className="w-full">
+                {!isDesktop && profile.role === 0 && <AccessPasswordSettings />}
+                <div className="w-full min-w-0">
                     <div className="flex flex-col gap-4">
                         <Card className="w-full">
                             <CardHeader>
