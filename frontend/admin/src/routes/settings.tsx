@@ -41,8 +41,6 @@ const settingFormSchema = z.object({
     ip_change_notification_group_id: z.coerce.number().int().min(0),
     cover: z.coerce.number().int().min(1),
     site_name: z.string().min(1),
-    frontend_password: asOptionalField(z.string()),
-    clear_frontend_password: asOptionalField(z.boolean()),
     language: z.string().min(2),
     user_template: z.string().min(1),
     install_host: asOptionalField(z.string()),
@@ -78,8 +76,6 @@ export default function SettingsPage() {
         defaultValues: config
             ? {
                   ...config.config,
-                  frontend_password: "",
-                  clear_frontend_password: false,
                   user_template:
                       config.config?.user_template ||
                       config.frontend_templates?.find((t) => !t.is_admin)?.path ||
@@ -89,8 +85,6 @@ export default function SettingsPage() {
                   ip_change_notification_group_id: 0,
                   cover: 1,
                   site_name: "",
-                  frontend_password: "",
-                  clear_frontend_password: false,
                   language: "",
                   user_template: "user-dist",
               },
@@ -104,8 +98,6 @@ export default function SettingsPage() {
             form.reset({
                 ...config.config,
                 user_template: config.config.user_template || config.frontend_templates?.find((t) => !t.is_admin)?.path || "user-dist",
-                frontend_password: "",
-                clear_frontend_password: false,
             })
         }
     }, [config?.config, config?.frontend_templates, form])
@@ -120,8 +112,6 @@ export default function SettingsPage() {
     const onSubmit = async (values: any) => {
         try {
             await updateSettings(values)
-            form.setValue("frontend_password", "")
-            form.setValue("clear_frontend_password", false)
             await mutate()
         } catch (e) {
             toast(t("Error"), {
@@ -152,53 +142,6 @@ export default function SettingsPage() {
                                         <Input {...field} />
                                     </FormControl>
                                     <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="frontend_password"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>{t("FrontendPassword")}</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            {...field}
-                                            type="password"
-                                            autoComplete="new-password"
-                                            disabled={Boolean(
-                                                form.watch("clear_frontend_password"),
-                                            )}
-                                            placeholder={
-                                                config?.config?.frontend_password_required
-                                                    ? t("FrontendPasswordKeepHint")
-                                                    : t("FrontendPasswordEmptyHint")
-                                            }
-                                        />
-                                    </FormControl>
-                                    <FormDescription>
-                                        {config?.config?.frontend_password_required
-                                            ? t("FrontendPasswordEnabled")
-                                            : t("FrontendPasswordDisabled")}
-                                    </FormDescription>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="clear_frontend_password"
-                            render={({ field }) => (
-                                <FormItem className="flex items-center gap-2">
-                                    <FormControl>
-                                        <Checkbox
-                                            checked={Boolean(field.value)}
-                                            onCheckedChange={field.onChange}
-                                        />
-                                    </FormControl>
-                                    <FormLabel className="m-0">
-                                        {t("ClearFrontendPassword")}
-                                    </FormLabel>
                                 </FormItem>
                             )}
                         />

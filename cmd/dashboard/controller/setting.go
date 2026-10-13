@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -30,6 +31,11 @@ func listConfig(c *gin.Context) (*model.SettingResponse, error) {
 	if authorized {
 		user := u.(*model.User)
 		isAdmin = user.Role.IsAdmin()
+		cfg := backendAccessConfigLocked()
+		if isAdmin && cfg.Hash != "" && APITokenFromContext(c) == nil {
+			attempt, err := backendAttempt(c, cfg)
+			isAdmin = err == nil && attempt.BannedUntil <= time.Now().Unix() && (!backendPasswordRequiredAt(cfg, time.Now()) || validBackendCookie(c, cfg))
+		}
 	}
 
 	config := *singleton.Conf
@@ -52,7 +58,7 @@ func listConfig(c *gin.Context) (*model.SettingResponse, error) {
 		Config: model.Setting{
 			ConfigForGuests:                configForTheme,
 			ConfigDashboard:                config.ConfigDashboard,
-			FrontendPasswordRequired:       config.FrontendPasswordHash != "",
+			FrontendPasswordRequired:       frontendPasswordRequiredLocked(time.Now()),
 			IgnoredIPNotificationServerIDs: config.IgnoredIPNotificationServerIDs,
 			Oauth2Providers:                config.Oauth2Providers,
 		},
@@ -72,7 +78,7 @@ func listConfig(c *gin.Context) (*model.SettingResponse, error) {
 			Config: model.Setting{
 				ConfigForGuests:          configForGuests,
 				ConfigDashboard:          configDashboard,
-				FrontendPasswordRequired: config.FrontendPasswordHash != "",
+				FrontendPasswordRequired: frontendPasswordRequiredLocked(time.Now()),
 				Oauth2Providers:          config.Oauth2Providers,
 			},
 			TSDBEnabled: singleton.TSDBEnabled(),

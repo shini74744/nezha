@@ -80,6 +80,11 @@ export async function fetcher<T>(method: FetcherMethod, path: string, data?: any
         })
     }
     if (!response.ok) {
+        const access = response.headers.get("X-Nezha-Backend-Access")
+        if ((access === "required" || access === "blocked") &&
+            window.location.pathname.startsWith("/dashboard/")) {
+            window.location.reload()
+        }
         throw new Error(response.statusText)
     }
     const text = await response.text()

@@ -3,6 +3,7 @@ package controller
 import (
 	"slices"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -25,6 +26,17 @@ func getProfile(c *gin.Context) (*model.Profile, error) {
 	auth, ok := c.Get(model.CtxKeyAuthorizedUser)
 	if !ok {
 		return nil, singleton.Localizer.ErrorT("unauthorized")
+	}
+	cfg := currentBackendAccessConfig()
+	if cfg.Hash != "" {
+		attempt, err := backendAttempt(c, cfg)
+		if err != nil || attempt.BannedUntil > time.Now().Unix() || (backendPasswordRequiredAt(cfg, time.Now()) && !validBackendCookie(c, cfg)) {
+			// The public frontend only needs identity. Never expose installation
+			// credentials or account bindings before the backend gate is unlocked.
+			user := auth.(*model.User)
+			return &model.Profile{User: model.User{Common: model.Common{ID: user.ID}, Username: user.Username, Role: user.Role},
+				LoginIP: c.GetString(model.CtxKeyRealIPStr)}, nil
+		}
 	}
 	var ob []model.Oauth2Bind
 	if err := singleton.DB.Where("user_id = ?", auth.(*model.User).ID).Find(&ob).Error; err != nil {
