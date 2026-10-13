@@ -91,7 +91,7 @@ func TestAccessScheduleSavePersistenceAndRollback(t *testing.T) {
 	raw, err := json.Marshal(config)
 	require.NoError(t, err)
 	require.NotContains(t, string(raw), "password_schedule", "private schedules must not leak into public config")
-	old := *config
+	oldFrontSchedule, oldBackSchedule := config.FrontendPasswordSchedule, config.BackendPasswordSchedule
 	for _, body := range []string{
 		`{"frontend_password_schedule":{"enabled":true,"start":"08:00","end":"08:00"}}`,
 		`{"backend_password_schedule":{"enabled":true,"start":"24:00","end":"07:00"}}`,
@@ -100,14 +100,14 @@ func TestAccessScheduleSavePersistenceAndRollback(t *testing.T) {
 	} {
 		_, err = updateAccessPasswordSettings(displayContext("PATCH", body))
 		require.Error(t, err)
-		require.Equal(t, old.FrontendPasswordSchedule, config.FrontendPasswordSchedule)
-		require.Equal(t, old.BackendPasswordSchedule, config.BackendPasswordSchedule)
+		require.Equal(t, oldFrontSchedule, config.FrontendPasswordSchedule)
+		require.Equal(t, oldBackSchedule, config.BackendPasswordSchedule)
 	}
 	// Updating one side preserves the other, passwords and all unrelated config.
 	_, err = updateAccessPasswordSettings(displayContext("PATCH", `{"frontend_password_schedule":{"enabled":false,"start":"22:00","end":"07:00"}}`))
 	require.NoError(t, err)
 	require.False(t, config.FrontendPasswordSchedule.Enabled)
-	require.Equal(t, old.BackendPasswordSchedule, config.BackendPasswordSchedule)
+	require.Equal(t, oldBackSchedule, config.BackendPasswordSchedule)
 	require.Equal(t, "Keep", config.SiteName)
 	require.NoError(t, os.Remove(path))
 	require.NoError(t, os.Mkdir(path, 0700))
