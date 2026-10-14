@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - 'consolidate-*'
   pull_request:
     branches:
       - main

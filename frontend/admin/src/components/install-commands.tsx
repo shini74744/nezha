@@ -298,7 +298,7 @@ export const generateCommand = (
 
     if (!agent_secret) throw new Error(i18next.t("Results.AgentSecretRequired"))
 
-    const scriptBase = "https://raw.githubusercontent.com/shini74744/agent/main/scripts"
+    const scriptBase = "https://raw.githubusercontent.com/shini74744/nezha/main/agent/scripts"
     const values: Record<string, string> = {
         NZ_SERVER: install_host,
         NZ_TLS: String(tls || false),

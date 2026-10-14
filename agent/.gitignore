@@ -6,3 +6,7 @@
 dist
 /model/zconfig.go
 nezha-agent-linux
+
+# Local Python installer regression artifacts
+__pycache__/
+*.pyc

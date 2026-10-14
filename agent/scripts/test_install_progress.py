@@ -29,6 +29,7 @@ uname() { case "$1" in -s) printf '%s' "$TEST_SYSTEM";; -m) printf '%s' "$TEST_C
 sha256() { [ "$1" = -q ]; sha256sum "$2" | awk '{print $1}'; }
 curl() {
  case "$*" in
+  *agent-version.txt*) printf 'v1.0.1\\n' > "$tmp/version" ;;
   *.sha256*) [ "$TEST_FAIL" != checksum ] || return 22
              printf '%s\\n' "$TEST_DIGEST" > "$tmp/checksum" ;;
   *) [ "$TEST_FAIL" != archive ] || return 22

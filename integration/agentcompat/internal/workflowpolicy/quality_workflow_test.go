@@ -31,7 +31,7 @@ func TestPolicy_NezhaQualityWorkflow(t *testing.T) {
 	// Then
 	triggers := mappingNodeValue(root, "on")
 	require.NotNil(t, mappingNodeValue(triggers, "merge_group"))
-	require.Equal(t, []string{"main", "master"}, workflow.Triggers.Push.Branches)
+	require.Equal(t, []string{"main", "master", "consolidate-*"}, workflow.Triggers.Push.Branches)
 	require.Empty(t, workflow.Triggers.Push.Paths)
 	require.Equal(t, []string{"main", "master"}, workflow.Triggers.PullRequest.Branches)
 	require.Empty(t, workflow.Triggers.PullRequest.Paths)

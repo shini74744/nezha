@@ -2,14 +2,14 @@
 
 Based on nezhahq/agent v2.3.5 (4979248b05875638534934938623ea5b32edfeca), under the original Apache-2.0 license.
 
-This distribution uses only **shini74744/agent** for installation packages, automatic updates and dashboard-triggered upgrades.
+This distribution uses only **shini74744/nezha**, using the separate Agent channel for installation packages, automatic updates and dashboard-triggered upgrades.
 Legacy use_gitee_to_upgrade/use_atomgit_to_upgrade options are accepted for configuration compatibility but ignored for source selection.
 If GitHub is unavailable, the operation fails without an upstream fallback. A SHA256 asset is required for every update.
 
 - Linux/macOS/FreeBSD installer: scripts/install.sh
 - Windows installer: scripts/install.ps1
-- Binary assets: https://github.com/shini74744/agent/releases/latest
-- The dashboard supplies NZ_SERVER, NZ_CLIENT_SECRET, NZ_TLS and optionally NZ_UUID.
+- Binary assets: https://github.com/shini74744/nezha/releases
+- The dashboard supplies NZ_SERVER, NZ_CLIENT_SECRET, NZ_TLS and NZ_UUID as a matched, per-server credential pair.
 - Run installers with administrator/root privileges. POSIX requires curl, unzip and a SHA256 utility.
 - Installers preserve the existing config and UUID and keep a local backup before replacement.
 - Running the POSIX script without arguments (or with `install`) is an explicit installation/reinstallation action. The repository alone does not change already-installed official Agents.
@@ -19,7 +19,7 @@ If GitHub is unavailable, the operation fails without an upstream fallback. A SH
 - Installer regression tests (no real services/network): `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v scripts.test_install_uninstall scripts.test_install_elevation scripts.test_install_output scripts.test_install_progress release.test_installers`. Tests require Python 3, sh/dash/bash/BusyBox, and the standard installation utilities.
 - Existing official Agents still use their old updater until deliberately reinstalled with this distribution. Do not use the old dashboard upgrade button as a source migration.
 
-Publishing: run `go test -mod=readonly ./...`, then `bash release/build.sh VERSION /absolute/output/path`. This builds all 18 supported OS/architecture packages, checksum assets and `agent-release.json`. Alternatively dispatch `owned-release.yml` on the exact v-prefixed tag with its bare version: Linux/Windows/macOS tests must pass before all 18 build jobs run. Native Linux amd64, Windows amd64 and macOS arm64 packages also execute `-v`. Download artifacts, verify ZIP contents/checksums/manifest commit, aggregate `checksums.txt`, upload to a draft, verify fresh downloads, then publish explicitly as latest. No workflow publishes automatically.
+Publishing: run `go test -mod=readonly ./...`, then `bash release/build.sh VERSION /absolute/output/path`. This builds all 18 supported OS/architecture packages, checksum assets and `agent-release.json`. The root `.github/workflows/agent-release.yml` runs on `agent-vX.Y.Z` tags: Linux/Windows/macOS tests must pass before all 18 build jobs run. Native Linux amd64, Windows amd64 and macOS arm64 packages also execute `-v`. Download artifacts, verify ZIP contents/checksums/manifest commit, aggregate `checksums.txt`, upload to a draft, verify fresh downloads, then publish with `--latest=false`. Do not use the repository-wide Latest for Agent discovery. Publish and verify the immutable release before activating `release/agent-version.txt` on main. See [unified repository](../docs/unified-repository.md). No workflow publishes automatically.
 Internal Go module paths remain unchanged for source compatibility; they are not runtime download URLs.
 
 ## v2.3.7 connectivity and dual-stack reporting
@@ -44,6 +44,6 @@ This is a formal renumbering of this distribution, not a rollback to upstream v1
 
 Upgrade the dashboard first. Preserve every node's own UUID/key and configuration; no reinstall or shared credential is needed. After backup and validation, remove only the old v2.3.6/v2.3.7/v2.3.8 GitHub Releases, keeping tags and source history. Those old updaters choose the greatest semantic version and replace on version inequality, so removing the old releases allows the authorized transition to 1.0.0. Offline nodes and configurations disabling auto-update remain pending.
 
-New updaters follow the owned repository's designated Latest, require an agent-release.json channel manifest (schema 1, channel shini74744-agent-v1, matching version, 40-hex source commit), and do not downgrade during normal automatic updates. A platform ZIP and its SHA256 sidecar must both exist; checksum validation happens before extraction and atomic replacement. Only the expected single executable is accepted. Network, manifest, checksum or replacement errors fail closed without fallback. Dashboard-forced updates retain the existing disable_force_update gate.
+The historical v1.0.0 updater followed the old repository's designated Latest. From v1.0.1, updaters read the unified repository's `release/agent-version.txt` and fetch only its exact `agent-vX.Y.Z` release; they require an agent-release.json channel manifest (schema 1, channel shini74744-agent-v1, matching version, 40-hex source commit), and do not downgrade during normal automatic updates. A platform ZIP and its SHA256 sidecar must both exist; checksum validation happens before extraction and atomic replacement. Only the expected single executable is accepted. Network, manifest, checksum or replacement errors fail closed without fallback. Dashboard-forced updates retain the existing disable_force_update gate.
 
 Deleting a Release does not erase its Git tag. Restoring old releases can alter old updaters' version selection again and must be coordinated with update controls. Keep release metadata and verified asset backups outside the source tree.

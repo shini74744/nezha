@@ -24,7 +24,7 @@ func TestOwnedUpdateNeverFallsBack(t *testing.T) {
 		for _, failure := range []error{nil, errors.New("source unavailable")} {
 			u := &recordingUpdater{err: failure}
 			_, err := updateFromOwnedRepository(u, semver.MustParse(version))
-			if err != failure || len(u.calls) != 1 || u.calls[0] != "shini74744/agent" {
+			if err != failure || len(u.calls) != 1 || u.calls[0] != "shini74744/nezha" {
 				t.Fatalf("unexpected update source or fallback: %v, %v", u.calls, err)
 			}
 		}

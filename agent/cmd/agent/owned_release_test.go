@@ -31,6 +31,7 @@ type ownedUpdateFixture struct {
 	applied  int
 	binary   []byte
 	path     string
+	pointer  string
 }
 
 func ownedZIP(t *testing.T, names ...string) []byte {
@@ -55,13 +56,14 @@ func ownedFixture(t *testing.T) *ownedUpdateFixture {
 	t.Helper()
 	f := &ownedUpdateFixture{
 		manifest: ownedReleaseManifest{Schema: 1, Channel: ownedReleaseChannel, Version: "1.0.1", SourceCommit: strings.Repeat("a", 40)},
-		release:  ownedRelease{Tag: "v1.0.1"}, bodies: map[string][]byte{},
+		release:  ownedRelease{Tag: "agent-v1.0.1"}, bodies: map[string][]byte{},
 	}
+	f.pointer = "v1.0.1\n"
 	f.path = filepath.Join(t.TempDir(), "agent")
 	if err := os.WriteFile(f.path, []byte("old agent"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	base := "https://github.com/" + agentReleaseRepository + "/releases/download/v1.0.1/"
+	base := "https://github.com/" + agentReleaseRepository + "/releases/download/agent-v1.0.1/"
 	archive := ownedZIP(t, binaryName)
 	for name, data := range map[string][]byte{
 		"agent-release.json":                 nil,
@@ -89,7 +91,9 @@ func ownedFixture(t *testing.T) *ownedUpdateFixture {
 		f.requests = append(f.requests, url)
 		var data []byte
 		var err error
-		if url == "https://api.github.com/repos/"+agentReleaseRepository+"/releases/latest" {
+		if url == ownedAgentVersionURL {
+			data = []byte(f.pointer)
+		} else if url == "https://api.github.com/repos/"+agentReleaseRepository+"/releases/tags/agent-v1.0.1" {
 			data, err = json.Marshal(f.release)
 		} else if strings.HasSuffix(url, "/agent-release.json") {
 			data, err = json.Marshal(f.manifest)
@@ -113,7 +117,7 @@ func TestOwnedLatestUpdateUsesNewSeriesAndVerifiesArchive(t *testing.T) {
 	if err != nil || result.Version.String() != "1.0.1" || f.applied != 1 || string(f.binary) != "new owned agent" {
 		t.Fatalf("update failed: %v", err)
 	}
-	if len(f.requests) != 4 || !strings.HasSuffix(f.requests[0], "/releases/latest") {
+	if len(f.requests) != 5 || f.requests[0] != ownedAgentVersionURL || !strings.HasSuffix(f.requests[1], "/releases/tags/agent-v1.0.1") {
 		t.Fatalf("unexpected requests: %v", f.requests)
 	}
 }
@@ -121,6 +125,8 @@ func TestOwnedLatestUpdateNeverFallsBackOrAppliesInvalidRelease(t *testing.T) {
 	cases := map[string]func(*ownedUpdateFixture){
 		"draft":                  func(f *ownedUpdateFixture) { f.release.Draft = true },
 		"prerelease":             func(f *ownedUpdateFixture) { f.release.Prerelease = true },
+		"dashboard tag":          func(f *ownedUpdateFixture) { f.release.Tag = "v0.0.3" },
+		"wrong Agent version":    func(f *ownedUpdateFixture) { f.release.Tag = "agent-v1.0.2" },
 		"invalid tag":            func(f *ownedUpdateFixture) { f.release.Tag = "../v1.0.1" },
 		"old series":             func(f *ownedUpdateFixture) { f.manifest.Channel = "legacy" },
 		"missing channel":        func(f *ownedUpdateFixture) { f.manifest.Channel = "" },
@@ -170,7 +176,7 @@ func TestOwnedLatestUpdateSameOrOlderDoesNotReplace(t *testing.T) {
 	for _, current := range []string{"1.0.1", "1.0.2"} {
 		f := ownedFixture(t)
 		result, err := updateFromOwnedRepository(f.updater, semver.MustParse(current))
-		if err != nil || result.Version.String() != current || f.applied != 0 || len(f.requests) != 2 {
+		if err != nil || result.Version.String() != current || f.applied != 0 || len(f.requests) != 3 {
 			t.Fatalf("unexpected replacement: %v", err)
 		}
 	}
@@ -240,5 +246,29 @@ func TestOwnedUpdaterRealAtomicReplacement(t *testing.T) {
 	got, err := os.ReadFile(f.path)
 	if err != nil || string(got) != "new owned agent" {
 		t.Fatalf("replacement contents: %v", err)
+	}
+}
+
+func TestOwnedAgentPointerRejectsInvalidAndCrossComponentVersions(t *testing.T) {
+	for _, pointer := range []string{"", "1.0.1", "v01.0.1", "v1.0.1-rc.1", "v1.0.1+build", "../v1.0.1", "agent-v1.0.1", "https://example.com/v1.0.1", "v1.0.1\nv0.0.3"} {
+		t.Run(pointer, func(t *testing.T) {
+			f := ownedFixture(t)
+			f.pointer = pointer
+			_, err := updateFromOwnedRepository(f.updater, semver.MustParse("1.0.0"))
+			if err == nil || f.applied != 0 || len(f.requests) != 1 {
+				t.Fatalf("invalid pointer accepted: %q %v %v", pointer, err, f.requests)
+			}
+		})
+	}
+}
+func TestOwnedAgentUpdaterNeverReadsGlobalLatestOrLegacyRepository(t *testing.T) {
+	f := ownedFixture(t)
+	if _, err := updateFromOwnedRepository(f.updater, semver.MustParse("1.0.0")); err != nil {
+		t.Fatal(err)
+	}
+	for _, url := range f.requests {
+		if strings.Contains(url, "/releases/latest") || strings.Contains(url, "shini74744/agent/") {
+			t.Fatalf("cross-channel request: %s", url)
+		}
 	}
 }

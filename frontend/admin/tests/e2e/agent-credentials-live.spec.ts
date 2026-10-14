@@ -31,7 +31,7 @@ for (const width of [360, 1366]) {
             const issuePath = "/api/v1/agent-credentials/issue"
             try {
                 const top = page.getByRole("button", { name: "安装命令", exact: true }).first()
-                for (const os of ["Windows", "Linux"]) {
+                for (const os of ["Windows", "Linux", "macOS"]) {
                     await top.click()
                     const response = page.waitForResponse(
                         (r) => r.url().endsWith(issuePath) && r.request().method() === "POST",
@@ -44,6 +44,10 @@ for (const width of [360, 1366]) {
                     await expect
                         .poll(() => page.evaluate(() => (window as any).__copied))
                         .toContain(issued.at(-1)!.uuid)
+                    const command = await page.evaluate(() => (window as any).__copied)
+                    expect(command).toContain("https://raw.githubusercontent.com/shini74744/nezha/main/agent/scripts/install.")
+                    expect(command).toContain(issued.at(-1)!.client_secret)
+                    expect(command).not.toContain("shini74744/agent/")
                 }
                 expect(issued[0].uuid).not.toBe(issued[1].uuid)
                 expect(issued[0].client_secret).not.toBe(issued[1].client_secret)

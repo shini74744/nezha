@@ -26,13 +26,26 @@ bash /opt/nezha/nezha.sh                 # 交互菜单
 bash /opt/nezha/nezha.sh start           # 启动并等待 HTTP 就绪
 bash /opt/nezha/nezha.sh stop            # 完整停止，显示阶段
 bash /opt/nezha/nezha.sh restart         # 完整停止后再启动，不下载
-bash /opt/nezha/nezha.sh update          # 下载、校验、备份、停止、更新、启动
+bash /opt/nezha/nezha.sh update          # 下载、校验、停止、备份、更新、启动
 bash /opt/nezha/nezha.sh restart_and_update # update 的兼容别名
 bash /opt/nezha/nezha.sh update_script   # 更新自有脚本，不重启
 bash /opt/nezha/nezha.sh status
 bash /opt/nezha/nezha.sh show_log
 bash /opt/nezha/nezha.sh version
 ```
+
+## 更新顺序与卸载边界
+
+已有安装先更新管理脚本，再更新主程序，尤其是 v0.0.1 的旧脚本尚未包含节点认证加密文件备份：
+
+```bash
+bash /opt/nezha/nezha.sh update_script
+bash /opt/nezha/nezha.sh update
+```
+
+v0.0.3 起脚本读取本仓库 `release/dashboard-version.txt`，锁定该版本的面板资产；Agent 使用独立入口，不会因其版本数字更大而安装错包。仓库迁移及维护约定见 [统一仓库说明](docs/unified-repository.md)。
+
+**主控脚本没有 `uninstall` 子命令**；未知命令仅显示用法并失败退出，不删除程序或数据库。`./agent.sh uninstall` 是 Agent 脚本的功能，不能用于主面板。需要退役主面板时，应另行备份并明确确认数据删除范围。
 
 ## 停止与重启进度
 
@@ -68,7 +81,7 @@ bash -n script/nezha.sh script/install.sh script/install_en.sh
 python3 script/test_manager.py
 ```
 
-发布资产：`dashboard-linux-amd64.zip`（内含同名无扩展名程序）、`version.txt`、`nezha.sh`、`nezha-dashboard.service`、`SHA256SUMS`。从 `custom-2026.10.08.4` 起另附 `dashboard-windows-amd64.zip`（内含 EXE 和 Windows 部署说明），不改变 Linux 管理命令。版本文件应与程序 `-v` 输出一致。只发布本仓库后端和二开前端构建产物，不上传生产配置、数据库、私钥或访问令牌。
+发布资产：`dashboard-linux-amd64.zip`（内含同名无扩展名程序）、`version.txt`、`nezha.sh`、`nezha-dashboard.service`、`SOURCE_COMMIT.txt`、`SHA256SUMS`。从 `custom-2026.10.08.4` 起另附 `dashboard-windows-amd64.zip`（内含 EXE 和 Windows 部署说明），不改变 Linux 管理命令。版本文件应与程序 `-v` 输出一致。只发布本仓库后端和二开前端构建产物，不上传生产配置、数据库、私钥或访问令牌。
 
 管理脚本离线测试模拟网络和 systemd，覆盖阶段反馈、失败中止、校验、备份、二进制回退、数据不覆盖和安装保护；不能代替目标服务器上的 HTTP 与 Agent 上报验证。
 

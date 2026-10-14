@@ -45,8 +45,8 @@ elif cmd=="curl":
  if url.startswith("http://127.0.0.1:"):
   result=0 if s["active"]=="active" else 7
  else:
-  assert url.startswith("https://github.com/shini74744/nezha/releases/"),url
-  asset=url.rsplit("/",1)[1]
+  assert url.startswith("https://github.com/shini74744/nezha/releases/") or url=="https://raw.githubusercontent.com/shini74744/nezha/main/release/dashboard-version.txt",url
+  asset="version.txt" if url.endswith("/dashboard-version.txt") else url.rsplit("/",1)[1]
   if s.get("download_failure"):result=22
   else:shutil.copyfile(root/"assets"/asset,output)
 else: raise AssertionError(cmd)
