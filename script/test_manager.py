@@ -64,6 +64,8 @@ class ManagerTest(unittest.TestCase):
   (self.dash/"data"/"sqlite.db").write_bytes(b"existing-user-data")
   (self.dash/"data"/"terminal-commands.key").write_bytes(b"test-only-encryption-key"*2)
   (self.dash/"data"/"totp.key").write_bytes(b"test-only-totp-key".ljust(32,b"0"))
+  (self.dash/"data"/"agent-credentials.key").write_bytes(bytes(range(32)))
+  (self.dash/"data"/"agent-credentials.key").chmod(0o600)
   self.old=b"#!/bin/sh\necho old-version\n"
   (self.dash/"app").write_bytes(self.old);(self.dash/"app").chmod(0o755)
   self.assets=self.root/"assets";self.assets.mkdir()
@@ -110,6 +112,31 @@ class ManagerTest(unittest.TestCase):
   self.assertEqual(len(backups),1);self.assertEqual(backups[0].read_bytes(),self.old)
   self.assertEqual((backups[0].parent/"terminal-commands.key").read_bytes(),(self.dash/"data"/"terminal-commands.key").read_bytes())
   self.assertEqual((backups[0].parent/"totp.key").read_bytes(),(self.dash/"data"/"totp.key").read_bytes())
+ def test_agent_credential_key_is_backed_up_and_preserved_on_update_and_rollback(self):
+  for fail_start in (False,True):
+   with self.subTest(fail_start=fail_start):
+    self.state={"active":"active","starts":0,"commands":[],"fail_first_start":fail_start};self.save()
+    (self.dash/"app").write_bytes(self.old)
+    key=self.dash/"data"/"agent-credentials.key"
+    original=key.read_bytes()
+    p=self.run_manager("update")
+    self.assertEqual(p.returncode,1 if fail_start else 0,p.stdout+p.stderr)
+    backups=list((self.base/"backups").glob("*/agent-credentials.key"))
+    self.assertTrue(backups)
+    self.assertEqual(key.read_bytes(),original)
+    for backup in backups:
+     self.assertEqual(backup.read_bytes(),original)
+     self.assertEqual(backup.stat().st_mode & 0o777,0o600)
+     self.assertEqual(backup.parent.stat().st_mode & 0o777,0o700)
+     self.assertEqual((backup.parent/"sqlite.db").read_bytes(),b"existing-user-data")
+    if fail_start:self.assertEqual((self.dash/"app").read_bytes(),self.old)
+ def test_legacy_install_without_agent_key_updates_without_creating_a_new_key(self):
+  key=self.dash/"data"/"agent-credentials.key"
+  key.unlink()
+  p=self.run_manager("update")
+  self.assertEqual(p.returncode,0,p.stdout+p.stderr)
+  self.assertFalse(key.exists())
+  self.assertFalse(list((self.base/"backups").glob("*/agent-credentials.key")))
  def test_renumbered_release_preserves_data_and_backup(self):
   version="v0.0.1"
   (self.assets/"version.txt").write_text(version+"\n")
