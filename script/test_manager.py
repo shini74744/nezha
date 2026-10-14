@@ -22,7 +22,7 @@ args=sys.argv[1:]
 s["commands"].append([cmd]+args)
 result=0
 if cmd=="id":
- print("0")
+ print(s.get("uid", "0"))
 elif cmd=="sleep": pass
 elif cmd=="systemctl":
  if "show" in args:
@@ -110,6 +110,32 @@ class ManagerTest(unittest.TestCase):
   self.assertEqual(len(backups),1);self.assertEqual(backups[0].read_bytes(),self.old)
   self.assertEqual((backups[0].parent/"terminal-commands.key").read_bytes(),(self.dash/"data"/"terminal-commands.key").read_bytes())
   self.assertEqual((backups[0].parent/"totp.key").read_bytes(),(self.dash/"data"/"totp.key").read_bytes())
+ def test_renumbered_release_preserves_data_and_backup(self):
+  version="v0.0.1"
+  (self.assets/"version.txt").write_text(version+"\n")
+  with zipfile.ZipFile(self.assets/"dashboard-linux-amd64.zip","w") as z:
+   z.writestr("dashboard-linux-amd64",("#!/bin/sh\necho "+version+"\n").encode())
+  self.make_checksums()
+  p=self.run_manager("update");self.assertEqual(p.returncode,0,p.stdout+p.stderr)
+  self.assertIn(version,(self.dash/"app").read_text())
+  self.assertEqual((self.dash/"data"/"sqlite.db").read_bytes(),b"existing-user-data")
+  self.assertEqual(next((self.base/"backups").glob("*/app.previous")).read_bytes(),self.old)
+ def test_invalid_version_never_stops_service(self):
+  for version in ("../v0.0.1","v0.0.1;false","v0.0","v0.0.1/other"):
+   with self.subTest(version=version):
+    (self.assets/"version.txt").write_text(version+"\n");self.make_checksums()
+    p=self.run_manager("update");self.assertNotEqual(p.returncode,0)
+    self.assertFalse(any("stop" in c for c in self.load()["commands"]))
+    self.assertEqual((self.dash/"app").read_bytes(),self.old)
+ def test_bootstraps_verify_renumbered_and_legacy_assets_before_root_check(self):
+  self.state["uid"]="1000";self.save()
+  for name in ("install.sh","install_en.sh"):
+   for version in ("v0.0.1",VERSION):
+    with self.subTest(name=name,version=version):
+     (self.assets/"version.txt").write_text(version+"\n");self.make_checksums()
+     p=subprocess.run(["bash",str(SCRIPT.with_name(name))],env=self.env,text=True,capture_output=True,timeout=20)
+     self.assertNotEqual(p.returncode,0)
+     self.assertIn("请使用 root",p.stdout+p.stderr)
  def test_failed_start_rolls_back_binary_without_replacing_data(self):
   self.state["fail_first_start"]=True;self.save()
   p=self.run_manager("update");self.assertNotEqual(p.returncode,0,p.stdout+p.stderr)

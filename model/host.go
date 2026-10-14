@@ -147,6 +147,7 @@ type Host struct {
 	Virtualization  string   `json:"virtualization,omitempty"`
 	BootTime        uint64   `json:"boot_time,omitempty"`
 	Version         string   `json:"version,omitempty"`
+	Capabilities    []string `json:"capabilities,omitempty"`
 	GPU             []string `json:"gpu,omitempty"`
 }
 
@@ -162,6 +163,7 @@ func (h *Host) PB() *pb.Host {
 		Virtualization:  h.Virtualization,
 		BootTime:        h.BootTime,
 		Version:         h.Version,
+		Capabilities:    h.Capabilities,
 		Gpu:             h.GPU,
 	}
 }
@@ -193,6 +195,7 @@ func PB2Host(h *pb.Host) Host {
 		Virtualization:  h.GetVirtualization(),
 		BootTime:        h.GetBootTime(),
 		Version:         h.GetVersion(),
+		Capabilities:    h.GetCapabilities(),
 		GPU:             h.GetGpu(),
 	}
 }

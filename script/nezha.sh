@@ -35,7 +35,7 @@ stage_release() {
  step "[准备] 正在查询 $REPOSITORY 的发布版本"
  fetch "$DOWNLOAD_ROOT/latest/download/version.txt" "$workdir/version.txt"
  version="$(tr -d '\r\n' < "$workdir/version.txt")"
- [[ "$version" =~ ^custom-[0-9A-Za-z._-]+$ ]] || { fail "发布版本无效，保留当前安装"; return 1; }
+ [[ "$version" =~ ^(custom-[0-9A-Za-z._-]+|v[0-9]+\.[0-9]+\.[0-9]+)$ ]] || { fail "发布版本无效，保留当前安装"; return 1; }
  release_url="$DOWNLOAD_ROOT/download/$version"
  fetch "$release_url/SHA256SUMS" "$workdir/SHA256SUMS"
 }

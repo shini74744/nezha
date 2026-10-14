@@ -573,6 +573,7 @@ func cloneHost(host *Host) *Host {
 	clone := *host
 	clone.CPU = slices.Clone(host.CPU)
 	clone.GPU = slices.Clone(host.GPU)
+	clone.Capabilities = slices.Clone(host.Capabilities)
 	return &clone
 }
 

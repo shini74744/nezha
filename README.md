@@ -14,7 +14,7 @@ Linux systemd 部署请使用[本仓库 Releases](https://github.com/shini74744/
 
 ## 二开新增功能
 
-> `custom-2026.10.13.4`：在个人资料中集中管理前后台独立访问密码，支持后台输错 IP 限时封禁、分别设置每日验证时段及折叠设置；统一手机／电脑验证界面并精简后台提示。提供 Linux／Windows x64 面板安装包，无需更新 Agent。完整变更及升级边界见 [更新记录](CHANGELOG.md)。
+> 主面板正式版本从 `v0.0.1`、自有 Agent 从 `v1.0.0` 重新编号，保留既有功能与数据，不是上游同名旧版。包含一机一密、认证防火墙、双栈地区延迟及自动快照。升级顺序和新旧版本兼容见 [版本重新编号](docs/version-renumbering.md)，完整变更见 [更新记录](CHANGELOG.md)。
 
 - **前后台访问密码**：管理员在「个人资料 → 访问密码」展开设置，前后台独立启用；后台访问验证不替代原有账号登录。后台输错次数和 IP 封禁时长可配置，重启不解除未到期封禁。前后台可分别按北京时间设置每日验证时段，支持跨午夜；时段外免访问密码，但后台账号权限及已有封禁仍有效。设置默认收起，验证页统一明暗主题和手机／电脑布局。访问验证凭证有效期内不会因退出账号而强制重复输入，详见 [使用与安全边界](docs/access-passwords.md)。
 
@@ -81,7 +81,7 @@ GEOIP_DB=/path/to/country.mmdb VERSION=custom-$(git rev-parse --short HEAD) bash
 
 产物为 `dist/dashboard`。脚本会编译本仓库的两套前端、保留原有社区主题，再嵌入后端。
 仅运行上游 `fetch-frontends.sh` 会下载上游界面；构建此二开版请使用上述 `build-custom.sh`。
-自有发布使用 `custom-*` 标签和校验过的安装包，不使用官方 `v*` 发布资产。Linux 安装、停机、重启、更新和故障恢复说明见 [面板管理与发布](PANEL_MANAGEMENT.md)。Windows x64 原生程序、密钥权限和运行方式见 [Windows 部署说明](docs/windows-deployment.md)，修复、全平台测试及上线证据见 [Windows 兼容验收记录](docs/windows-compatibility-regression-20261008.md)。
+自有发布从 `v0.0.1` 开始使用 `v0.*` 标签，历史 `custom-*` 标签仍保留；安装和更新仅使用 `shini74744/nezha` 校验过的安装包，不使用上游仓库资产。Linux 安装、停机、重启、更新和故障恢复说明见 [面板管理与发布](PANEL_MANAGEMENT.md)。Windows x64 原生程序、密钥权限和运行方式见 [Windows 部署说明](docs/windows-deployment.md)，修复、全平台测试及上线证据见 [Windows 兼容验收记录](docs/windows-compatibility-regression-20261008.md)。
 回程标签使用 NextTrace，仅检测节点回程路由，提供九个内置检测点、逐跳平均延迟、独立节点开关和后台检测策略；自动检测初始关闭。自动周期每天从北京时间零点起算，管理员重测无冷却、同节点任务合并避免冲突；时间卡片选择历史快照，支持两次已完成快照的线路、状态、最终延迟与逐跳对比，详情使用限高弹层。卡片显示最终目标平均延迟，逐跳显示常见网络类别标签。CN2/GIA 等综合判断及访客 IP 脱敏见 [线路判断说明](RETURN_ROUTE_CLASSIFICATION.md)。运行要求与安全边界见 [网络检测说明](NETWORK_INSIGHTS.md#return-route-nexttrace-only)。
 
 连通性内置 110 个站点使用小资源地址，服务器和访客本地检测先预热 2 次（不计入结果），再分别采样 5 次和 10 次取有效平均值；这是 HTTPS 请求响应耗时，不是 ICMP Ping。自定义检测地址保留，详见 [小资源检测说明](NETWORK_INSIGHTS.md#lightweight-connectivity-sampling-2026-10-09) 与 [验收记录](docs/connectivity-small-resources-20261009.md)。
@@ -90,7 +90,7 @@ GEOIP_DB=/path/to/country.mmdb VERSION=custom-$(git rev-parse --short HEAD) bash
 
 背景设置采用分级折叠，载入效果位于背景设置末尾，仅作用于背景；相关说明见 [原生美化](APPEARANCE.md#background-settings-hierarchy-and-logo-isolation-2026-10-09-preview)。
 
-磁盘卡片仅点击标题切换读写速率（需自有 Agent v2.3.8+）、采样口径与 BGP 紧凑排版见 [磁盘读写说明](docs/disk-io.md)，本次测试与发布记录见 [验收报告](docs/disk-io-regression-20261008.md)。
+磁盘卡片仅点击标题切换读写速率（需自有 Agent 新系列 v1.0.0+ 或历史 v2.3.8）、采样口径与 BGP 紧凑排版见 [磁盘读写说明](docs/disk-io.md)，本次测试与发布记录见 [验收报告](docs/disk-io-regression-20261008.md)。
 测试方法和目录说明见 [frontend/README.md](frontend/README.md)。图片库安全升级与 Windows 并发快照复核见 [2026-10-08 增量回归记录](docs/image-snapshot-regression-20261008.md)。x/crypto 升级与 OpenPGP 防引入检查见 [依赖维护回归记录](docs/crypto-dependency-regression-20261008.md)。
 
 </details>
