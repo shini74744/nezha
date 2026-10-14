@@ -25,6 +25,7 @@ func main() {
     Assert ($LASTEXITCODE -eq 0) 'Fixture build failed'
     $zip = Join-Path $workspace 'fixture.zip'
     Compress-Archive -LiteralPath $new -DestinationPath $zip
+    $env:INSTALLER_ZIP = $zip
     $zipHash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash
     $oldHash = (Get-FileHash -LiteralPath $old -Algorithm SHA256).Hash
     $newHash = (Get-FileHash -LiteralPath $new -Algorithm SHA256).Hash
@@ -37,28 +38,28 @@ func main() {
     function Invoke-WebRequest {
         param([Parameter(Position=0)][string]$Uri, [switch]$UseBasicParsing, [string]$OutFile)
         if ($Uri -ceq 'https://raw.githubusercontent.com/shini74744/nezha/main/release/agent-version.txt') {
-            return [pscustomobject]@{Content=$script:pointer}
+            return [pscustomobject]@{Content=$env:INSTALLER_POINTER}
         }
-        $expected = "https://github.com/shini74744/nezha/releases/download/agent-$script:pointer/nezha-agent_windows_amd64.zip"
+        $expected = "https://github.com/shini74744/nezha/releases/download/agent-$env:INSTALLER_POINTER/nezha-agent_windows_amd64.zip"
         Assert ($Uri -ceq $expected -or $Uri -ceq "$expected.sha256") 'Installer requested a wrong repository/component'
-        if ($script:caseName -eq 'download') { throw 'fixture HTTP failure' }
-        if ($Uri.EndsWith('.sha256')) { $script:checksum | Set-Content -LiteralPath $OutFile -Encoding ascii }
-        else { Copy-Item -LiteralPath $script:zip -Destination $OutFile }
+        if ($env:INSTALLER_CASE -eq 'download') { throw 'fixture HTTP failure' }
+        if ($Uri.EndsWith('.sha256')) { $env:INSTALLER_CHECKSUM | Set-Content -LiteralPath $OutFile -Encoding ascii }
+        else { Copy-Item -LiteralPath $env:INSTALLER_ZIP -Destination $OutFile }
     }
     function icacls.exe { $global:LASTEXITCODE = 0 }
-    foreach ($script:caseName in @('new','existing','checksum','version','download','rollback')) {
-        $dir = Join-Path $workspace $script:caseName
+    foreach ($env:INSTALLER_CASE in @('new','existing','checksum','version','download','rollback')) {
+        $dir = Join-Path $workspace $env:INSTALLER_CASE
         New-Item -ItemType Directory -Path $dir | Out-Null
         $env:INSTALLER_TEST_DIR = $dir
         $env:INSTALLER_CALL_LOG = Join-Path $dir 'calls.log'
-        $env:INSTALLER_FAIL_INSTALL = if ($script:caseName -eq 'rollback') {'1'} else {'0'}
+        $env:INSTALLER_FAIL_INSTALL = if ($env:INSTALLER_CASE -eq 'rollback') {'1'} else {'0'}
         $env:PROCESSOR_ARCHITECTURE = 'AMD64'
         $env:PROCESSOR_ARCHITEW6432 = 'AMD64'
         $env:NZ_SERVER='fixture.invalid:443'; $env:NZ_CLIENT_SECRET='fixture-only-secret'
         $env:NZ_UUID='11111111-1111-4111-8111-111111111111'
-        $script:pointer = if ($script:caseName -eq 'version') {'v1.0.2'} else {'v1.0.1'}
-        $script:checksum = if ($script:caseName -eq 'checksum') {'0'*64} else {$zipHash}
-        $existing = $script:caseName -ne 'new'
+        $env:INSTALLER_POINTER = if ($env:INSTALLER_CASE -eq 'version') {'v1.0.2'} else {'v1.0.1'}
+        $env:INSTALLER_CHECKSUM = if ($env:INSTALLER_CASE -eq 'checksum') {'0'*64} else {$zipHash}
+        $existing = $env:INSTALLER_CASE -ne 'new'
         $config = Join-Path $dir 'config.yml'
         $target = Join-Path $dir 'nezha-agent.exe'
         if ($existing) {
@@ -67,16 +68,16 @@ func main() {
             $configBefore = (Get-FileHash -LiteralPath $config -Algorithm SHA256).Hash
         }
         $failed = $false
-        try { & $scriptUnderTest } catch { $failed = $true }
-        $expectFailure = $script:caseName -notin @('new','existing')
-        Assert ($failed -eq $expectFailure) "Unexpected installer result: $script:caseName"
+        try { & $scriptUnderTest } catch { $failed = $true; Write-Host ("Fixture caught: " + $_.Exception.Message + " at " + $_.InvocationInfo.PositionMessage) }
+        $expectFailure = $env:INSTALLER_CASE -notin @('new','existing')
+        Assert ($failed -eq $expectFailure) "Unexpected installer result: $env:INSTALLER_CASE"
         $wanted = if ($expectFailure) {$oldHash} else {$newHash}
-        Assert ((Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash -eq $wanted) "Wrong final binary: $script:caseName"
+        Assert ((Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash -eq $wanted) "Wrong final binary: $env:INSTALLER_CASE"
         if ($existing) { Assert ((Get-FileHash -LiteralPath $config -Algorithm SHA256).Hash -eq $configBefore) 'UUID/config changed' }
-        if ($script:caseName -in @('checksum','version','download')) {
+        if ($env:INSTALLER_CASE -in @('checksum','version','download')) {
             Assert (-not (Test-Path -LiteralPath $env:INSTALLER_CALL_LOG)) 'Service called before download/version verification'
         }
-        Write-Host "PASS Windows installer $script:caseName"
+        Write-Host "PASS Windows installer $env:INSTALLER_CASE"
     }
 } finally {
     $resolved = [IO.Path]::GetFullPath($workspace)
