@@ -9,7 +9,9 @@ import (
 
 	"github.com/nezhahq/agent/model"
 	pb "github.com/nezhahq/agent/proto"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 func configureTCPReportDaemon(t *testing.T) {
@@ -44,14 +46,12 @@ func TestGRPCGracefulClose_StopAndWaitConsumesReportTerminal(t *testing.T) {
 	configureTCPReportDaemon(t)
 	reportEOF := make(chan struct{}, 1)
 	reportReady := make(chan struct{}, 1)
-	requestEOF := make(chan struct{}, 1)
+	requestEnded := make(chan error, 1)
 	releaseTerminal := make(chan struct{})
 	service := &grpcTCPService{
 		requestTask: func(stream pb.NezhaService_RequestTaskServer) error {
-			if _, err := stream.Recv(); !errors.Is(err, io.EOF) {
-				return err
-			}
-			requestEOF <- struct{}{}
+			_, err := stream.Recv()
+			requestEnded <- err
 			return nil
 		},
 		reportSystemState: func(stream pb.NezhaService_ReportSystemStateServer) error {
@@ -111,7 +111,12 @@ func TestGRPCGracefulClose_StopAndWaitConsumesReportTerminal(t *testing.T) {
 	}
 	close(releaseTerminal)
 	awaitStreamSignal(t, shutdownDone, "stopAndWait after ReportState terminal")
-	awaitStreamSignal(t, requestEOF, "RequestTask EOF after ReportState terminal")
+	// stopAndWait closes RequestTask's send side and then cancels the shared
+	// context. HTTP/2 may deliver EOF or the subsequent reset first; both end
+	// RequestTask, while ReportState must still consume its terminal trailer.
+	if err := awaitStreamOperationResult(t, requestEnded); !errors.Is(err, io.EOF) && status.Code(err) != codes.Canceled {
+		t.Fatalf("RequestTask termination = %v, want EOF or cancellation", err)
+	}
 	awaitStreamSignal(t, reconnected, "reconnect after stream terminal and joins")
 	if !errors.Is(reportSession.terminalError(), io.EOF) {
 		t.Fatalf("ReportState terminal error = %v, want io.EOF", reportSession.terminalError())

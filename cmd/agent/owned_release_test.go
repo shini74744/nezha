@@ -75,8 +75,10 @@ func ownedFixture(t *testing.T) *ownedUpdateFixture {
 	f.updater.goos, f.updater.goarch = "linux", "amd64"
 	f.updater.executable = func() (string, error) { return f.path, nil }
 	f.updater.apply = func(binary []byte, path string) error {
-		if path != f.path {
-			t.Fatal("unexpected target path")
+		want, wantErr := os.Stat(f.path)
+		got, gotErr := os.Stat(path)
+		if wantErr != nil || gotErr != nil || !os.SameFile(want, got) {
+			t.Fatal("unexpected target file after resolving platform path")
 		}
 		f.applied++
 		f.binary = append([]byte(nil), binary...)
