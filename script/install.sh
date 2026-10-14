@@ -6,7 +6,7 @@ readonly releases="https://github.com/shini74744/nezha/releases"
 stage="$(mktemp -d)"
 trap 'rm -f -- "$stage/version.txt" "$stage/SHA256SUMS" "$stage/nezha.sh"; rmdir -- "$stage"' EXIT
 fetch() { curl --fail --show-error --silent --location --proto '=https' --tlsv1.2 --connect-timeout 15 --max-time 180 "$1" -o "$2"; }
-fetch "$releases/latest/download/version.txt" "$stage/version.txt"
+fetch "https://raw.githubusercontent.com/shini74744/nezha/main/release/dashboard-version.txt" "$stage/version.txt"
 version="$(tr -d '\r\n' < "$stage/version.txt")"
 [[ "$version" =~ ^(custom-[0-9A-Za-z._-]+|v[0-9]+\.[0-9]+\.[0-9]+)$ ]] || { echo "没有有效的自有发布版本" >&2; exit 1; }
 fetch "$releases/download/$version/SHA256SUMS" "$stage/SHA256SUMS"

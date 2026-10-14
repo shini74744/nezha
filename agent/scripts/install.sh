@@ -1,5 +1,5 @@
 #!/bin/sh
-# shini74744/agent only. Elevate through sudo when needed; never falls back to upstream.
+# shini74744/nezha Agent channel only. Elevate through sudo when needed; never falls back to upstream.
 set -eu
 umask 077
 usage() {
@@ -98,12 +98,15 @@ else echo "SHA256 utility required" >&2; exit 1; fi
 [ -n "${NZ_SERVER:-}" ] || [ -f "$config" ] || { echo "NZ_SERVER is required" >&2; exit 1; }
 [ -n "${NZ_CLIENT_SECRET:-}" ] || [ -f "$config" ] || { echo "NZ_CLIENT_SECRET is required" >&2; exit 1; }
 tmp=$(mktemp -d)
-trap 'rm -f "$tmp/agent.zip" "$tmp/checksum" "$tmp/nezha-agent"; rmdir "$tmp" 2>/dev/null || true' EXIT
+trap 'rm -f "$tmp/agent.zip" "$tmp/checksum" "$tmp/version" "$tmp/nezha-agent"; rmdir "$tmp" 2>/dev/null || true' EXIT
 asset="nezha-agent_${os}_${arch}.zip"
-base=https://github.com/shini74744/agent/releases/latest/download
-curl --fail --location --retry 3 --connect-timeout 20 --max-time 300 "$base/$asset.sha256" -o "$tmp/checksum"
+curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 --retry 3 --connect-timeout 20 --max-time 60 https://raw.githubusercontent.com/shini74744/nezha/main/release/agent-version.txt -o "$tmp/version"
+version=$(tr -d '\r\n' < "$tmp/version")
+printf '%s\n' "$version" | LC_ALL=C grep -Eq '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' || { echo "Invalid Agent channel version" >&2; exit 1; }
+base="https://github.com/shini74744/nezha/releases/download/agent-$version"
+curl --fail --location --proto '=https' --tlsv1.2 --retry 3 --connect-timeout 20 --max-time 300 "$base/$asset.sha256" -o "$tmp/checksum"
 printf '\033[0;32m%s\033[0m\n' "校验文件下载成功"
-curl --fail --location --retry 3 --connect-timeout 20 --max-time 600 "$base/$asset" -o "$tmp/agent.zip"
+curl --fail --location --proto '=https' --tlsv1.2 --retry 3 --connect-timeout 20 --max-time 600 "$base/$asset" -o "$tmp/agent.zip"
 printf '\033[0;32m%s\033[0m\n' "Agent 程序下载成功"
 expected=$(tr -d '\r\n' < "$tmp/checksum")
 [ "${#expected}" -eq 64 ] || { echo "Invalid checksum" >&2; exit 1; }
@@ -117,7 +120,8 @@ esac
 printf '\033[0;32m%s\033[0m\n' "Agent 文件 SHA-256 校验成功"
 unzip -p "$tmp/agent.zip" nezha-agent > "$tmp/nezha-agent"
 chmod 755 "$tmp/nezha-agent"
-"$tmp/nezha-agent" -v
+actual_version=$("$tmp/nezha-agent" -v)
+[ "$actual_version" = "nezha-agent version ${version#v}" ] || { echo "Agent version mismatch; existing agent unchanged" >&2; exit 1; }
 mkdir -p "$dir"
 backup=$(mktemp -d "$dir/backup.XXXXXXXX")
 [ ! -f "$binary" ] || cp -p "$binary" "$backup/nezha-agent"

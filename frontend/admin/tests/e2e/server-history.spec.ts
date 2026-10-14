@@ -175,6 +175,10 @@ for (const width of [320, 390, 1024, 1440])
             await expect(dialog.getByRole("textbox", { name: "换机安装命令" })).not.toHaveValue(
                 /fixture-normal/,
             )
+            const replacement = await dialog.getByRole("textbox", {name: "换机安装命令"}).inputValue()
+            expect(replacement).toContain("https://raw.githubusercontent.com/shini74744/nezha/main/agent/scripts/install.")
+            expect(replacement).toContain(identity.server_uuid)
+            expect(replacement).not.toContain("shini74744/agent/")
             expect(writes).toEqual([
                 {
                     path: "/api/v1/server/replacement-command",

@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/blang/semver"
@@ -20,10 +21,11 @@ import (
 )
 
 const ownedReleaseChannel = "shini74744-agent-v1"
+const ownedAgentVersionURL = "https://raw.githubusercontent.com/shini74744/nezha/main/release/agent-version.txt"
 const maxAgentArchiveBytes int64 = 64 << 20
 const maxAgentBinaryBytes uint64 = 128 << 20
 
-var ownedReleaseTag = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+$`)
+var ownedReleaseTag = regexp.MustCompile(`^agent-v[0-9]+\.[0-9]+\.[0-9]+$`)
 var sourceCommitPattern = regexp.MustCompile(`^[0-9a-f]{40}$`)
 
 type ownedReleaseAsset struct {
@@ -65,15 +67,28 @@ func newOwnedReleaseUpdater() *ownedReleaseUpdater {
 	}
 }
 
-// Use GitHub's explicitly designated latest release, not the greatest historical
-// semver. The channel manifest prevents the new 1.x series reverting to old 2.x.
+// Each component uses its own version pointer and immutable release tag.
+// Never use repository-wide Latest: it can refer to a Dashboard release.
 func (u *ownedReleaseUpdater) UpdateSelf(current semver.Version, repo string) (*selfupdate.Release, error) {
 	if repo != agentReleaseRepository {
 		return nil, fmt.Errorf("untrusted Agent release repository")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
-	data, err := u.fetch(ctx, "https://api.github.com/repos/"+agentReleaseRepository+"/releases/latest", 1<<20)
+	pointer, err := u.fetch(ctx, ownedAgentVersionURL, 64)
+	if err != nil {
+		return nil, err
+	}
+	versionText := strings.TrimSpace(string(pointer))
+	if !strings.HasPrefix(versionText, "v") {
+		return nil, fmt.Errorf("invalid Agent version pointer")
+	}
+	version, err := semver.Parse(strings.TrimPrefix(versionText, "v"))
+	if err != nil || versionText != "v"+version.String() || len(version.Pre) != 0 || len(version.Build) != 0 {
+		return nil, fmt.Errorf("invalid stable Agent version pointer")
+	}
+	tag := "agent-" + versionText
+	data, err := u.fetch(ctx, "https://api.github.com/repos/"+agentReleaseRepository+"/releases/tags/"+tag, 1<<20)
 	if err != nil {
 		return nil, err
 	}
@@ -81,12 +96,8 @@ func (u *ownedReleaseUpdater) UpdateSelf(current semver.Version, repo string) (*
 	if err = json.Unmarshal(data, &release); err != nil {
 		return nil, err
 	}
-	if release.Draft || release.Prerelease || !ownedReleaseTag.MatchString(release.Tag) {
+	if release.Draft || release.Prerelease || release.Tag != tag || !ownedReleaseTag.MatchString(release.Tag) {
 		return nil, fmt.Errorf("invalid stable Agent release")
-	}
-	version, err := semver.Parse(release.Tag[1:])
-	if err != nil {
-		return nil, err
 	}
 	manifestURL, err := release.assetURL("agent-release.json")
 	if err != nil {

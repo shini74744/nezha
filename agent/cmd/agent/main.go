@@ -608,7 +608,7 @@ func doSelfUpdate(config updateConfigTuple, useLocalVersion bool) (exit bool) {
 		}
 	}()
 
-	printf("检查更新: %v (shini74744/agent)", v)
+	printf("检查更新: %v (shini74744/nezha · Agent)", v)
 	if config.useGiteeToUpgrade || config.useAtomGitToUpgrade {
 		printf("旧镜像升级选项已忽略，仅使用自有 GitHub 仓库")
 	}

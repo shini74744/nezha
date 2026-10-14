@@ -33,7 +33,7 @@ stage_release() {
  command -v sha256sum >/dev/null
  workdir="$(mktemp -d "$BASE/.download.XXXXXXXX")"
  step "[准备] 正在查询 $REPOSITORY 的发布版本"
- fetch "$DOWNLOAD_ROOT/latest/download/version.txt" "$workdir/version.txt"
+ fetch "https://raw.githubusercontent.com/shini74744/nezha/main/release/dashboard-version.txt" "$workdir/version.txt"
  version="$(tr -d '\r\n' < "$workdir/version.txt")"
  [[ "$version" =~ ^(custom-[0-9A-Za-z._-]+|v[0-9]+\.[0-9]+\.[0-9]+)$ ]] || { fail "发布版本无效，保留当前安装"; return 1; }
  release_url="$DOWNLOAD_ROOT/download/$version"

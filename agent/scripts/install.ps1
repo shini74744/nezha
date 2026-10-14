@@ -1,4 +1,4 @@
-﻿# shini74744/agent only. Run in an elevated PowerShell window.
+﻿# shini74744/nezha only. Run in an elevated PowerShell window.
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -24,13 +24,16 @@ if (-not (Test-Path -LiteralPath $config)) {
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ('nezha-install-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $tmp | Out-Null
 $asset = "nezha-agent_windows_$arch.zip"
-$base = 'https://github.com/shini74744/agent/releases/latest/download'
+$versionURL = 'https://raw.githubusercontent.com/shini74744/nezha/main/release/agent-version.txt'
 $archive = Join-Path $tmp $asset
 $checksum = Join-Path $tmp 'checksum'
 $extracted = Join-Path $tmp 'unzipped'
 $backup = $null
 $changed = $false
 try {
+    $version = (Invoke-WebRequest -UseBasicParsing $versionURL).Content.Trim()
+    if ($version -cnotmatch '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') { throw 'Invalid Agent channel version.' }
+    $base = "https://github.com/shini74744/nezha/releases/download/agent-$version"
     Invoke-WebRequest -UseBasicParsing "$base/$asset.sha256" -OutFile $checksum
     Write-Host '校验文件下载成功' -ForegroundColor Green
     Invoke-WebRequest -UseBasicParsing "$base/$asset" -OutFile $archive
@@ -42,8 +45,8 @@ try {
     Write-Host 'Agent 文件 SHA-256 校验成功' -ForegroundColor Green
     Expand-Archive -LiteralPath $archive -DestinationPath $extracted
     $newBinary = Join-Path $extracted 'nezha-agent.exe'
-    & $newBinary -v
-    if ($LASTEXITCODE -ne 0) { throw 'Downloaded agent cannot run.' }
+    $actualVersion = & $newBinary -v
+    if ($LASTEXITCODE -ne 0 -or $actualVersion -cne "nezha-agent.exe version $($version.Substring(1))") { throw 'Downloaded agent cannot run.' }
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
     $backup = Join-Path $dir ('backup-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $backup | Out-Null
@@ -60,7 +63,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Service installation failed.' }
     & $binary service start
     if ($LASTEXITCODE -ne 0) { throw 'Service start failed.' }
-    Write-Host "Installed from shini74744/agent. Backup: $backup"
+    Write-Host "Installed from shini74744/nezha. Backup: $backup"
 } catch {
     if ($changed -and $backup -and (Test-Path -LiteralPath (Join-Path $backup 'nezha-agent.exe'))) {
         Copy-Item -LiteralPath (Join-Path $backup 'nezha-agent.exe') -Destination $binary -Force

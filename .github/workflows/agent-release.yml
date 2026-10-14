@@ -1,5 +1,10 @@
 name: Test and build owned Agent release
 on:
+  push:
+    tags: ['agent-v*']
+    branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
     inputs:
       version:
@@ -11,6 +16,9 @@ permissions:
 concurrency:
   group: owned-agent-${{ github.ref }}
   cancel-in-progress: false
+defaults:
+  run:
+    working-directory: agent
 jobs:
   test:
     strategy:
@@ -32,6 +40,22 @@ jobs:
         run: |
           go test -mod=readonly ./...
           go vet -mod=readonly ./...
+      - name: Native Windows installer rollback and channel tests
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/test_install_windows.ps1
+      - uses: actions/setup-node@v7
+        if: runner.os == 'Windows'
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Execute generated Windows installation command in an isolated fixture
+        if: runner.os == 'Windows'
+        working-directory: frontend/admin
+        shell: bash
+        run: |
+          npm ci
+          npm test -- --run src/test/install-commands.test.ts
       - name: Race tests and installer safety
         if: runner.os == 'Linux'
         shell: bash
@@ -43,6 +67,7 @@ jobs:
           # with the same identity so cleanup never depends on runner permissions.
           sudo env PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v scripts.test_install_uninstall scripts.test_install_elevation scripts.test_install_output scripts.test_install_progress release.test_installers
   build:
+    if: startsWith(github.ref, 'refs/tags/agent-v')
     needs: test
     strategy:
       fail-fast: false
@@ -116,12 +141,13 @@ jobs:
       - name: Build checked release package
         shell: bash
         env:
-          VERSION: ${{ inputs.version }}
+          RELEASE_TAG: ${{ github.ref_name }}
           AGENT_BUILD_TARGET: ${{ matrix.target }}
         run: |
           set -euo pipefail
+          VERSION="${RELEASE_TAG#agent-v}"
           [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          [[ "$GITHUB_REF_NAME" == "v$VERSION" ]]
+          [[ "$GITHUB_REF_NAME" == "agent-v$VERSION" ]]
           bash release/build.sh "$VERSION" "$PWD/dist"
           case "$AGENT_BUILD_TARGET" in
             linux/amd64) actual="$(dist/linux_amd64/nezha-agent -v)"; [[ "$actual" == *" $VERSION" ]] ;;
@@ -132,8 +158,8 @@ jobs:
         with:
           name: ${{ matrix.artifact }}
           path: |
-            dist/*.zip
-            dist/*.sha256
-            dist/agent-release.json
+            agent/dist/*.zip
+            agent/dist/*.sha256
+            agent/dist/agent-release.json
           if-no-files-found: error
           retention-days: 7

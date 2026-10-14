@@ -12,7 +12,7 @@ import (
 
 // All automatic and dashboard-triggered upgrades share this source.
 // Legacy region/mirror settings deliberately cannot override it.
-const agentReleaseRepository = "shini74744/agent"
+const agentReleaseRepository = "shini74744/nezha"
 
 type agentUpdater interface {
 	UpdateSelf(semver.Version, string) (*selfupdate.Release, error)
