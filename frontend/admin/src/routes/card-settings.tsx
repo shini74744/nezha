@@ -1,4 +1,5 @@
 import { FetcherMethod, fetcher } from "@/api/api"
+import LatencySettings from "@/components/LatencySettings"
 import DetectionPrioritySettings from "@/components/DetectionPrioritySettings"
 import ReturnRouteSettings from "@/components/ReturnRouteSettings"
 import ConnectivityAutomationSettings from "@/components/ConnectivityAutomationSettings"
@@ -206,8 +207,10 @@ export default function CardSettings() {
                 <TabsTrigger value="connectivity">连通性</TabsTrigger>
                 <TabsTrigger value="bgp">BGP</TabsTrigger>
                 <TabsTrigger value="return-route">回程</TabsTrigger>
+                        <TabsTrigger value="latency">延迟</TabsTrigger>
             </TabsList>
-            <TabsContent value="return-route" forceMount className="data-[state=inactive]:hidden"><ReturnRouteSettings /></TabsContent>
+            <TabsContent value="latency" forceMount className="data-[state=inactive]:hidden"><LatencySettings /></TabsContent>
+                    <TabsContent value="return-route" forceMount className="data-[state=inactive]:hidden"><ReturnRouteSettings /></TabsContent>
             <TabsContent value="bgp" forceMount className="data-[state=inactive]:hidden">
                 <ConnectivityAutomationSettings kind="bgp" />
             </TabsContent>

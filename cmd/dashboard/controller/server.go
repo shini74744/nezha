@@ -110,6 +110,24 @@ func updateServer(c *gin.Context) (any, error) {
 	if sf.ConnectivityDisabled != nil {
 		s.ConnectivityDisabled = *sf.ConnectivityDisabled
 	}
+	if sf.NetworkDisplayMode != nil {
+		switch *sf.NetworkDisplayMode {
+		case "both", "connectivity", "latency", "hidden":
+		default:
+			return nil, errors.New("标签显示设置无效")
+		}
+		s.NetworkDisplayMode = *sf.NetworkDisplayMode
+		if s.NetworkDisplayMode == "latency" || s.NetworkDisplayMode == "hidden" {
+			s.ConnectivityDisabled = true
+			s.ConnectivityLocalOnly = false
+		}
+	}
+	if sf.NetworkDefaultView != nil {
+		if *sf.NetworkDefaultView != "connectivity" && *sf.NetworkDefaultView != "latency" {
+			return nil, errors.New("默认视图须为连通性或延迟")
+		}
+		s.NetworkDefaultView = *sf.NetworkDefaultView
+	}
 	s.EnableDDNS = sf.EnableDDNS
 	s.DDNSProfiles = sf.DDNSProfiles
 	s.OverrideDDNSDomains = sf.OverrideDDNSDomains
@@ -129,7 +147,7 @@ func updateServer(c *gin.Context) (any, error) {
 	if err := model.WithServerOperation(singleton.DB, model.ServerOperationActorFromContext(c), "edit", []uint64{id}, func(tx *gorm.DB) error {
 		// Never resurrect a concurrently deleted node or overwrite a new owner.
 		result := tx.Model(&model.Server{}).Where("id = ? AND uuid = ? AND user_id = ?", s.ID, s.UUID, s.UserID).
-			Select("name", "note", "public_note", "hide_for_guest", "hide_for_display", "connectivity_disabled", "connectivity_local_only", "bgp_disabled", "return_route_disabled", "streaming_disabled", "enable_ddns", "ddns_profiles_raw", "override_ddns_domains_raw").
+			Select("name", "note", "public_note", "hide_for_guest", "hide_for_display", "connectivity_disabled", "connectivity_local_only", "network_default_view", "network_display_mode", "bgp_disabled", "return_route_disabled", "streaming_disabled", "enable_ddns", "ddns_profiles_raw", "override_ddns_domains_raw").
 			Updates(&s)
 		if result.Error != nil {
 			return result.Error

@@ -1,3 +1,5 @@
+import { useNetworkCardView } from "@/hooks/use-network-card-view";
+import ServerLatency from "@/components/ServerLatency";
 import ServerReturnRoute from "@/components/ServerReturnRoute";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
@@ -32,6 +34,7 @@ export default function ServerDetail() {
 	const { lastData, reconnect } = useWebSocketContext();
 	const validServerId = !!server_id && /^[1-9]\d*$/.test(server_id) && Number.isSafeInteger(Number(server_id));
 	const server = validServerId ? lastData?.servers.find(s => s.id === Number(server_id)) : undefined;
+	const networkCard = useNetworkCardView(server);
 	const [initialLoadTimedOut, setInitialLoadTimedOut] = useState(false);
 	const [retryAttempt, setRetryAttempt] = useState(0);
 	const waitingForInitialData = !lastData || settingPending;
@@ -53,11 +56,11 @@ export default function ServerDetail() {
 		bgp: !!server && !server.bgp_disabled,
 		streaming: !!server && !server.streaming_disabled,
 	});
-	const tabs = useMemo(() => ["Detail", ...(!combinedNetwork ? ["Network"] : []), ...((!server?.connectivity_disabled || !!server?.connectivity_local_only) ? ["Connectivity"] : []), ...(!server?.bgp_disabled ? ["BGP"] : []), ...(!server?.return_route_disabled ? ["ReturnRoute"] : []), ...(!server?.streaming_disabled ? ["Streaming"] : [])], [combinedNetwork, server?.connectivity_disabled, server?.connectivity_local_only, server?.bgp_disabled, server?.return_route_disabled, server?.streaming_disabled]);
+	const tabs = useMemo(() => ["Detail", ...(!combinedNetwork ? ["Network"] : []), ...(networkCard.visible ? ["Connectivity"] : []), ...(!server?.bgp_disabled ? ["BGP"] : []), ...(!server?.return_route_disabled ? ["ReturnRoute"] : []), ...(!server?.streaming_disabled ? ["Streaming"] : [])], [combinedNetwork, networkCard.visible, server?.bgp_disabled, server?.return_route_disabled, server?.streaming_disabled]);
 	const currentTab = tabs.includes(selectedTab) ? selectedTab : "Detail";
 	const { viewportRef, preserveScroll } = useStableDetailViewport(server_id || "", currentTab);
 	const selectTab = (next: string) => {
-		if (next === currentTab) return;
+		if (next === currentTab) { if (next === "Connectivity") { preserveScroll(); networkCard.toggle(); } return; }
 		preserveScroll();
 		setCurrentTab(next);
 	};
@@ -95,6 +98,7 @@ export default function ServerDetail() {
 				<div className="flex justify-center w-full max-w-sm">
 					<TabSwitch
 						tabs={tabs}
+                        labels={{Connectivity:networkCard.label}}
 						currentTab={currentTab}
 						setCurrentTab={selectTab}
 						onTabIntent={warmTab}
@@ -112,7 +116,7 @@ export default function ServerDetail() {
 			{currentTab === tabs[0] && <Suspense fallback={<SectionLoading/>}><ServerDetailChart server_id={server_id} /></Suspense>}
 			{(currentTab === "BGP" || currentTab === "Streaming") && <Suspense fallback={<SectionLoading/>}><ServerNetworkInsight key={server_id+currentTab} serverId={Number(server_id)} kind={currentTab === "BGP" ? "bgp" : "streaming"}/></Suspense>}
 			{currentTab === "ReturnRoute" && <ServerReturnRoute key={server_id} serverId={Number(server_id)}/>}
-			{currentTab === "Connectivity" && <Suspense fallback={<SectionLoading/>}><ServerConnectivity key={server_id} serverId={Number(server_id)} countryCode={server?.country_code} localOnly={!!server?.connectivity_disabled && !!server?.connectivity_local_only} /></Suspense>}
+			{currentTab === "Connectivity" && <Suspense fallback={<SectionLoading/>}>{networkCard.view === "latency" ? <ServerLatency key={server_id} serverId={Number(server_id)}/> : <ServerConnectivity key={server_id} serverId={Number(server_id)} countryCode={server?.country_code} localOnly={!!server?.connectivity_disabled && !!server?.connectivity_local_only} />}</Suspense>}
 			</DetailPanel>}
 			{(currentTab === "Network" || (currentTab === "Detail" && combinedNetwork)) && <DetailPanel key={server_id + ":network"}><Suspense fallback={<SectionLoading/>}><ServerNetworkSection server_id={Number(server_id)} standalone={currentTab === "Network"} /></Suspense></DetailPanel>}
 			</div>

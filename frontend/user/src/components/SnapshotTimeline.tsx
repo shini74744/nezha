@@ -7,10 +7,12 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 export default function SnapshotTimeline({
 	children,
 	mobileControls,
+	inlineControls = false,
 	label = "BGP 历史快照",
 }: {
 	children: ReactNode;
 	mobileControls?: HTMLElement | null;
+	inlineControls?: boolean;
 	label?: string;
 }) {
 	const viewport = useRef<HTMLElement>(null);
@@ -72,14 +74,22 @@ export default function SnapshotTimeline({
 		</>
 	);
 	return (
-		<div className="relative min-w-0 max-w-full mb-2" data-snapshot-timeline>
+		<div
+			className={
+				"relative min-w-0 max-w-full " +
+				(inlineControls ? "flex items-center gap-2" : "mb-2")
+			}
+			data-snapshot-timeline
+		>
 			{(edges.left || edges.right) && (
 				<>
 					<div
 						className={
-							mobileControls
-								? "hidden sm:flex justify-end gap-1 mb-1"
-								: "flex justify-end gap-1 mb-1"
+							inlineControls
+								? "order-2 hidden shrink-0 gap-1 sm:flex"
+								: mobileControls
+									? "hidden sm:flex justify-end gap-1 mb-1"
+									: "flex justify-end gap-1 mb-1"
 						}
 					>
 						{controls}

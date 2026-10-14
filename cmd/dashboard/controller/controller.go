@@ -108,6 +108,9 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	optionalAuth.GET("/server/:id/bgp", restScopeMiddleware(model.ScopeServerRead), csrfMiddleware(), commonHandler(getBGP))
 	optionalAuth.GET("/server/:id/return-route", restScopeMiddleware(model.ScopeServerRead), csrfMiddleware(), commonHandler(getReturnRoute))
 	optionalAuth.GET("/server/:id/streaming", restScopeMiddleware(model.ScopeServerRead), csrfMiddleware(), commonHandler(getStreaming))
+	optionalAuth.GET("/server/:id/latency", restScopeMiddleware(model.ScopeServerRead), csrfMiddleware(), commonHandler(getLatency))
+	optionalAuth.GET("/server/:id/latency/history/:target", restScopeMiddleware(model.ScopeServerRead), csrfMiddleware(), commonHandler(getLatencyHistory))
+	optionalAuth.GET("/server/:id/latency/snapshots/:at", restScopeMiddleware(model.ScopeServerRead), csrfMiddleware(), commonHandler(getLatencySnapshot))
 	optionalAuth.GET("/server/:id/connectivity", restScopeMiddleware(model.ScopeServerRead), csrfMiddleware(), commonHandler(getConnectivity))
 
 	// CSRF middleware applies group-wide. Safe methods short-circuit and
@@ -120,6 +123,7 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	frontAuth.POST("/server/:id/return-route/:target/:family", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startReturnRouteTarget))
 	frontAuth.POST("/server/:id/streaming", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startStreaming))
 	frontAuth.POST("/server/:id/connectivity/:target", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startConnectivityTarget))
+	frontAuth.POST("/server/:id/latency", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startLatency))
 	frontAuth.POST("/server/:id/connectivity", restScopeMiddleware(model.ScopeServiceWrite), frontendPasswordGate(), commonHandler(startConnectivity))
 
 	// 「自我管理」类端点 — 显式禁止 PAT 访问（避免 PAT 自我提权链）。
@@ -284,6 +288,8 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	auth.PUT("/setting/bgp/automation", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateBGPAutomation))
 	auth.GET("/setting/connectivity/automation", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getConnectivityAutomation))
 	auth.PUT("/setting/connectivity/automation", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateConnectivityAutomation))
+	auth.GET("/setting/latency", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getLatencySettings))
+	auth.PUT("/setting/latency", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateLatencySettings))
 	auth.GET("/setting/connectivity", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getConnectivitySettings))
 	auth.PUT("/setting/connectivity", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateConnectivitySettings))
 	auth.GET("/setting/appearance", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getAppearance))

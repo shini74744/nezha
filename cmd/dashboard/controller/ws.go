@@ -252,6 +252,8 @@ func filterServersForViewer(servers []*model.Server, viewerUserID uint64, viewer
 			StreamingDisabled:     server.StreamingDisabled,
 			ConnectivityDisabled:  server.ConnectivityDisabled,
 			ConnectivityLocalOnly: server.ConnectivityLocalOnly,
+			NetworkDefaultView:    server.NetworkDefaultView,
+			NetworkDisplayMode:    server.NetworkDisplayMode,
 			Host:                  publicHost,
 			State:                 runtime.State,
 			CountryCode:           countryCode,

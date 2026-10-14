@@ -164,7 +164,7 @@ func (s *NezhaHandler) RequestTask(stream pb.NezhaService_RequestTaskServer) err
 		if deliverMediaResult(result, clientID, stream) {
 			continue
 		}
-		if deliverConnectivityResult(result, clientID, stream) {
+		if deliverConnectivityResult(result, clientID, stream) || deliverLatencyResult(result, clientID, stream) {
 			continue
 		}
 		switch result.GetType() {

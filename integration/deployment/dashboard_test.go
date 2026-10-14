@@ -24,6 +24,8 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/nezhahq/nezha/model"
 	pb "github.com/nezhahq/nezha/proto"
+	"github.com/nezhahq/nezha/service/connectivity"
+	"github.com/nezhahq/nezha/service/latency"
 	"github.com/nezhahq/nezha/service/networkinsight"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -215,6 +217,27 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 		require.InDelta(t, 2.0, *got.Routes[0].Hops[0].RTT, 0.001)
 		require.Len(t, got.History, returnSnapshotCount)
 	}
+	checkLatencySaved := func(token string) {
+		var got connectivity.Snapshot
+		request("GET", "/api/v1/server/1/latency", token, nil, &got)
+		require.Equal(t, "complete", got.State)
+		require.Len(t, got.Results, 1)
+		require.Equal(t, 48.5, *got.Results[0].DelayMS)
+		require.Positive(t, got.ScheduledAt)
+		var points []struct {
+			At      int64
+			DelayMS float64 `json:"delay_ms"`
+		}
+		require.Eventually(t, func() bool {
+			request("GET", "/api/v1/server/1/latency/history/fixture", token, nil, &points)
+			return len(points) == 1
+		}, 5*time.Second, 50*time.Millisecond)
+		require.Equal(t, 48.5, points[0].DelayMS)
+		var saved connectivity.Snapshot
+		request("GET", fmt.Sprintf("/api/v1/server/1/latency/snapshots/%d", got.FinishedAt), token, nil, &saved)
+		require.Equal(t, got.FinishedAt, saved.FinishedAt)
+		require.Equal(t, got.Results, saved.Results)
+	}
 	checkReturnFlow := func(token string) {
 		var priority struct {
 			Order    []string `json:"order"`
@@ -235,7 +258,7 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 		conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		require.NoError(t, err)
 		defer conn.Close()
-		ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 		defer cancel()
 		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("client-secret", agentPair.Secret, "client-uuid", agentPair.UUID))
 		agent := pb.NewNezhaServiceClient(conn)
@@ -344,6 +367,75 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 			returnSnapshotCount++
 			checkReturnSaved(token)
 		}
+		request("POST", "/api/v1/server/1/latency", token, nil, nil)
+		for samples := 0; samples < 3; {
+			task, e := tasks.Recv()
+			require.NoError(t, e)
+			if task.Type == model.TaskTypeKeepalive {
+				continue
+			}
+			if task.Type == model.TaskTypeTCPPing {
+				require.Equal(t, "1.1.1.1:80", task.Data)
+				require.NotZero(t, task.Id&(uint64(1)<<62))
+				samples++
+				require.NoError(t, tasks.Send(&pb.TaskResult{Id: task.Id, Type: task.Type, Successful: true, Delay: 36.5}))
+			} else {
+				require.NoError(t, tasks.Send(&pb.TaskResult{Id: task.Id, Type: task.Type, Successful: false, Data: "fixture unavailable"}))
+			}
+		}
+		require.Eventually(t, func() bool {
+			var got connectivity.Snapshot
+			request("GET", "/api/v1/server/1/latency", token, nil, &got)
+			return got.State == "complete"
+		}, 5*time.Second, 50*time.Millisecond)
+		var manual connectivity.Snapshot
+		request("GET", "/api/v1/server/1/latency", token, nil, &manual)
+		require.Zero(t, manual.ScheduledAt)
+		require.Len(t, manual.Results, 1)
+		require.Equal(t, 36.5, *manual.Results[0].DelayMS)
+		db, err := sql.Open("sqlite3", filepath.Join(root, "data/sqlite.db")+"?mode=ro&_busy_timeout=5000")
+		require.NoError(t, err)
+		defer db.Close()
+		var recordCount int
+		require.NoError(t, db.QueryRow("SELECT count(*) FROM latency_records").Scan(&recordCount))
+		require.Zero(t, recordCount, "manual latency must remain transient")
+
+		// Only this isolated test instance enables automation. The actual scheduler
+		// must dispatch a new batch after the manual cooldown; it is this batch
+		// that must survive the graceful/crash restart checks below.
+		var autoPolicy struct {
+			latency.Settings
+			Revision string `json:"revision"`
+		}
+		request("GET", "/api/v1/setting/latency", token, nil, &autoPolicy)
+		autoPolicy.Enabled = true
+		request("PUT", "/api/v1/setting/latency", token, autoPolicy, &autoPolicy)
+		for samples := 0; samples < 3; {
+			task, e := tasks.Recv()
+			require.NoError(t, e)
+			if task.Type == model.TaskTypeKeepalive {
+				continue
+			}
+			if task.Type == model.TaskTypeTCPPing {
+				require.Equal(t, "1.1.1.1:80", task.Data)
+				require.NotZero(t, task.Id&(uint64(1)<<62))
+				samples++
+				require.NoError(t, tasks.Send(&pb.TaskResult{Id: task.Id, Type: task.Type, Successful: true, Delay: 48.5}))
+			} else {
+				require.NoError(t, tasks.Send(&pb.TaskResult{Id: task.Id, Type: task.Type, Successful: false, Data: "fixture unavailable"}))
+			}
+		}
+		require.Eventually(t, func() bool {
+			var got connectivity.Snapshot
+			request("GET", "/api/v1/server/1/latency", token, nil, &got)
+			return got.State == "complete" && got.ScheduledAt > 0
+		}, 5*time.Second, 50*time.Millisecond)
+		require.Eventually(t, func() bool {
+			return db.QueryRow("SELECT count(*) FROM latency_records WHERE scheduled_at > 0").Scan(&recordCount) == nil && recordCount == 1
+		}, 5*time.Second, 50*time.Millisecond)
+		checkLatencySaved(token)
+		autoPolicy.Enabled = false
+		request("PUT", "/api/v1/setting/latency", token, autoPolicy, &autoPolicy)
 		var public networkinsight.Snapshot
 		request("GET", "/api/v1/server/1/return-route", "", nil, &public)
 		require.Empty(t, public.Routes[0].Target)
@@ -357,6 +449,17 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 	}
 	p := start(0)
 	token := login()
+	var latencyPolicy struct {
+		latency.Settings
+		Revision string `json:"revision"`
+	}
+	request("GET", "/api/v1/setting/latency", token, nil, &latencyPolicy)
+	require.False(t, latencyPolicy.Enabled)
+	require.Len(t, latencyPolicy.Targets, 93)
+	latencyPolicy.IntervalHours = 6
+	latencyPolicy.RetentionDays = 7
+	latencyPolicy.Targets = []latency.Target{{ID: "fixture", Region: "测试", Province: "测试地区", Carrier: "测试", Host: "1.1.1.1", Port: 80, Enabled: true}}
+	request("PUT", "/api/v1/setting/latency", token, latencyPolicy, &latencyPolicy)
 	request("POST", "/api/v1/agent-credentials/issue", token, map[string]any{}, &agentPair)
 	require.NotEmpty(t, agentPair.UUID)
 	require.NotEmpty(t, agentPair.Secret)
@@ -397,7 +500,7 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 		if cycle == 0 {
 			request("POST", "/api/v1/server/order", token, map[string]any{"server_ids": []uint64{1}}, nil)
 			// Older clients must not overwrite manually saved order through editing.
-			request("PATCH", "/api/v1/server/1", token, map[string]any{"name": "manual-order-test", "display_index": 999999}, nil)
+			request("PATCH", "/api/v1/server/1", token, map[string]any{"name": "manual-order-test", "display_index": 999999, "network_default_view": "latency", "network_display_mode": "both"}, nil)
 			response, err := client.Post(base+"/api/v1/server/weights", "application/json", strings.NewReader("{}"))
 			require.NoError(t, err)
 			require.Equal(t, http.StatusNotFound, response.StatusCode)
@@ -408,6 +511,8 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 		request("GET", "/api/v1/server", token, nil, &weightServers)
 		require.Len(t, weightServers, 1)
 		require.Equal(t, uint64(1), weightServers[0].ID)
+		require.Equal(t, "latency", weightServers[0].NetworkDefaultView)
+		require.Equal(t, "both", weightServers[0].NetworkDisplayMode)
 		require.Equal(t, agentPair.UUID, weightServers[0].UUID)
 		require.Equal(t, 1, weightServers[0].DisplayIndex, "manual order persists through edits, restarts and Agent reports")
 		checkDatabase()
@@ -445,6 +550,11 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 		checkTelegramConfig(token)
 		checkAppearance(token)
 		checkReturnSaved(token)
+		checkLatencySaved(token)
+		request("GET", "/api/v1/setting/latency", token, nil, &latencyPolicy)
+		require.False(t, latencyPolicy.Enabled)
+		require.Equal(t, 6, latencyPolicy.IntervalHours)
+		require.Equal(t, 7, latencyPolicy.RetentionDays)
 		checkCommand(token)
 		checkDatabase()
 	}

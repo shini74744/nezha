@@ -557,6 +557,8 @@ export interface ModelServerOwner {
 
 export interface ModelServer {
     connectivity_disabled?: boolean
+    network_default_view?: "connectivity" | "latency";
+    network_display_mode?: "both" | "connectivity" | "latency" | "hidden";
     connectivity_local_only?: boolean
     bgp_disabled?: boolean
     return_route_disabled?: boolean
@@ -598,6 +600,8 @@ export interface ModelServerConfigForm {
 
 export interface ModelServerForm {
     connectivity_disabled?: boolean
+    network_default_view?: "connectivity" | "latency";
+    network_display_mode?: "both" | "connectivity" | "latency" | "hidden";
     connectivity_local_only?: boolean
     bgp_disabled?: boolean
     return_route_disabled?: boolean

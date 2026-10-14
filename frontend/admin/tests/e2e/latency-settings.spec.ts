@@ -1,0 +1,40 @@
+import {test,expect} from "@playwright/test";
+for(const width of [320,390,768,1440])test("separate network controls "+width,async({page},info)=>{
+ await page.setViewportSize({width,height:950});
+ let server:any={id:11,host:{version:"2.3.8"},name:"延迟设置测试",display_index:0,user_id:1,uuid:"fixture",public_note:"{}",note:"",enable_ddns:false,hide_for_guest:false,network_display_mode:"both",network_default_view:"connectivity",connectivity_disabled:false,connectivity_local_only:false};
+ const updates:any[]=[];
+ await page.route("**/api/v1/**",route=>{
+  const path=new URL(route.request().url()).pathname;let data:any=[];
+  if(path==="/api/v1/profile")data={id:1,role:0,username:"admin"};
+  if(path==="/api/v1/setting")data={config:{language:"zh-CN",site_name:"测试"}};
+  if(path==="/api/v1/server")data=[server];
+  if(path==="/api/v1/server/11"&&route.request().method()==="PATCH"){updates.push(route.request().postDataJSON());server={...server,...updates.at(-1)};}
+  return route.fulfill({json:{success:true,data}});
+ });
+ await page.goto("/dashboard");
+ const edit=page.getByRole("row").filter({hasText:"延迟设置测试"}).getByRole("button",{name:"编辑服务器",exact:true});
+ await edit.click();const dialog=page.getByRole("dialog"),box=dialog.locator("[data-network-card-settings]");
+ await box.scrollIntoViewIfNeeded();
+ await expect(box.getByRole("radio")).toHaveCount(0);
+ await expect(box.getByRole("switch",{name:"默认显示延迟"})).not.toBeChecked();
+ await box.screenshot({path:info.outputPath("network-compact.png")});
+ const bounds=await box.boundingBox();expect(bounds!.width).toBeLessThan(width);
+ expect(await box.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
+ await box.getByRole("switch",{name:"默认显示延迟"}).click();
+ await box.getByRole("button",{name:/连通性.*设置/}).click();
+ await box.getByRole("radio",{name:"仅本地"}).click();
+ await expect(box.getByRole("radio",{name:"仅本地"})).toBeChecked();
+ await box.screenshot({path:info.outputPath("network-expanded.png")});
+ expect(await box.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
+ await dialog.locator('button[type="submit"]').click();
+ await expect.poll(()=>updates.length).toBe(1);
+ expect(updates[0]).toMatchObject({network_default_view:"latency",network_display_mode:"both",connectivity_disabled:true,connectivity_local_only:true});
+ await edit.click();await expect(dialog.getByRole("switch",{name:"默认显示延迟"})).toBeChecked();
+ await dialog.getByRole("button",{name:/延迟.*设置/}).click();
+ await dialog.getByRole("radio",{name:"隐藏",exact:true}).click();
+ await expect(dialog.getByRole("switch",{name:"默认显示延迟"})).toBeDisabled();
+ await dialog.locator('button[type="submit"]').click();
+ await expect.poll(()=>updates.length).toBe(2);
+ expect(updates[1]).toMatchObject({network_display_mode:"connectivity",network_default_view:"connectivity"});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});

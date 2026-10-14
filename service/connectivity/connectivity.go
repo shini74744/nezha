@@ -20,12 +20,13 @@ const MeasuredRounds = 5
 const WarmupRounds = 2
 
 type Target struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Group string `json:"group"`
-	Host  string `json:"host"`
-	URL   string `json:"-"`
-	Icon  string `json:"icon"`
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Group  string `json:"group"`
+	Host   string `json:"host"`
+	URL    string `json:"-"`
+	Icon   string `json:"icon"`
+	Family string `json:"family,omitempty"`
 }
 
 func Targets() []Target { return append([]Target(nil), targets...) }
@@ -77,6 +78,7 @@ type Manager struct {
 	ttl        time.Duration
 	cooldown   time.Duration
 	rounds     int
+	warmups    int
 	workers    int
 	timeout    time.Duration
 	onComplete func(string, Snapshot)
@@ -87,7 +89,23 @@ var ErrBusy = errors.New("connectivity_busy")
 func NewManager() *Manager {
 	return &Manager{entries: map[string]*entry{}, now: time.Now, maxActive: 4,
 		maxEntries: 512, ttl: 24 * time.Hour, cooldown: time.Minute, rounds: MeasuredRounds,
-		workers: 12, timeout: 4 * time.Minute}
+		workers: 12, warmups: WarmupRounds, timeout: 4 * time.Minute}
+}
+
+// NewLatencyManager bounds regional TCP batches independently from HTTP checks.
+func NewLatencyManager() *Manager {
+	m := NewManager()
+	m.rounds, m.warmups, m.workers, m.maxActive = 3, 0, 4, 2
+	m.timeout = 15 * time.Minute
+	return m
+}
+
+// Running avoids cloning every result just to coordinate scheduler capacity.
+func (m *Manager) Running(key string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	e := m.entries[key]
+	return e != nil && e.snapshot.State == "running"
 }
 func empty(rounds int, selected ...[]Target) Snapshot {
 	targets := selectedTargets(selected)
@@ -311,7 +329,7 @@ func (m *Manager) run(key string, e *entry, probe Probe, targets []Target, queue
 			active--
 			m.mu.Lock()
 			r := &e.snapshot.Results[done.index]
-			if warmed[done.index] < WarmupRounds {
+			if warmed[done.index] < m.warmups {
 				warmed[done.index]++
 				if ctx.Err() != nil || stopSampling(done.sample.Status) {
 					r.Phase, r.Status = "complete", done.sample.Status

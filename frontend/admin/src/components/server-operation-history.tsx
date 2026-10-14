@@ -94,6 +94,8 @@ const fields: Record<string, string> = {
     hide_for_display: "前台隐藏",
     connectivity_disabled: "关闭服务器连通性检测",
     connectivity_local_only: "连通性仅保留本地延迟",
+    network_default_view: "默认显示页面",
+    network_display_mode: "连通性与延迟显示",
     bgp_disabled: "隐藏 BGP",
     return_route_disabled: "隐藏回程",
     streaming_disabled: "隐藏流媒体",
@@ -119,6 +121,7 @@ const sources: Record<string, string> = {
     transfer: "转移流程",
 }
 function displayValue(field: string, text: string) {
+    if (field === "network_default_view" || field === "network_display_mode") return ({connectivity:"连通性",latency:"延迟",both:"连通性＋延迟",hidden:"隐藏"} as Record<string,string>)[text] || text || "默认";
     if (["memory_total", "disk_total", "swap_total"].includes(field) && /^\d+$/.test(text)) {
         const bytes = Number(text)
         return bytes === 0 ? "0 B" : (bytes / 1024 ** 3).toFixed(2) + " GiB（" + text + " B）"

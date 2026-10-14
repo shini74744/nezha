@@ -1,3 +1,5 @@
+import { useNetworkCardView } from "@/hooks/use-network-card-view";
+import ServerLatency from "@/components/ServerLatency";
 import ServerReturnRoute from "@/components/ServerReturnRoute";
 import { Suspense, useState, useEffect, useMemo, type ReactNode } from "react";
 import { DiskIORates, DiskModeToggle } from "@/components/DiskCardHeader";
@@ -47,14 +49,15 @@ function valueText(value:number|undefined,unit:string) {
  return Number.isInteger(value)?String(value):value.toFixed(2);
 }
 export function OfflineServerDetail({server,now,initialTab="Detail",onTabIntent}:{server:NezhaServer;now:number;initialTab?:string;onTabIntent?:(tab:string)=>void}) {
+ const networkCard=useNetworkCardView(server);
  const [selectedTab,setTab]=useState(initialTab),[period,setPeriod]=useState<"last"|MetricPeriod>("last");
  const {data:setting}=useQuery({queryKey:["setting"],queryFn:fetchSetting,refetchOnWindowFocus:true,refetchInterval:30000});
  const combinedNetwork=setting?.data?.config?.show_network_in_detail===true;
  useEffect(()=>{if(combinedNetwork&&selectedTab==="Network")setTab("Detail")},[combinedNetwork,selectedTab]);
- const tabs=useMemo(()=>["Detail",...(!combinedNetwork?["Network"]:[]),...((!server.connectivity_disabled || !!server.connectivity_local_only)?["Connectivity"]:[]),...(!server.bgp_disabled?["BGP"]:[]),...(!server.return_route_disabled?["ReturnRoute"]:[]),...(!server.streaming_disabled?["Streaming"]:[])],[combinedNetwork,server.connectivity_disabled,server.connectivity_local_only,server.bgp_disabled,server.return_route_disabled,server.streaming_disabled]);
+ const tabs=useMemo(()=>["Detail",...(!combinedNetwork?["Network"]:[]),...(networkCard.visible?["Connectivity"]:[]),...(!server.bgp_disabled?["BGP"]:[]),...(!server.return_route_disabled?["ReturnRoute"]:[]),...(!server.streaming_disabled?["Streaming"]:[])],[combinedNetwork,networkCard.visible,server.bgp_disabled,server.return_route_disabled,server.streaming_disabled]);
  const tab=tabs.includes(selectedTab)?selectedTab:"Detail";
  const {viewportRef,preserveScroll}=useStableDetailViewport(server.id,tab);
- const selectTab=(next:string)=>{if(next===tab)return;preserveScroll();setTab(next)};
+ const selectTab=(next:string)=>{if(next===tab){if(next==="Connectivity"){preserveScroll();networkCard.toggle()}return;}preserveScroll();setTab(next)};
  const member=useQuery({queryKey:["login-user"],queryFn:fetchLoginUser,retry:0,staleTime:30000});
  const viewer=member.isError?0:member.data?.data?.id||0;
  const query=useQuery({
@@ -80,7 +83,7 @@ export function OfflineServerDetail({server,now,initialTab="Detail",onTabIntent}
     <p>{!report?.tsdb_enabled?"历史记录未启用。":report.history_days===1?"游客仅可查看最近 1 天的历史；登录后可查询最近 30 天。":"最近 30 天内未找到记录，或记录已超过配置的保留期限。"}未保存的数据不能补回。</p>
    </div>:null}
   <section className="flex items-center my-2 w-full">
-   <Separator className="flex-1"/><div className="flex justify-center w-full max-w-sm"><TabSwitch tabs={tabs} currentTab={tab} setCurrentTab={selectTab} onTabIntent={onTabIntent}/></div><Separator className="flex-1"/>
+   <Separator className="flex-1"/><div className="flex justify-center w-full max-w-sm"><TabSwitch labels={{Connectivity:networkCard.label}} tabs={tabs} currentTab={tab} setCurrentTab={selectTab} onTabIntent={onTabIntent}/></div><Separator className="flex-1"/>
   </section>
   <div ref={viewportRef} data-detail-viewport className={`detail-viewport flex flex-col gap-4 min-w-0${tab === "Connectivity" ? " -mt-6" : ""}`}>
   {tab!=="Network" && <DetailPanel key={server.id + ":" + tab}>
@@ -93,7 +96,7 @@ export function OfflineServerDetail({server,now,initialTab="Detail",onTabIntent}
    </section>:null}
   {(tab==="BGP"||tab==="Streaming")&&<Suspense fallback={<p role="status">正在加载…</p>}><ServerNetworkInsight key={server.id+tab} serverId={server.id} kind={tab==="BGP"?"bgp":"streaming"}/></Suspense>}
   {tab==="ReturnRoute"&&<ServerReturnRoute key={server.id} serverId={server.id}/>}
-  {tab==="Connectivity" && <ServerConnectivity key={server.id} serverId={server.id} countryCode={server.country_code || saved?.country_code} localOnly={!!server.connectivity_disabled && !!server.connectivity_local_only}/>}
+  {tab==="Connectivity" && (networkCard.view==="latency"?<ServerLatency key={server.id} serverId={server.id}/>:<ServerConnectivity key={server.id} serverId={server.id} countryCode={server.country_code || saved?.country_code} localOnly={!!server.connectivity_disabled && !!server.connectivity_local_only}/>)}
   </DetailPanel>}
   {(tab==="Network"||(tab==="Detail"&&combinedNetwork)) && <DetailPanel key={server.id+":network"}><ServerNetworkSection server_id={server.id} standalone={tab==="Network"}/></DetailPanel>}
   </div>
