@@ -177,6 +177,7 @@ func main() {
 	httpHandler := controller.ServeWeb(frontendDist)
 	controller.InitUpgrader()
 	controller.StartConnectivityAutomation()
+	controller.StartLatencyAutomation()
 	controller.StartNetworkInsightAutomation()
 	singleton.StartTelegramMenus()
 

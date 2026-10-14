@@ -19,6 +19,7 @@ import (
 	"github.com/nezhahq/nezha/model"
 	"github.com/nezhahq/nezha/pkg/utils"
 	"github.com/nezhahq/nezha/service/connectivity"
+	"github.com/nezhahq/nezha/service/latency"
 	"github.com/nezhahq/nezha/service/networkinsight"
 )
 
@@ -100,7 +101,7 @@ func InitDBFromPath(path string) error {
 	if Conf.Debug {
 		DB = DB.Debug()
 	}
-	err = DB.AutoMigrate(model.TelegramDailyDelivery{}, model.TelegramMenuCursor{}, networkinsight.DetectionPriority{}, networkinsight.Record{}, networkinsight.BGPPolicy{}, networkinsight.ReturnPolicy{}, connectivity.Record{}, connectivity.Policy{}, model.ServerExpiryConfig{}, model.ServerExpiryDelivery{}, model.ServerIPHistory{}, model.Server{}, model.User{}, model.ServerGroup{}, model.NotificationGroup{},
+	err = DB.AutoMigrate(model.TelegramDailyDelivery{}, model.TelegramMenuCursor{}, networkinsight.DetectionPriority{}, networkinsight.Record{}, networkinsight.BGPPolicy{}, networkinsight.ReturnPolicy{}, connectivity.Record{}, connectivity.Policy{}, latency.Record{}, latency.Settings{}, model.ServerExpiryConfig{}, model.ServerExpiryDelivery{}, model.ServerIPHistory{}, model.Server{}, model.User{}, model.ServerGroup{}, model.NotificationGroup{},
 		model.Notification{}, model.AlertRule{}, model.Service{}, model.NotificationGroupNotification{},
 		model.Cron{}, model.Transfer{}, model.ServerGroupServer{},
 		model.NAT{}, model.DDNSProfile{}, model.NotificationGroupNotification{},

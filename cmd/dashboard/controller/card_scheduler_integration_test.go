@@ -5,6 +5,7 @@ import (
 	"github.com/nezhahq/nezha/model"
 	pb "github.com/nezhahq/nezha/proto"
 	"github.com/nezhahq/nezha/service/connectivity"
+	"github.com/nezhahq/nezha/service/latency"
 	"github.com/nezhahq/nezha/service/networkinsight"
 	"github.com/nezhahq/nezha/service/singleton"
 	"github.com/stretchr/testify/require"
@@ -21,7 +22,7 @@ type cardTestStateStream struct {
 
 func TestCardSchedulerTickPersistsOrderAndSkipsDisabledAndCompleted(t *testing.T) {
 	setupInsight(t)
-	require.NoError(t, singleton.DB.AutoMigrate(&networkinsight.DetectionPriority{}, &connectivity.Record{}))
+	require.NoError(t, singleton.DB.AutoMigrate(&networkinsight.DetectionPriority{}, &connectivity.Record{}, &latency.Record{}, &latency.Settings{}))
 	oldManager := connectivityManager
 	connectivityManager = connectivity.NewManager()
 	oldC, oldB, oldR := connectivityAutoEnabled.Load(), bgpAutoEnabled.Load(), returnRouteAutoEnabled.Load()

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/nezhahq/nezha/model"
 	"github.com/nezhahq/nezha/service/connectivity"
+	"github.com/nezhahq/nezha/service/latency"
 	"github.com/nezhahq/nezha/service/networkinsight"
 	"github.com/nezhahq/nezha/service/singleton"
 	"gorm.io/gorm"
@@ -28,6 +29,11 @@ func clearReplacedDetectionData(tx *gorm.DB, server *model.Server) (func(), erro
 		raw := fmt.Sprintf("%s:%s:%s", key, ip.IPv4Addr, ip.IPv6Addr)
 		identities = append(identities, fmt.Sprintf("%x", sha256.Sum256([]byte(raw))))
 	}
+	if tx.Migrator().HasTable(&latency.Record{}) {
+		if err := tx.Where("server_uuid = ? OR identity = ?", server.UUID, key).Delete(&latency.Record{}).Error; err != nil {
+			return nil, err
+		}
+	}
 	if err := tx.Where("server_uuid = ? OR identity = ?", server.UUID, key).Delete(&connectivity.Record{}).Error; err != nil {
 		return nil, err
 	}
@@ -36,6 +42,7 @@ func clearReplacedDetectionData(tx *gorm.DB, server *model.Server) (func(), erro
 	}
 	return func() {
 		connectivityManager.Forget(key)
+		latencyManager.Forget(key)
 		insightJobs.Lock()
 		defer insightJobs.Unlock()
 		for _, identity := range identities {

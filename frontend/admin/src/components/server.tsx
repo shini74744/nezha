@@ -1,3 +1,4 @@
+import NetworkCardSettings from "./NetworkCardSettings"
 import { updateServer } from "@/api/server"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -102,6 +103,8 @@ export const serverFormSchema = z.object({
     public_note: asOptionalField(z.string()),
     hide_for_guest: asOptionalField(z.boolean()),
     hide_for_display: asOptionalField(z.boolean()),
+    network_default_view: asOptionalField(z.enum(["connectivity", "latency"])),
+    network_display_mode: asOptionalField(z.enum(["both", "connectivity", "latency", "hidden"])),
     connectivity_disabled: asOptionalField(z.boolean()),
     connectivity_local_only: asOptionalField(z.boolean()),
     bgp_disabled: asOptionalField(z.boolean()),
@@ -965,27 +968,15 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                     </div>
                                                     </div>
                                                     <div className="min-w-0 rounded-md border px-2.5 py-1.5 sm:col-span-2" data-network-feature-settings>
-                                                        <div className="flex min-h-8 flex-wrap items-center justify-between gap-x-2 gap-y-1" data-connectivity-setting>
-                                                            <div className="flex items-center text-xs font-medium">
-                                                                连通性
-                                                                <SettingHelp label="连通性">服务器＋本地：保留服务器与浏览器检测；仅本地：关闭服务器检测，保留本地延迟；隐藏标签：关闭检测并隐藏标签。本地检测需点击后开始，预热 2 次、正式采样 10 次。</SettingHelp>
-                                                            </div>
-                                                            <fieldset aria-label="连通性模式" className="inline-flex min-w-0 rounded-full bg-muted/70 p-0.5">
-                                                                {([
-                                                                    ["all", "服务器＋本地"], ["local", "仅本地"], ["hide", "隐藏标签"],
-                                                                ] as const).map(([value, label]) => {
-                                                                    const selected = !form.watch("connectivity_disabled") ? "all" : form.watch("connectivity_local_only") ? "local" : "hide"
-                                                                    return <label key={value} className="relative cursor-pointer">
-                                                                        <input type="radio" name={`connectivity-mode-${data.id}`} value={value} checked={selected === value}
-                                                                            className="peer absolute inset-0 z-10 m-0 h-full w-full cursor-pointer opacity-0" onChange={() => {
-                                                                                form.setValue("connectivity_disabled", value !== "all", {shouldDirty:true})
-                                                                                form.setValue("connectivity_local_only", value === "local", {shouldDirty:true})
-                                                                            }}/>
-                                                                        <span className="flex min-h-8 items-center justify-center whitespace-nowrap rounded-full px-2 text-[11px] transition-colors peer-checked:bg-background peer-checked:text-foreground peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-ring motion-reduce:transition-none sm:min-h-7 sm:text-xs">{label}</span>
-                                                                    </label>
-                                                                })}
-                                                            </fieldset>
-                                                        </div>
+                                                        <NetworkCardSettings mode={form.watch("network_display_mode") || undefined}
+                                                            defaultView={form.watch("network_default_view") || undefined}
+                                                            disabled={form.watch("connectivity_disabled")} localOnly={form.watch("connectivity_local_only")}
+                                                            onChange={value => {
+                                                                form.setValue("network_display_mode", value.network_display_mode, {shouldDirty:true})
+                                                                form.setValue("network_default_view", value.network_default_view, {shouldDirty:true})
+                                                                form.setValue("connectivity_disabled", value.connectivity_disabled, {shouldDirty:true})
+                                                                form.setValue("connectivity_local_only", value.connectivity_local_only, {shouldDirty:true})
+                                                            }}/>
                                                         <div className="mt-1 grid grid-cols-3 gap-2 border-t pt-1">
                                                         {([
                                                             ["bgp_disabled", "BGP"],

@@ -3,6 +3,8 @@ package model
 import "time"
 
 type StreamServer struct {
+	NetworkDefaultView    string `json:"network_default_view"`
+	NetworkDisplayMode    string `json:"network_display_mode"`
 	ConnectivityLocalOnly bool   `json:"connectivity_local_only"`
 	BGPDisabled           bool   `json:"bgp_disabled"`
 	ReturnRouteDisabled   bool   `json:"return_route_disabled"`
@@ -27,14 +29,16 @@ type StreamServerData struct {
 }
 
 type ServerForm struct {
-	ConnectivityLocalOnly *bool  `json:"connectivity_local_only,omitempty" validate:"optional"`
-	BGPDisabled           *bool  `json:"bgp_disabled,omitempty" validate:"optional"`
-	ReturnRouteDisabled   *bool  `json:"return_route_disabled,omitempty" validate:"optional"`
-	StreamingDisabled     *bool  `json:"streaming_disabled,omitempty" validate:"optional"`
-	ConnectivityDisabled  *bool  `json:"connectivity_disabled,omitempty" validate:"optional"` // nil preserves older clients
-	HideForDisplay        *bool  `json:"hide_for_display,omitempty" validate:"optional"`      // nil preserves older clients
-	Name                  string `json:"name,omitempty"`
-	Note                  string `json:"note,omitempty" validate:"optional"` // 管理员可见备注
+	NetworkDefaultView    *string `json:"network_default_view,omitempty" validate:"optional"`
+	NetworkDisplayMode    *string `json:"network_display_mode,omitempty" validate:"optional"`
+	ConnectivityLocalOnly *bool   `json:"connectivity_local_only,omitempty" validate:"optional"`
+	BGPDisabled           *bool   `json:"bgp_disabled,omitempty" validate:"optional"`
+	ReturnRouteDisabled   *bool   `json:"return_route_disabled,omitempty" validate:"optional"`
+	StreamingDisabled     *bool   `json:"streaming_disabled,omitempty" validate:"optional"`
+	ConnectivityDisabled  *bool   `json:"connectivity_disabled,omitempty" validate:"optional"` // nil preserves older clients
+	HideForDisplay        *bool   `json:"hide_for_display,omitempty" validate:"optional"`      // nil preserves older clients
+	Name                  string  `json:"name,omitempty"`
+	Note                  string  `json:"note,omitempty" validate:"optional"` // 管理员可见备注
 	// PublicNote is opaque public metadata consumed by independently maintained
 	// user themes. The Dashboard stores/transports it but never renders it as
 	// HTML or navigates URL-like fields. Themes must validate schemes before

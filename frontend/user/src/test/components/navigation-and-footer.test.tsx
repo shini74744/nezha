@@ -70,7 +70,7 @@ describe("Tab and group switches", () => {
 
 		expect(setCurrentTab).toHaveBeenCalledWith("Network");
 		expect(
-			screen.getByText("tabSwitch.Detail").parentElement?.parentElement,
+			screen.getByRole("button", { name: "tabSwitch.Detail" }),
 		).toHaveClass("text-black");
 	});
 

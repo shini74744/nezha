@@ -7,13 +7,15 @@ export default function TabSwitch({
 	currentTab,
 	setCurrentTab,
 	onTabIntent,
+ labels,
 }: {
 	tabs: string[];
 	currentTab: string;
 	setCurrentTab: (tab: string) => void;
 	onTabIntent?: (tab: string) => void;
+ labels?: Record<string,string>;
 }) {
-	const { t } = useTranslation();
+	const { t, i18n } = useTranslation();
 	const { containerRef, enableIndicatorAnimation, indicator, setItemRef } =
 		useActiveIndicator(tabs, currentTab);
 	const customBackgroundImage =
@@ -69,7 +71,13 @@ export default function TabSwitch({
 						)}
 					>
 						<span className="relative z-20 flex items-center gap-1">
-							<span className="whitespace-nowrap">{t(`tabSwitch.${tab}`, {defaultValue:tab==="Streaming"?"流媒体":tab==="ReturnRoute"?"回程":tab})}</span>
+							<span className={cn("whitespace-nowrap", tab === "Connectivity" && "grid place-items-center")}>
+                {tab === "Connectivity" && <>
+                  <span aria-hidden="true" className="invisible col-start-1 row-start-1">{t("tabSwitch.Connectivity")}</span>
+                  <span aria-hidden="true" className="invisible col-start-1 row-start-1">{t("tabSwitch.Latency", {defaultValue:i18n.language?.startsWith("zh")?"延迟":"Latency"})}</span>
+                </>}
+                <span className={cn(tab === "Connectivity" && "col-start-1 row-start-1")}>{labels?.[tab] || t(`tabSwitch.${tab}`, {defaultValue:tab==="Streaming"?"流媒体":tab==="ReturnRoute"?"回程":tab})}</span>
+              </span>
 						</span>
 					</button>
 				))}

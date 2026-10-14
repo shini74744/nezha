@@ -86,6 +86,8 @@ GEOIP_DB=/path/to/country.mmdb VERSION=custom-$(git rev-parse --short HEAD) bash
 
 连通性内置 110 个站点使用小资源地址，服务器和访客本地检测先预热 2 次（不计入结果），再分别采样 5 次和 10 次取有效平均值；这是 HTTPS 请求响应耗时，不是 ICMP Ping。自定义检测地址保留，详见 [小资源检测说明](NETWORK_INSIGHTS.md#lightweight-connectivity-sampling-2026-10-09) 与 [验收记录](docs/connectivity-small-resources-20261009.md)。
 
+地区延迟与连通性分别检测、独立展示，点击同一标签位置即可切换，节点可设置默认页面。后台可配置检测地址、自动间隔和保留时间；双栈节点分别执行 IPv4 / IPv6 TCP 检测。仅系统自动检测保留历史快照，手动检测不入库，详情见 [地区延迟与自动快照](NETWORK_INSIGHTS.md#地区延迟与自动快照)。
+
 背景设置采用分级折叠，载入效果位于背景设置末尾，仅作用于背景；相关说明见 [原生美化](APPEARANCE.md#background-settings-hierarchy-and-logo-isolation-2026-10-09-preview)。
 
 磁盘卡片仅点击标题切换读写速率（需自有 Agent v2.3.8+）、采样口径与 BGP 紧凑排版见 [磁盘读写说明](docs/disk-io.md)，本次测试与发布记录见 [验收报告](docs/disk-io-regression-20261008.md)。

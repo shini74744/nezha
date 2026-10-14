@@ -29,6 +29,8 @@ export interface ConnectivityResult {
 	group: string;
 	host: string;
 	icon?: string;
+	family?: "IPv4" | "IPv6";
+	checked_at?: number;
 	phase?: "queued" | "running" | "complete";
 	status: ConnectivityStatus;
 	samples: ConnectivitySample[];

@@ -44,7 +44,7 @@ func sortCardCandidates(items []cardCandidate, order []string) {
 // One automatic task per node; a queued return trace also reserves its node.
 // Existing manual work is respected, without introducing a manual cooldown.
 func cardNodeBusy(s *model.Server, identity string) bool {
-	if connectivityManager.Get(connectivityKey(s), nil).State == "running" {
+	if connectivityManager.Running(connectivityKey(s)) || latencyManager.Running(connectivityKey(s)) {
 		return true
 	}
 	insightJobs.Lock()
@@ -199,5 +199,5 @@ func (scheduler *cardScheduler) tick(now time.Time) error {
 		_, err := connectivityManager.StartScheduled(connectivityKey(current), guardedConnectivityProbe(current, targets, true), targets, v.slot)
 		return err
 	})
-	return nil
+	return latencySchedulerTick(now, candidates)
 }
