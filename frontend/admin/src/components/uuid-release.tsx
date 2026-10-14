@@ -57,6 +57,7 @@ export function UUIDReleaseButton({
                     [
                         "/api/v1/waf/unknown-reports",
                         "/api/v1/waf/deleted-servers",
+                        "/api/v1/waf/uuid-blacklist",
                         "/api/v1/server/operations",
                     ].some((prefix) => key.startsWith(prefix)),
             ).catch(() => undefined)
@@ -78,17 +79,19 @@ export function UUIDReleaseButton({
                         disabled={!blockVersion}
                     >
                         <ShieldCheck className="size-3.5" />
-                        放行 UUID
+                        整组放行
                     </Button>
                 </AlertDialogTrigger>
             )}
             <AlertDialogContent className="max-h-[85dvh] w-[calc(100vw_-_2rem)] max-w-md overflow-y-auto rounded-lg p-4 sm:p-6">
                 <AlertDialogHeader>
-                    <AlertDialogTitle>{done ? "UUID 已放行" : "确认放行 UUID？"}</AlertDialogTitle>
+                    <AlertDialogTitle>
+                        {done ? "认证信息已放行" : "确认整组放行？"}
+                    </AlertDialogTitle>
                     <AlertDialogDescription>
                         {done
                             ? "黑名单已解除，删除记录和历史上报仍然保留。"
-                            : "仅解除这个 UUID 的删除黑名单，不会解除 IP 封禁，也不会绕过连接密钥验证。"}
+                            : "同时解除这组 UUID 和密钥的封禁，不会解除 IP 封禁。只接受配对一致的认证信息。"}
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <div className="min-w-0 rounded-md border p-3 text-sm">

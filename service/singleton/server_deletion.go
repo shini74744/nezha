@@ -26,7 +26,7 @@ var deletedServerUUIDs = struct {
 
 func initDeletedServerUUIDs() error {
 	// An interrupted send is never automatically retried after a dashboard restart.
-	if err := recoverDeletedCleanup(); err != nil {
+	if err := retireDeletedCleanup(); err != nil {
 		return err
 	}
 	var tombstones []model.ServerDeletionTombstone
@@ -78,8 +78,18 @@ func unblockDeletedServerUUIDs(uuids []string) {
 // positive system ID not currently present in servers (1, 2, 3, ...).
 // Caller must hold ServerMutationMu and must have rechecked the UUID blocklist.
 func CreateServerWithLowestAvailableID(userID uint64, uuid, name string) (*model.Server, error) {
-	var server model.Server
+	var server *model.Server
 	err := DB.Transaction(func(tx *gorm.DB) error {
+		var err error
+		server, err = createServerWithLowestAvailableIDInTx(tx, userID, uuid, name)
+		return err
+	})
+	return server, err
+}
+
+func createServerWithLowestAvailableIDInTx(tx *gorm.DB, userID uint64, uuid, name string) (*model.Server, error) {
+	var server model.Server
+	err := func() error {
 		var ids []uint64
 		if err := tx.Model(&model.Server{}).Order("id ASC").Pluck("id", &ids).Error; err != nil {
 			return err
@@ -121,7 +131,7 @@ func CreateServerWithLowestAvailableID(userID uint64, uuid, name string) (*model
 			return err
 		}
 		return tx.Delete(&model.UnknownAgentReport{}, "uuid = ?", uuid).Error
-	})
+	}()
 	if err != nil {
 		return nil, err
 	}
@@ -187,6 +197,12 @@ func PermanentlyDeleteServers(ids []uint64) error {
 // Expected identities prevent a delayed uninstall request deleting a replacement
 // node that reused an ID, or a node whose ownership changed while awaiting ACK.
 func PermanentlyDeleteServersMatching(ids []uint64, expected map[uint64]ServerDeleteIdentity, actors ...model.ServerOperationActor) error {
+	return DeleteServersThen(ids, expected, nil, actors...)
+}
+
+// afterCommit runs only after durable deletion and blacklist commit, while the
+// mutation lock is held. It must only enqueue work and must never block on RPC.
+func DeleteServersThen(ids []uint64, expected map[uint64]ServerDeleteIdentity, afterCommit func([]model.ServerDeletionTombstone), actors ...model.ServerOperationActor) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -231,6 +247,7 @@ func PermanentlyDeleteServersMatching(ids []uint64, expected map[uint64]ServerDe
 	}
 
 	var (
+		deletedRecords  []model.ServerDeletionTombstone
 		changedCrons    []*model.Cron
 		changedServices []*model.Service
 		changedAlerts   []*model.AlertRule
@@ -264,9 +281,6 @@ func PermanentlyDeleteServersMatching(ids []uint64, expected map[uint64]ServerDe
 			if strings.Contains(strings.ToLower(server.Name), "f50") {
 				platform = "f50"
 			}
-			if ServerTransferShared != nil {
-				cleanupOwner, credentialHash = ServerTransferShared.deletedCleanupIdentity(server.ID, server.UserID)
-			}
 			tombstones = append(tombstones, model.ServerDeletionTombstone{
 				UUID: server.UUID, Name: server.Name, OriginalID: server.ID,
 				DeletedByID: actor.ID, DeletedByName: actor.Name,
@@ -282,7 +296,7 @@ func PermanentlyDeleteServersMatching(ids []uint64, expected map[uint64]ServerDe
 				"deleted_by_id":   gorm.Expr("excluded.deleted_by_id"),
 				"deleted_by_name": gorm.Expr("excluded.deleted_by_name"),
 				"last_ip":         "", "first_report_at": 0, "last_report_at": 0, "report_count": 0,
-				"released_at": 0, "released_by_id": 0, "released_by_name": "",
+				"released_at": 0, "released_by_id": 0, "released_by_name": "", "record_deleted_at": 0,
 				"block_version":           gorm.Expr("server_deletion_tombstones.block_version + 1"),
 				"cleanup_owner_id":        gorm.Expr("excluded.cleanup_owner_id"),
 				"cleanup_platform":        gorm.Expr("excluded.cleanup_platform"),
@@ -293,6 +307,10 @@ func PermanentlyDeleteServersMatching(ids []uint64, expected map[uint64]ServerDe
 				"cleanup_checked_at": 0, "cleanup_last_verified_at": 0, "cleanup_last_result": "",
 			}),
 		}).Create(&tombstones).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Where("uuid IN ?", uuids).Find(&deletedRecords).Error; err != nil {
 			return err
 		}
 
@@ -417,6 +435,9 @@ func PermanentlyDeleteServersMatching(ids []uint64, expected map[uint64]ServerDe
 		ServerTransferRevokeStreamsForServer(id)
 	}
 	ServerShared.Delete(actualIDs)
+	if afterCommit != nil {
+		afterCommit(deletedRecords)
+	}
 	if NATShared != nil && len(natIDs) > 0 {
 		NATShared.Delete(natIDs)
 	}

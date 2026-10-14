@@ -33,7 +33,7 @@ func (a *authHandler) CheckRequestTask(ctx context.Context) (uint64, error) {
 // revertDelivery 不在 auth 阶段消费 —— 真正派发 rollback ApplyConfig 的
 // pushRevertIfOnline 才有资格清理它，否则 auth 提前清就会让 OnAgentReconnect
 // 找不到 recovery 记录，agent 10s timer 一到就锁死在被拒绝的新 secret 上。
-func (a *authHandler) check(ctx context.Context) (uint64, error) {
+func (a *authHandler) check(ctx context.Context) (clientResult uint64, authErr error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		ip, _ := ctx.Value(model.CtxKeyRealIP{}).(string)
@@ -42,6 +42,18 @@ func (a *authHandler) check(ctx context.Context) (uint64, error) {
 	}
 
 	clientSecret := firstMetadataValue(md, "client-secret", "client_secret")
+	if singleton.AgentCredentialsReady() {
+		rawUUID := firstMetadataValue(md, "client-uuid", "client_uuid")
+		sourceIP, _ := ctx.Value(model.CtxKeyRealIP{}).(string)
+		defer func() {
+			if authErr != nil {
+				singleton.RecordRejectedAgentCredential(rawUUID, clientSecret, sourceIP)
+			}
+		}()
+		if !registeredAgentSecret(clientSecret) {
+			return 0, status.Error(codes.Unauthenticated, "客户端认证失败")
+		}
+	}
 
 	if clientSecret == "" {
 		clientUUID := firstMetadataValue(md, "client-uuid", "client_uuid")
@@ -74,10 +86,30 @@ func (a *authHandler) check(ctx context.Context) (uint64, error) {
 		return 0, status.Error(codes.Unauthenticated, "客户端认证失败")
 	}
 
+	if singleton.AgentCredentialsReady() {
+		if binding, found := singleton.AgentCredentialByUUID(clientUUID); found && binding.VerifiedAt > 0 && binding.SecretHash != singleton.AgentCredentialHash(clientSecret) && !credentialTransitionAllowed(clientSecret, clientUUID) {
+			return 0, status.Error(codes.Unauthenticated, "客户端认证失败")
+		}
+	}
+	if singleton.AgentCredentialsReady() {
+		if _, found := singleton.AgentCredentialBySecret(clientSecret); found {
+			id, err := singleton.AuthenticateAgentCredential(clientSecret, clientUUID)
+			if err != nil {
+				return 0, status.Error(codes.Unauthenticated, "客户端认证失败")
+			}
+			return id, nil
+		}
+	}
 	if singleton.IsReplacementSecret(clientSecret) {
-		_, server, err := singleton.AuthorizeServerReplacement(clientSecret, clientUUID)
+		replacement, server, err := singleton.AuthorizeServerReplacement(clientSecret, clientUUID)
 		if err != nil {
 			return 0, status.Error(codes.Unauthenticated, "replacement credential rejected")
+		}
+		// The temporary command must finish cleanup before becoming a stable key.
+		if replacement.State == "active" {
+			if err := singleton.AdoptAgentCredential(server.ID, clientUUID, clientSecret); err != nil {
+				return 0, status.Error(codes.Unauthenticated, "客户端认证失败")
+			}
 		}
 		return server.ID, nil
 	}
@@ -149,6 +181,7 @@ func (a *authHandler) check(ctx context.Context) (uint64, error) {
 			if kind == singleton.TerminalRecoveryRevert {
 				if err := singleton.ServerTransferShared.MarkRevertDelivered(t.ServerID, t.ID); err != nil {
 					log.Printf("NEZHA>> ServerTransfer MarkRevertDelivered(server=%d transfer=%d) failed: %v", t.ServerID, t.ID, err)
+					return 0, status.Error(codes.Unauthenticated, "客户端认证失败")
 				}
 			}
 			return t.ServerID, nil
@@ -166,6 +199,9 @@ func (a *authHandler) check(ctx context.Context) (uint64, error) {
 		if cid, ok := singleton.ServerTransferShared.LookupServerByVerifiedHandshakeSecret(clientSecret); ok {
 			if uuidCID, found := singleton.ServerShared.UUIDToID(clientUUID); found && uuidCID == cid {
 				model.UnblockIP(singleton.DB, ip, model.BlockIDgRPC)
+				if err := singleton.AdoptAgentCredential(cid, clientUUID, clientSecret); err != nil {
+					return 0, status.Error(codes.Unauthenticated, "客户端认证失败")
+				}
 				return cid, nil
 			}
 			return 0, status.Error(codes.Unauthenticated, "transfer verified handshake secret bound to a different server")
@@ -204,6 +240,9 @@ func (a *authHandler) check(ctx context.Context) (uint64, error) {
 		return clientID, nil
 	}
 
+	if singleton.AgentCredentialsReady() {
+		return 0, status.Error(codes.Unauthenticated, "客户端认证失败")
+	}
 	singleton.ServerMutationMu.Lock()
 	defer singleton.ServerMutationMu.Unlock()
 

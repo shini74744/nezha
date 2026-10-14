@@ -6,11 +6,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"slices"
 	"time"
 
 	"github.com/nezhahq/nezha/integration/agentcompat/internal/agent"
+	"github.com/nezhahq/nezha/integration/agentcompat/internal/client"
 	"github.com/nezhahq/nezha/integration/agentcompat/internal/contract"
 	"github.com/nezhahq/nezha/integration/agentcompat/internal/dashboard"
 )
@@ -38,13 +40,28 @@ func startHeldSessionSetRealFixture(ctx context.Context, paths contract.Paths, p
 		return nil, fixture.close(ctx, err)
 	}
 	fixture.preparedBinary = prepared
+	seenUUIDs, seenSecrets := make(map[string]bool), make(map[string]bool)
 	for ordinal := 1; ordinal <= heldSessionSetAgentCount; ordinal++ {
-		uuid := fmt.Sprintf("00000000-0000-0000-0000-%012d", 700+ordinal)
+		// Exercise normal cookie/CSRF-protected issuance for each isolated agent.
+		// Do not restore shared-key registration merely to satisfy the harness.
+		pair, issueErr := client.DoREST[struct{}, struct {
+			UUID   string `json:"uuid"`
+			Secret string `json:"client_secret"`
+		}](ctx, dashboardInstance.Clients().REST, client.RESTRequest[struct{}]{
+			Method: http.MethodPost, Path: "/api/v1/agent-credentials/issue", Body: &struct{}{},
+		})
+		if issueErr != nil {
+			return nil, fixture.close(ctx, issueErr)
+		}
+		if pair.UUID == "" || len(pair.Secret) < 16 || seenUUIDs[pair.UUID] || seenSecrets[pair.Secret] {
+			return nil, fixture.close(ctx, errors.New("isolated agent credentials are missing or duplicated"))
+		}
+		seenUUIDs[pair.UUID], seenSecrets[pair.Secret] = true, true
 		startConfig := canonicalHeldSessionAgentStartConfig()
 		startConfig.PreparedBinary = prepared
 		startConfig.Endpoint = dashboardInstance.Endpoint()
-		startConfig.Secret = dashboardInstance.AgentSecret()
-		startConfig.UUID = uuid
+		startConfig.Secret = pair.Secret
+		startConfig.UUID = pair.UUID
 		instance, startErr := agent.Start(ctx, startConfig)
 		if startErr != nil {
 			return nil, fixture.close(ctx, startErr)

@@ -66,7 +66,7 @@ func listServerOperations(c *gin.Context) (*model.Value[[]model.ServerOperationL
 
 func listDeletedServers(c *gin.Context) (*model.Value[[]model.ServerDeletionTombstone], error) {
 	limit, offset := operationPage(c)
-	query := singleton.DB.Model(&model.ServerDeletionTombstone{})
+	query := singleton.DB.Model(&model.ServerDeletionTombstone{}).Where("record_deleted_at = 0")
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
 		return nil, err
@@ -74,9 +74,6 @@ func listDeletedServers(c *gin.Context) (*model.Value[[]model.ServerDeletionTomb
 	rows := make([]model.ServerDeletionTombstone, 0)
 	if err := query.Order("created_at DESC, uuid ASC").Limit(limit).Offset(offset).Find(&rows).Error; err != nil {
 		return nil, err
-	}
-	for i := range rows {
-		singleton.DescribeDeletedCleanup(&rows[i])
 	}
 	return &model.Value[[]model.ServerDeletionTombstone]{Value: rows, Pagination: model.Pagination{Total: total, Offset: offset, Limit: limit}}, nil
 }

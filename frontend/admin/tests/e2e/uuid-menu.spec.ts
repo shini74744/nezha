@@ -26,6 +26,8 @@ for (const width of [1366, 390]) {
                         config: { language: "zh-CN", install_host: "panel.example:443", tls: true },
                         version: "test",
                     }
+                if (path === "/api/v1/agent-credentials/issue")
+                    data = { uuid, client_secret: "fixture-secret", version: 1 }
                 if (path === "/api/v1/server")
                     data = [
                         {
@@ -42,7 +44,7 @@ for (const width of [1366, 390]) {
             })
             await page.goto("/dashboard")
             const trigger = page.getByRole("button", {
-                name: "UUID 操作",
+                name: "认证信息",
                 exact: true,
                 includeHidden: true,
             })
@@ -58,15 +60,23 @@ for (const width of [1366, 390]) {
             expect(box.height).toBeLessThan(110)
             expect(Math.abs(box.y - (button.y + button.height))).toBeLessThan(12)
             expect((await row.boundingBox())!.height).toBe(before!.height)
-            await page.getByRole("menuitem", { name: "复制 UUID", exact: true }).click()
-            await expect.poll(() => page.evaluate(() => (window as any).__copied)).toBe(uuid)
+            await page.getByRole("menuitem", { name: "复制认证信息", exact: true }).click()
+            await expect
+                .poll(() =>
+                    page.evaluate(() => {
+                        try {
+                            return JSON.parse((window as any).__copied)
+                        } catch {
+                            return null
+                        }
+                    }),
+                )
+                .toEqual({ uuid, client_secret: "fixture-secret" })
             await expect(trigger).toHaveAttribute("data-state", "closed")
             await expect(menu).toHaveCount(0)
             await trigger.click()
             await expect(menu).toBeVisible()
-            await page
-                .getByRole("menuitem", { name: "复制带此 UUID 的安装命令", exact: true })
-                .click()
+            await page.getByRole("menuitem", { name: "复制安装命令", exact: true }).click()
             await page.getByRole("menuitem", { name: os, exact: true }).click()
             const text = await page.evaluate(() => (window as any).__copied)
             expect(text).toContain("shini74744/agent/main/scripts/install.")
@@ -79,7 +89,10 @@ for (const width of [1366, 390]) {
             await expect(menu).toHaveCount(0)
             await trigger.click()
             await expect(menu).toBeVisible()
-            await page.screenshot({ path: "test-results/uuid-menu-" + width + "-" + os + ".png", animations: "disabled" })
+            await page.screenshot({
+                path: "test-results/uuid-menu-" + width + "-" + os + ".png",
+                animations: "disabled",
+            })
             await page.keyboard.press("Escape")
             await expect(menu).toHaveCount(0)
             expect(errors).toEqual([])

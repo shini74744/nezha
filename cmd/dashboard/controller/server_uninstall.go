@@ -3,10 +3,11 @@ package controller
 import (
 	"context"
 	"errors"
-	"fmt"
+	"log"
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nezhahq/nezha/model"
@@ -25,15 +26,44 @@ type ServerDeleteResult struct {
 	Cleanup []ServerCleanupResult `json:"cleanup"`
 }
 
-// Prevent double-clicks/concurrent requests from launching duplicate workers.
 var serverDeletionRequestMu sync.Mutex
+var onlineUninstallSlots = make(chan struct{}, 8)
 
+type serverRemovalPlan struct {
+	uuid    string
+	command string
+	launch  func(context.Context, string) error
+	result  ServerCleanupResult
+}
+
+func planServerRemoval(server *model.Server) serverRemovalPlan {
+	p := serverRemovalPlan{uuid: server.UUID, result: ServerCleanupResult{ID: server.ID, Status: "offline", Message: "节点离线，仅删除并拉黑，不再自动卸载"}}
+	connection := rpc.PrepareAgentUninstall(server)
+	if connection == nil {
+		return p
+	}
+	platform := ""
+	if host := server.RuntimeSnapshot().Host; host != nil {
+		platform = host.Platform
+	}
+	command, err := agentuninstall.Command(server.UUID, platform)
+	if strings.Contains(strings.ToLower(server.Name), "f50") {
+		err = errors.New("此类节点不支持远程卸载")
+	}
+	if err != nil {
+		p.result.Status = "unsupported"
+		p.result.Message = "节点已删除并拉黑，请在服务器上手动卸载"
+		return p
+	}
+	p.command, p.launch = command, connection.Launch
+	p.result.Status, p.result.Message = "queued", "节点已删除并拉黑，正在后台尝试卸载"
+	return p
+}
 func deleteServersAndUninstall(c *gin.Context, ids []uint64) (*ServerDeleteResult, error) {
 	ids = slices.Compact(slices.Sorted(slices.Values(ids)))
 	if len(ids) == 0 || len(ids) > 500 {
 		return nil, errors.New("每次请选择 1–500 个节点")
 	}
-	// Inventory deletion now includes remote execution. Do not widen old PATs.
 	if token := APITokenFromContext(c); token != nil && !token.HasScope(model.ScopeServerExec) {
 		return nil, errors.New("ApiErrorForbidden: api token lacks scope " + model.ScopeServerExec)
 	}
@@ -45,64 +75,71 @@ func deleteServersAndUninstall(c *gin.Context, ids []uint64) (*ServerDeleteResul
 	if !singleton.ServerShared.CheckPermission(c, slices.Values(ids)) {
 		return nil, singleton.Localizer.ErrorT("permission denied")
 	}
-	servers := make([]*model.Server, 0, len(ids))
 	identities := make(map[uint64]singleton.ServerDeleteIdentity)
+	plans := make(map[string]serverRemovalPlan)
+	result := &ServerDeleteResult{Cleanup: make([]ServerCleanupResult, 0, len(ids))}
 	for _, id := range ids {
 		server, ok := singleton.ServerShared.Get(id)
 		if !ok || server == nil {
 			return nil, errors.New("节点不存在，请刷新列表")
 		}
-		// Re-check the snapshot that will actually receive the command.
 		if !server.HasPermission(c) {
 			return nil, singleton.Localizer.ErrorT("permission denied")
 		}
-		servers = append(servers, server)
 		identities[id] = singleton.ServerDeleteIdentity{UUID: server.UUID, UserID: server.GetUserID()}
+		plan := planServerRemoval(server)
+		plans[server.UUID] = plan
+		result.Cleanup = append(result.Cleanup, plan.result)
 	}
-	// Once accepted, browser navigation must not leave already-started cleanup
-	// workers unaccompanied by the persistent deletion/UUID block.
-	result := prepareServerRemoval(context.WithoutCancel(c.Request.Context()), servers, rpc.LaunchAgentUninstall)
-	if err := singleton.PermanentlyDeleteServersMatching(ids, identities, model.ServerOperationActorFromContext(c)); err != nil {
-		return nil, fmt.Errorf("远端清理可能已启动，但面板删除未完成：%w", err)
+	// No remote work is launched unless deletion and the UUID blacklist COMMIT.
+	// Browser cancellation and remote failures cannot undo that blacklist.
+	err := singleton.DeleteServersThen(ids, identities, func(rows []model.ServerDeletionTombstone) {
+		for _, row := range rows {
+			plan := plans[row.UUID]
+			go executeServerRemoval(plan, row)
+		}
+	}, model.ServerOperationActorFromContext(c))
+	if err != nil {
+		return nil, err
 	}
 	result.Deleted = ids
 	return result, nil
 }
-
-func prepareServerRemoval(ctx context.Context, servers []*model.Server, launch func(context.Context, *model.Server, string) error) *ServerDeleteResult {
-	result := &ServerDeleteResult{Cleanup: make([]ServerCleanupResult, len(servers))}
-	slots := make(chan struct{}, 8)
-	var workers sync.WaitGroup
-	for index, server := range servers {
-		workers.Add(1)
-		go func(index int, server *model.Server) {
-			defer workers.Done()
-			slots <- struct{}{}
-			defer func() { <-slots }()
-			item := ServerCleanupResult{ID: server.ID}
-			if server.GetTaskStream() == nil {
-				item.Status, item.Message = "offline", "节点离线，无法执行远端清理；已删除记录并拉黑 UUID"
-			} else {
-				runtime := server.RuntimeSnapshot()
-				platform := ""
-				if runtime.Host != nil {
-					platform = runtime.Host.Platform
-				}
-				command, err := agentuninstall.Command(server.UUID, platform)
-				if strings.Contains(strings.ToLower(server.Name), "f50") {
-					err = errors.New("F50 等特殊节点不执行标准 Agent 卸载")
-				}
-				if err != nil {
-					item.Status, item.Message = "unsupported", err.Error()+"；已删除记录并拉黑 UUID"
-				} else if err := launch(ctx, server, command); err != nil {
-					item.Status, item.Message = "failed", "远端清理未确认；已删除记录并拉黑 UUID"
-				} else {
-					item.Status, item.Message = "started", "卸载清理任务已启动；已删除记录并拉黑 UUID（非卸载完成回执）"
-				}
-			}
-			result.Cleanup[index] = item
-		}(index, server)
+func executeServerRemoval(plan serverRemovalPlan, row model.ServerDeletionTombstone) {
+	state, message := plan.result.Status, plan.result.Message
+	saveResult := true
+	defer func() {
+		if !saveResult {
+			return
+		}
+		if err := singleton.FinishDeletedOnlineUninstall(row, state, message); err != nil {
+			log.Printf("NEZHA>> save one-shot uninstall status: %v", err)
+		}
+	}()
+	if plan.launch == nil {
+		return
 	}
-	workers.Wait()
-	return result
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	select {
+	case onlineUninstallSlots <- struct{}{}:
+		defer func() { <-onlineUninstallSlots }()
+	case <-ctx.Done():
+		state, message = "failed", "未能及时下发卸载命令，请在服务器上手动卸载"
+		return
+	}
+	allowed, err := singleton.BeginDeletedOnlineUninstall(row)
+	if err != nil {
+		state, message = "failed", "未能启动卸载，请在服务器上手动检查"
+		return
+	}
+	if !allowed {
+		saveResult = false
+		return
+	} // released, cleared, retried, or replaced; never redispatch.
+	if err := plan.launch(ctx, plan.command); err != nil {
+		state, message = "failed", "未确认卸载成功，请在服务器上手动检查；UUID 仍被拉黑"
+	} else {
+		state, message = "started", "卸载命令已启动；是否完成请在服务器上确认"
+	}
 }

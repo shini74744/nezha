@@ -23,15 +23,18 @@ func TestUninstallCommandAcknowledgementBoundToReporter(t *testing.T) {
 	require.EqualValues(t, model.TaskTypeCommand, task.Type)
 	require.NotZero(t, task.Id&uninstallTaskMask)
 	res := &pb.TaskResult{Id: task.Id, Type: task.Type, Successful: true, Data: "NZ_UNINSTALL_STARTED"}
-	require.True(t, deliverUninstallCommandResult(res, 99))
+	require.False(t, matchesPendingUninstallResult(res, 99, stream))
+	require.True(t, matchesPendingUninstallResult(res, 42, stream))
+	require.True(t, deliverUninstallCommandResult(res, 99, stream))
 	select {
 	case err := <-done:
 		t.Fatalf("foreign reply accepted: %v", err)
 	default:
 	}
-	require.True(t, deliverUninstallCommandResult(res, 42))
+	require.True(t, deliverUninstallCommandResult(res, 42, stream))
 	require.NoError(t, <-done)
-	require.True(t, deliverUninstallCommandResult(res, 42), "late result must not reach cron")
+	require.False(t, matchesPendingUninstallResult(res, 42, stream), "late reserved replies must not bypass the blacklist")
+	require.True(t, deliverUninstallCommandResult(res, 42, stream), "late result must not reach cron")
 }
 func TestUninstallCommandFailureDoesNotClaimStarted(t *testing.T) {
 	for _, result := range []*pb.TaskResult{
@@ -46,7 +49,7 @@ func TestUninstallCommandFailureDoesNotClaimStarted(t *testing.T) {
 		go func() { done <- LaunchAgentUninstall(context.Background(), server, "fixture") }()
 		task := <-stream.sent
 		result.Id, result.Type = task.Id, task.Type
-		deliverUninstallCommandResult(result, 42)
+		deliverUninstallCommandResult(result, 42, stream)
 		require.Error(t, <-done)
 	}
 }
@@ -84,4 +87,28 @@ func TestUninstallCommandSendTimeout(t *testing.T) {
 	require.ErrorContains(t, LaunchAgentUninstall(ctx, server, "fixture"), "发送超时")
 	close(stream.release)
 	<-stream.finished
+}
+func TestPreparedUninstallUsesOnlyCapturedStreamAfterDelete(t *testing.T) {
+	oldStream := newFakeStream()
+	server := &model.Server{Common: model.Common{ID: 42}}
+	server.SetTaskStream(oldStream)
+	prepared := PrepareAgentUninstall(server)
+	server.RevokeStreams()
+	replacement := newFakeStream()
+	server.SetTaskStream(replacement)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- prepared.Launch(ctx, "fixture") }()
+	task := <-oldStream.sent
+	result := &pb.TaskResult{Id: task.Id, Type: task.Type, Successful: true, Data: "NZ_UNINSTALL_STARTED"}
+	deliverUninstallCommandResult(result, 42, replacement)
+	select {
+	case <-done:
+		t.Fatal("new connection authorized old uninstall")
+	default:
+	}
+	deliverUninstallCommandResult(result, 42, oldStream)
+	require.NoError(t, <-done)
+	require.Empty(t, replacement.sent)
 }

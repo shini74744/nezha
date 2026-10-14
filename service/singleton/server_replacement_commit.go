@@ -47,6 +47,7 @@ func CompleteServerReplacement(secret, uuid string, host *model.Host, state *mod
 	ServerTransferRevokeStreamsForServer(current.ID)
 	var fresh model.Server
 	var resetCaches func()
+	var adopted *model.AgentCredential
 	now := time.Now()
 	err = DB.Transaction(func(tx *gorm.DB) error {
 		if e := tx.Where("id = ? AND uuid = ? AND user_id = ?", current.ID, uuid, row.OwnerID).First(&fresh).Error; e != nil {
@@ -99,10 +100,18 @@ func CompleteServerReplacement(secret, uuid string, host *model.Host, state *mod
 		if e := tx.Where("server_uuid = ? AND id <> ?", uuid, row.ID).Delete(&model.ServerReplacement{}).Error; e != nil {
 			return e
 		}
+		var adoptionErr error
+		adopted, adoptionErr = adoptAgentCredentialInTx(tx, &fresh, uuid, secret)
+		if adoptionErr != nil {
+			return adoptionErr
+		}
 		return tx.Model(row).Updates(map[string]any{"state": "active", "completed_at": now}).Error
 	})
 	if err != nil {
 		return nil, err
+	}
+	if adopted != nil {
+		publishAgentCredential(*adopted)
 	}
 	model.InitServer(&fresh)
 	if _, err = fresh.RuntimeHandle().RefreshHostReport(host, now, nil); err != nil {

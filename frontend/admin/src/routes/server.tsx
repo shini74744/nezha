@@ -1,5 +1,6 @@
 import { swrFetcher } from "@/api/api"
 import { forceUpdateServer } from "@/api/server"
+import { AgentCredentialSettings } from "@/components/agent-credential-settings"
 import { BatchMoveServerIcon } from "@/components/batch-move-server-icon"
 import { InstallCommandsMenu } from "@/components/install-commands"
 import { NoteMenu } from "@/components/note-menu"
@@ -7,8 +8,8 @@ import { ServerCard } from "@/components/server"
 import { ServerConfigCard } from "@/components/server-config"
 import { ServerConfigCardBatch } from "@/components/server-config-batch"
 import { ServerDeleteButton } from "@/components/server-delete"
-import { ServerSortDialog } from "@/components/server-sort-dialog"
 import { ServerOperationHistory } from "@/components/server-operation-history"
+import { ServerSortDialog } from "@/components/server-sort-dialog"
 import { ServerVisibilityBatch } from "@/components/server-visibility-batch"
 import { TerminalButton } from "@/components/terminal"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -167,7 +168,7 @@ export default function ServerPage() {
         },
         {
             id: "uuid",
-            header: "UUID",
+            header: "密钥",
             cell: ({ row }) => {
                 const s = row.original
                 return <InstallCommandsMenu uuid={s.uuid} serverName={s.name} uuidActions />
@@ -185,7 +186,15 @@ export default function ServerPage() {
                         <ServerConfigCard sid={s.id} variant="outline" />
                         <InstallCommandsMenu uuid={s.uuid} iconOnly variant="outline" />
                         <ServerDeleteButton ids={[s.id]} onUpdated={() => mutate()} />
-                        {profile?.role === 0 && <ServerOperationHistory server={{ server_uuid: s.uuid || "", server_id: s.id, server_name: s.name }} />}
+                        {profile?.role === 0 && (
+                            <ServerOperationHistory
+                                server={{
+                                    server_uuid: s.uuid || "",
+                                    server_id: s.id,
+                                    server_name: s.name,
+                                }}
+                            />
+                        )}
                     </div>
                 )
             },
@@ -264,6 +273,7 @@ export default function ServerPage() {
                         sid={selectedRows.map((r) => r.original.id)}
                         className="shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] bg-yellow-600 text-white hover:bg-yellow-500 dark:hover:bg-yellow-700 rounded-lg"
                     />
+                    {profile?.role === 0 && <AgentCredentialSettings />}
                     <InstallCommandsMenu className="shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] bg-blue-700 text-white hover:bg-blue-600 dark:hover:bg-blue-800 rounded-lg" />
                 </div>
             </div>

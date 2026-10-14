@@ -1,12 +1,15 @@
 import { swrFetcher } from "@/api/api"
-import { DeletedAgentCleanup, type DeletedCleanupRecord } from "@/components/deleted-agent-cleanup"
+import { DeletedServerRecordDelete } from "@/components/deleted-server-record-delete"
 import { Button } from "@/components/ui/button"
 import { UUIDReleaseButton } from "@/components/uuid-release"
 import { Archive, RefreshCw, ShieldAlert } from "lucide-react"
 import { useState } from "react"
-import useSWR from "swr"
+import useSWR, { useSWRConfig } from "swr"
 
-interface DeletedServer extends DeletedCleanupRecord {
+interface DeletedServer {
+    cleanup_state?: string
+    cleanup_message?: string
+    cleanup_revision?: number
     uuid: string
     name: string
     original_id: number
@@ -21,14 +24,39 @@ interface DeletedServer extends DeletedCleanupRecord {
 }
 export function DeletedServers() {
     const [page, setPage] = useState(0)
+    const { mutate: refresh } = useSWRConfig()
     const { data, error, isLoading, isValidating, mutate } = useSWR<{
         value: DeletedServer[]
         pagination: { total: number }
     }>(`/api/v1/waf/deleted-servers?offset=${page * 20}&limit=20`, swrFetcher, {
-        refreshInterval: 15000,
+        refreshInterval: 5000,
     })
     const rows = data?.value ?? [],
         total = data?.pagination.total ?? 0
+    const onDeleted = (uuid: string) => {
+        void mutate(
+            (current) =>
+                current
+                    ? {
+                          ...current,
+                          value: current.value.filter((row) => row.uuid !== uuid),
+                          pagination: { total: Math.max(0, current.pagination.total - 1) },
+                      }
+                    : current,
+            { revalidate: false },
+        )
+        if (rows.length === 1 && page > 0) setPage(page - 1)
+        void refresh(
+            (key) =>
+                typeof key === "string" &&
+                [
+                    "/api/v1/waf/deleted-servers",
+                    "/api/v1/waf/uuid-blacklist",
+                    "/api/v1/waf/unknown-reports",
+                    "/api/v1/server/operations",
+                ].some((prefix) => key.startsWith(prefix)),
+        ).catch(() => undefined)
+    }
     return (
         <section className="min-w-0 space-y-3">
             <div className="flex justify-end">
@@ -77,9 +105,12 @@ export function DeletedServers() {
                                             : "原 ID 未记录"}
                                     </span>
                                 </strong>
-                                <span className="shrink-0 rounded border px-1.5 py-0.5 text-xs">
-                                    {row.released_at ? "已删除 · 已放行" : "已删除"}
-                                </span>
+                                <div className="flex shrink-0 items-center gap-1">
+                                    <span className="rounded border px-1.5 py-0.5 text-xs">
+                                        {row.released_at ? "已删除 · 已放行" : "已删除"}
+                                    </span>
+                                    <DeletedServerRecordDelete row={row} onDeleted={onDeleted} />
+                                </div>
                             </div>
                             <p className="my-2 break-all font-mono text-xs text-muted-foreground">
                                 UUID: {row.uuid}
@@ -147,7 +178,11 @@ export function DeletedServers() {
                                     </span>
                                 </div>
                             )}
-                            <DeletedAgentCleanup row={row} />
+                            {row.cleanup_message && (
+                                <p className="mt-3 border-t pt-3 text-xs text-muted-foreground">
+                                    卸载状态：{row.cleanup_message}
+                                </p>
+                            )}
                         </article>
                     ))}
                 </div>

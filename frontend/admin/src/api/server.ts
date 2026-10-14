@@ -17,7 +17,7 @@ export interface ServerDeleteResult {
     deleted: number[]
     cleanup: {
         id: number
-        status: "started" | "offline" | "failed" | "unsupported"
+        status: "queued" | "started" | "offline" | "failed" | "unsupported"
         message: string
     }[]
 }

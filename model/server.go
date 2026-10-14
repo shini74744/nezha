@@ -382,6 +382,24 @@ func (s *Server) SendTaskOnStream(ctx context.Context, task *pb.Task, expected p
 	return h.s.Send(task)
 }
 
+// CaptureDeletionTaskSender binds a one-shot deletion command to the currently
+// authenticated stream and its send mutex. It never looks up a replacement
+// connection, even after normal access to this Server has been revoked.
+func (s *Server) CaptureDeletionTaskSender() (pb.NezhaService_RequestTaskServer, func(context.Context, *pb.Task) error) {
+	h := s.taskStream.Load()
+	if h == nil {
+		return nil, nil
+	}
+	return h.s, func(ctx context.Context, task *pb.Task) error {
+		h.sendMu.Lock()
+		defer h.sendMu.Unlock()
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		return h.s.Send(task)
+	}
+}
+
 // AttachStateStream returns the ownership generation used to serialize state
 // writes with reconnect and disconnect cleanup.
 func (s *Server) AttachStateStream(stream pb.NezhaService_ReportSystemStateServer) StateStreamLease {

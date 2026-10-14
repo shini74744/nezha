@@ -5,6 +5,7 @@ import (
 	"iter"
 	"log"
 	"maps"
+	"path/filepath"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -104,7 +105,7 @@ func InitDBFromPath(path string) error {
 		model.Cron{}, model.Transfer{}, model.ServerGroupServer{},
 		model.NAT{}, model.DDNSProfile{}, model.NotificationGroupNotification{},
 		model.WAF{}, model.Oauth2Bind{}, model.ServerTransfer{}, model.JWTSession{},
-		model.BackendAccessAttempt{}, model.APIToken{}, model.MCPAuditLog{}, model.ServerOperationLog{}, model.ServerInventoryBaseline{}, model.ServerReplacement{}, model.UnknownAgentReport{}, model.AgentIdentityRejection{}, model.AgentUUIDConflict{}, model.ServerDeletionTombstone{}, model.ServerSnapshot{},
+		model.BackendAccessAttempt{}, model.APIToken{}, model.MCPAuditLog{}, model.ServerOperationLog{}, model.ServerInventoryBaseline{}, model.ServerReplacement{}, model.UnknownAgentReport{}, model.AgentIdentityRejection{}, model.AgentUUIDConflict{}, model.ServerDeletionTombstone{}, model.AgentCredential{}, model.AgentCredentialRejection{}, model.ServerSnapshot{},
 		model.PlanTrafficCheckpoint{}, model.PlanTrafficDay{}, model.LogoLibraryEntry{}, model.LogoLibraryGroup{}, model.TerminalCommand{}, model.TerminalSession{}, model.TerminalSessionEvent{})
 	if err != nil {
 		return err
@@ -113,6 +114,9 @@ func InitDBFromPath(path string) error {
 	// Normalize legacy gaps before requests or background writers start.
 	if err := model.WithServerOperation(DB, model.ServerOperationActor{Name: "系统", Source: "system"},
 		"group", nil, model.CompactServerGroupIDs); err != nil {
+		return err
+	}
+	if err := InitAgentCredentials(filepath.Join(filepath.Dir(path), "agent-credentials.key")); err != nil {
 		return err
 	}
 	if err := initReplacementClearing(); err != nil {

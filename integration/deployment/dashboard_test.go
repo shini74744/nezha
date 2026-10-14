@@ -170,16 +170,20 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 		require.True(t, strings.HasPrefix(ciphertext, "v1:"))
 		require.NotContains(t, ciphertext, "native-deployment")
 	}
+	var agentPair struct {
+		UUID   string `json:"uuid"`
+		Secret string `json:"client_secret"`
+	}
 	report := func(cycle int) {
 		conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		require.NoError(t, err)
 		defer conn.Close()
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
-		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("client-secret", secret, "client-uuid", "7e6a3847-ad45-405f-a73b-e74c350f1500"))
+		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("client-secret", agentPair.Secret, "client-uuid", agentPair.UUID))
 		agent := pb.NewNezhaServiceClient(conn)
 		_, err = agent.ReportSystemInfo2(ctx, &pb.Host{Platform: "windows-test", PlatformVersion: "native", Cpu: []string{"test"}, MemTotal: 1048576, BootTime: 1})
-		require.NoError(t, err)
+		require.NoError(t, err, "report cycle %d", cycle)
 		stream, err := agent.ReportSystemState(ctx)
 		require.NoError(t, err)
 		for i := 0; i < 3; i++ {
@@ -233,7 +237,7 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 		defer conn.Close()
 		ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 		defer cancel()
-		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("client-secret", secret, "client-uuid", "7e6a3847-ad45-405f-a73b-e74c350f1500"))
+		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("client-secret", agentPair.Secret, "client-uuid", agentPair.UUID))
 		agent := pb.NewNezhaServiceClient(conn)
 		_, err = agent.ReportSystemInfo2(ctx, &pb.Host{Platform: "linux", Arch: "amd64", Cpu: []string{"test"}, MemTotal: 1048576, BootTime: 1})
 		require.NoError(t, err)
@@ -353,6 +357,9 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 	}
 	p := start(0)
 	token := login()
+	request("POST", "/api/v1/agent-credentials/issue", token, map[string]any{}, &agentPair)
+	require.NotEmpty(t, agentPair.UUID)
+	require.NotEmpty(t, agentPair.Secret)
 	// Robot disabled: these integration checks must not contact Telegram.
 	var emptyBots []map[string]any
 	request("GET", "/api/v1/telegram-bot", token, nil, &emptyBots)
@@ -401,7 +408,7 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 		request("GET", "/api/v1/server", token, nil, &weightServers)
 		require.Len(t, weightServers, 1)
 		require.Equal(t, uint64(1), weightServers[0].ID)
-		require.Equal(t, "7e6a3847-ad45-405f-a73b-e74c350f1500", weightServers[0].UUID)
+		require.Equal(t, agentPair.UUID, weightServers[0].UUID)
 		require.Equal(t, 1, weightServers[0].DisplayIndex, "manual order persists through edits, restarts and Agent reports")
 		checkDatabase()
 		if cycle == 0 {
@@ -444,7 +451,7 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 	report(3)
 	// Exercise the new HTTP routes and replacement handshake in the real binary.
 	var history model.Value[[]model.ServerOperationLog]
-	request("GET", "/api/v1/server/operations?uuid=7e6a3847-ad45-405f-a73b-e74c350f1500&field=cpu", token, nil, &history)
+	request("GET", "/api/v1/server/operations?uuid="+agentPair.UUID+"&field=cpu", token, nil, &history)
 	require.Len(t, history.Value, 1, "identical inventory survives restarts without duplicate history")
 	require.Len(t, history.Value[0].Changes, 1)
 	require.Equal(t, "cpu", history.Value[0].Changes[0].Field)
@@ -460,7 +467,7 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 		Secret    string
 		ExpiresAt time.Time `json:"expires_at"`
 	}
-	request("POST", "/api/v1/server/replacement-command", token, map[string]any{"uuid": "7e6a3847-ad45-405f-a73b-e74c350f1500", "confirmed": true}, &ticket)
+	request("POST", "/api/v1/server/replacement-command", token, map[string]any{"uuid": agentPair.UUID, "confirmed": true}, &ticket)
 	require.True(t, strings.HasPrefix(ticket.Secret, "nzreplace_"))
 	require.True(t, ticket.ExpiresAt.After(time.Now()))
 	checkReturnSaved(token) // Issuing a command must not clear data.
@@ -469,7 +476,7 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 	defer replacementConn.Close()
 	replacementContext, cancelReplacement := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancelReplacement()
-	replacementContext = metadata.NewOutgoingContext(replacementContext, metadata.Pairs("client-secret", ticket.Secret, "client-uuid", "7e6a3847-ad45-405f-a73b-e74c350f1500"))
+	replacementContext = metadata.NewOutgoingContext(replacementContext, metadata.Pairs("client-secret", ticket.Secret, "client-uuid", agentPair.UUID))
 	replacementAgent := pb.NewNezhaServiceClient(replacementConn)
 	_, err = replacementAgent.ReportSystemInfo2(replacementContext, &pb.Host{Platform: "ubuntu", PlatformVersion: "24.04", Cpu: []string{"replacement CPU"}, BootTime: 0})
 	require.NoError(t, err)
@@ -484,7 +491,7 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, accepted.Proced)
 	_ = replacementStream.CloseSend()
-	request("GET", "/api/v1/server/operations?uuid=7e6a3847-ad45-405f-a73b-e74c350f1500&field=cpu", token, nil, &history)
+	request("GET", "/api/v1/server/operations?uuid="+agentPair.UUID+"&field=cpu", token, nil, &history)
 	require.Len(t, history.Value, 2)
 	require.Equal(t, "test", history.Value[0].Changes[0].Before)
 	require.Equal(t, "replacement CPU", history.Value[0].Changes[0].After)
@@ -496,9 +503,9 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 	require.Equal(t, 1, generation)
 	_ = proof.Close()
 	var deleted uint64
-	request("POST", "/api/v1/server/operations/delete", token, map[string]any{"uuid": "7e6a3847-ad45-405f-a73b-e74c350f1500", "id": history.Value[0].ID}, &deleted)
+	request("POST", "/api/v1/server/operations/delete", token, map[string]any{"uuid": agentPair.UUID, "id": history.Value[0].ID}, &deleted)
 	require.EqualValues(t, 1, deleted)
-	request("GET", "/api/v1/server/operations?uuid=7e6a3847-ad45-405f-a73b-e74c350f1500&field=cpu", token, nil, &history)
+	request("GET", "/api/v1/server/operations?uuid="+agentPair.UUID+"&field=cpu", token, nil, &history)
 	require.Len(t, history.Value, 1)
 	t.Log("inventory category/date persistence, replacement admission/cleanup and manual history deletion passed")
 	require.NoError(t, stopProcess(p.cmd))

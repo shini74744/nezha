@@ -19,48 +19,66 @@ var uninstallCommands sync.Map
 
 type uninstallCommandWaiter struct {
 	serverID uint64
+	stream   pb.NezhaService_RequestTaskServer
 	result   chan *pb.TaskResult
 }
 
-// LaunchAgentUninstall uses the existing Command task, including the Agent's
-// DisableCommandExecute gate. A reply only acknowledges an independent cleanup
-// worker was started, never that the remote uninstallation has completed.
+// PreparedUninstall has authority only over the connection captured BEFORE
+// deletion. It cannot dial, authenticate, or attach a future connection.
+type PreparedUninstall struct {
+	serverID uint64
+	stream   pb.NezhaService_RequestTaskServer
+	send     func(context.Context, *pb.Task) error
+}
+
+func PrepareAgentUninstall(server *model.Server) *PreparedUninstall {
+	if server == nil {
+		return nil
+	}
+	stream, send := server.CaptureDeletionTaskSender()
+	if send == nil {
+		return nil
+	}
+	return &PreparedUninstall{serverID: server.ID, stream: stream, send: send}
+}
 func LaunchAgentUninstall(ctx context.Context, server *model.Server, command string) error {
-	if server == nil || server.GetTaskStream() == nil {
+	return PrepareAgentUninstall(server).Launch(ctx, command)
+}
+func (p *PreparedUninstall) Launch(ctx context.Context, command string) error {
+	if p == nil {
 		return ErrAgentOffline
 	}
 	taskID := uninstallTaskMask | uninstallTaskCounter.Add(1)
-	waiter := &uninstallCommandWaiter{serverID: server.ID, result: make(chan *pb.TaskResult, 1)}
+	waiter := &uninstallCommandWaiter{serverID: p.serverID, stream: p.stream, result: make(chan *pb.TaskResult, 1)}
 	uninstallCommands.Store(taskID, waiter)
 	defer uninstallCommands.Delete(taskID)
 	ctx, cancel := context.WithTimeout(ctx, 12*time.Second)
 	defer cancel()
-	// A wedged gRPC Send must not hold the whole deletion request indefinitely.
 	sent := make(chan error, 1)
-	go func() { sent <- server.SendTask(&pb.Task{Id: taskID, Type: model.TaskTypeCommand, Data: command}) }()
+	go func() { sent <- p.send(ctx, &pb.Task{Id: taskID, Type: model.TaskTypeCommand, Data: command}) }()
 	select {
 	case err := <-sent:
 		if err != nil {
 			return err
 		}
 	case <-ctx.Done():
-		return errors.New("卸载任务发送超时，远端清理结果未知")
+		return errors.New("卸载命令发送超时，远端结果未知")
 	}
 	select {
 	case result := <-waiter.result:
 		if result.GetSuccessful() && strings.TrimSpace(result.GetData()) == "NZ_UNINSTALL_STARTED" {
 			return nil
 		}
-		return errors.New("Agent 未确认启动卸载任务（可能禁止命令执行、权限不足或不是标准安装）")
+		return errors.New("未能启动卸载，请在服务器上手动检查")
 	case <-ctx.Done():
-		return errors.New("卸载任务确认超时，远端清理结果未知")
+		return errors.New("卸载启动确认超时，请在服务器上手动检查")
 	}
 }
 
-// Return true for all reserved results, including late/forged replies, so they
-// never enter cron result processing. Reporter identity comes from authenticated
-// RequestTask, not from the task payload.
-func deliverUninstallCommandResult(result *pb.TaskResult, reporterID uint64) bool {
+// This accepts ONLY a reserved reply from its original authenticated stream,
+// even if deletion has revoked normal reporting. It never accepts monitoring,
+// cron or registration data and can never authorize a reconnect.
+func deliverUninstallCommandResult(result *pb.TaskResult, reporterID uint64, streams ...pb.NezhaService_RequestTaskServer) bool {
 	if result == nil || result.GetType() != model.TaskTypeCommand || result.GetId()&uninstallTaskMask == 0 {
 		return false
 	}
@@ -69,7 +87,7 @@ func deliverUninstallCommandResult(result *pb.TaskResult, reporterID uint64) boo
 		return true
 	}
 	waiter := value.(*uninstallCommandWaiter)
-	if reporterID == 0 || reporterID != waiter.serverID {
+	if reporterID == 0 || reporterID != waiter.serverID || len(streams) != 1 || streams[0] != waiter.stream {
 		return true
 	}
 	select {
@@ -77,4 +95,17 @@ func deliverUninstallCommandResult(result *pb.TaskResult, reporterID uint64) boo
 	default:
 	}
 	return true
+}
+
+// Only a live waiter grants the narrow post-deletion reply exception.
+func matchesPendingUninstallResult(result *pb.TaskResult, reporterID uint64, stream pb.NezhaService_RequestTaskServer) bool {
+	if result == nil || result.GetType() != model.TaskTypeCommand || result.GetId()&uninstallTaskMask == 0 {
+		return false
+	}
+	value, ok := uninstallCommands.Load(result.GetId())
+	if !ok {
+		return false
+	}
+	waiter := value.(*uninstallCommandWaiter)
+	return reporterID != 0 && reporterID == waiter.serverID && stream == waiter.stream
 }

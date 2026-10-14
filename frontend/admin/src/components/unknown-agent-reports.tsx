@@ -1,4 +1,5 @@
 import { swrFetcher } from "@/api/api"
+import { AgentCredentialRejections } from "@/components/agent-credential-rejections"
 import { Button } from "@/components/ui/button"
 import {
     Table,
@@ -96,6 +97,8 @@ export function UnknownAgentReports() {
     const total = data?.pagination.total ?? 0
     return (
         <section className="min-w-0 space-y-3">
+            <AgentCredentialRejections />
+            <h3 className="border-t pt-4 text-sm font-semibold">连接异常记录</h3>
             <div className="flex justify-end">
                 <Button
                     variant="outline"

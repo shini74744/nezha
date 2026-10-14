@@ -30,6 +30,11 @@ func pendingReplacement(ctx context.Context) (bool, error) {
 	}
 	row, _, err := singleton.AuthorizeServerReplacement(secret, uuid)
 	if err != nil {
+		// A released/deleted machine may retain its stable replacement key,
+		// but no longer has the old one-time cleanup record.
+		if binding, ok := singleton.AgentCredentialBySecret(secret); ok && binding.UUID == uuid && binding.VerifiedAt > 0 {
+			return false, nil
+		}
 		return false, err
 	}
 	return row.State != "active", nil
