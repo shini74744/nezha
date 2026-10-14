@@ -8,7 +8,7 @@ trap 'rm -f -- "$stage/version.txt" "$stage/SHA256SUMS" "$stage/nezha.sh"; rmdir
 fetch() { curl --fail --show-error --silent --location --proto '=https' --tlsv1.2 --connect-timeout 15 --max-time 180 "$1" -o "$2"; }
 fetch "$releases/latest/download/version.txt" "$stage/version.txt"
 version="$(tr -d '\r\n' < "$stage/version.txt")"
-[[ "$version" =~ ^custom-[0-9A-Za-z._-]+$ ]] || { echo "没有有效的自有发布版本" >&2; exit 1; }
+[[ "$version" =~ ^(custom-[0-9A-Za-z._-]+|v[0-9]+\.[0-9]+\.[0-9]+)$ ]] || { echo "没有有效的自有发布版本" >&2; exit 1; }
 fetch "$releases/download/$version/SHA256SUMS" "$stage/SHA256SUMS"
 fetch "$releases/download/$version/nezha.sh" "$stage/nezha.sh"
 expected="$(awk '$2=="nezha.sh" || $2=="*nezha.sh" {print $1}' "$stage/SHA256SUMS")"

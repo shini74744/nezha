@@ -186,6 +186,9 @@ func agentSupportsTransfer(s *model.Server) bool {
 	if runtime.Host == nil {
 		return true
 	}
+	if len(runtime.Host.Capabilities) > 0 {
+		return runtime.Host.HasCapability(model.AgentCapabilityServerTransfer)
+	}
 	v := strings.TrimSpace(runtime.Host.Version)
 	if v == "" {
 		return true

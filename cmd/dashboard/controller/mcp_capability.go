@@ -25,6 +25,12 @@ func requireAgentSupportsMCP(server *model.Server) error {
 	if runtime.Host == nil {
 		return nil
 	}
+	if len(runtime.Host.Capabilities) > 0 {
+		if runtime.Host.HasCapability(model.AgentCapabilityMCP) {
+			return nil
+		}
+		return errMCPUnsupported
+	}
 	if compareSemver(runtime.Host.Version, MCPMinAgentVersion) < 0 {
 		return errMCPUnsupported
 	}

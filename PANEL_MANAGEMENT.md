@@ -61,7 +61,7 @@ bash /opt/nezha/nezha.sh version
 
 ## 发布约定与回归
 
-使用 `custom-*` 标签，避免触发保留的上游 `v*` 发布流程。正式发布前运行 Linux 普通测试、`go_json` 生产配置、race/shuffle、agentcompat、go vet，以及：
+从 `v0.0.1` 开始使用自有 `v0.*` 标签，历史 `custom-*` 标签仍兼容；保留的上游发布工作流已排除 `v0.*`，使用人工核验的 Linux 构建和 Windows 原生构建工作流。正式发布前运行 Linux 普通测试、`go_json` 生产配置、race/shuffle、agentcompat、go vet，以及：
 
 ```bash
 bash -n script/nezha.sh script/install.sh script/install_en.sh

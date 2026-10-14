@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - "v*"
+      # Owned v0.x releases use the reviewed Linux/native-Windows pipeline.
+      - "!v0.*"
     branches:
       - dev
 
