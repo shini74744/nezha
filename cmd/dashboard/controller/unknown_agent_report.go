@@ -12,7 +12,7 @@ func listUnknownAgentReports(c *gin.Context) (*model.Value[[]model.UnknownAgentR
 	limit, offset := operationPage(c)
 	union := `SELECT uuid, name, 'deleted' AS kind, last_ip, '' AS previous_ip,
         '' AS previous_peer, '' AS last_peer, first_report_at, last_report_at, report_count, released_at, block_version
-        FROM server_deletion_tombstones WHERE report_count > 0
+        FROM server_deletion_tombstones WHERE report_count > 0 AND record_deleted_at = 0
         UNION ALL
         SELECT u.uuid, COALESCE(s.name, '') AS name,
         CASE WHEN s.id IS NULL THEN 'unregistered' ELSE 'registered' END AS kind,

@@ -100,9 +100,6 @@ func currentRequestTaskServer(clientID uint64, stream pb.NezhaService_RequestTas
 }
 
 func (s *NezhaHandler) RequestTask(stream pb.NezhaService_RequestTaskServer) error {
-	if row, secret, ok := deletedCleanupRequest(stream.Context()); ok {
-		return runDeletedCleanupTask(stream, row, secret)
-	}
 	var clientID uint64
 	var err error
 	if clientID, err = s.Auth.CheckRequestTask(stream.Context()); err != nil {
@@ -141,12 +138,28 @@ func (s *NezhaHandler) RequestTask(stream pb.NezhaService_RequestTaskServer) err
 		if singleton.ServerIDReassignmentInProgress.Load() {
 			return errors.New("server ID reassignment in progress")
 		}
+		if matchesPendingUninstallResult(result, clientID, stream) {
+			deliverUninstallCommandResult(result, clientID, stream)
+			if singleton.IsDeletedServerUUID(server.UUID) {
+				return nil
+			}
+			continue
+		}
 		if singleton.IsDeletedServerUUID(server.UUID) {
 			return status.Error(codes.PermissionDenied, "server UUID was permanently deleted")
 		}
 		server, err = currentRequestTaskServer(clientID, stream)
 		if err != nil {
 			return err
+		}
+		if deliverUninstallCommandResult(result, clientID, stream) {
+			continue
+		}
+		if deliverCredentialConfigProbe(result, clientID, stream) {
+			continue
+		}
+		if deliverCredentialMigrationResult(result, clientID, stream) {
+			continue
 		}
 		if deliverMediaResult(result, clientID, stream) {
 			continue
@@ -156,9 +169,6 @@ func (s *NezhaHandler) RequestTask(stream pb.NezhaService_RequestTaskServer) err
 		}
 		switch result.GetType() {
 		case model.TaskTypeCommand:
-			if deliverUninstallCommandResult(result, clientID) {
-				continue
-			}
 			// 处理上报的计划任务
 			cr, _ := singleton.CronShared.Get(result.GetId())
 			// 任务结果 ID 来自 agent，必须确认该 cron 本应派发给当前 reporter。
@@ -225,9 +235,6 @@ func (s *NezhaHandler) RequestTask(stream pb.NezhaService_RequestTaskServer) err
 }
 
 func (s *NezhaHandler) ReportSystemState(stream pb.NezhaService_ReportSystemStateServer) error {
-	if row, secret, ok := deletedCleanupRequest(stream.Context()); ok {
-		return drainDeletedCleanupState(stream, row, secret)
-	}
 	clientID, err := s.Auth.Check(stream.Context())
 	if err != nil {
 		return err
@@ -388,12 +395,6 @@ func (s *NezhaHandler) ReportSystemInfo(c context.Context, r *pb.Host) (*pb.Rece
 		return nil, errReportsStopping
 	}
 	defer s.reportGate.End()
-	if handled, err := deletedCleanupHost(c, r); handled {
-		if err != nil {
-			return nil, err
-		}
-		return &pb.Receipt{Proced: true}, nil
-	}
 	if _, err := s.onReportSystemInfo(c, r); err != nil {
 		return nil, err
 	}
@@ -405,12 +406,6 @@ func (s *NezhaHandler) ReportSystemInfo2(c context.Context, r *pb.Host) (*pb.Uin
 		return nil, errReportsStopping
 	}
 	defer s.reportGate.End()
-	if handled, err := deletedCleanupHost(c, r); handled {
-		if err != nil {
-			return nil, err
-		}
-		return &pb.Uint64Receipt{Data: singleton.DashboardBootTime}, nil
-	}
 	result, err := s.onReportSystemInfo(c, r)
 	if err != nil {
 		return nil, err

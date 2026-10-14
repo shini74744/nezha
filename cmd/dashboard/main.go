@@ -170,8 +170,8 @@ func main() {
 		return singleton.Conf == nil || !singleton.Conf.MCPEnabled()
 	})
 	go rpc.DispatchTask(serviceSentinelDispatchBus)
+	go rpc.RunAgentCredentialMigrations(context.Background())
 	go singleton.AlertSentinelStart()
-	go singleton.DeletedCleanupCheckerStart()
 
 	grpcHandler := rpc.ServeRPC()
 	httpHandler := controller.ServeWeb(frontendDist)

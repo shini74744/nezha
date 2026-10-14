@@ -30,6 +30,9 @@ func IssueServerReplacement(uuid string, actor model.ServerOperationActor) (stri
 		return "", time.Time{}, err
 	}
 	if ServerTransferShared != nil {
+		deliveryLock := ServerTransferShared.applyConfigSendLock(server.ID)
+		deliveryLock.Lock()
+		defer deliveryLock.Unlock()
 		if _, ok := ServerTransferShared.LookupPending(server.ID); ok {
 			return "", time.Time{}, errors.New("请先完成服务器归属转移")
 		}

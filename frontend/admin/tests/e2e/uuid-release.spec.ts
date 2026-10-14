@@ -72,11 +72,11 @@ for (const width of [360, 1366])
                 })
                 await page.goto("/dashboard/settings/waf?tab=unknown")
                 const panel = page.getByRole("tabpanel", { name: "认证防火墙", exact: true })
-                const buttons = panel.getByRole("button", { name: "放行 UUID", exact: true })
+                const buttons = panel.getByRole("button", { name: "整组放行", exact: true })
                 await expect(buttons).toHaveCount(1)
                 await buttons.click()
                 const dialog = page.getByRole("alertdialog")
-                await expect(dialog).toContainText("不会绕过连接密钥验证")
+                await expect(dialog).toContainText("只接受配对一致的认证信息")
                 await expect(dialog).toContainText("不会恢复原 ID")
                 await expect(dialog).toContainText(uuid)
                 expect(await dialog.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true)
@@ -109,7 +109,7 @@ for (const width of [360, 1366])
                 await buttons.click()
                 await dialog.getByRole("button", { name: "确认放行", exact: true }).click()
                 await expect(
-                    dialog.getByRole("heading", { name: "UUID 已放行", exact: true }),
+                    dialog.getByRole("heading", { name: "认证信息已放行", exact: true }),
                 ).toBeVisible()
                 await dialog.getByRole("button", { name: "关闭", exact: true }).click()
                 await expect(buttons).toHaveCount(0)
@@ -135,14 +135,14 @@ for (const width of [360, 1366])
                 await expect(deletedPanel).toContainText("7 次 · 放行前已拦截")
                 await expect(deletedPanel).not.toContainText("仍在上报 ·")
                 await expect(
-                    deletedPanel.getByRole("button", { name: "放行 UUID", exact: true }),
+                    deletedPanel.getByRole("button", { name: "整组放行", exact: true }),
                 ).toHaveCount(0)
                 // A newer deletion must regain the release button without reloading.
                 released = 0
                 version = 2
                 await deletedPanel.getByRole("button", { name: "刷新", exact: true }).click()
-                await deletedPanel.getByRole("button", { name: "放行 UUID", exact: true }).click()
-                await expect(dialog).toContainText("确认放行 UUID")
+                await deletedPanel.getByRole("button", { name: "整组放行", exact: true }).click()
+                await expect(dialog).toContainText("确认整组放行")
                 await dialog.getByRole("button", { name: "取消", exact: true }).click()
                 expect(requests).toHaveLength(2)
             },

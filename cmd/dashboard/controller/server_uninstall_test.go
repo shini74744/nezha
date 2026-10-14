@@ -1,10 +1,7 @@
 package controller
 
 import (
-	"context"
-	"errors"
 	"net/http/httptest"
-	"sync"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -13,38 +10,28 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPrepareServerRemovalHandlesAllOutcomes(t *testing.T) {
-	servers := make([]*model.Server, 5)
-	for i := range servers {
-		servers[i] = &model.Server{Common: model.Common{ID: uint64(i + 1)}, UUID: "12345678-1234-1234-1234-123456789abc", Name: "fixture", Host: &model.Host{Platform: "debian"}}
-		model.InitServer(servers[i])
-		if i > 0 {
-			servers[i].SetTaskStream(&fakeTaskStream{})
+func TestPlanServerRemovalNeverExecutesBeforeDeletion(t *testing.T) {
+	for _, tc := range []struct {
+		name, uuid string
+		online     bool
+		status     string
+	}{
+		{"offline", "12345678-1234-1234-1234-123456789abc", false, "offline"},
+		{"online", "12345678-1234-1234-1234-123456789abc", true, "queued"},
+		{"F50", "12345678-1234-1234-1234-123456789abc", true, "unsupported"},
+		{"bad", "invalid; command", true, "unsupported"},
+	} {
+		server := &model.Server{Common: model.Common{ID: 1}, UUID: tc.uuid, Name: tc.name, Host: &model.Host{Platform: "debian"}}
+		model.InitServer(server)
+		stream := &fakeTaskStream{}
+		if tc.online {
+			server.SetTaskStream(stream)
 		}
+		plan := planServerRemoval(server)
+		require.Equal(t, tc.status, plan.result.Status)
+		require.Empty(t, stream.sentTasks)
+		require.Equal(t, tc.status == "queued", plan.launch != nil)
 	}
-	servers[2].Name = "F50-special"
-	servers[3].UUID = "invalid; command"
-	var mu sync.Mutex
-	var called []uint64
-	result := prepareServerRemoval(context.Background(), servers, func(_ context.Context, server *model.Server, command string) error {
-		mu.Lock()
-		defer mu.Unlock()
-		called = append(called, server.ID)
-		if server.ID == 2 {
-			return errors.New("fixture refused")
-		}
-		if command == "" {
-			return errors.New("empty command")
-		}
-		return nil
-	})
-	require.Empty(t, result.Deleted, "only committed deletion may populate Deleted")
-	require.ElementsMatch(t, []uint64{2, 5}, called)
-	for i, status := range []string{"offline", "failed", "unsupported", "unsupported", "started"} {
-		require.Equal(t, status, result.Cleanup[i].Status)
-		require.EqualValues(t, i+1, result.Cleanup[i].ID)
-	}
-	require.Contains(t, result.Cleanup[4].Message, "非卸载完成")
 }
 
 func TestDeleteServersRejectsForeignAndInsufficientPATBeforeDispatch(t *testing.T) {

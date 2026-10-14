@@ -436,20 +436,49 @@ func (c *ServerTransferClass) ClearRevertDelivery(serverID, transferID uint64) {
 // which prunes after defaultRevertDeliveryRecoveryWindow and leaves the
 // agent permanently locked out.
 func (c *ServerTransferClass) MarkRevertDelivered(serverID, transferID uint64) error {
-	now := time.Now()
-	res := DB.Model(&model.ServerTransfer{}).
-		Where("id = ? AND status IN ? AND acked_at IS NULL", transferID, []model.ServerTransferStatus{
-			model.ServerTransferStatusFailed,
-			model.ServerTransferStatusTimeout,
-			model.ServerTransferStatusCancelled,
-		}).
-		Update("acked_at", &now)
-	if res.Error != nil {
-		return res.Error
-	}
-
+	ServerMutationMu.Lock()
+	defer ServerMutationMu.Unlock()
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	recovery, recovering := c.terminalSecretRecovery[serverID]
+	if AgentCredentialsReady() && (!recovering || recovery.ID != transferID || recovery.RevertHandshakeSecret == "") {
+		return errors.New("服务器转移恢复状态已变化")
+	}
+	now := time.Now()
+	var credential *model.AgentCredential
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		res := tx.Model(&model.ServerTransfer{}).
+			Where("id = ? AND server_id = ? AND status IN ? AND acked_at IS NULL", transferID, serverID, []model.ServerTransferStatus{
+				model.ServerTransferStatusFailed,
+				model.ServerTransferStatusTimeout,
+				model.ServerTransferStatusCancelled,
+			}).Update("acked_at", &now)
+		if res.Error != nil {
+			return res.Error
+		}
+		if AgentCredentialsReady() {
+			if res.RowsAffected != 1 {
+				return errors.New("服务器转移恢复状态已变化")
+			}
+			var server model.Server
+			if err := tx.First(&server, serverID).Error; err != nil {
+				return err
+			}
+			if server.UserID != recovery.FromUserID {
+				return errors.New("服务器所属账号已变化")
+			}
+			var err error
+			credential, err = adoptAgentCredentialInTx(tx, &server, server.UUID, recovery.RevertHandshakeSecret)
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	if credential != nil {
+		publishAgentCredential(*credential)
+	}
 	// Agent has rotated to the revert secret on disk, so the entire
 	// per-server terminal-recovery slot (covering both forward and revert
 	// kinds for THIS transfer) is now stale. Promote the revert secret
@@ -722,6 +751,9 @@ func (c *ServerTransferClass) Register(t *model.ServerTransfer) {
 // another caller currently holds the claim. The caller is responsible for
 // PushIfOnline after a successful return.
 func (c *ServerTransferClass) InitiateExclusive(serverID, fromUserID, toUserID, initiatorID uint64) (*model.ServerTransfer, error) {
+	deliveryLock := c.applyConfigSendLock(serverID)
+	deliveryLock.Lock()
+	defer deliveryLock.Unlock()
 	if s, ok := ServerShared.Get(serverID); ok && !agentSupportsTransfer(s) {
 		return nil, ErrAgentTooOldForTransfer
 	}
@@ -974,6 +1006,8 @@ func (c *ServerTransferClass) sendApplyConfigTask(s *model.Server, stream pb.Nez
 // outcomes (no pending, transfer id mismatch, lost CAS, DB error) return
 // verified=false and the caller (auth) must reject the credential.
 func (c *ServerTransferClass) MarkVerified(serverID, transferID uint64) (verified bool, transfer *model.ServerTransfer, err error) {
+	ServerMutationMu.Lock()
+	defer ServerMutationMu.Unlock()
 	c.mu.Lock()
 
 	t, ok := c.pending[serverID]
@@ -983,23 +1017,45 @@ func (c *ServerTransferClass) MarkVerified(serverID, transferID uint64) (verifie
 	}
 
 	now := time.Now()
-	res := DB.Model(&model.ServerTransfer{}).
-		Where("id = ? AND status = ?", t.ID, model.ServerTransferStatusPending).
-		Updates(map[string]any{
-			"status":   model.ServerTransferStatusVerified,
-			"acked_at": &now,
-		})
-	if res.Error != nil {
+	var changed int64
+	var credential *model.AgentCredential
+	err = DB.Transaction(func(tx *gorm.DB) error {
+		res := tx.Model(&model.ServerTransfer{}).
+			Where("id = ? AND status = ?", t.ID, model.ServerTransferStatusPending).
+			Updates(map[string]any{"status": model.ServerTransferStatusVerified, "acked_at": &now})
+		if res.Error != nil || res.RowsAffected == 0 {
+			return res.Error
+		}
+		changed = res.RowsAffected
+		if AgentCredentialsReady() {
+			var server model.Server
+			if err := tx.First(&server, serverID).Error; err != nil {
+				return err
+			}
+			if server.UserID != t.ToUserID || t.HandshakeSecret == "" {
+				return errors.New("服务器转移状态已变化")
+			}
+			var err error
+			credential, err = adoptAgentCredentialInTx(tx, &server, server.UUID, t.HandshakeSecret)
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		c.mu.Unlock()
-		return false, nil, res.Error
+		return false, nil, err
 	}
-	if res.RowsAffected == 0 {
+	if changed == 0 {
 		// Concurrent caller settled the row to a terminal status. The
 		// in-memory pending entry is now stale; drop it so the next auth
 		// call cannot read it. Do NOT promote any handshake secret.
 		delete(c.pending, t.ServerID)
 		c.mu.Unlock()
 		return false, nil, nil
+	}
+	// Publish only after both the transfer and its stable credential commit.
+	if credential != nil {
+		publishAgentCredential(*credential)
 	}
 	t.Status = model.ServerTransferStatusVerified
 	t.AckedAt = &now

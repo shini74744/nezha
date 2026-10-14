@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"context"
 	"net"
 
 	"google.golang.org/grpc"
@@ -9,6 +10,8 @@ import (
 	rpcService "github.com/nezhahq/nezha/service/rpc"
 	"github.com/nezhahq/nezha/service/singleton"
 )
+
+func RunAgentCredentialMigrations(ctx context.Context) { rpcService.RunAgentCredentialMigrations(ctx) }
 
 func SetReceiptGateListener(listener net.Listener) {
 	rpcService.SetReceiptGateListener(listener)

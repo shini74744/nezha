@@ -4,6 +4,7 @@ package deployment
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -93,7 +94,7 @@ func TestDashboardAccessPasswords(t *testing.T) {
 		req, err := http.NewRequest(method, base+path, strings.NewReader(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		if path == "/api/v1/login" || method == "PATCH" {
+		if path == "/api/v1/login" || path == "/api/v1/agent-credentials/issue" || method == "PATCH" {
 			req.Header.Set("Content-Type", "application/json")
 		}
 		u, err := url.Parse(base)
@@ -142,6 +143,20 @@ func TestDashboardAccessPasswords(t *testing.T) {
 	require.Equal(t, 200, resp.StatusCode)
 	u, err := url.Parse(base)
 	require.NoError(t, err)
+
+	// New Agents must obtain their own registered pair, not an account-wide key.
+	resp, pairBody := request("POST", "/api/v1/agent-credentials/issue", "{}")
+	require.Equal(t, 200, resp.StatusCode)
+	var pairResponse struct {
+		Success bool
+		Data    struct {
+			UUID   string `json:"uuid"`
+			Secret string `json:"client_secret"`
+		}
+	}
+	require.NoError(t, json.Unmarshal([]byte(pairBody), &pairResponse))
+	require.True(t, pairResponse.Success)
+	require.NotEmpty(t, pairResponse.Data.Secret)
 
 	// Configure independent schedules via the real authenticated management route.
 	originalCookies := jar.Cookies(u)
@@ -216,7 +231,7 @@ func TestDashboardAccessPasswords(t *testing.T) {
 	defer conn.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("client-secret", secret, "client-uuid", "e456879a-ea15-4111-8123-111111111111"))
+	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("client-secret", pairResponse.Data.Secret, "client-uuid", pairResponse.Data.UUID))
 	_, err = pb.NewNezhaServiceClient(conn).ReportSystemInfo2(ctx, &pb.Host{Platform: "linux", PlatformVersion: "fixture", Cpu: []string{"fixture"}, MemTotal: 1048576, BootTime: 1})
 	require.NoError(t, err, "backend IP ban must not block Agent reports")
 	stop()
