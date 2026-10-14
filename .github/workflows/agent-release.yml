@@ -2,7 +2,7 @@ name: Test and build owned Agent release
 on:
   push:
     tags: ['agent-v*']
-    branches: [main]
+    branches: [main, 'consolidate-*']
   pull_request:
     branches: [main]
   workflow_dispatch:
