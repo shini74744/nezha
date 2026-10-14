@@ -24,6 +24,8 @@ message Host {
   uint64 boot_time = 9;
   string version = 10;
   repeated string gpu = 11;
+  // Explicit capabilities decouple protocol support from release numbering.
+  repeated string capabilities = 12;
 }
 
 message State {

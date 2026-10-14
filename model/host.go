@@ -95,6 +95,7 @@ type Host struct {
 	Virtualization  string
 	BootTime        uint64
 	Version         string
+	Capabilities    []string
 	GPU             []string
 }
 
@@ -110,6 +111,7 @@ func (h *Host) PB() *pb.Host {
 		Virtualization:  h.Virtualization,
 		BootTime:        h.BootTime,
 		Version:         h.Version,
+		Capabilities:    h.Capabilities,
 		Gpu:             h.GPU,
 	}
 }

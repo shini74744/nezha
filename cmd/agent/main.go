@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	"github.com/nezhahq/go-github-selfupdate/selfupdate"
 	"github.com/nezhahq/service"
 	ping "github.com/prometheus-community/pro-bing"
 	utls "github.com/refraction-networking/utls"
@@ -613,11 +612,7 @@ func doSelfUpdate(config updateConfigTuple, useLocalVersion bool) (exit bool) {
 	if config.useGiteeToUpgrade || config.useAtomGitToUpgrade {
 		printf("旧镜像升级选项已忽略，仅使用自有 GitHub 仓库")
 	}
-	updater, err := selfupdate.NewUpdater(ownedUpdateConfig())
-	if err != nil {
-		printf("更新失败: %v", err)
-		return
-	}
+	updater := newOwnedReleaseUpdater()
 	latest, err := updateFromOwnedRepository(updater, v)
 
 	if err != nil {

@@ -22,10 +22,6 @@ func updateFromOwnedRepository(updater agentUpdater, version semver.Version) (*s
 	return updater.UpdateSelf(version, agentReleaseRepository)
 }
 
-func ownedUpdateConfig() selfupdate.Config {
-	return selfupdate.Config{BinaryName: binaryName, Validator: releaseSHA256{}}
-}
-
 type releaseSHA256 struct{}
 
 func (releaseSHA256) Suffix() string { return ".sha256" }

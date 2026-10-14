@@ -60,6 +60,7 @@ func GetHost(config *model.AgentConfig) *model.Host {
 	}
 
 	result.Version = Version
+	result.Capabilities = []string{"server-transfer-v1", "mcp-v1"}
 	return &result
 }
 

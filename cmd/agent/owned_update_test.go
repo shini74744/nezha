@@ -31,7 +31,7 @@ func TestOwnedUpdateNeverFallsBack(t *testing.T) {
 	}
 }
 func TestOwnedUpdateChecksum(t *testing.T) {
-	validator := ownedUpdateConfig().Validator
+	validator := releaseSHA256{}
 	content := []byte("our agent")
 	valid := []byte(fmt.Sprintf("%x\n", sha256.Sum256(content)))
 	if validator.Suffix() != ".sha256" || validator.Validate(content, valid) != nil {

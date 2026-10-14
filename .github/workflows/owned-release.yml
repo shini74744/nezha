@@ -1,0 +1,137 @@
+name: Test and build owned Agent release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Bare owned semantic version
+        type: string
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: owned-agent-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.26.8"
+          cache: false
+      - name: Tests and vet
+        shell: bash
+        run: |
+          go test -mod=readonly ./...
+          go vet -mod=readonly ./...
+      - name: Race tests and installer safety
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y busybox
+          go test -mod=readonly -race ./...
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v scripts.test_install_uninstall scripts.test_install_elevation scripts.test_install_output scripts.test_install_progress release.test_installers
+  build:
+    needs: test
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        include:
+          - target: linux/amd64
+            runner: ubuntu-latest
+            artifact: agent-linux-amd64
+          - target: linux/arm64
+            runner: ubuntu-latest
+            artifact: agent-linux-arm64
+          - target: linux/386
+            runner: ubuntu-latest
+            artifact: agent-linux-386
+          - target: linux/arm
+            runner: ubuntu-latest
+            artifact: agent-linux-arm
+          - target: linux/mips
+            runner: ubuntu-latest
+            artifact: agent-linux-mips
+          - target: linux/mipsle
+            runner: ubuntu-latest
+            artifact: agent-linux-mipsle
+          - target: linux/riscv64
+            runner: ubuntu-latest
+            artifact: agent-linux-riscv64
+          - target: linux/s390x
+            runner: ubuntu-latest
+            artifact: agent-linux-s390x
+          - target: linux/loong64
+            runner: ubuntu-latest
+            artifact: agent-linux-loong64
+          - target: darwin/amd64
+            runner: ubuntu-latest
+            artifact: agent-darwin-amd64
+          - target: darwin/arm64
+            runner: macos-latest
+            artifact: agent-darwin-arm64
+          - target: windows/amd64
+            runner: windows-latest
+            artifact: agent-windows-amd64
+          - target: windows/386
+            runner: ubuntu-latest
+            artifact: agent-windows-386
+          - target: windows/arm64
+            runner: ubuntu-latest
+            artifact: agent-windows-arm64
+          - target: freebsd/amd64
+            runner: ubuntu-latest
+            artifact: agent-freebsd-amd64
+          - target: freebsd/386
+            runner: ubuntu-latest
+            artifact: agent-freebsd-386
+          - target: freebsd/arm
+            runner: ubuntu-latest
+            artifact: agent-freebsd-arm
+          - target: freebsd/arm64
+            runner: ubuntu-latest
+            artifact: agent-freebsd-arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.26.8"
+          cache: false
+      - name: Build checked release package
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          AGENT_BUILD_TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$GITHUB_REF_NAME" == "v$VERSION" ]]
+          bash release/build.sh "$VERSION" "$PWD/dist"
+          case "$AGENT_BUILD_TARGET" in
+            linux/amd64) actual="$(dist/linux_amd64/nezha-agent -v)"; [[ "$actual" == *" $VERSION" ]] ;;
+            darwin/arm64) actual="$(dist/darwin_arm64/nezha-agent -v)"; [[ "$actual" == *" $VERSION" ]] ;;
+            windows/amd64) actual="$(dist/windows_amd64/nezha-agent.exe -v)"; [[ "$actual" == *" $VERSION" ]] ;;
+          esac
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            dist/*.zip
+            dist/*.sha256
+            dist/agent-release.json
+          if-no-files-found: error
+          retention-days: 7

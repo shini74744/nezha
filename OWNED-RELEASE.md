@@ -19,7 +19,7 @@ If GitHub is unavailable, the operation fails without an upstream fallback. A SH
 - Installer regression tests (no real services/network): `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v scripts.test_install_uninstall scripts.test_install_elevation scripts.test_install_output scripts.test_install_progress release.test_installers`. Tests require Python 3, sh/dash/bash/BusyBox, and the standard installation utilities.
 - Existing official Agents still use their old updater until deliberately reinstalled with this distribution. Do not use the old dashboard upgrade button as a source migration.
 
-Publishing: run `go test -mod=readonly ./...`, then `bash release/build.sh VERSION /absolute/output/path`. This builds all 18 supported OS/architecture packages and checksum assets. Create a v-prefixed semantic-version tag and a draft GitHub release, upload the zip/checksum assets, verify them, then publish. GitHub Actions is not configured because the current publishing credential does not have workflow permission.
+Publishing: run `go test -mod=readonly ./...`, then `bash release/build.sh VERSION /absolute/output/path`. This builds all 18 supported OS/architecture packages, checksum assets and `agent-release.json`. Alternatively dispatch `owned-release.yml` on the exact v-prefixed tag with its bare version: Linux/Windows/macOS tests must pass before all 18 build jobs run. Native Linux amd64, Windows amd64 and macOS arm64 packages also execute `-v`. Download artifacts, verify ZIP contents/checksums/manifest commit, aggregate `checksums.txt`, upload to a draft, verify fresh downloads, then publish explicitly as latest. No workflow publishes automatically.
 Internal Go module paths remain unchanged for source compatibility; they are not runtime download URLs.
 
 ## v2.3.7 connectivity and dual-stack reporting
@@ -37,3 +37,13 @@ Internal Go module paths remain unchanged for source compatibility; they are not
 - First sample, missing OS counters and probe errors are explicitly unavailable, distinct from valid idle zero rates. Counter resets and device hotplug cannot wrap into huge throughput values.
 - Adds protobuf State fields 19–21 without changing existing numbers. Old dashboards ignore these fields; older Agents remain compatible with upgraded dashboards.
 - Includes concurrent sampler/race, reset/error/idle, Linux device selection and model/report mapping tests. Existing capacity collection, credentials, UUIDs, service settings and update source are unchanged.
+
+## v1.0.0 owned version series
+
+This is a formal renumbering of this distribution, not a rollback to upstream v1.0.0. All v2.3.8 features remain. Host protobuf field 12 adds explicit server-transfer-v1 and mcp-v1 capabilities so the companion dashboard v0.0.1 does not mistake the lower number for missing features. Capabilities never grant authentication or task permissions.
+
+Upgrade the dashboard first. Preserve every node's own UUID/key and configuration; no reinstall or shared credential is needed. After backup and validation, remove only the old v2.3.6/v2.3.7/v2.3.8 GitHub Releases, keeping tags and source history. Those old updaters choose the greatest semantic version and replace on version inequality, so removing the old releases allows the authorized transition to 1.0.0. Offline nodes and configurations disabling auto-update remain pending.
+
+New updaters follow the owned repository's designated Latest, require an agent-release.json channel manifest (schema 1, channel shini74744-agent-v1, matching version, 40-hex source commit), and do not downgrade during normal automatic updates. A platform ZIP and its SHA256 sidecar must both exist; checksum validation happens before extraction and atomic replacement. Only the expected single executable is accepted. Network, manifest, checksum or replacement errors fail closed without fallback. Dashboard-forced updates retain the existing disable_force_update gate.
+
+Deleting a Release does not erase its Git tag. Restoring old releases can alter old updaters' version selection again and must be coordinated with update controls. Keep release metadata and verified asset backups outside the source tree.
