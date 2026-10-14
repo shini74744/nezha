@@ -39,7 +39,9 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y busybox
           go test -mod=readonly -race ./...
-          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v scripts.test_install_uninstall scripts.test_install_elevation scripts.test_install_output scripts.test_install_progress release.test_installers
+          # Installer fixtures exercise root-owned 0700 backups; run their harness
+          # with the same identity so cleanup never depends on runner permissions.
+          sudo env PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v scripts.test_install_uninstall scripts.test_install_elevation scripts.test_install_output scripts.test_install_progress release.test_installers
   build:
     needs: test
     strategy:
