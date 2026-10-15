@@ -112,6 +112,45 @@ else: raise RuntimeError('Unexpected installer download: '+u)
   service(old);wait_running(old);unchanged(own,before_own,new,pown)
   print("OFFICIAL_REINSTALL_REPLACEMENT_UNINSTALL_PRESERVES_OWN_PASS",flush=True)
   run(["sh",ownscript,"uninstall"]);run(["sh",ownscript,"uninstall"])
+  if platform.system()=="Linux":
+   # Migrate one legacy config sharing the original binary with an official
+   # instance. Both rollback and commit must leave the other PID/files intact.
+   legacy=official/"config-owned.yml"
+   legacy.write_bytes(identity)
+   service(old,legacy,"install");wait_running(old,legacy)
+   worker=ownscript.with_name("migrate-instance-systemd.sh")
+   foreign_pid=pid(old);legacy_before=snap(official)
+   binary_hash=hashlib.sha256(old.read_bytes()).hexdigest()
+   cfg_hash=hashlib.sha256(legacy.read_bytes()).hexdigest()
+   new_hash=hashlib.sha256(new.read_bytes()).hexdigest()
+   for decision in ("abort","confirmed"):
+    state=own/("migration-fixture-"+decision);state.mkdir()
+    (own/"config.yml").write_bytes(legacy.read_bytes())
+    target_pid=pid(old,legacy)
+    command=["sh",worker,old,legacy,name(old,legacy)+".service",target_pid,binary_hash,cfg_hash,new_hash,state]
+    # Stale or wrong identity evidence must stop before touching either service.
+    bad=command.copy();bad[7]="0"*64
+    assert run(bad,False).returncode!=0
+    assert pid(old,legacy)==target_pid
+    unchanged(official,legacy_before,old,foreign_pid)
+    job=subprocess.Popen(list(map(str,command)),env=env,stdout=log,stderr=log)
+    end=time.monotonic()+40
+    while time.monotonic()<end and job.poll() is None:
+     if (state/"state").exists() and (state/"state").read_text().strip()=="WAITING_FOR_PANEL_VERIFICATION":break
+     time.sleep(.2)
+    assert job.poll() is None, "migration failed before verification"
+    wait_running(new)
+    assert pid(old,legacy)==0
+    unchanged(official,legacy_before,old,foreign_pid)
+    (state/decision).write_text(new_hash+"\n")
+    assert job.wait(timeout=40)==(1 if decision=="abort" else 0)
+    expected="ROLLED_BACK" if decision=="abort" else "COMMITTED"
+    assert (state/"state").read_text().strip()==expected
+    unchanged(official,legacy_before,old,foreign_pid)
+    if decision=="abort":wait_running(old,legacy)
+    else:assert pid(old,legacy)==0
+   print("SINGLE_CONFIG_MIGRATION_COMMIT_ROLLBACK_FOREIGN_UNCHANGED_PASS",flush=True)
+   run(["sh",ownscript,"uninstall"])
   print("NATIVE_POSIX_COEXISTENCE_PASS "+target,flush=True)
  except BaseException:
   log.flush();print((work/"commands.log").read_text()[-20000:],flush=True);raise
