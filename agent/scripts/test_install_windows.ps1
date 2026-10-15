@@ -48,7 +48,7 @@ func main() {
         else { Copy-Item -LiteralPath $env:INSTALLER_ZIP -Destination $OutFile }
     }
     function icacls.exe { $global:LASTEXITCODE = 0 }
-    foreach ($env:INSTALLER_CASE in @('new','existing','checksum','version','download','rollback')) {
+    foreach ($env:INSTALLER_CASE in @('new','existing','checksum','version','download','rollback','foreign-script','script-directory')) {
         $dir = Join-Path $workspace $env:INSTALLER_CASE
         New-Item -ItemType Directory -Path $dir | Out-Null
         $env:INSTALLER_TEST_DIR = $dir
@@ -69,6 +69,16 @@ func main() {
             "uuid: keep-own-uuid\nclient_secret: keep-own-key" | Set-Content -LiteralPath $config
             $configBefore = (Get-FileHash -LiteralPath $config -Algorithm SHA256).Hash
         }
+        $savedInstaller = Join-Path $dir 'agent.ps1'
+        if ($existing) {
+            "# DDnezha-owned-agent-installer-v1`n# previously saved own installer" | Set-Content -LiteralPath $savedInstaller -Encoding utf8
+        }
+        if ($env:INSTALLER_CASE -eq 'foreign-script') { 'official installer - never overwrite' | Set-Content -LiteralPath $savedInstaller }
+        if ($env:INSTALLER_CASE -eq 'script-directory') {
+            Remove-Item -LiteralPath $savedInstaller
+            New-Item -ItemType Directory -Path $savedInstaller | Out-Null
+        }
+        $savedBefore = if ($existing -and $env:INSTALLER_CASE -ne 'script-directory') { (Get-FileHash -LiteralPath $savedInstaller).Hash } else { $null }
         $failed = $false
         try { & $scriptUnderTest } catch { $failed = $true; Write-Host ("Fixture caught: " + $_.Exception.Message + " at " + $_.InvocationInfo.PositionMessage) }
         $expectFailure = $env:INSTALLER_CASE -notin @('new','existing')
@@ -76,7 +86,16 @@ func main() {
         $wanted = if ($expectFailure) {$oldHash} else {$newHash}
         Assert ((Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash -eq $wanted) "Wrong final binary: $env:INSTALLER_CASE"
         if ($existing) { Assert ((Get-FileHash -LiteralPath $config -Algorithm SHA256).Hash -eq $configBefore) 'UUID/config changed' }
-        if ($env:INSTALLER_CASE -in @('checksum','version','download')) {
+        if (-not $expectFailure) {
+            Assert ((Get-FileHash -LiteralPath $savedInstaller).Hash -eq (Get-FileHash -LiteralPath $scriptUnderTest).Hash) 'Saved installer differs from executed script'
+            & $savedInstaller
+            Assert ((Get-FileHash -LiteralPath $savedInstaller).Hash -eq (Get-FileHash -LiteralPath $scriptUnderTest).Hash) 'Saved installer cannot safely replace itself'
+        } elseif ($savedBefore) {
+            Assert ((Get-FileHash -LiteralPath $savedInstaller).Hash -eq $savedBefore) 'Failed update changed saved script'
+        } else {
+            Assert (Test-Path -LiteralPath $savedInstaller -PathType Container) 'Foreign directory changed'
+        }
+        if ($env:INSTALLER_CASE -in @('checksum','version','download','foreign-script','script-directory')) {
             Assert (-not (Test-Path -LiteralPath $env:INSTALLER_CALL_LOG)) 'Service called before download/version verification'
         }
         Write-Host "PASS Windows installer $env:INSTALLER_CASE"
