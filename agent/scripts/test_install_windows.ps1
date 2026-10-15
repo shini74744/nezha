@@ -117,8 +117,10 @@ func main() {
         $env:INSTALLER_POINTER = 'v1.0.1'
         $env:INSTALLER_CHECKSUM = $zipHash
         $targetScript = Join-Path $workspace ($case + '-foreign.ps1')
-        if ($case -eq 'saved-link') { 'foreign script' | Set-Content -LiteralPath $targetScript }
+        # Windows PowerShell 5.1 requires the target to exist while creating a link.
+        'foreign script' | Set-Content -LiteralPath $targetScript
         New-Item -ItemType SymbolicLink -Path (Join-Path $dir 'agent.ps1') -Target $targetScript | Out-Null
+        if ($case -eq 'dangling-link') { Remove-Item -LiteralPath $targetScript -Force }
         $failed = $false
         try { & $scriptUnderTest } catch { $failed = $true }
         Assert $failed "Accepted $case"
