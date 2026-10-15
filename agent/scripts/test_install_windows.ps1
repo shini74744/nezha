@@ -100,6 +100,28 @@ func main() {
         }
         Write-Host "PASS Windows installer $env:INSTALLER_CASE"
     }
+    # Reparse-point script targets must be rejected before any service mutation.
+    foreach ($case in @('saved-link','dangling-link')) {
+        $dir = Join-Path $workspace $case
+        New-Item -ItemType Directory -Path $dir | Out-Null
+        $env:INSTALLER_TEST_DIR = $dir
+        $env:INSTALLER_CALL_LOG = Join-Path $dir 'calls.log'
+        $env:INSTALLER_FAIL_INSTALL = '0'
+        $env:INSTALLER_CASE = 'new'
+        $env:INSTALLER_POINTER = 'v1.0.1'
+        $env:INSTALLER_CHECKSUM = $zipHash
+        $targetScript = Join-Path $workspace ($case + '-foreign.ps1')
+        if ($case -eq 'saved-link') { 'foreign script' | Set-Content -LiteralPath $targetScript }
+        New-Item -ItemType SymbolicLink -Path (Join-Path $dir 'agent.ps1') -Target $targetScript | Out-Null
+        $failed = $false
+        try { & $scriptUnderTest } catch { $failed = $true }
+        Assert $failed "Accepted $case"
+        Assert (-not (Test-Path -LiteralPath $env:INSTALLER_CALL_LOG)) 'Service called for unsafe saved script'
+        if ($case -eq 'saved-link') { Assert ((Get-Content -LiteralPath $targetScript -Raw).Trim() -eq 'foreign script') 'Foreign script changed' }
+        else { Assert (-not (Test-Path -LiteralPath $targetScript)) 'Dangling script target created' }
+        Assert ((Get-Item -LiteralPath (Join-Path $dir 'agent.ps1') -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) 'Saved link removed'
+        Write-Host "PASS Windows installer $case"
+    }
     $official = Join-Path $workspace 'official'
     New-Item -ItemType Directory -Path $official | Out-Null
     $officialConfig = Join-Path $official 'config.yml'

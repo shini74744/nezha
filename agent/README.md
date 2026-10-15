@@ -19,7 +19,7 @@
 
 ### 卸载自有目录内所有 Agent 实例
 
-POSIX（配置含 UUID 和密钥，需要时请先备份）：
+POSIX 使用 root 终端（非 root 请先 `sudo -i`）。配置含 UUID 和密钥，需要时请先备份：
 
 ```sh
 cd /opt/DDnezha

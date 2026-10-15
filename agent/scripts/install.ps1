@@ -24,7 +24,8 @@ $marker = Join-Path $dir '.DDnezha-owned'
 $installer = Join-Path $dir 'agent.ps1'
 $installerMarker = '# DDnezha-owned-agent-installer-v1'
 foreach ($candidate in @($dir, $binary, $config, $marker)) {
-    if ((Test-Path -LiteralPath $candidate) -and ((Get-Item -LiteralPath $candidate -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+    $pathItem = Get-Item -LiteralPath $candidate -Force -ErrorAction SilentlyContinue
+    if ($pathItem -and ($pathItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
         throw 'DDnezha refuses reparse-point installation paths.'
     }
 }
@@ -52,8 +53,8 @@ if ($Action -eq 'uninstall') {
 if (-not (Test-Path -LiteralPath $config)) {
     if (-not $env:DDNZ_SERVER -or -not $env:DDNZ_CLIENT_SECRET) { throw 'DDNZ_SERVER and DDNZ_CLIENT_SECRET are required.' }
 }
-if (Test-Path -LiteralPath $installer) {
-    $item = Get-Item -LiteralPath $installer -Force
+$item = Get-Item -LiteralPath $installer -Force -ErrorAction SilentlyContinue
+if ($item) {
     if ($item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -or
         -not ((Get-Content -LiteralPath $installer) -ccontains $installerMarker)) {
         throw 'Refusing to replace an unknown or linked agent.ps1; existing services unchanged.'
