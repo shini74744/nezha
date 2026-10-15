@@ -4,7 +4,7 @@ $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 function Assert($condition, $message) { if (-not $condition) { throw $message } }
 Assert ($env:GITHUB_ACTIONS -eq 'true' -and $env:RUNNER_ENVIRONMENT -eq 'github-hosted') 'Disposable runner required'
-foreach ($p in @('C:\nezha','C:\DDnezha','C:\temp','C:\nezha.zip')) { Assert (-not (Test-Path -LiteralPath $p)) "Existing path: $p; refusing test" }
+foreach ($p in @('C:\nezha','C:\DDnezha')) { Assert (-not (Test-Path -LiteralPath $p)) "Existing path: $p; refusing test" }
 Assert (@(Get-Service -Name 'DDnezha','nezha-agent','nezha-agent.exe' -ErrorAction SilentlyContinue).Count -eq 0) 'Existing service: refusing test'
 $work = Join-Path $env:RUNNER_TEMP ('ddnezha-native-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $work | Out-Null
@@ -13,6 +13,14 @@ Microsoft.PowerShell.Utility\Invoke-WebRequest -UseBasicParsing 'https://github.
 Assert ((Get-FileHash -LiteralPath $officialZIP -Algorithm SHA256).Hash.ToLowerInvariant() -eq '557afdc7666fb3a38fe9d492365de10f94f86ef96b7301b70b35056395d3293c') 'Official checksum mismatch'
 $officialScript = Join-Path $work 'official.ps1'
 Microsoft.PowerShell.Utility\Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/nezhahq/scripts/a606b570f6da4181bc1f44348d4d1885e8caccdf/agent/install.ps1' -OutFile $officialScript
+# The upstream script recursively removes C:\temp, which already belongs to
+# the hosted runner. Relocate ONLY its disposable archive/extraction paths;
+# its install directory, service commands and binary remain upstream originals.
+$officialSource = Get-Content -LiteralPath $officialScript -Raw
+Assert ($officialSource.Contains('C:\temp') -and $officialSource.Contains('C:\nezha.zip')) 'Upstream temporary-path contract changed'
+$officialSource = $officialSource.Replace('C:\temp',(Join-Path $work 'official-extract')).Replace('C:\nezha.zip',(Join-Path $work 'official-download.zip'))
+Assert (-not $officialSource.Contains('C:\temp') -and -not $officialSource.Contains('C:\nezha.zip')) 'Unsafe temporary path remains'
+$officialSource | Set-Content -LiteralPath $officialScript -Encoding utf8
 foreach ($item in @(@('1.0.1',$OldBinary),@('1.0.2',$Binary))) {
  $stage = Join-Path $work $item[0]
  New-Item -ItemType Directory -Path $stage | Out-Null
