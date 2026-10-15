@@ -30,7 +30,13 @@ func main() {
     $zipHash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash
     $oldHash = (Get-FileHash -LiteralPath $old -Algorithm SHA256).Hash
     $newHash = (Get-FileHash -LiteralPath $new -Algorithm SHA256).Hash
-    $source = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'install.ps1') -Raw
+    $installerPath = Join-Path $PSScriptRoot 'install.ps1'
+    $bytes = [IO.File]::ReadAllBytes($installerPath)
+    Assert ($bytes.Length -gt 3 -and $bytes[0] -eq 239 -and $bytes[1] -eq 187 -and $bytes[2] -eq 191) 'UTF-8 BOM is required for non-ASCII Windows PowerShell 5.1 scripts'
+    $parseTokens = $null; $parseErrors = $null
+    [System.Management.Automation.Language.Parser]::ParseFile($installerPath, [ref]$parseTokens, [ref]$parseErrors) | Out-Null
+    Assert ($parseErrors.Count -eq 0) 'Unmodified downloaded installer has parse errors'
+    $source = Get-Content -LiteralPath $installerPath -Raw -Encoding UTF8
     $source = [regex]::Replace($source, '(?s)\$identity =.*?(?=Write-Host)', '')
     $source = $source.Replace('$dir = ''C:\DDnezha''', '$dir = $env:INSTALLER_TEST_DIR')
     Assert ($source.Contains('$dir = $env:INSTALLER_TEST_DIR')) 'Fixture path replacement failed'

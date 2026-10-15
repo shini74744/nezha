@@ -1,4 +1,4 @@
-param([ValidateSet('install','uninstall')][string]$Action = 'install')
+﻿param([ValidateSet('install','uninstall')][string]$Action = 'install')
 # DDnezha-owned-agent-installer-v1
 # shini74744/nezha only. Run in an elevated PowerShell window.
 $ErrorActionPreference = 'Stop'
