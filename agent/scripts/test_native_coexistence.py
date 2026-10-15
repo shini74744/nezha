@@ -129,17 +129,24 @@ else: raise RuntimeError('Unexpected installer download: '+u)
     target_pid=pid(old,legacy)
     command=["sh",worker,old,legacy,name(old,legacy)+".service",target_pid,binary_hash,cfg_hash,new_hash,state]
     # Stale or wrong identity evidence must stop before touching either service.
+    migration_env={k:v for k,v in env.items() if not k.startswith("DDNZ_")}
     bad=command.copy();bad[7]="0"*64
-    assert run(bad,False).returncode!=0
+    assert subprocess.run(list(map(str,bad)),env=migration_env,stdout=log,stderr=log,timeout=20).returncode!=0
+    assert run(command,False).returncode!=0, "installer environment must be rejected"
     assert pid(old,legacy)==target_pid
     unchanged(official,legacy_before,old,foreign_pid)
-    job=subprocess.Popen(list(map(str,command)),env=env,stdout=log,stderr=log)
+    # Migration uses the existing file, never installer environment credentials.
+    migration_env={k:v for k,v in env.items() if not k.startswith("DDNZ_")}
+    job=subprocess.Popen(list(map(str,command)),env=migration_env,stdout=log,stderr=log)
     end=time.monotonic()+40
     while time.monotonic()<end and job.poll() is None:
      if (state/"state").exists() and (state/"state").read_text().strip()=="WAITING_FOR_PANEL_VERIFICATION":break
      time.sleep(.2)
     assert job.poll() is None, "migration failed before verification"
     wait_running(new)
+    for key in ("uuid","client_secret","server","tls"):
+     pattern=r"(?m)^"+key+r":\s*(.*?)$"
+     assert re.search(pattern,(own/"config.yml").read_text()).group(1)==re.search(pattern,legacy.read_text()).group(1), "migrated identity changed"
     assert pid(old,legacy)==0
     unchanged(official,legacy_before,old,foreign_pid)
     (state/decision).write_text(new_hash+"\n")

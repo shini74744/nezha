@@ -10,6 +10,11 @@ new_dir=/opt/DDnezha
 new_binary=$new_dir/DDnezha
 new_config=$new_dir/config.yml
 new_unit=DDnezha.service
+# The copied configuration is authoritative, not installer shell overrides.
+if env | grep -q '^DDNZ_'; then
+ echo "Refusing migration with DDNZ environment overrides" >&2
+ exit 2
+fi
 case "$old_binary" in /opt/nezha/agent/nezha-agent) ;; *) exit 2;; esac
 case "$old_config" in /opt/nezha/agent/*config*.yml) ;; *) exit 2;; esac
 case "$old_unit" in nezha-agent.service|nezha-agent-*.service) ;; *) exit 2;; esac
