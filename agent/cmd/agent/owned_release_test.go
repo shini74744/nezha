@@ -59,16 +59,23 @@ func ownedFixture(t *testing.T) *ownedUpdateFixture {
 		release:  ownedRelease{Tag: "agent-v1.0.1"}, bodies: map[string][]byte{},
 	}
 	f.pointer = "v1.0.1\n"
-	f.path = filepath.Join(t.TempDir(), "agent")
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.path = filepath.Join(dir, binaryName)
+	if err := os.WriteFile(filepath.Join(filepath.Dir(f.path), installationMarker), []byte(binaryName+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(f.path, []byte("old agent"), 0700); err != nil {
 		t.Fatal(err)
 	}
 	base := "https://github.com/" + agentReleaseRepository + "/releases/download/agent-v1.0.1/"
 	archive := ownedZIP(t, binaryName)
 	for name, data := range map[string][]byte{
-		"agent-release.json":                 nil,
-		"nezha-agent_linux_amd64.zip":        archive,
-		"nezha-agent_linux_amd64.zip.sha256": []byte(fmt.Sprintf("%x\n", sha256.Sum256(archive))),
+		"agent-release.json":             nil,
+		"DDnezha_linux_amd64.zip":        archive,
+		"DDnezha_linux_amd64.zip.sha256": []byte(fmt.Sprintf("%x\n", sha256.Sum256(archive))),
 	} {
 		f.release.Assets = append(f.release.Assets, ownedReleaseAsset{Name: name, URL: base + name})
 		f.bodies[base+name] = data
@@ -123,16 +130,17 @@ func TestOwnedLatestUpdateUsesNewSeriesAndVerifiesArchive(t *testing.T) {
 }
 func TestOwnedLatestUpdateNeverFallsBackOrAppliesInvalidRelease(t *testing.T) {
 	cases := map[string]func(*ownedUpdateFixture){
-		"draft":                  func(f *ownedUpdateFixture) { f.release.Draft = true },
-		"prerelease":             func(f *ownedUpdateFixture) { f.release.Prerelease = true },
-		"dashboard tag":          func(f *ownedUpdateFixture) { f.release.Tag = "v0.0.3" },
-		"wrong Agent version":    func(f *ownedUpdateFixture) { f.release.Tag = "agent-v1.0.2" },
-		"invalid tag":            func(f *ownedUpdateFixture) { f.release.Tag = "../v1.0.1" },
-		"old series":             func(f *ownedUpdateFixture) { f.manifest.Channel = "legacy" },
-		"missing channel":        func(f *ownedUpdateFixture) { f.manifest.Channel = "" },
-		"wrong schema":           func(f *ownedUpdateFixture) { f.manifest.Schema = 2 },
-		"wrong manifest version": func(f *ownedUpdateFixture) { f.manifest.Version = "2.3.8" },
-		"missing source":         func(f *ownedUpdateFixture) { f.manifest.SourceCommit = "" },
+		"draft":                        func(f *ownedUpdateFixture) { f.release.Draft = true },
+		"prerelease":                   func(f *ownedUpdateFixture) { f.release.Prerelease = true },
+		"dashboard tag":                func(f *ownedUpdateFixture) { f.release.Tag = "v0.0.3" },
+		"wrong Agent version":          func(f *ownedUpdateFixture) { f.release.Tag = "agent-v1.0.2" },
+		"invalid tag":                  func(f *ownedUpdateFixture) { f.release.Tag = "../v1.0.1" },
+		"old series":                   func(f *ownedUpdateFixture) { f.manifest.Channel = "legacy" },
+		"old shared directory channel": func(f *ownedUpdateFixture) { f.manifest.Channel = "shini74744-agent-v1" },
+		"missing channel":              func(f *ownedUpdateFixture) { f.manifest.Channel = "" },
+		"wrong schema":                 func(f *ownedUpdateFixture) { f.manifest.Schema = 2 },
+		"wrong manifest version":       func(f *ownedUpdateFixture) { f.manifest.Version = "2.3.8" },
+		"missing source":               func(f *ownedUpdateFixture) { f.manifest.SourceCommit = "" },
 		"foreign asset": func(f *ownedUpdateFixture) {
 			for i := range f.release.Assets {
 				if f.release.Assets[i].Name == "agent-release.json" {

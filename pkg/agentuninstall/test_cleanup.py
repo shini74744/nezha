@@ -18,6 +18,7 @@ class CleanupTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.agent = self.root / "Agent files"
         self.agent.mkdir()
+        (self.agent / ".DDnezha-owned").write_text("DDnezha\n")
         self.work = self.root / "worker"
         self.work.mkdir()
         self.bin = self.root / "bin"
@@ -25,14 +26,14 @@ class CleanupTests(unittest.TestCase):
         self.log = self.root / "calls"
         self.env = dict(os.environ, PATH=str(self.bin) + ":" + os.environ["PATH"],
                         CALL_LOG=str(self.log), FAIL_ACTION="")
-        self.binary = self.agent / "nezha-agent"
+        self.binary = self.agent / "DDnezha"
         self.binary.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$CALL_LOG"\n[ "$4" != "$FAIL_ACTION" ]\n')
         self.binary.chmod(0o755)
         self.tool("id", "echo 0")
         self.tool("sleep", ":")
-        self.assertEqual(SOURCE.count("dir=/opt/nezha/agent"), 2)
-        self.source = SOURCE.replace("dir=/opt/nezha/agent", "dir=" + shlex.quote(str(self.agent)))
-        self.assertNotIn("/opt/nezha/agent", self.source)
+        self.assertEqual(SOURCE.count("dir=/opt/DDnezha"), 2)
+        self.source = SOURCE.replace("dir=/opt/DDnezha", "dir=" + shlex.quote(str(self.agent)))
+        self.assertNotIn("/opt/DDnezha", self.source)
         self.source = self.source.replace("__UUID__", UUID)
 
     def tool(self, name, body):
@@ -58,11 +59,11 @@ class CleanupTests(unittest.TestCase):
         backup = self.agent / "backup.fixture"
         backup.mkdir()
         (backup / "config.yml").write_text("uuid: " + UUID)
-        (backup / "nezha-agent").write_text("old binary")
+        (backup / "DDnezha").write_text("old binary")
         unrelated = self.agent / "business.db"
         unrelated.write_text("must survive")
-        installer = self.agent / "agent.sh"
-        installer.write_text("# NZ_CLIENT_SECRET nezha-agent\n")
+        installer = self.agent / "DDnezha.sh"
+        installer.write_text("# DDNZ_CLIENT_SECRET DDnezha\n")
         result = self.run_worker()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertFalse(config.exists())
@@ -76,8 +77,8 @@ class CleanupTests(unittest.TestCase):
     def test_other_instance_keeps_shared_binary_and_installer(self):
         self.config()
         other = self.config("config-other.yml", OTHER)
-        installer = self.agent / "agent.sh"
-        installer.write_text("# NZ_CLIENT_SECRET nezha-agent")
+        installer = self.agent / "DDnezha.sh"
+        installer.write_text("# DDNZ_CLIENT_SECRET DDnezha")
         result = self.run_worker()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue(other.exists())

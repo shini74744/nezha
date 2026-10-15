@@ -2,7 +2,7 @@ name: Test and build owned Agent release
 on:
   push:
     tags: ['agent-v*']
-    branches: [main, 'consolidate-*']
+    branches: [main, 'consolidate-*', 'test/ddnezha-*']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -56,6 +56,25 @@ jobs:
         run: |
           npm ci
           npm test -- --run src/test/install-commands.test.ts
+      - name: Build two native lifecycle versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          ext=""; [[ "$RUNNER_OS" != Windows ]] || ext=".exe"
+          arch="$(go env GOARCH)"
+          for version in 1.0.1 1.0.2; do
+            mkdir -p "$RUNNER_TEMP/ddnezha-$version"
+            go build -mod=readonly -trimpath -ldflags "-X github.com/nezhahq/agent/pkg/monitor.Version=$version -X main.arch=$arch" -o "$RUNNER_TEMP/ddnezha-$version/DDnezha$ext" ./cmd/agent
+          done
+      - name: Native POSIX official coexistence lifecycle
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          sudo env GITHUB_ACTIONS="$GITHUB_ACTIONS" RUNNER_ENVIRONMENT="$RUNNER_ENVIRONMENT" PATH="$PATH" "$(command -v python3)" scripts/test_native_coexistence.py --binary "$RUNNER_TEMP/ddnezha-1.0.2/DDnezha" --old-binary "$RUNNER_TEMP/ddnezha-1.0.1/DDnezha"
+      - name: Native Windows official coexistence lifecycle
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/test_native_coexistence.ps1 -Binary "$env:RUNNER_TEMP/ddnezha-1.0.2/DDnezha.exe" -OldBinary "$env:RUNNER_TEMP/ddnezha-1.0.1/DDnezha.exe"
       - name: Race tests and installer safety
         if: runner.os == 'Linux'
         shell: bash
@@ -65,9 +84,9 @@ jobs:
           go test -mod=readonly -race ./...
           # Installer fixtures exercise root-owned 0700 backups; run their harness
           # with the same identity so cleanup never depends on runner permissions.
-          sudo env PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v scripts.test_install_uninstall scripts.test_install_elevation scripts.test_install_output scripts.test_install_progress release.test_installers
+          sudo env PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v scripts.test_install_uninstall scripts.test_install_elevation scripts.test_install_output scripts.test_install_progress scripts.test_install_isolation release.test_installers
   build:
-    if: startsWith(github.ref, 'refs/tags/agent-v')
+    if: startsWith(github.ref, 'refs/tags/agent-v') || startsWith(github.ref, 'refs/heads/test/ddnezha-') || github.event_name == 'workflow_dispatch'
     needs: test
     strategy:
       fail-fast: false
@@ -145,14 +164,17 @@ jobs:
           AGENT_BUILD_TARGET: ${{ matrix.target }}
         run: |
           set -euo pipefail
-          VERSION="${RELEASE_TAG#agent-v}"
+          if [[ "$GITHUB_REF" == refs/tags/agent-v* ]]; then
+            VERSION="${RELEASE_TAG#agent-v}"
+          else
+            VERSION="$(sed 's/^v//' ../release/agent-version.txt)"
+          fi
           [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          [[ "$GITHUB_REF_NAME" == "agent-v$VERSION" ]]
           bash release/build.sh "$VERSION" "$PWD/dist"
           case "$AGENT_BUILD_TARGET" in
-            linux/amd64) actual="$(dist/linux_amd64/nezha-agent -v)"; [[ "$actual" == *" $VERSION" ]] ;;
-            darwin/arm64) actual="$(dist/darwin_arm64/nezha-agent -v)"; [[ "$actual" == *" $VERSION" ]] ;;
-            windows/amd64) actual="$(dist/windows_amd64/nezha-agent.exe -v)"; [[ "$actual" == *" $VERSION" ]] ;;
+            linux/amd64) actual="$(dist/linux_amd64/DDnezha -v)"; [[ "$actual" == *" $VERSION" ]] ;;
+            darwin/arm64) actual="$(dist/darwin_arm64/DDnezha -v)"; [[ "$actual" == *" $VERSION" ]] ;;
+            windows/amd64) actual="$(dist/windows_amd64/DDnezha.exe -v)"; [[ "$actual" == *" $VERSION" ]] ;;
           esac
       - uses: actions/upload-artifact@v7
         with:

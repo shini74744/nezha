@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $uuid = '__UUID__'
-$dir = 'C:\nezha'
-$binary = Join-Path $dir 'nezha-agent.exe'
+$dir = 'C:\DDnezha'
+$binary = Join-Path $dir 'DDnezha.exe'
 function Assert-PlainPath([string]$path) {
     $item = Get-Item -LiteralPath $path -Force
     if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Reparse paths are not supported.' }
@@ -24,8 +24,11 @@ try {
     if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Administrator required.' }
     Assert-PlainPath $dir
     Assert-PlainPath $binary
+    $marker = Join-Path $dir '.DDnezha-owned'
+    Assert-PlainPath $marker
+    if ((Get-Content -LiteralPath $marker -Raw).Trim() -cne 'DDnezha') { throw 'Wrong installation owner.' }
     $null = Find-Config
-    $job = 'Nezha-Uninstall-' + [guid]::NewGuid().ToString('N')
+    $job = 'DDnezha-Uninstall-' + [guid]::NewGuid().ToString('N')
     $work = Join-Path $dir $job
     $acl = New-Object Security.AccessControl.DirectorySecurity
     $acl.SetAccessRuleProtection($true, $false)
@@ -42,13 +45,16 @@ try {
     $worker = @'
 param([string]$uuid, [string]$work, [string]$job)
 $ErrorActionPreference = 'Stop'
-$dir = 'C:\nezha'
-$binary = Join-Path $dir 'nezha-agent.exe'
+$dir = 'C:\DDnezha'
+$binary = Join-Path $dir 'DDnezha.exe'
 try {
     [IO.File]::WriteAllText((Join-Path $work 'ready'), 'started')
     Start-Sleep -Seconds 3
     Assert-PlainPath $dir
     Assert-PlainPath $binary
+    $marker = Join-Path $dir '.DDnezha-owned'
+    Assert-PlainPath $marker
+    if ((Get-Content -LiteralPath $marker -Raw).Trim() -cne 'DDnezha') { throw 'Wrong installation owner.' }
     $config = Find-Config
     & $binary service -c $config stop
     if ($LASTEXITCODE -ne 0) { throw 'Agent stop failed; data retained.' }
@@ -60,7 +66,7 @@ try {
         $saved = Join-Path $backup.FullName 'config.yml'
         if ((Test-Path -LiteralPath $saved) -and (Read-AgentUUID $saved) -eq $uuid) {
             Remove-Item -LiteralPath $saved -Force
-            $savedBinary = Join-Path $backup.FullName 'nezha-agent.exe'
+            $savedBinary = Join-Path $backup.FullName 'DDnezha.exe'
             if (Test-Path -LiteralPath $savedBinary) {
                 Assert-PlainPath $savedBinary
                 Remove-Item -LiteralPath $savedBinary -Force
@@ -74,12 +80,13 @@ try {
             try { Remove-Item -LiteralPath $binary -Force; break }
             catch { if ($attempt -eq 29) { throw }; Start-Sleep -Seconds 1 }
         }
-        foreach ($name in @('agent.ps1', 'install.ps1')) {
+        Remove-Item -LiteralPath $marker -Force
+        foreach ($name in @('DDnezha.ps1', 'install.ps1')) {
             $installer = Join-Path $dir $name
             if (Test-Path -LiteralPath $installer) {
                 Assert-PlainPath $installer
                 $text = [IO.File]::ReadAllText($installer)
-                if ($text.Contains('NZ_CLIENT_SECRET') -and $text.Contains('nezha-agent')) { Remove-Item -LiteralPath $installer -Force }
+                if ($text.Contains('DDNZ_CLIENT_SECRET') -and $text.Contains('DDnezha')) { Remove-Item -LiteralPath $installer -Force }
             }
         }
     }

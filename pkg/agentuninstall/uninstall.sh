@@ -2,8 +2,12 @@
 set -eu
 umask 077
 uuid='__UUID__'
-dir=/opt/nezha/agent
-binary="$dir/nezha-agent"
+dir=/opt/DDnezha
+binary="$dir/DDnezha"
+marker="$dir/.DDnezha-owned"
+[ -f "$marker" ] && [ ! -L "$marker" ] || exit 1
+IFS= read -r owner < "$marker" || exit 1
+[ "$owner" = DDnezha ] || exit 1
 [ "$(id -u)" -eq 0 ] || { echo "NZ_UNINSTALL_ERROR: root required"; exit 1; }
 os=$(uname -s)
 case "$os" in Linux|Darwin|FreeBSD) ;; *) echo "NZ_UNINSTALL_ERROR: unsupported OS"; exit 1 ;; esac
@@ -32,8 +36,8 @@ case "$os" in
  Darwin) command -v launchctl >/dev/null; launcher=launchd ;;
  FreeBSD) command -v daemon >/dev/null; launcher=daemon ;;
 esac
-work=$(mktemp -d /tmp/nezha-uninstall.XXXXXXXX)
-job="nezha-uninstall-$(basename "$work" | tr '.' '-')"
+work=$(mktemp -d /tmp/DDnezha-uninstall.XXXXXXXX)
+job="DDnezha-uninstall-$(basename "$work" | tr '.' '-')"
 # The worker carries only a UUID, not panel credentials.
 cat > "$work/run.sh" <<'NZ_CLEANUP_WORKER'
 #!/bin/sh
@@ -43,8 +47,12 @@ uuid=$1
 work=$2
 job=$3
 launcher=$4
-dir=/opt/nezha/agent
-binary="$dir/nezha-agent"
+dir=/opt/DDnezha
+binary="$dir/DDnezha"
+marker="$dir/.DDnezha-owned"
+[ -f "$marker" ] && [ ! -L "$marker" ] || exit 1
+IFS= read -r owner < "$marker" || exit 1
+[ "$owner" = DDnezha ] || exit 1
 read_uuid() { awk '$1 == "uuid:" { gsub(/["\047\r]/, "", $2); print tolower($2); exit }' "$1"; }
 # Signal only launch acknowledgement, then allow RequestTask to send its reply.
 : > "$work/ready"
@@ -70,7 +78,7 @@ for backup in "$dir"/backup.*; do
  [ -f "$file" ] && [ ! -L "$file" ] || continue
  [ "$(read_uuid "$file")" = "$uuid" ] || continue
  rm -f -- "$file"
- if [ -f "$backup/nezha-agent" ] && [ ! -L "$backup/nezha-agent" ]; then rm -f -- "$backup/nezha-agent"; fi
+ if [ -f "$backup/DDnezha" ] && [ ! -L "$backup/DDnezha" ]; then rm -f -- "$backup/DDnezha"; fi
  rmdir -- "$backup" 2>/dev/null || true
 done
 shared=0
@@ -81,10 +89,11 @@ if [ "$shared" -eq 0 ]; then
  rm -f -- "$binary"
  # Only known installer files inside the install directory are considered.
  # Downloaded copies in arbitrary home/current directories are not guessed.
- for file in "$dir/agent.sh" "$dir/install.sh"; do
+ for file in "$dir/DDnezha.sh" "$dir/install.sh"; do
   [ -f "$file" ] && [ ! -L "$file" ] || continue
-  if grep -q 'NZ_CLIENT_SECRET' "$file" && grep -q 'nezha-agent' "$file"; then rm -f -- "$file"; fi
+  if grep -q 'DDNZ_CLIENT_SECRET' "$file" && grep -q 'DDnezha' "$file"; then rm -f -- "$file"; fi
  done
+ rm -f -- "$marker"
  rmdir -- "$dir" 2>/dev/null || true
 fi
 rm -f -- "$work/run.sh" "$work/ready" "$work/worker.log"

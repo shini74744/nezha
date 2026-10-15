@@ -21,13 +21,14 @@ class UninstallTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.installed = self.root / "Agent files"
         self.installed.mkdir()
+        (self.installed / ".DDnezha-owned").write_text("DDnezha\n")
         self.mockbin = self.root / "bin"
         self.mockbin.mkdir()
         self.log = self.root / "calls.jsonl"
-        self.script = self.root / "agent.sh"
+        self.script = self.root / "DDnezha.sh"
         source = SCRIPT.read_text()
-        self.assertEqual(source.count("dir=/opt/nezha/agent"), 1)
-        self.script.write_text(source.replace("dir=/opt/nezha/agent", "dir=" + shlex.quote(str(self.installed))))
+        self.assertEqual(source.count("dir=/opt/DDnezha"), 1)
+        self.script.write_text(source.replace("dir=/opt/DDnezha", "dir=" + shlex.quote(str(self.installed))))
         self.script.chmod(0o755)
         self.env = {
             "PATH": str(self.mockbin),
@@ -38,7 +39,7 @@ class UninstallTests(unittest.TestCase):
         self.tool("id", "#!/bin/sh\necho 0\n")
         # Only removal of temporary fixture files is available through PATH.
         (self.mockbin / "rm").symlink_to(shutil.which("rm"))
-        self.agent = self.installed / "nezha-agent"
+        self.agent = self.installed / "DDnezha"
         self.agent.write_text(
             "#!" + sys.executable + "\n"
             "import json, os, sys\n"
@@ -108,6 +109,7 @@ class UninstallTests(unittest.TestCase):
 
     def test_not_installed_is_noop(self):
         self.agent.unlink()
+        (self.installed / ".DDnezha-owned").unlink()
         self.installed.rmdir()
         result = self.run_script()
         self.assertEqual(result.returncode, 0, result.stderr)

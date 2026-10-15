@@ -45,7 +45,7 @@ bash /opt/nezha/nezha.sh update
 
 v0.0.3 起脚本读取本仓库 `release/dashboard-version.txt`，锁定该版本的面板资产；Agent 使用独立入口，不会因其版本数字更大而安装错包。仓库迁移及维护约定见 [统一仓库说明](docs/unified-repository.md)。
 
-**主控脚本没有 `uninstall` 子命令**；未知命令仅显示用法并失败退出，不删除程序或数据库。`./agent.sh uninstall` 是 Agent 脚本的功能，不能用于主面板。需要退役主面板时，应另行备份并明确确认数据删除范围。
+**主控脚本没有 `uninstall` 子命令**；未知命令仅显示用法并失败退出，不删除程序或数据库。`./DDnezha.sh uninstall` 是独立 Agent 脚本的功能，不能用于主面板。需要退役主面板时，应另行备份并明确确认数据删除范围。
 
 ## 停止与重启进度
 

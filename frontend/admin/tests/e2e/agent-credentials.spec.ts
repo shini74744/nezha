@@ -99,7 +99,7 @@ for (const width of [360, 1366])
                 await expect.poll(() => issued).toBe(1)
                 await expect
                     .poll(() => page.evaluate(() => (window as any).__copied))
-                    .toContain("NZ_UUID=")
+                    .toContain("DDNZ_UUID=")
                 await expect(top).toHaveAttribute("data-state", "closed")
                 const first = unused[0]
                 await expect

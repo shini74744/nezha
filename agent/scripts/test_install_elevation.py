@@ -11,18 +11,18 @@ class ElevationTests(unittest.TestCase):
    if sudo:
     (root/"sudo").write_text("#!/usr/bin/python3\nimport os,sys,json\nopen(os.environ['TEST_OUT'],'w').write(json.dumps(sys.argv[1:]))\n")
     (root/"sudo").chmod(0o755)
-   env={"PATH":td,"TEST_OUT":str(out),"NZ_SERVER":"panel.example:443","NZ_TLS":"true","NZ_CLIENT_SECRET":"test 'quote' $() space"}
-   if uuid is not None:env["NZ_UUID"]=uuid
+   env={"PATH":td,"TEST_OUT":str(out),"DDNZ_SERVER":"panel.example:443","DDNZ_TLS":"true","DDNZ_CLIENT_SECRET":"test 'quote' $() space"}
+   if uuid is not None:env["DDNZ_UUID"]=uuid
    result=subprocess.run(["/bin/sh",str(SCRIPT)]+([action] if action else []),env=env,capture_output=True,text=True)
    if not sudo:self.assertNotEqual(result.returncode,0);self.assertIn("sudo is required",result.stderr);return
    self.assertEqual(result.returncode,0,result.stderr)
    args=json.loads(out.read_text());self.assertEqual(args[0],"env")
-   self.assertIn("NZ_CLIENT_SECRET="+env["NZ_CLIENT_SECRET"],args)
-   self.assertIn("NZ_SERVER=panel.example:443",args);self.assertIn("NZ_TLS=true",args)
+   self.assertIn("DDNZ_CLIENT_SECRET="+env["DDNZ_CLIENT_SECRET"],args)
+   self.assertIn("DDNZ_SERVER=panel.example:443",args);self.assertIn("DDNZ_TLS=true",args)
    suffix=["sh",str(SCRIPT)]+([action] if action else [])
    self.assertEqual(args[-len(suffix):],suffix)
-   if uuid is None:self.assertFalse(any(a.startswith("NZ_UUID=") for a in args))
-   else:self.assertIn("NZ_UUID="+uuid,args)
+   if uuid is None:self.assertFalse(any(a.startswith("DDNZ_UUID=") for a in args))
+   else:self.assertIn("DDNZ_UUID="+uuid,args)
  def test_preserves_uuid(self):self.check("test-uuid")
  def test_leaves_uuid_unset(self):self.check()
  def test_missing_sudo(self):self.check(sudo=False)

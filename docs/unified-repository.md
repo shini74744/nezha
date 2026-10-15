@@ -8,13 +8,13 @@
 
 | 项目 | 主面板 | Agent |
 | --- | --- | --- |
-| 本次版本 | v0.0.3 | v1.0.1 |
+| 合仓首版 | v0.0.3 | v1.0.1 |
 | 后续例子 | v0.0.4、v0.0.5 | v1.0.2、v1.0.3 |
 | Git Release 标签 | `v0.0.3` | `agent-v1.0.1` |
 | 程序版本 | `v0.0.3` | `1.0.1` |
 | 最新版本入口 | `release/dashboard-version.txt` | `release/agent-version.txt` |
 | 源码 | 仓库根目录 Go module | `agent/` 独立 Go module |
-| 安装包名称 | `dashboard-系统-架构.zip` | `nezha-agent_系统_架构.zip` |
+| 合仓首版安装包名称 | `dashboard-系统-架构.zip` | `nezha-agent_系统_架构.zip` |
 
 `agent-` 只是区分 Git 标签，不加入程序版本号。两个版本入口都在同一仓库 main 分支；读取后锁定对应不可变标签和资产，不能混用全仓库 Latest 或把两组件版本放在一起比大小。
 
@@ -26,9 +26,11 @@ Agent 继续验证通道清单、来源提交、平台 ZIP 和 SHA-256，拒绝�
 
 Agent 安装命令由面板生成，同时带 UUID 和该机器独立密钥。脚本地址为本仓库 `agent/scripts/install.sh`（Linux/macOS/FreeBSD）或 `agent/scripts/install.ps1`（Windows）。未使用的认证在「生成认证历史」管理，可跨操作系统复用；不得把另一台机器的认证拿来安装。
 
-已运行 v1.0.1 及后续版本的 Agent，自动更新或面板触发升级都从统一仓库获取包，仍遵守原有自动更新／强制更新禁用开关。
+v1.0.1 已从统一仓库更新，但不能原地升级为独立目录：待发布 v1.0.2 改用 `DDnezha_系统_架构.zip`、`DDnezha-agent-v1` 通道和 `DDNZ_*` 变量，旧更新器会拒绝新通道。目录迁移需单独执行；迁移完成后的 DDnezha 才按新通道继续自动／强制更新，仍遵守相应禁用开关。详见 [DDnezha 生命周期隔离](ddnezha-isolation.md)。
 
-## 旧节点迁移不是普通更新按钮
+## 历史合仓迁移（v1.0.0 → v1.0.1）
+
+下列步骤说明此前的仓库合并，不适用于 v1.0.2 的目录／服务隔离。新隔离迁移须按 [独立目录迁移步骤](ddnezha-isolation.md#现有节点迁移) 执行，不能把 DDnezha 覆盖到旧 nezha-agent 路径。
 
 旧 Agent v1.0.0 的更新地址编译在程序里，保留旧仓库不会自动迁移它。需要一次受控程序替换：
 
@@ -42,9 +44,9 @@ Agent 安装命令由面板生成，同时带 UUID 和该机器独立密钥。�
 
 ## 卸载
 
-`./agent.sh uninstall` 属于新版 POSIX Agent 安装脚本，停止／卸载顶层配置对应服务，成功后才删除其配置；保留程序和备份，不清理面板记录或解除认证封禁。旧脚本可能忽略参数，须先替换，不能用卸载参数试探。
+`./DDnezha.sh uninstall` 属于独立 POSIX Agent 安装脚本，停止／卸载顶层配置对应服务，成功后才删除其配置；保留程序和备份，不清理面板记录或解除认证封禁。旧脚本可能忽略参数，须先替换，不能用卸载参数试探。
 
-主面板 `./nezha.sh` **没有卸载子命令**。Windows 安装脚本也不使用 POSIX 的卸载参数。详细行为见 [Agent 说明](../agent/README.md)。
+主面板 `./nezha.sh` **没有卸载子命令**。独立 Windows 脚本支持 `.\DDnezha.ps1 uninstall`；两种脚本都只操作有归属标记的独立目录，不接管官方服务。详细行为见 [Agent 说明](../agent/README.md)。
 
 ## 维护与发布顺序
 
