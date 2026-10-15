@@ -239,6 +239,18 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 		require.Equal(t, got.Results, saved.Results)
 	}
 	checkReturnFlow := func(token string) {
+		// This fixture exercises return-route and latency scheduling, not live
+		// BGP/provider lookups. Disable unrelated default jobs before the Agent
+		// connects: a wall-clock slot boundary must not enqueue external work
+		// ahead of the bounded latency persistence/restart assertions.
+		for _, kind := range []string{"bgp", "connectivity"} {
+			endpoint := "/api/v1/setting/" + kind + "/automation"
+			var automation map[string]any
+			request("GET", endpoint, token, nil, &automation)
+			automation["enabled"] = false
+			request("PUT", endpoint, token, automation, &automation)
+			require.Equal(t, false, automation["enabled"])
+		}
 		var priority struct {
 			Order    []string `json:"order"`
 			Revision string   `json:"revision"`
@@ -367,6 +379,10 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 			returnSnapshotCount++
 			checkReturnSaved(token)
 		}
+		// Return-route automation was verified above; do not allow a new clock
+		// slot to create an additional record while checking latency snapshots.
+		policy.Enabled = false
+		request("PUT", "/api/v1/setting/return-route", token, policy, &policy)
 		request("POST", "/api/v1/server/1/latency", token, nil, nil)
 		for samples := 0; samples < 3; {
 			task, e := tasks.Recv()
