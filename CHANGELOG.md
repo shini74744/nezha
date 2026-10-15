@@ -1,5 +1,14 @@
 # 更新记录
 
+## v0.0.4 / Agent v1.0.2
+
+- 自有 Agent 改为 `DDnezha`：独立程序、服务、`/opt/DDnezha/`（Windows `C:\DDnezha\`）、`DDNZ_*` 环境变量及 `DDnezha.sh`／`DDnezha.ps1` 安装卸载命令；不接管官方目录和服务。
+- 面板生成配套安装命令，仍同时携带该节点 UUID 与独立密钥；保留通信协议、一机一密、认证防火墙、双栈检测、历史快照和终端等既有功能。
+- 新安装包采用 `DDnezha_系统_架构.zip`、独立更新通道和归属标记，校验版本、摘要及文件名。旧 v1.0.1 拒绝新通道，避免把新程序覆盖进旧共享目录；须受控逐实例迁移。
+- 多配置机器只迁移与本面板身份匹配的实例，保留其他配置、服务和共享旧二进制；失败恢复目标旧服务，确认后保留禁用旧服务及备份。特殊系统单独核对。
+- 修复 macOS 安装时重复启动已加载服务的问题；增加 Linux／Windows／macOS 官方 Agent 共存安装、升级、卸载验收，以及单配置迁移成功／回滚检查。维护脚本和手机／电脑安装入口同步验证。
+- 主面板更新仍备份数据库与 `agent-credentials.key`、`terminal-commands.key`、`totp.key`；本版本不会自动迁移所有节点，不改其 UUID、密钥或封禁状态。详见 [DDnezha 隔离与迁移](docs/ddnezha-isolation.md)。
+
 ## v0.0.3 / Agent v1.0.1
 
 - 主面板和 Agent 统一维护在 `shini74744/nezha`，Agent 源码及完整历史导入 `agent/`；旧 Agent 仓库仅保留，不删除、不再发布。
