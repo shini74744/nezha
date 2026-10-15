@@ -84,7 +84,11 @@ for (const width of [1366, 390]) {
             expect(text).toContain("DDNZ_CLIENT_SECRET='fixture-secret'")
             expect(text).toContain("DDNZ_SERVER='panel.example:443'")
             expect(text).not.toContain("DDNZ_CLIENT_SECRET='" + uuid + "'")
-            if (os !== "Windows") expect(text).toContain("-o DDnezha.sh && chmod +x DDnezha.sh")
+            if (os !== "Windows") {
+                expect(text).toContain("ddnz_tmp=$(mktemp -d)")
+                expect(text).toContain('-o "$ddnz_tmp/agent.sh"')
+                expect(text).not.toContain("-o agent.sh")
+            }
             await expect(trigger).toHaveAttribute("data-state", "closed")
             await expect(menu).toHaveCount(0)
             await trigger.click()
