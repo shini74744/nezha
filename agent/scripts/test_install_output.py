@@ -11,7 +11,8 @@ class OutputTests(unittest.TestCase):
    for name in backups:
     (backup / name).write_text("fixture")
    binary = Path(td) / "fake-agent"
-   binary.write_text('#!/bin/sh\n[ "$2" != "$TEST_FAIL" ]\n')
+   # The real service install action includes Start; either failure is fatal.
+   binary.write_text('#!/bin/sh\n[ "$2" != "$TEST_FAIL" ] || exit 1\n[ "$2" != install ] || [ "$TEST_FAIL" != start ]\n')
    binary.chmod(0o755)
    source = SCRIPT.read_text()
    tail = source[source.rindex('if [ -f "$binary" ]; then'):]
