@@ -110,3 +110,7 @@ try {
   }
  }
 }
+
+# Only reached after all assertions succeed; best-effort cleanup of an already
+# unregistered upstream service must not leak a stale native failure exit code.
+$global:LASTEXITCODE = 0
