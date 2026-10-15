@@ -20,7 +20,7 @@ import (
 	"github.com/nezhahq/go-github-selfupdate/selfupdate"
 )
 
-const ownedReleaseChannel = "shini74744-agent-v1"
+const ownedReleaseChannel = "DDnezha-agent-v1"
 const ownedAgentVersionURL = "https://raw.githubusercontent.com/shini74744/nezha/main/release/agent-version.txt"
 const maxAgentArchiveBytes int64 = 64 << 20
 const maxAgentBinaryBytes uint64 = 128 << 20
@@ -117,7 +117,7 @@ func (u *ownedReleaseUpdater) UpdateSelf(current semver.Version, repo string) (*
 	if version.LTE(current) {
 		return &selfupdate.Release{Version: current}, nil
 	}
-	name := "nezha-agent_" + u.goos + "_" + u.goarch + ".zip"
+	name := "DDnezha_" + u.goos + "_" + u.goarch + ".zip"
 	archiveURL, err := release.assetURL(name)
 	if err != nil {
 		return nil, err
@@ -145,7 +145,10 @@ func (u *ownedReleaseUpdater) UpdateSelf(current semver.Version, repo string) (*
 	if err != nil {
 		return nil, err
 	}
-	path, err = filepath.EvalSymlinks(path)
+	if err = validateInstallationIdentity(path, "", u.goos); err != nil {
+		return nil, err
+	}
+	path, err = filepath.Abs(path)
 	if err != nil {
 		return nil, err
 	}

@@ -47,7 +47,7 @@ curl() {
         result = subprocess.run(["sh", "-c", "id() { echo 0; };\n" + source],
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, GREEN + "安装脚本 agent.sh 已就绪" + RESET + "\n")
+        self.assertEqual(result.stdout, GREEN + "安装脚本 DDnezha.sh 已就绪" + RESET + "\n")
 
     def test_success_messages_are_green_and_ordered(self):
         result = self.run_downloads()

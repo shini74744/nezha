@@ -300,11 +300,11 @@ export const generateCommand = (
 
     const scriptBase = "https://raw.githubusercontent.com/shini74744/nezha/main/agent/scripts"
     const values: Record<string, string> = {
-        NZ_SERVER: install_host,
-        NZ_TLS: String(tls || false),
-        NZ_CLIENT_SECRET: agent_secret,
+        DDNZ_SERVER: install_host,
+        DDNZ_TLS: String(tls || false),
+        DDNZ_CLIENT_SECRET: agent_secret,
     }
-    if (uuid) values.NZ_UUID = uuid
+    if (uuid) values.DDNZ_UUID = uuid
     const shellQuote = (value: string) => "'" + value.replace(/'/g, "'\\''") + "'"
     const psQuote = (value: string) => "'" + value.replace(/'/g, "''") + "'"
     const env = Object.entries(values)
@@ -317,9 +317,9 @@ export const generateCommand = (
     switch (type) {
         case OSTypes.Linux:
         case OSTypes.macOS:
-            return `curl --fail --location --retry 3 ${scriptBase}/install.sh -o agent.sh && chmod +x agent.sh && env ${env} ./agent.sh`
+            return `curl --fail --location --retry 3 ${scriptBase}/install.sh -o DDnezha.sh && chmod +x DDnezha.sh && env ${env} ./DDnezha.sh`
         case OSTypes.Windows:
-            return `${envWin}$ErrorActionPreference='Stop';[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;$nzInstaller=Join-Path $env:TEMP ('nezha-install-'+[guid]::NewGuid().ToString('N')+'.ps1');try {Invoke-WebRequest -UseBasicParsing ${scriptBase}/install.ps1 -OutFile $nzInstaller;powershell.exe -NoProfile -ExecutionPolicy Bypass -File $nzInstaller;if ($LASTEXITCODE -ne 0) {throw 'Agent installation failed'}} finally {if (Test-Path -LiteralPath $nzInstaller) {Remove-Item -LiteralPath $nzInstaller -Force}}`
+            return `${envWin}$ErrorActionPreference='Stop';[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;$ddnzInstaller=Join-Path $env:TEMP ('DDnezha-install-'+[guid]::NewGuid().ToString('N')+'.ps1');try {Invoke-WebRequest -UseBasicParsing ${scriptBase}/install.ps1 -OutFile $ddnzInstaller;powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ddnzInstaller;if ($LASTEXITCODE -ne 0) {throw 'Agent installation failed'}} finally {if (Test-Path -LiteralPath $ddnzInstaller) {Remove-Item -LiteralPath $ddnzInstaller -Force}}`
         default:
             throw new Error(`Unknown OS: ${type}`)
     }

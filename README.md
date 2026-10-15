@@ -12,6 +12,8 @@
 
 主面板与 Agent 统一在本仓库维护：主面板 **v0.0.3**，Agent **v1.0.1**，以后分别递增版本。Agent 源码在 [`agent/`](agent/)，两者安装包均在本仓库 Releases，更新使用独立版本入口，不能用全仓库 Latest 判断 Agent 版本。旧 `shini74744/agent` 仓库仅保留历史，不再用于新安装或后续更新。详见 [统一仓库、升级与发布](docs/unified-repository.md)。
 
+**待发布隔离改动**：下一版 Agent v1.0.2 使用独立 `DDnezha` 程序／服务、`/opt/DDnezha`（Windows 为 `C:\DDnezha`）和 `DDNZ_*` 变量。只隔离安装、升级和卸载，不改变通信协议；现有旧目录节点需要受控迁移。当前源码中的新脚本需等配套安装包发布后使用，详见 [DDnezha 隔离说明](docs/ddnezha-isolation.md)。
+
 Linux systemd 部署请使用[本仓库 Releases](https://github.com/shini74744/nezha/releases/latest) 和[面板管理说明](PANEL_MANAGEMENT.md)。`bash /opt/nezha/nezha.sh` 提供交互菜单，停止和重启显示实际停机阶段；更新只下载 `shini74744/nezha` 的校验安装包，不回退到官方版本。
 
 ## 二开新增功能

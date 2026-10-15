@@ -1,4 +1,5 @@
-﻿# shini74744/nezha only. Run in an elevated PowerShell window.
+param([ValidateSet('install','uninstall')][string]$Action = 'install')
+# shini74744/nezha only. Run in an elevated PowerShell window.
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -6,7 +7,7 @@ $principal = New-Object Security.Principal.WindowsPrincipal($identity)
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     throw 'Please run PowerShell as Administrator.'
 }
-Write-Host '安装脚本 install.ps1 已就绪' -ForegroundColor Green
+Write-Host 'DDnezha 管理脚本已就绪' -ForegroundColor Green
 $cpu = $env:PROCESSOR_ARCHITEW6432
 if (-not $cpu) { $cpu = $env:PROCESSOR_ARCHITECTURE }
 switch ($cpu.ToUpperInvariant()) {
@@ -15,15 +16,42 @@ switch ($cpu.ToUpperInvariant()) {
     'X86' { $arch = '386' }
     default { throw "Unsupported architecture: $cpu" }
 }
-$dir = 'C:\nezha'
-$binary = Join-Path $dir 'nezha-agent.exe'
+$dir = 'C:\DDnezha'
+$binary = Join-Path $dir 'DDnezha.exe'
 $config = Join-Path $dir 'config.yml'
-if (-not (Test-Path -LiteralPath $config)) {
-    if (-not $env:NZ_SERVER -or -not $env:NZ_CLIENT_SECRET) { throw 'NZ_SERVER and NZ_CLIENT_SECRET are required.' }
+$marker = Join-Path $dir '.DDnezha-owned'
+foreach ($candidate in @($dir, $binary, $config, $marker)) {
+    if ((Test-Path -LiteralPath $candidate) -and ((Get-Item -LiteralPath $candidate -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+        throw 'DDnezha refuses reparse-point installation paths.'
+    }
 }
-$tmp = Join-Path ([IO.Path]::GetTempPath()) ('nezha-install-' + [guid]::NewGuid().ToString('N'))
+$existing = (Test-Path -LiteralPath $binary) -or (Test-Path -LiteralPath $marker) -or
+    ((Test-Path -LiteralPath $dir) -and @(Get-ChildItem -LiteralPath $dir -Filter '*config*.yml' -File).Count -gt 0)
+if ($existing -and (-not (Test-Path -LiteralPath $marker) -or (Get-Content -LiteralPath $marker -Raw).Trim() -cne 'DDnezha')) {
+    throw 'DDnezha ownership cannot be verified. Migrate explicitly; existing services were not changed.'
+}
+if ($Action -eq 'uninstall') {
+    $failed = $false
+    $configs = if (Test-Path -LiteralPath $dir) { @(Get-ChildItem -LiteralPath $dir -Filter '*config*.yml' -File) } else { @() }
+    foreach ($item in $configs) {
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -or -not (Test-Path -LiteralPath $binary)) {
+            throw 'Unsafe DDnezha configuration or missing binary; files retained.'
+        }
+        & $binary service -c $item.FullName stop
+        & $binary service -c $item.FullName uninstall
+        if ($LASTEXITCODE -ne 0) { $failed = $true; continue }
+        Remove-Item -LiteralPath $item.FullName -Force
+    }
+    if ($failed) { throw 'Some DDnezha services could not be removed; their configurations were retained.' }
+    Write-Host 'DDnezha uninstall complete; executable and backups retained. Official Agent untouched.'
+    return
+}
+if (-not (Test-Path -LiteralPath $config)) {
+    if (-not $env:DDNZ_SERVER -or -not $env:DDNZ_CLIENT_SECRET) { throw 'DDNZ_SERVER and DDNZ_CLIENT_SECRET are required.' }
+}
+$tmp = Join-Path ([IO.Path]::GetTempPath()) ('DDnezha-install-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $tmp | Out-Null
-$asset = "nezha-agent_windows_$arch.zip"
+$asset = "DDnezha_windows_$arch.zip"
 $versionURL = 'https://raw.githubusercontent.com/shini74744/nezha/main/release/agent-version.txt'
 $archive = Join-Path $tmp $asset
 $checksum = Join-Path $tmp 'checksum'
@@ -44,10 +72,13 @@ try {
     }
     Write-Host 'Agent 文件 SHA-256 校验成功' -ForegroundColor Green
     Expand-Archive -LiteralPath $archive -DestinationPath $extracted
-    $newBinary = Join-Path $extracted 'nezha-agent.exe'
+    $newBinary = Join-Path $extracted 'DDnezha.exe'
     $actualVersion = & $newBinary -v
-    if ($LASTEXITCODE -ne 0 -or $actualVersion -cne "nezha-agent.exe version $($version.Substring(1))") { throw 'Downloaded agent cannot run.' }
+    if ($LASTEXITCODE -ne 0 -or $actualVersion -cne "DDnezha version $($version.Substring(1))") { throw 'Downloaded agent cannot run.' }
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    & icacls.exe $dir /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot secure DDnezha directory.' }
+    'DDnezha' | Set-Content -LiteralPath $marker -Encoding ascii
     $backup = Join-Path $dir ('backup-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $backup | Out-Null
     # Configuration contains credentials: limit backup access to SYSTEM/Administrators.
@@ -65,8 +96,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Service start failed.' }
     Write-Host "Installed from shini74744/nezha. Backup: $backup"
 } catch {
-    if ($changed -and $backup -and (Test-Path -LiteralPath (Join-Path $backup 'nezha-agent.exe'))) {
-        Copy-Item -LiteralPath (Join-Path $backup 'nezha-agent.exe') -Destination $binary -Force
+    if ($changed -and $backup -and (Test-Path -LiteralPath (Join-Path $backup 'DDnezha.exe'))) {
+        Copy-Item -LiteralPath (Join-Path $backup 'DDnezha.exe') -Destination $binary -Force
         if (Test-Path -LiteralPath (Join-Path $backup 'config.yml')) {
             Copy-Item -LiteralPath (Join-Path $backup 'config.yml') -Destination $config -Force
         }
@@ -79,7 +110,7 @@ try {
     $resolved = [IO.Path]::GetFullPath($tmp)
     $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\') + '\'
     if ($resolved.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase) -and
-        [IO.Path]::GetFileName($resolved) -match '^nezha-install-[a-f0-9]{32}$') {
+        [IO.Path]::GetFileName($resolved) -match '^DDnezha-install-[a-f0-9]{32}$') {
         Remove-Item -LiteralPath $resolved -Recurse -Force
     }
 }

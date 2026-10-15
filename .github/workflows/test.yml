@@ -6,6 +6,7 @@ on:
       - main
       - master
       - 'consolidate-*'
+      - 'test/ddnezha-*'
   pull_request:
     branches:
       - main

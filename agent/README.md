@@ -1,33 +1,37 @@
-# Shini Nezha Agent
+# DDnezha Agent
 
-此目录是基于 Nezha Agent 的自有发行版，当前 Agent **v1.0.1**，与主面板在 **shini74744/nezha** 同仓库维护但分别递增版本。安装、自动更新及面板触发升级只使用统一仓库的 Agent 通道，不回退旧仓库、官方 GitHub、Gitee 或 AtomGit。
+基于 Nezha Agent 的自有发行版，与主面板在 **shini74744/nezha** 同仓库维护、分别递增版本。已发布的 Agent v1.0.1 使用旧目录；本次 **待发布 v1.0.2** 改为 DDnezha 独立安装。当前源码不是已上线证明，须先完成配套发布和逐台迁移。
 
-- [下载最新发行版](https://github.com/shini74744/nezha/releases)
-- Linux/macOS 安装脚本：`scripts/install.sh`。面板命令下载为 `agent.sh`、自动赋予执行权限，运行后保留脚本；非 root 用户会通过 `sudo` 请求管理员权限（可能提示输入密码），root 用户直接执行。只向提权后的脚本传递 Agent 必需参数，不保留整个用户环境。
-- Windows 安装脚本：`scripts/install.ps1`
-- [安装、迁移与发布说明](OWNED-RELEASE.md)
+安装、自动更新及面板触发升级只使用自有仓库，不回退旧 Agent 仓库、官方 GitHub、Gitee 或 AtomGit。旧仓库保留历史、不再发布。
 
-**旧程序不会仅因仓库合并就改变更新地址**：旧仓库 v1.0.0 以及官方 Agent 必须完成一次明确迁移。迁移需保留每台机器自己的 UUID／密钥、配置路径和服务方式；多实例或特殊系统不能用默认安装器盲目覆盖。旧仓库保留历史、不再发布。详见 [统一仓库与迁移](../docs/unified-repository.md)。
+- 程序／服务：`DDnezha`；POSIX 目录 `/opt/DDnezha/`，Windows 目录 `C:\DDnezha\`。
+- 安装变量：`DDNZ_SERVER`、`DDNZ_CLIENT_SECRET`、`DDNZ_TLS`、`DDNZ_UUID`。不读取官方 `NZ_*` 环境变量。
+- Linux/macOS/FreeBSD 脚本：`scripts/install.sh`，面板下载为 `DDnezha.sh` 并赋予执行权限；非 root 通过 sudo 请求提权，仅传必需参数。
+- Windows 脚本：`scripts/install.ps1`，需要管理员 PowerShell；手动保存建议命名 `DDnezha.ps1`。
+- 安装包：`DDnezha_系统_架构.zip`；标签 `agent-v1.0.2`，程序版本 `1.0.2`。与主面板版本独立递增。
+- 归属检查：程序名、相邻 `.DDnezha-owned` 标记、独立配置目录；拒绝链接和未确认的既有安装。
 
-两组件安装包均在同一 Releases 列表；Agent 标签为 `agent-v1.0.1`，程序上报版本仍为 `1.0.1`。后续按 `1.0.2`、`1.0.3` 递增，与主面板版本无关。
+只隔离生命周期，不改变通信协议。原有 UUID／密钥配对、磁盘读写采集、终端、检测等功能保留。详见 [隔离与迁移说明](../docs/ddnezha-isolation.md)、[统一仓库](../docs/unified-repository.md)、[发布说明](OWNED-RELEASE.md)。旧节点不能通过普通更新按钮自动迁移目录；必须备份并只迁移确认属于本项目的实例，保留每台机器自己的认证和配置，不能接管官方实例。
 
-## 磁盘读写采集
+## 卸载独立 Agent
 
-v2.3.8 起上报整机磁盘读取/写入速率，配合自有面板的磁盘卡片点击切换显示。首轮采样和不支持设备保留未知状态；真实空闲为 0，Linux 排除分区和堆叠设备的重复计数。不会修改容量统计、UUID 或连接配置。详见 [版本说明](OWNED-RELEASE.md#v238-disk-readwrite-reporting)。
-
-## 卸载 Agent（Linux/macOS/FreeBSD）
-
-在新版 `agent.sh` 所在目录执行：
+POSIX 在已下载的新版脚本目录运行：
 
 ```sh
-./agent.sh uninstall
-# 未设置执行权限时，也可以使用：
-sh agent.sh uninstall
+./DDnezha.sh uninstall
+# 未设置执行权限时：
+sh DDnezha.sh uninstall
 ```
 
-非 root 用户会通过 `sudo` 提权。命令会停止并卸载 `/opt/nezha/agent` 目录顶层 `*config*.yml` 对应的 Agent 服务（包括多实例），仅在服务卸载成功后删除对应配置。**配置含 UUID 和连接参数，请按需提前备份。** 程序文件、历史备份及面板数据不会删除，不会解除面板中的 UUID／密钥封禁，也不会重新下载安装包。没有配置时会提示无需卸载；服务卸载或配置删除失败时返回非零状态，不会虚报成功。配置/程序/Agent 目录为符号链接时拒绝卸载，避免误操作其他位置。
+Windows 管理员 PowerShell：
 
-此参数需要新版脚本，已保存在服务器上的旧 `agent.sh` 不会自动更新，必须先替换为新版。**不要向旧脚本传入 `uninstall` 或 `--help` 试探版本：旧脚本忽略参数，仍会走安装流程。** 新版支持 `sh agent.sh --help` 查看用法；无参数或 `install` 仍为安装，未知参数会直接报错退出。配置已丢失的遗留服务需要单独排查，本命令不会猜测并删除其他服务。
+```powershell
+.\DDnezha.ps1 uninstall
+```
+
+仅卸载自有目录顶层 `*config*.yml` 对应服务，服务卸载成功后才删除对应配置。**配置含 UUID 和密钥，请按需先备份。** 保留程序、历史备份和面板数据；不联网、不解除封禁、不操作官方目录或服务。失败返回非零；配置缺失的遗留服务需单独排查。归属标记用于防止误接管，不是对抗管理员的安全边界。
+
+不要对旧 `agent.sh` 用 `uninstall` 或 `--help` 试探版本：部分旧脚本会忽略参数并安装。新 POSIX 脚本支持 `--help`，无参数或 `install` 为安装，未知参数直接报错。当前未发布阶段勿直接用新脚本连接旧安装包入口。
 
 Original project: Nezha Monitoring Agent (Apache-2.0). Upstream credits are retained below.
 

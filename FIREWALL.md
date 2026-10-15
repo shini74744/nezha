@@ -58,7 +58,7 @@
 ### 卸载安全边界
 
 - Linux 使用 systemd 独立任务或 setsid；macOS 使用 launchd；FreeBSD 使用 daemon；Windows 使用 SYSTEM 计划任务及隐藏 PowerShell。
-- 标准目录：POSIX `/opt/nezha/agent`；Windows `C:\\nezha`。
+- DDnezha 标准目录：POSIX `/opt/DDnezha`；Windows `C:\DDnezha`。要求目录内 `.DDnezha-owned` 归属标记；旧共享目录不会被此卸载脚本接管，未迁移节点需手动确认处理。
 - 要求 root / 管理员权限和匹配且唯一的 UUID 配置；拒绝符号链接、重解析点和歧义配置，不递归清空目录。
 - 同目录其他实例使用的二进制、未知业务文件、同机面板不删除。
 - F50、Android、OpenWrt 等特殊节点不自动卸载。Agent 禁止命令执行时不绕过限制。

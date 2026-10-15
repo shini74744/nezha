@@ -16,15 +16,15 @@ describe("owned Agent install commands", () => {
             "https://raw.githubusercontent.com/shini74744/nezha/main/agent/scripts/install.",
         )
         expect(command).not.toMatch(/nezhahq|naibahq|gitee|atomgit|jsdelivr/)
-        expect(command).toContain("NZ_UUID")
+        expect(command).toContain("DDNZ_UUID")
     })
     it("quotes PowerShell values and does not change persistent execution policy", () => {
         const command = generateCommand(3, settings, profile)
-        expect(command).toContain("$env:NZ_CLIENT_SECRET='secret with ''quotes'' $() ` text';")
+        expect(command).toContain("$env:DDNZ_CLIENT_SECRET='secret with ''quotes'' $() ` text';")
         expect(command).toContain("-ExecutionPolicy Bypass")
         expect(command).not.toContain("set-ExecutionPolicy")
         expect(command).not.toMatch(/Ssl3|Tls11|C:\\\\install/)
-        expect(command).not.toContain("NZ_UUID")
+        expect(command).not.toContain("DDNZ_UUID")
     })
     it.skipIf(process.platform === "win32").each([1, 2])(
         "round trips POSIX credentials without interpolation for OS %s",
@@ -38,7 +38,7 @@ describe("owned Agent install commands", () => {
                 )
                 writeFileSync(
                     join(dir, "fixture"),
-                    '#!/bin/sh\nprintf "%s\\n" "$NZ_SERVER" "$NZ_CLIENT_SECRET" "$NZ_TLS" "${NZ_UUID:-}"\n',
+                    '#!/bin/sh\nprintf "%s\\n" "$DDNZ_SERVER" "$DDNZ_CLIENT_SECRET" "$DDNZ_TLS" "${DDNZ_UUID:-}"\n',
                 )
                 const result = execFileSync(
                     "sh",
@@ -53,8 +53,8 @@ describe("owned Agent install commands", () => {
                         encoding: "utf8",
                     },
                 )
-                expect(statSync(join(dir,"agent.sh")).mode & 0o111).not.toBe(0);
-                expect(readFileSync(join(dir,"agent.sh"),"utf8")).toContain("#!/bin/sh");
+                expect(statSync(join(dir,"DDnezha.sh")).mode & 0o111).not.toBe(0);
+                expect(readFileSync(join(dir,"DDnezha.sh"),"utf8")).toContain("#!/bin/sh");
                 expect(result).toBe(
                     [settings.install_host, profile.agent_secret, "true", "uuid-test", ""].join(
                         "\n",
@@ -77,7 +77,7 @@ describe("generated installation command execution boundaries", () => {
         const dir = mkdtempSync(join(tmpdir(), "owned-install-fail-"))
         try {
             writeFileSync(join(dir, "curl"), "#!/bin/sh\nexit 22\n", {mode: 0o755})
-            writeFileSync(join(dir, "agent.sh"), "#!/bin/sh\ntouch ran-saved-installer\n", {mode: 0o755})
+            writeFileSync(join(dir, "DDnezha.sh"), "#!/bin/sh\ntouch ran-saved-installer\n", {mode: 0o755})
             expect(() => execFileSync("sh", ["-c", generateCommand(os, settings, profile, "uuid-test")], {
                 cwd: dir, env: {...process.env, PATH: dir + ":" + process.env.PATH}, stdio: "pipe",
             })).toThrow()
@@ -88,7 +88,7 @@ describe("generated installation command execution boundaries", () => {
         const dir = mkdtempSync(join(tmpdir(), "owned-install-win-"))
         try {
             const fixture = join(dir, "fixture.ps1")
-            writeFileSync(fixture, '[ordered]@{server=$env:NZ_SERVER;secret=$env:NZ_CLIENT_SECRET;uuid=$env:NZ_UUID;tls=$env:NZ_TLS} | ConvertTo-Json -Compress\n')
+            writeFileSync(fixture, '[ordered]@{server=$env:DDNZ_SERVER;secret=$env:DDNZ_CLIENT_SECRET;uuid=$env:DDNZ_UUID;tls=$env:DDNZ_TLS} | ConvertTo-Json -Compress\n')
             const stub = 'function Invoke-WebRequest {param([Parameter(Position=0)][string]$Uri,[switch]$UseBasicParsing,[string]$OutFile); if ($Uri -cne "https://raw.githubusercontent.com/shini74744/nezha/main/agent/scripts/install.ps1") {throw "unexpected installer URL"}; Copy-Item -LiteralPath $env:MOCK_INSTALL -Destination $OutFile}; '
             const result = execFileSync("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", stub + generateCommand(3, settings, profile, "uuid-test")], {
                 cwd: dir, env: {...process.env, MOCK_INSTALL: fixture}, encoding: "utf8",

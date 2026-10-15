@@ -32,7 +32,7 @@ class OutputTests(unittest.TestCase):
   self.assertNotIn("下载来源", result.stdout)
   self.assertNotIn("shini74744/agent", result.stdout)
  def test_existing_files_show_backup(self):
-  for backups in [("nezha-agent",), ("config.yml",), ("nezha-agent", "config.yml")]:
+  for backups in [("DDnezha",), ("config.yml",), ("DDnezha", "config.yml")]:
    with self.subTest(backups=backups):
     result = self.run_output(backups=backups)
     self.assertEqual(result.returncode, 0, result.stderr)

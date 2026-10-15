@@ -1,24 +1,25 @@
 # Offline native-Windows installer tests. All services, downloads and paths are fixtures.
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
-$workspace = Join-Path ([IO.Path]::GetTempPath()) ('nezha-installer-test-' + [guid]::NewGuid().ToString('N'))
+$workspace = Join-Path ([IO.Path]::GetTempPath()) ('DDnezha-installer-test-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $workspace | Out-Null
 function Assert($value, $message) { if (-not $value) { throw $message } }
 try {
     $fixtureGo = Join-Path $workspace 'fixture.go'
     @'
 package main
-import ("fmt"; "os"; "path/filepath"; "strings")
+import ("fmt"; "os"; "strings")
 var version string
 func main() {
- if len(os.Args)>1 && os.Args[1]=="-v" { fmt.Printf("%s version %s\n",filepath.Base(os.Args[0]),version); return }
+ if len(os.Args)>1 && os.Args[1]=="-v" { fmt.Printf("DDnezha version %s\n",version); return }
  f,e:=os.OpenFile(os.Getenv("INSTALLER_CALL_LOG"),os.O_CREATE|os.O_WRONLY|os.O_APPEND,0600)
  if e!=nil { panic(e) }; fmt.Fprintln(f,version+" "+strings.Join(os.Args[1:]," ")); f.Close()
  if version=="1.0.1" && os.Getenv("INSTALLER_FAIL_INSTALL")=="1" && len(os.Args)>2 && os.Args[2]=="install" { os.Exit(1) }
+ if os.Getenv("INSTALLER_FAIL_UNINSTALL")=="1" && os.Args[len(os.Args)-1]=="uninstall" { os.Exit(1) }
 }
 '@ | Set-Content -LiteralPath $fixtureGo -Encoding utf8
     $old = Join-Path $workspace 'old.exe'
-    $new = Join-Path $workspace 'nezha-agent.exe'
+    $new = Join-Path $workspace 'DDnezha.exe'
     & go build -ldflags '-X main.version=1.0.0' -o $old $fixtureGo
     Assert ($LASTEXITCODE -eq 0) 'Fixture build failed'
     & go build -ldflags '-X main.version=1.0.1' -o $new $fixtureGo
@@ -31,7 +32,7 @@ func main() {
     $newHash = (Get-FileHash -LiteralPath $new -Algorithm SHA256).Hash
     $source = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'install.ps1') -Raw
     $source = [regex]::Replace($source, '(?s)\$identity =.*?(?=Write-Host)', '')
-    $source = $source.Replace('$dir = ''C:\nezha''', '$dir = $env:INSTALLER_TEST_DIR')
+    $source = $source.Replace('$dir = ''C:\DDnezha''', '$dir = $env:INSTALLER_TEST_DIR')
     Assert ($source.Contains('$dir = $env:INSTALLER_TEST_DIR')) 'Fixture path replacement failed'
     $scriptUnderTest = Join-Path $workspace 'install.ps1'
     $source | Set-Content -LiteralPath $scriptUnderTest -Encoding utf8
@@ -40,7 +41,7 @@ func main() {
         if ($Uri -ceq 'https://raw.githubusercontent.com/shini74744/nezha/main/release/agent-version.txt') {
             return [pscustomobject]@{Content=$env:INSTALLER_POINTER}
         }
-        $expected = "https://github.com/shini74744/nezha/releases/download/agent-$env:INSTALLER_POINTER/nezha-agent_windows_amd64.zip"
+        $expected = "https://github.com/shini74744/nezha/releases/download/agent-$env:INSTALLER_POINTER/DDnezha_windows_amd64.zip"
         Assert ($Uri -ceq $expected -or $Uri -ceq "$expected.sha256") 'Installer requested a wrong repository/component'
         if ($env:INSTALLER_CASE -eq 'download') { throw 'fixture HTTP failure' }
         if ($Uri.EndsWith('.sha256')) { $env:INSTALLER_CHECKSUM | Set-Content -LiteralPath $OutFile -Encoding ascii }
@@ -55,14 +56,15 @@ func main() {
         $env:INSTALLER_FAIL_INSTALL = if ($env:INSTALLER_CASE -eq 'rollback') {'1'} else {'0'}
         $env:PROCESSOR_ARCHITECTURE = 'AMD64'
         $env:PROCESSOR_ARCHITEW6432 = 'AMD64'
-        $env:NZ_SERVER='fixture.invalid:443'; $env:NZ_CLIENT_SECRET='fixture-only-secret'
-        $env:NZ_UUID='11111111-1111-4111-8111-111111111111'
+        $env:DDNZ_SERVER='fixture.invalid:443'; $env:DDNZ_CLIENT_SECRET='fixture-only-secret'
+        $env:DDNZ_UUID='11111111-1111-4111-8111-111111111111'
         $env:INSTALLER_POINTER = if ($env:INSTALLER_CASE -eq 'version') {'v1.0.2'} else {'v1.0.1'}
         $env:INSTALLER_CHECKSUM = if ($env:INSTALLER_CASE -eq 'checksum') {'0'*64} else {$zipHash}
         $existing = $env:INSTALLER_CASE -ne 'new'
         $config = Join-Path $dir 'config.yml'
-        $target = Join-Path $dir 'nezha-agent.exe'
+        $target = Join-Path $dir 'DDnezha.exe'
         if ($existing) {
+            "DDnezha" | Set-Content -LiteralPath (Join-Path $dir ".DDnezha-owned") -Encoding ascii
             Copy-Item -LiteralPath $old -Destination $target
             "uuid: keep-own-uuid\nclient_secret: keep-own-key" | Set-Content -LiteralPath $config
             $configBefore = (Get-FileHash -LiteralPath $config -Algorithm SHA256).Hash
@@ -79,11 +81,43 @@ func main() {
         }
         Write-Host "PASS Windows installer $env:INSTALLER_CASE"
     }
+    $official = Join-Path $workspace 'official'
+    New-Item -ItemType Directory -Path $official | Out-Null
+    $officialConfig = Join-Path $official 'config.yml'
+    'official configuration unchanged' | Set-Content -LiteralPath $officialConfig
+    Copy-Item -LiteralPath $old -Destination (Join-Path $official 'nezha-agent.exe')
+    $officialHash = (Get-FileHash -LiteralPath $officialConfig).Hash
+    foreach ($case in @('uninstall','uninstall-failure','missing-marker')) {
+        $dir = Join-Path $workspace $case
+        New-Item -ItemType Directory -Path $dir | Out-Null
+        $env:INSTALLER_TEST_DIR = $dir
+        $env:INSTALLER_CALL_LOG = Join-Path $dir 'calls.log'
+        $env:INSTALLER_FAIL_INSTALL = '0'
+        $env:INSTALLER_FAIL_UNINSTALL = if ($case -eq 'uninstall-failure') {'1'} else {'0'}
+        $env:INSTALLER_CASE = 'download' # Any network access must fail.
+        $env:DDNZ_SERVER = ''; $env:DDNZ_CLIENT_SECRET = ''
+        $config = Join-Path $dir 'config.yml'
+        Copy-Item -LiteralPath $new -Destination (Join-Path $dir 'DDnezha.exe')
+        'uuid: fixture-preserve' | Set-Content -LiteralPath $config
+        if ($case -ne 'missing-marker') {
+            'DDnezha' | Set-Content -LiteralPath (Join-Path $dir '.DDnezha-owned') -Encoding ascii
+        }
+        $failed = $false
+        try { & $scriptUnderTest uninstall } catch { $failed = $true }
+        Assert ($failed -eq ($case -ne 'uninstall')) "Unexpected uninstall result: $case"
+        Assert ((Test-Path -LiteralPath $config) -eq ($case -ne 'uninstall')) "Incorrect configuration removal: $case"
+        Assert (Test-Path -LiteralPath (Join-Path $dir 'DDnezha.exe')) 'Uninstall removed binary'
+        Assert ((Get-FileHash -LiteralPath $officialConfig).Hash -eq $officialHash) 'Official configuration changed'
+        Assert ((Get-FileHash -LiteralPath (Join-Path $official 'nezha-agent.exe')).Hash -eq $oldHash) 'Official executable changed'
+        if ($case -eq 'missing-marker') { Assert (-not (Test-Path -LiteralPath $env:INSTALLER_CALL_LOG)) 'Unverified service was called' }
+        if ($case -eq 'uninstall') { & $scriptUnderTest uninstall }
+        Write-Host "PASS Windows isolation $case"
+    }
 } finally {
     $resolved = [IO.Path]::GetFullPath($workspace)
     $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\') + '\'
     if ($resolved.StartsWith($tempRoot,[StringComparison]::OrdinalIgnoreCase) -and
-        [IO.Path]::GetFileName($resolved) -match '^nezha-installer-test-[a-f0-9]{32}$') {
+        [IO.Path]::GetFileName($resolved) -match '^DDnezha-installer-test-[a-f0-9]{32}$') {
         Remove-Item -LiteralPath $resolved -Recurse -Force
     }
 }

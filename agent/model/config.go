@@ -76,8 +76,8 @@ func (c *AgentConfig) Read(path string) error {
 		defer saveOnce()
 	}
 
-	err := c.k.Load(env.Provider("NZ_", "", func(s string) string {
-		return strings.ToLower(strings.TrimPrefix(s, "NZ_"))
+	err := c.k.Load(env.Provider("DDNZ_", "", func(s string) string {
+		return strings.ToLower(strings.TrimPrefix(s, "DDNZ_"))
 	}), nil)
 	if err != nil {
 		return err

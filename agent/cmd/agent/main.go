@@ -89,7 +89,7 @@ const (
 	minUpdateInterval = 1440
 	maxUpdateInterval = 2880
 
-	binaryName = "nezha-agent"
+	binaryName = "DDnezha"
 )
 
 func setEnv() {
@@ -155,6 +155,9 @@ func preRun(configPath string) error {
 		}
 	}
 
+	if err := validateInstallationIdentity(executablePath, configPath, runtime.GOOS); err != nil {
+		return err
+	}
 	if err := agentConfig.Read(configPath); err != nil {
 		return fmt.Errorf("init config failed: %v", err)
 	}
@@ -165,7 +168,8 @@ func preRun(configPath string) error {
 
 func main() {
 	app := &cli.App{
-		Usage:   "哪吒监控 Agent",
+		Name:    binaryName,
+		Usage:   "DDnezha 独立监控 Agent",
 		Version: version,
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "config", Aliases: []string{"c"}, Usage: "配置文件路径"},
@@ -191,6 +195,13 @@ func main() {
 					&cli.StringFlag{Name: "config", Aliases: []string{"c"}, Usage: "配置文件路径"},
 				},
 				Action: func(c *cli.Context) error {
+					path := c.String("config")
+					if path == "" {
+						path = defaultConfigPath
+					}
+					if err := validateInstallationIdentity(executablePath, path, runtime.GOOS); err != nil {
+						return err
+					}
 					if path := c.String("config"); path != "" {
 						commands.EditAgentConfig(path, &agentConfig)
 					} else {
@@ -350,17 +361,16 @@ func runService(action string, path string) {
 	}
 
 	args := []string{"-c", path}
-	name := filepath.Base(executablePath)
-	if path != defaultConfigPath && path != "" {
-		hex := util.MD5Sum(path)[:7]
-		name = fmt.Sprintf("%s-%s", name, hex)
+	name := independentServiceName(path, defaultConfigPath)
+	if err := validateInstallationIdentity(executablePath, path, runtime.GOOS); err != nil {
+		log.Fatal(err)
 	}
 
 	svcConfig := &service.Config{
 		Name:             name,
-		DisplayName:      filepath.Base(executablePath),
+		DisplayName:      "DDnezha Agent",
 		Arguments:        args,
-		Description:      "哪吒监控 Agent",
+		Description:      "DDnezha 独立监控 Agent",
 		WorkingDirectory: filepath.Dir(executablePath),
 		Option:           winConfig,
 	}
