@@ -83,12 +83,12 @@ else: raise RuntimeError('Unexpected installer download: '+u)
   (work/"selected-version").write_text("1.0.1")
   run(["sh",ownscript]);wait_running(new)
   own_start=snap(own);own_pid=pid(new)
-  run(["sh",work/"official.sh"]);service(old);wait_running(old)
+  run(["sh",work/"official.sh"]);wait_running(old)
   unchanged(own,own_start,new,own_pid)
   # A second official configuration must also survive our lifecycle.
   second=official/"config-other.yml"
   second.write_text((official/"config.yml").read_text().replace("22222222-2222-4222-8222-222222222222","33333333-3333-4333-8333-333333333333"))
-  service(old,second,"install");service(old,second);wait_running(old,second)
+  service(old,second,"install");wait_running(old,second)
   before=snap(official);p=pid(old);p2=pid(old,second);identity=(own/"config.yml").read_bytes()
   (work/"selected-version").write_text("1.0.2")
   run(["sh",ownscript]);wait_running(new)
@@ -103,7 +103,7 @@ else: raise RuntimeError('Unexpected installer download: '+u)
   run(["sh",ownscript]);wait_running(new);before_own=snap(own);pown=pid(new)
   run(["sh",work/"official.sh","uninstall"])
   unchanged(own,before_own,new,pown);assert pid(old)==0 and pid(old,second)==0
-  run(["sh",work/"official.sh"]);service(old);wait_running(old)
+  run(["sh",work/"official.sh"]);wait_running(old)
   unchanged(own,before_own,new,pown)
   # Official binary replacement/restart remains inside its own installation.
   service(old,action="stop")

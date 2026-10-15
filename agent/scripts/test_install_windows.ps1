@@ -113,6 +113,9 @@ func main() {
         if ($case -eq 'uninstall') { & $scriptUnderTest uninstall }
         Write-Host "PASS Windows isolation $case"
     }
+    # Expected native failure fixtures leave LASTEXITCODE=1. All assertions passed;
+    # do not let the GitHub PowerShell wrapper treat that stale value as failure.
+    $global:LASTEXITCODE = 0
 } finally {
     $resolved = [IO.Path]::GetFullPath($workspace)
     $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\') + '\'

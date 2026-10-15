@@ -162,8 +162,8 @@ if [ -f "$binary" ]; then "$binary" service stop || true; fi
 install -m 755 "$tmp/DDnezha" "$binary" || rollback
 # Re-register the same service; do not delete config or change the UUID.
 "$binary" service uninstall >/dev/null 2>&1 || true
+# service install also starts the service; loading it twice fails on launchd.
 "$binary" service install || rollback
-"$binary" service start || rollback
 printf '\033[0;32m%s\033[0m\n' "DDnezha successfully installed and started（安装成功，服务已启动）"
 if [ -f "$backup/DDnezha" ] || [ -f "$backup/config.yml" ]; then
  printf '%s\n' "已有配置或旧程序备份：$backup"

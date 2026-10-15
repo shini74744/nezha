@@ -92,8 +92,7 @@ try {
     & $binary service uninstall
     & $binary service install
     if ($LASTEXITCODE -ne 0) { throw 'Service installation failed.' }
-    & $binary service start
-    if ($LASTEXITCODE -ne 0) { throw 'Service start failed.' }
+    # service install already starts the service (SCM/launchd/systemd).
     Write-Host "Installed from shini74744/nezha. Backup: $backup"
 } catch {
     if ($changed -and $backup -and (Test-Path -LiteralPath (Join-Path $backup 'DDnezha.exe'))) {
