@@ -51,7 +51,7 @@ class InstallerTest(unittest.TestCase):
                 self.assertIn("old service start", log.read_text())
             else:
                 self.assertIn("new service install", log.read_text())
-                self.assertIn("new service start", log.read_text())
+                self.assertNotIn("new service start", log.read_text())
             if existing:
                 self.assertEqual((installed/"config.yml").read_text(), "uuid: keep-this-uuid\nclient_secret: keep-secret\n")
     def test_invalid_pointer_never_runs_services(self):

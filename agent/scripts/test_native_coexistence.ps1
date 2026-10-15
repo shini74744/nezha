@@ -63,8 +63,6 @@ try {
  Wait-Running $new $cfgNew
  $ownBefore=Snapshot 'C:\DDnezha';$ownPid=Service-Pid $new $cfgNew
  & $officialScript
- & $old service start
- Assert ($LASTEXITCODE -eq 0) 'Official start failed'
  Wait-Running $old $cfgOld
  Unchanged 'C:\DDnezha' $ownBefore $new $cfgNew $ownPid
  $officialBefore=Snapshot 'C:\nezha';$officialPid=Service-Pid $old $cfgOld
@@ -84,8 +82,6 @@ try {
  $ownBefore=Snapshot 'C:\DDnezha';$ownPid=Service-Pid $new $cfgNew
  # The official reinstall script removes and recreates C:\nezha.
  & $officialScript
- & $old service start
- Assert ($LASTEXITCODE -eq 0) 'Official restart failed'
  Wait-Running $old $cfgOld
  Unchanged 'C:\DDnezha' $ownBefore $new $cfgNew $ownPid
  & $old service uninstall
