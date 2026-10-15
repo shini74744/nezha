@@ -112,7 +112,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Service installation failed.' }
     # Replace on the same volume without truncating the script being executed.
     if (Test-Path -LiteralPath $installer) {
-        [IO.File]::Replace($stagedInstaller, $installer, $null)
+        [IO.File]::Replace($stagedInstaller, $installer, (Join-Path $backup 'agent.ps1.replaced'))
     } else {
         [IO.File]::Move($stagedInstaller, $installer)
     }
