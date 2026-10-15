@@ -26,7 +26,7 @@ Agent 继续验证通道清单、来源提交、平台 ZIP 和 SHA-256，拒绝�
 
 Agent 安装命令由面板生成，同时带 UUID 和该机器独立密钥。脚本地址为本仓库 `agent/scripts/install.sh`（Linux/macOS/FreeBSD）或 `agent/scripts/install.ps1`（Windows）。未使用的认证在「生成认证历史」管理，可跨操作系统复用；不得把另一台机器的认证拿来安装。
 
-v1.0.1 已从统一仓库更新，但不能原地升级为独立目录：待发布 v1.0.2 改用 `DDnezha_系统_架构.zip`、`DDnezha-agent-v1` 通道和 `DDNZ_*` 变量，旧更新器会拒绝新通道。目录迁移需单独执行；迁移完成后的 DDnezha 才按新通道继续自动／强制更新，仍遵守相应禁用开关。详见 [DDnezha 生命周期隔离](ddnezha-isolation.md)。
+v1.0.1 已从统一仓库更新，但不能原地升级为独立目录：v1.0.2 配套主面板 v0.0.4，改用 `DDnezha_系统_架构.zip`、`DDnezha-agent-v1` 通道和 `DDNZ_*` 变量，旧更新器会拒绝新通道。目录迁移需单独执行；迁移完成后的 DDnezha 才按新通道继续自动／强制更新，仍遵守相应禁用开关。详见 [DDnezha 生命周期隔离](ddnezha-isolation.md)。
 
 ## 历史合仓迁移（v1.0.0 → v1.0.1）
 

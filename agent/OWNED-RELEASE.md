@@ -22,7 +22,7 @@ If GitHub is unavailable, the operation fails without an upstream fallback. A SH
 Publishing: run `go test -mod=readonly ./...`, then `bash release/build.sh VERSION /absolute/output/path`. This builds all 18 supported OS/architecture packages, checksum assets and `agent-release.json`. The root `.github/workflows/agent-release.yml` runs on `agent-vX.Y.Z` tags: Linux/Windows/macOS tests must pass before all 18 build jobs run. Native Linux amd64, Windows amd64 and macOS arm64 packages also execute `-v`. Download artifacts, verify ZIP contents/checksums/manifest commit, aggregate `checksums.txt`, upload to a draft, verify fresh downloads, then publish with `--latest=false`. Do not use the repository-wide Latest for Agent discovery. Publish and verify the immutable release before activating `release/agent-version.txt` on main. See [unified repository](../docs/unified-repository.md). No workflow publishes automatically.
 Internal Go module paths remain unchanged for source compatibility; they are not runtime download URLs.
 
-## Pending v1.0.2 DDnezha lifecycle isolation
+## v1.0.2 DDnezha lifecycle isolation (paired with Dashboard v0.0.4)
 
 The executable and service are `DDnezha` (`DDnezha.exe` on Windows); installers use `/opt/DDnezha` or `C:\DDnezha`. ZIP assets are `DDnezha_OS_ARCH.zip`, with channel `DDnezha-agent-v1`. Config YAML fields and the communication protocol are unchanged. Only `DDNZ_*` environment settings are accepted; upstream `NZ_*` settings are ignored.
 
