@@ -24,7 +24,7 @@ def main():
  (work/"official.zip").write_bytes(data)
  script=urllib.request.urlopen("https://raw.githubusercontent.com/nezhahq/scripts/"+PIN+"/agent/install.sh",timeout=60).read()
  (work/"official.sh").write_bytes(script)
- for version,binary in [("1.0.1",args.old_binary),("1.0.2",args.binary)]:
+ for version,binary in [("1.0.2",args.old_binary),("1.0.3",args.binary)]:
   with zipfile.ZipFile(work/(version+".zip"),"w",zipfile.ZIP_DEFLATED) as z: z.write(binary,"DDnezha")
   (work/(version+".sha256")).write_text(hashlib.sha256((work/(version+".zip")).read_bytes()).hexdigest()+"\n")
  mock=work/"bin"; mock.mkdir()
@@ -80,7 +80,7 @@ else: raise RuntimeError('Unexpected installer download: '+u)
   assert pid(binary,config)==process and process>0, "other service restarted/stopped"
  new=own/"DDnezha"; old=official/"nezha-agent"
  try:
-  (work/"selected-version").write_text("1.0.1")
+  (work/"selected-version").write_text("1.0.2")
   run(["sh",ownscript]);wait_running(new)
   own_start=snap(own);own_pid=pid(new)
   run(["sh",work/"official.sh"]);wait_running(old)
@@ -90,9 +90,9 @@ else: raise RuntimeError('Unexpected installer download: '+u)
   second.write_text((official/"config.yml").read_text().replace("22222222-2222-4222-8222-222222222222","33333333-3333-4333-8333-333333333333"))
   service(old,second,"install");wait_running(old,second)
   before=snap(official);p=pid(old);p2=pid(old,second);identity=(own/"config.yml").read_bytes()
-  (work/"selected-version").write_text("1.0.2")
+  (work/"selected-version").write_text("1.0.3")
   run(["sh",ownscript]);wait_running(new)
-  assert subprocess.check_output([str(new),"-v"],text=True).strip()=="DDnezha version 1.0.2"
+  assert subprocess.check_output([str(new),"-v"],text=True).strip()=="DDnezha version 1.0.3"
   assert (own/"config.yml").read_bytes()==identity
   unchanged(official,before,old,p);assert pid(old,second)==p2
   print("OWN_UPGRADE_PRESERVES_OFFICIAL_MULTI_INSTANCE_PASS",flush=True)
@@ -158,6 +158,20 @@ else: raise RuntimeError('Unexpected installer download: '+u)
     else:assert pid(old,legacy)==0
    print("SINGLE_CONFIG_MIGRATION_COMMIT_ROLLBACK_FOREIGN_UNCHANGED_PASS",flush=True)
    run(["sh",ownscript,"uninstall"])
+  # Exercise the documented direct binary uninstall and final folder cleanup.
+  # The fixed paths below exist only in this guarded disposable runner.
+  run(["sh",own/"agent.sh"]);wait_running(new)
+  before=snap(official);p=pid(old);identity=(own/"config.yml").read_bytes()
+  service(new,own/"config.yml","stop")
+  service(new,own/"config.yml","uninstall")
+  assert pid(new)==0 and (own/"config.yml").read_bytes()==identity
+  unchanged(official,before,old,p)
+  assert not own.is_symlink() and own.resolve()==Path("/opt/DDnezha")
+  assert (own/".DDnezha-owned").read_text().strip()=="DDnezha"
+  run(["rm","-rf","--",own])
+  assert not own.exists()
+  unchanged(official,before,old,p)
+  print("DIRECT_UNINSTALL_AND_DIRECTORY_CLEANUP_PRESERVE_OFFICIAL_PASS",flush=True)
   print("NATIVE_POSIX_COEXISTENCE_PASS "+target,flush=True)
  except BaseException:
   log.flush();print((work/"commands.log").read_text()[-20000:],flush=True);raise

@@ -21,13 +21,13 @@ Assert ($officialSource.Contains('C:\temp') -and $officialSource.Contains('C:\ne
 $officialSource = $officialSource.Replace('C:\temp',(Join-Path $work 'official-extract')).Replace('C:\nezha.zip',(Join-Path $work 'official-download.zip'))
 Assert (-not $officialSource.Contains('C:\temp') -and -not $officialSource.Contains('C:\nezha.zip')) 'Unsafe temporary path remains'
 $officialSource | Set-Content -LiteralPath $officialScript -Encoding utf8
-foreach ($item in @(@('1.0.1',$OldBinary),@('1.0.2',$Binary))) {
+foreach ($item in @(@('1.0.2',$OldBinary),@('1.0.3',$Binary))) {
  $stage = Join-Path $work $item[0]
  New-Item -ItemType Directory -Path $stage | Out-Null
  Copy-Item -LiteralPath $item[1] -Destination (Join-Path $stage 'DDnezha.exe')
  Compress-Archive -LiteralPath (Join-Path $stage 'DDnezha.exe') -DestinationPath (Join-Path $work ($item[0]+'.zip'))
 }
-$global:DDNZTestVersion = '1.0.1'
+$global:DDNZTestVersion = '1.0.2'
 function Invoke-WebRequest {
  param([Parameter(Position=0)][string]$Uri,[switch]$UseBasicParsing,[string]$OutFile,[int]$TimeoutSec)
  if ($Uri -eq 'https://api.github.com/repos/nezhahq/agent/releases') { return '[{"tag_name":"v2.3.5"}]' }
@@ -75,10 +75,10 @@ try {
  Unchanged 'C:\DDnezha' $ownBefore $new $cfgNew $ownPid
  $officialBefore=Snapshot 'C:\nezha';$officialPid=Service-Pid $old $cfgOld
  $identity=(Get-FileHash -LiteralPath $cfgNew).Hash
- $global:DDNZTestVersion='1.0.2'
+ $global:DDNZTestVersion='1.0.3'
  & $ownScript
  Wait-Running $new $cfgNew
- Assert ((& $new -v) -ceq 'DDnezha version 1.0.2') 'Upgrade version mismatch'
+ Assert ((& $new -v) -ceq 'DDnezha version 1.0.3') 'Upgrade version mismatch'
  Assert ((Get-FileHash -LiteralPath $cfgNew).Hash -eq $identity) 'Own identity changed'
  Unchanged 'C:\nezha' $officialBefore $old $cfgOld $officialPid
  & $ownScript uninstall

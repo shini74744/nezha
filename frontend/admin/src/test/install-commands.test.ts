@@ -2,7 +2,7 @@
 import { generateCommand } from "@/components/install-commands"
 import { ModelProfile, ModelSetting } from "@/types"
 import { execFileSync } from "node:child_process"
-import { mkdtempSync, rmSync, writeFileSync, statSync, readFileSync } from "node:fs"
+import { mkdtempSync, rmSync, writeFileSync, statSync, readFileSync, readdirSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
@@ -31,6 +31,8 @@ describe("owned Agent install commands", () => {
         (os) => {
             const dir = mkdtempSync(join(tmpdir(), "owned-install-test-"))
             try {
+                writeFileSync(join(dir, "agent.sh"), "official installer - must not change")
+                writeFileSync(join(dir, "DDnezha.sh"), "previous installer - must not change")
                 writeFileSync(
                     join(dir, "curl"),
                     '#!/bin/sh\nwhile [ "$#" -gt 0 ]; do if [ "$1" = "-o" ]; then cp "$MOCK_INSTALL" "$2"; exit; fi; shift; done\nexit 1\n',
@@ -49,12 +51,14 @@ describe("owned Agent install commands", () => {
                             ...process.env,
                             PATH: dir + ":" + process.env.PATH,
                             MOCK_INSTALL: join(dir, "fixture"),
+                            TMPDIR: dir,
                         },
                         encoding: "utf8",
                     },
                 )
-                expect(statSync(join(dir,"DDnezha.sh")).mode & 0o111).not.toBe(0);
-                expect(readFileSync(join(dir,"DDnezha.sh"),"utf8")).toContain("#!/bin/sh");
+                expect(readFileSync(join(dir, "agent.sh"), "utf8")).toBe("official installer - must not change")
+                expect(readFileSync(join(dir, "DDnezha.sh"), "utf8")).toBe("previous installer - must not change")
+                expect(readdirSync(dir).sort()).toEqual(["DDnezha.sh", "agent.sh", "curl", "fixture"])
                 expect(result).toBe(
                     [settings.install_host, profile.agent_secret, "true", "uuid-test", ""].join(
                         "\n",
@@ -77,11 +81,13 @@ describe("generated installation command execution boundaries", () => {
         const dir = mkdtempSync(join(tmpdir(), "owned-install-fail-"))
         try {
             writeFileSync(join(dir, "curl"), "#!/bin/sh\nexit 22\n", {mode: 0o755})
-            writeFileSync(join(dir, "DDnezha.sh"), "#!/bin/sh\ntouch ran-saved-installer\n", {mode: 0o755})
+            writeFileSync(join(dir, "agent.sh"), "#!/bin/sh\ntouch ran-saved-installer\n", {mode: 0o755})
             expect(() => execFileSync("sh", ["-c", generateCommand(os, settings, profile, "uuid-test")], {
-                cwd: dir, env: {...process.env, PATH: dir + ":" + process.env.PATH}, stdio: "pipe",
+                cwd: dir, env: {...process.env, PATH: dir + ":" + process.env.PATH, TMPDIR: dir}, stdio: "pipe",
             })).toThrow()
             expect(() => statSync(join(dir, "ran-saved-installer"))).toThrow()
+            expect(readFileSync(join(dir, "agent.sh"), "utf8")).toBe("#!/bin/sh\ntouch ran-saved-installer\n")
+            expect(readdirSync(dir).sort()).toEqual(["agent.sh", "curl"])
         } finally { rmSync(dir, {recursive: true, force: true}) }
     })
     it.skipIf(process.platform !== "win32")("executes generated Windows command with exact credentials and only the unified URL", () => {

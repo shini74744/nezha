@@ -1,4 +1,5 @@
 #!/bin/sh
+# DDnezha-owned-agent-installer-v1
 # shini74744/nezha Agent channel only. Elevate through sudo when needed; never falls back to upstream.
 set -eu
 umask 077
@@ -26,6 +27,8 @@ dir=/opt/DDnezha
 binary="$dir/DDnezha"
 config="$dir/config.yml"
 marker="$dir/.DDnezha-owned"
+installer="$dir/agent.sh"
+installer_marker="# DDnezha-owned-agent-installer-v1"
 owned_installation() {
  [ -f "$marker" ] && [ ! -L "$marker" ] || return 1
  IFS= read -r owner < "$marker" || return 1
@@ -89,7 +92,7 @@ if [ "$action" = uninstall ]; then
  exit 0
 fi
 
-printf '\033[0;32m%s\033[0m\n' "安装脚本 DDnezha.sh 已就绪"
+printf '\033[0;32m%s\033[0m\n' "安装脚本 agent.sh 已就绪"
 case "$(uname -s)" in
  Linux) os=linux ;;
  Darwin) os=darwin ;;
@@ -116,8 +119,11 @@ elif command -v sha256 >/dev/null; then hash_tool=sha256
 else echo "SHA256 utility required" >&2; exit 1; fi
 [ -n "${DDNZ_SERVER:-}" ] || [ -f "$config" ] || { echo "DDNZ_SERVER is required" >&2; exit 1; }
 [ -n "${DDNZ_CLIENT_SECRET:-}" ] || [ -f "$config" ] || { echo "DDNZ_CLIENT_SECRET is required" >&2; exit 1; }
+if [ -L "$installer" ] || { [ -e "$installer" ] && { [ ! -f "$installer" ] || ! grep -qxF "$installer_marker" "$installer"; }; }; then
+ echo "Refusing to replace an unknown or symlinked agent.sh; existing files and services unchanged." >&2; exit 1
+fi
 tmp=$(mktemp -d)
-trap 'rm -f "$tmp/agent.zip" "$tmp/checksum" "$tmp/version" "$tmp/DDnezha"; rmdir "$tmp" 2>/dev/null || true' EXIT
+trap 'rm -f "$tmp/agent.zip" "$tmp/checksum" "$tmp/version" "$tmp/DDnezha" "$tmp/agent.sh"; rmdir "$tmp" 2>/dev/null || true' EXIT
 asset="DDnezha_${os}_${arch}.zip"
 curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 --retry 3 --connect-timeout 20 --max-time 60 https://raw.githubusercontent.com/shini74744/nezha/main/release/agent-version.txt -o "$tmp/version"
 version=$(tr -d '\r\n' < "$tmp/version")
@@ -141,6 +147,12 @@ unzip -p "$tmp/agent.zip" DDnezha > "$tmp/DDnezha"
 chmod 755 "$tmp/DDnezha"
 actual_version=$("$tmp/DDnezha" -v)
 [ "$actual_version" = "DDnezha version ${version#v}" ] || { echo "Agent version mismatch; existing agent unchanged" >&2; exit 1; }
+# Save the exact installer that was executed, never a second unverified download.
+[ -f "$0" ] && [ ! -L "$0" ] && grep -qxF "$installer_marker" "$0" || {
+ echo "Run this installer from a regular file, not a pipe or symlink." >&2; exit 1;
+}
+cp "$0" "$tmp/agent.sh"
+chmod 755 "$tmp/agent.sh"
 mkdir -p "$dir"
 chmod 700 "$dir"
 printf '%s\n' DDnezha > "$marker"
@@ -148,6 +160,10 @@ chmod 600 "$marker"
 backup=$(mktemp -d "$dir/backup.XXXXXXXX")
 [ ! -f "$binary" ] || cp -p "$binary" "$backup/DDnezha"
 [ ! -f "$config" ] || cp -p "$config" "$backup/config.yml"
+[ ! -f "$installer" ] || cp -p "$installer" "$backup/agent.sh"
+# Stage on the destination filesystem for an atomic replacement after service setup.
+cp "$tmp/agent.sh" "$backup/agent.sh.new"
+chmod 755 "$backup/agent.sh.new"
 rollback() {
  echo "Installation failed. Backup: $backup" >&2
  if [ -f "$backup/DDnezha" ]; then
@@ -164,6 +180,8 @@ install -m 755 "$tmp/DDnezha" "$binary" || rollback
 "$binary" service uninstall >/dev/null 2>&1 || true
 # service install also starts the service; loading it twice fails on launchd.
 "$binary" service install || rollback
+mv -f "$backup/agent.sh.new" "$installer" || rollback
+printf '%s\n' "管理脚本：$installer；卸载：cd $dir && ./agent.sh uninstall"
 printf '\033[0;32m%s\033[0m\n' "DDnezha successfully installed and started（安装成功，服务已启动）"
 if [ -f "$backup/DDnezha" ] || [ -f "$backup/config.yml" ]; then
  printf '%s\n' "已有配置或旧程序备份：$backup"

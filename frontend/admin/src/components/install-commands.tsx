@@ -317,7 +317,7 @@ export const generateCommand = (
     switch (type) {
         case OSTypes.Linux:
         case OSTypes.macOS:
-            return `curl --fail --location --retry 3 ${scriptBase}/install.sh -o DDnezha.sh && chmod +x DDnezha.sh && env ${env} ./DDnezha.sh`
+            return `(umask 077; ddnz_tmp=$(mktemp -d) || exit 1; trap 'rm -f "$ddnz_tmp/agent.sh"; rmdir "$ddnz_tmp" 2>/dev/null || true' EXIT; curl --fail --location --proto '=https' --tlsv1.2 --retry 3 ${scriptBase}/install.sh -o "$ddnz_tmp/agent.sh" && chmod +x "$ddnz_tmp/agent.sh" && env ${env} "$ddnz_tmp/agent.sh")`
         case OSTypes.Windows:
             return `${envWin}$ErrorActionPreference='Stop';[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;$ddnzInstaller=Join-Path $env:TEMP ('DDnezha-install-'+[guid]::NewGuid().ToString('N')+'.ps1');try {Invoke-WebRequest -UseBasicParsing ${scriptBase}/install.ps1 -OutFile $ddnzInstaller;powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ddnzInstaller;if ($LASTEXITCODE -ne 0) {throw 'Agent installation failed'}} finally {if (Test-Path -LiteralPath $ddnzInstaller) {Remove-Item -LiteralPath $ddnzInstaller -Force}}`
         default:

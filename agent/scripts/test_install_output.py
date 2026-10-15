@@ -8,6 +8,7 @@ class OutputTests(unittest.TestCase):
   with tempfile.TemporaryDirectory(prefix="agent-output-test-") as td:
    backup = Path(td) / "backup"
    backup.mkdir()
+   (backup / "agent.sh.new").write_text("#!/bin/sh\n# fixture")
    for name in backups:
     (backup / name).write_text("fixture")
    binary = Path(td) / "fake-agent"
@@ -16,7 +17,7 @@ class OutputTests(unittest.TestCase):
    binary.chmod(0o755)
    source = SCRIPT.read_text()
    tail = source[source.rindex('if [ -f "$binary" ]; then'):]
-   prefix = 'set -e\nbinary="$TEST_BINARY"\nbackup="$TEST_BACKUP"\ntmp=/test/tmp\ninstall() { :; }\nrollback() { echo "Installation failed" >&2; exit 1; }\n'
+   prefix = 'set -e\nbinary="$TEST_BINARY"\nbackup="$TEST_BACKUP"\ntmp=/test/tmp\ndir="${TEST_BINARY%/*}"\ninstaller="$dir/agent.sh"\ninstall() { :; }\nrollback() { echo "Installation failed" >&2; exit 1; }\n'
    return subprocess.run(["sh", "-c", prefix + tail], capture_output=True, text=True,
     env={**os.environ, "TEST_BINARY": str(binary), "TEST_BACKUP": str(backup), "TEST_FAIL": fail})
  def test_green_success(self):

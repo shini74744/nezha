@@ -12,7 +12,9 @@ Agent v1.0.2 与配套主面板 v0.0.4 引入独立生命周期。版本以正�
 | 多配置服务 | `DDnezha-配置路径哈希前七位` |
 | 安装参数 | `DDNZ_SERVER`、`DDNZ_CLIENT_SECRET`、`DDNZ_TLS`、`DDNZ_UUID` |
 | 下载资产 | `DDnezha_系统_架构.zip`，只从 `shini74744/nezha` |
-| POSIX 安装脚本下载名 | `DDnezha.sh` |
+| POSIX Agent 管理脚本 | `/opt/DDnezha/agent.sh`（`./agent.sh uninstall`） |
+| Windows Agent 管理脚本 | `C:\DDnezha\agent.ps1` |
+| 主面板管理脚本 | `/opt/nezha/nezha.sh`（`./nezha.sh` 菜单） |
 | 归属标记 | 程序旁 `.DDnezha-owned`，内容为 `DDnezha` |
 
 不读官方的 `NZ_*` 环境变量，不自动接管 `/opt/nezha/agent`、`C:\nezha`、官方服务或其他程序。YAML 配置字段不改名，避免丢失原有配置。安装器检查已有归属；程序、配置、目录不能通过链接指向其他安装。归属标记用于防止误操作，不是对抗 root／管理员的安全边界。
@@ -21,18 +23,20 @@ Agent v1.0.2 与配套主面板 v0.0.4 引入独立生命周期。版本以正�
 
 面板安装命令同时携带当前机器 UUID 和独立密钥。安装器在新目录独立安装，不复制官方配置，不停止官方服务。新系列后续更新验证独立通道 `DDnezha-agent-v1`、版本、平台、SHA-256 及 ZIP 内文件名，再替换自身程序。
 
-在已下载的新版脚本目录执行：
+从 v1.0.3 起，安装器将管理脚本保存到自有目录；主面板仍使用 `nezha.sh`，无需拆仓库。执行：
 
 ```sh
-./DDnezha.sh uninstall
+cd /opt/DDnezha
+./agent.sh uninstall
 # 未设置执行权限时：
-sh DDnezha.sh uninstall
+sh agent.sh uninstall
 ```
 
 Windows 在管理员 PowerShell 中运行独立脚本：
 
 ```powershell
-.\DDnezha.ps1 uninstall
+cd C:\DDnezha
+.\agent.ps1 uninstall
 ```
 
 脚本只卸载自有目录顶层配置对应的 DDnezha 服务，成功后才删除对应配置；保留程序、历史备份和面板数据。不需要联网、不解除 UUID／密钥封禁。配置含认证信息，请按需预先备份。不要向旧 `agent.sh` 传卸载参数试探：某些旧脚本会忽略参数并重新安装。

@@ -62,7 +62,7 @@ jobs:
           set -euo pipefail
           ext=""; [[ "$RUNNER_OS" != Windows ]] || ext=".exe"
           arch="$(go env GOARCH)"
-          for version in 1.0.1 1.0.2; do
+          for version in 1.0.2 1.0.3; do
             mkdir -p "$RUNNER_TEMP/ddnezha-$version"
             go build -mod=readonly -trimpath -ldflags "-X github.com/nezhahq/agent/pkg/monitor.Version=$version -X main.arch=$arch" -o "$RUNNER_TEMP/ddnezha-$version/DDnezha$ext" ./cmd/agent
           done
@@ -70,17 +70,18 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          sudo env GITHUB_ACTIONS="$GITHUB_ACTIONS" RUNNER_ENVIRONMENT="$RUNNER_ENVIRONMENT" PATH="$PATH" "$(command -v python3)" scripts/test_native_coexistence.py --binary "$RUNNER_TEMP/ddnezha-1.0.2/DDnezha" --old-binary "$RUNNER_TEMP/ddnezha-1.0.1/DDnezha"
+          sudo env GITHUB_ACTIONS="$GITHUB_ACTIONS" RUNNER_ENVIRONMENT="$RUNNER_ENVIRONMENT" PATH="$PATH" "$(command -v python3)" scripts/test_native_coexistence.py --binary "$RUNNER_TEMP/ddnezha-1.0.3/DDnezha" --old-binary "$RUNNER_TEMP/ddnezha-1.0.2/DDnezha"
       - name: Native Windows official coexistence lifecycle
         if: runner.os == 'Windows'
         shell: pwsh
-        run: ./scripts/test_native_coexistence.ps1 -Binary "$env:RUNNER_TEMP/ddnezha-1.0.2/DDnezha.exe" -OldBinary "$env:RUNNER_TEMP/ddnezha-1.0.1/DDnezha.exe"
+        run: ./scripts/test_native_coexistence.ps1 -Binary "$env:RUNNER_TEMP/ddnezha-1.0.3/DDnezha.exe" -OldBinary "$env:RUNNER_TEMP/ddnezha-1.0.2/DDnezha.exe"
       - name: Race tests and installer safety
         if: runner.os == 'Linux'
         shell: bash
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y busybox
+          sudo python3 scripts/test_procd_lifecycle.py "$RUNNER_TEMP/ddnezha-1.0.3/DDnezha"
           go test -mod=readonly -race ./...
           # Installer fixtures exercise root-owned 0700 backups; run their harness
           # with the same identity so cleanup never depends on runner permissions.

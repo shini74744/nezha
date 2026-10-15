@@ -54,7 +54,7 @@ if url.endswith('agent-version.txt'):Path(out).write_text('v1.0.2\\n')
 else:shutil.copyfile(Path(os.environ['FIXTURE'])/('checksum' if url.endswith('.sha256') else 'package.zip'),out)
 """)
         curl.chmod(0o755)
-        self.script=self.root/"DDnezha.sh"
+        self.script=self.root/"agent.sh"
         self.script.write_text(SOURCE.replace("dir=/opt/DDnezha","dir="+shlex.quote(str(self.owned))))
         self.env={**os.environ,"PATH":str(self.mock)+":"+os.environ["PATH"],"FIXTURE":str(self.root),"CALL_LOG":str(self.log),
                   "DDNZ_SERVER":"own.invalid:443","DDNZ_CLIENT_SECRET":"own-test-key","DDNZ_UUID":"11111111-1111-4111-8111-111111111111",
@@ -97,6 +97,41 @@ else:shutil.copyfile(Path(os.environ['FIXTURE'])/('checksum' if url.endswith('.s
         self.run_script("install",False)
         self.run_script("uninstall",False)
         self.assertEqual(self.snapshot(self.official),self.original)
+        self.assertFalse(self.log.exists())
+    def test_saved_installer_is_executable_repeatable_and_preserves_legacy_file(self):
+        self.owned.mkdir(parents=True)
+        legacy=self.owned/"DDnezha.sh"
+        legacy.write_text("previous own script retained")
+        self.run_script("install")
+        saved=self.owned/"agent.sh"
+        self.assertEqual(saved.read_bytes(),self.script.read_bytes())
+        self.assertTrue(saved.stat().st_mode & 0o111)
+        self.script=saved
+        self.run_script("install")
+        self.run_script("uninstall")
+        self.assertEqual(legacy.read_text(),"previous own script retained")
+        self.assertTrue(saved.exists())
+        self.assertEqual(self.snapshot(self.official),self.original)
+    def test_unknown_saved_installer_refused_before_service_changes(self):
+        self.run_script("install")
+        saved=self.owned/"agent.sh"
+        saved.write_text("foreign installer")
+        before=self.snapshot(self.owned)
+        calls=self.log.read_bytes()
+        self.run_script("install",False)
+        self.assertEqual(self.snapshot(self.owned),before)
+        self.assertEqual(self.log.read_bytes(),calls)
+    def test_saved_installer_link_to_official_is_refused(self):
+        self.owned.mkdir(parents=True)
+        (self.owned/"agent.sh").symlink_to(self.official/"agent.sh")
+        self.run_script("install",False)
+        self.assertEqual(self.snapshot(self.official),self.original)
+        self.assertFalse(self.log.exists())
+    def test_saved_installer_dangling_link_is_refused(self):
+        self.owned.mkdir(parents=True)
+        (self.owned/"agent.sh").symlink_to(self.official/"missing.sh")
+        self.run_script("install",False)
+        self.assertFalse((self.official/"missing.sh").exists())
         self.assertFalse(self.log.exists())
     def test_missing_marker_never_calls_service(self):
         self.run_script("install")

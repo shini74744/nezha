@@ -386,6 +386,9 @@ func runService(action string, path string) {
 		return
 	}
 	prg.Service = s
+	if s.Platform() == "linux-procd" {
+		svcConfig.Option["SysvScript"] = ownedProcdScript
+	}
 
 	serviceLogger, err := logger.NewNezhaServiceLogger(s, nil)
 	if err != nil {
@@ -409,6 +412,9 @@ func runService(action string, path string) {
 
 	if len(action) != 0 {
 		err := service.Control(s, action)
+		if err == nil && action == "uninstall" && s.Platform() == "linux-procd" {
+			err = cleanupOwnedProcdLinks("/etc/rc.d", "/etc/init.d", name)
+		}
 		if err != nil {
 			log.Fatal(err)
 		}

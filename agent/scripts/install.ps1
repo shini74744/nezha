@@ -1,4 +1,5 @@
 param([ValidateSet('install','uninstall')][string]$Action = 'install')
+# DDnezha-owned-agent-installer-v1
 # shini74744/nezha only. Run in an elevated PowerShell window.
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -20,6 +21,8 @@ $dir = 'C:\DDnezha'
 $binary = Join-Path $dir 'DDnezha.exe'
 $config = Join-Path $dir 'config.yml'
 $marker = Join-Path $dir '.DDnezha-owned'
+$installer = Join-Path $dir 'agent.ps1'
+$installerMarker = '# DDnezha-owned-agent-installer-v1'
 foreach ($candidate in @($dir, $binary, $config, $marker)) {
     if ((Test-Path -LiteralPath $candidate) -and ((Get-Item -LiteralPath $candidate -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
         throw 'DDnezha refuses reparse-point installation paths.'
@@ -48,6 +51,18 @@ if ($Action -eq 'uninstall') {
 }
 if (-not (Test-Path -LiteralPath $config)) {
     if (-not $env:DDNZ_SERVER -or -not $env:DDNZ_CLIENT_SECRET) { throw 'DDNZ_SERVER and DDNZ_CLIENT_SECRET are required.' }
+}
+if (Test-Path -LiteralPath $installer) {
+    $item = Get-Item -LiteralPath $installer -Force
+    if ($item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -or
+        -not ((Get-Content -LiteralPath $installer) -ccontains $installerMarker)) {
+        throw 'Refusing to replace an unknown or linked agent.ps1; existing services unchanged.'
+    }
+}
+if (-not $PSCommandPath -or -not (Test-Path -LiteralPath $PSCommandPath -PathType Leaf) -or
+    ((Get-Item -LiteralPath $PSCommandPath -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) -or
+    -not ((Get-Content -LiteralPath $PSCommandPath) -ccontains $installerMarker)) {
+    throw 'Run this installer from a regular file, not an expression or link.'
 }
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ('DDnezha-install-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $tmp | Out-Null
@@ -86,12 +101,22 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Cannot secure backup directory.' }
     if (Test-Path -LiteralPath $binary) { Copy-Item -LiteralPath $binary -Destination $backup }
     if (Test-Path -LiteralPath $config) { Copy-Item -LiteralPath $config -Destination $backup }
+    if (Test-Path -LiteralPath $installer) { Copy-Item -LiteralPath $installer -Destination $backup }
+    $stagedInstaller = Join-Path $backup 'agent.ps1.new'
+    Copy-Item -LiteralPath $PSCommandPath -Destination $stagedInstaller
     if (Test-Path -LiteralPath $binary) { & $binary service stop }
     $changed = $true
     Copy-Item -LiteralPath $newBinary -Destination $binary -Force
     & $binary service uninstall
     & $binary service install
     if ($LASTEXITCODE -ne 0) { throw 'Service installation failed.' }
+    # Replace on the same volume without truncating the script being executed.
+    if (Test-Path -LiteralPath $installer) {
+        [IO.File]::Replace($stagedInstaller, $installer, $null)
+    } else {
+        [IO.File]::Move($stagedInstaller, $installer)
+    }
+    Write-Host "管理脚本：$installer；卸载：在 C:\DDnezha 中运行 .\agent.ps1 uninstall"
     # service install already starts the service (SCM/launchd/systemd).
     Write-Host "Installed from shini74744/nezha. Backup: $backup"
 } catch {
