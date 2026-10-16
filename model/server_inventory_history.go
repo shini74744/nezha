@@ -67,6 +67,7 @@ func RecordServerInventory(tx *gorm.DB, server *Server, values map[string]string
 	if baseline.Values == nil {
 		baseline.Values = map[string]string{}
 	}
+	ipSnapshot := inventoryIPSnapshot(baseline.Values, values)
 	keys := make([]string, 0, len(values))
 	for key := range values {
 		keys = append(keys, key)
@@ -93,7 +94,14 @@ func RecordServerInventory(tx *gorm.DB, server *Server, values map[string]string
 	if missing {
 		action = "inventory_baseline"
 	}
-	if err := RecordServerOperationChanges(tx, ServerOperationActor{Name: "Agent", Source: "agent"}, action, server, server.ID, changes); err != nil {
+	var details *ServerOperationDetails
+	for _, change := range changes {
+		if change.Field == "ipv4" || change.Field == "ipv6" {
+			details = &ServerOperationDetails{IPSnapshot: ipSnapshot}
+			break
+		}
+	}
+	if err := RecordServerOperationChanges(tx, ServerOperationActor{Name: "Agent", Source: "agent"}, action, server, server.ID, changes, details); err != nil {
 		return err
 	}
 	return tx.Save(&baseline).Error

@@ -1,4 +1,5 @@
 import { FetcherMethod, fetcher, swrFetcher } from "@/api/api"
+import { ServerOperationContent } from "@/components/server-operation-content"
 import {
     AlertDialog,
     AlertDialogCancel,
@@ -18,6 +19,11 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import {
+    type OperationChange,
+    type OperationDetails,
+    operationDisplayChanges,
+} from "@/lib/server-operation-details"
 import { ArrowLeft, ChevronRight, History, RefreshCw, Search, Trash2 } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -43,7 +49,8 @@ interface Operation extends ServerIdentity {
     actor_name: string
     source: string
     action: string
-    changes: { field: string; before: string; after: string }[]
+    changes: OperationChange[]
+    details?: OperationDetails | null
 }
 interface Page<T> {
     value: T[]
@@ -121,7 +128,19 @@ const sources: Record<string, string> = {
     transfer: "转移流程",
 }
 function displayValue(field: string, text: string) {
-    if (field === "network_default_view" || field === "network_display_mode") return ({connectivity:"连通性",latency:"延迟",both:"连通性＋延迟",hidden:"隐藏"} as Record<string,string>)[text] || text || "默认";
+    if (field === "network_default_view" || field === "network_display_mode")
+        return (
+            (
+                {
+                    connectivity: "连通性",
+                    latency: "延迟",
+                    both: "连通性＋延迟",
+                    hidden: "隐藏",
+                } as Record<string, string>
+            )[text] ||
+            text ||
+            "默认"
+        )
     if (["memory_total", "disk_total", "swap_total"].includes(field) && /^\d+$/.test(text)) {
         const bytes = Number(text)
         return bytes === 0 ? "0 B" : (bytes / 1024 ** 3).toFixed(2) + " GiB（" + text + " B）"
@@ -444,10 +463,18 @@ export function ServerOperationHistory({ server }: { server?: ServerIdentity }) 
                                         </p>
                                     </summary>
                                     <div className="mt-3 space-y-2 border-t pt-3">
-                                        {(row.changes ?? []).map((change, index) => (
+                                        {operationDisplayChanges(
+                                            row.changes ?? [],
+                                            row.details,
+                                        ).map((change, index) => (
                                             <div key={index} className="rounded-md border p-2">
                                                 <p className="mb-1.5 text-xs font-medium">
                                                     {fields[change.field] || change.field}
+                                                    {change.status && (
+                                                        <span className="ml-2 font-normal text-muted-foreground">
+                                                            {change.status}
+                                                        </span>
+                                                    )}
                                                 </p>
                                                 <div className="grid gap-2 sm:grid-cols-2">
                                                     {[
@@ -462,6 +489,18 @@ export function ServerOperationHistory({ server }: { server?: ServerIdentity }) 
                                                                 {label}
                                                             </span>
                                                             {displayValue(change.field, text)}
+                                                            {change.field === "public_note" && (
+                                                                <ServerOperationContent
+                                                                    label={label}
+                                                                    content={
+                                                                        row.details?.public_note?.[
+                                                                            label === "修改前"
+                                                                                ? "before"
+                                                                                : "after"
+                                                                        ]
+                                                                    }
+                                                                />
+                                                            )}
                                                         </p>
                                                     ))}
                                                 </div>

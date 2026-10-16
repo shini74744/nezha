@@ -195,6 +195,12 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 			require.True(t, receipt.Proced)
 		}
 		require.NoError(t, stream.CloseSend())
+		if cycle == 0 {
+			for _, v4 := range []string{"192.0.2.1", "", "192.0.2.2"} {
+				_, err := agent.ReportGeoIP(ctx, &pb.GeoIP{Ip: &pb.IP{Ipv4: v4, Ipv6: "2001:db8::1"}})
+				require.NoError(t, err)
+			}
+		}
 		db := openDB()
 		defer db.Close()
 		var servers, snapshots int
@@ -522,7 +528,26 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 			require.Equal(t, http.StatusNotFound, response.StatusCode)
 			require.NoError(t, response.Body.Close())
 			checkReturnFlow(token)
+			for _, note := range []string{`{"name":"before-history"}`, `{"name":"after-history"}`} {
+				request("PATCH", "/api/v1/server/1", token, map[string]any{
+					"name": "manual-order-test", "network_default_view": "latency",
+					"network_display_mode": "both", "public_note": note,
+				}, nil)
+			}
 		}
+		var history model.Value[[]model.ServerOperationLog]
+		request("GET", "/api/v1/server/operations?uuid="+agentPair.UUID+"&field=ip", token, nil, &history)
+		require.EqualValues(t, 3, history.Pagination.Total, "missing family alone must not create inventory history")
+		require.Len(t, history.Value[1].Changes, 1)
+		require.Equal(t, []model.ServerOperationIPSnapshot{
+			{Field: "ipv4", Before: "192.0.2.1", After: "192.0.2.2", Observed: true},
+			{Field: "ipv6", Before: "2001:db8::1", After: "2001:db8::1", Observed: true},
+		}, history.Value[1].Details.IPSnapshot)
+		request("GET", "/api/v1/server/operations?uuid="+agentPair.UUID+"&action=edit", token, nil, &history)
+		require.NotEmpty(t, history.Value)
+		require.Equal(t, &model.ServerOperationTextSnapshot{
+			Before: `{"name":"before-history"}`, After: `{"name":"after-history"}`,
+		}, history.Value[0].Details.PublicNote, "exact snapshot must survive restarts")
 		var weightServers []model.Server
 		request("GET", "/api/v1/server", token, nil, &weightServers)
 		require.Len(t, weightServers, 1)
