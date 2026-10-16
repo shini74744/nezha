@@ -23,6 +23,7 @@ type ServerOperationLog struct {
 	Source     string                  `json:"source"`
 	Action     string                  `gorm:"index" json:"action"`
 	Changes    []ServerOperationChange `gorm:"serializer:json;type:text" json:"changes"`
+	Details    *ServerOperationDetails `gorm:"serializer:json;type:text" json:"details,omitempty"`
 }
 
 type ServerOperationChange struct {
@@ -61,7 +62,8 @@ func operationValue(v any) string {
 }
 
 // Compare only explicitly allowed settings. Never serialize Server, Host,
-// raw Agent config, requests, tokens, credentials or free-form note contents.
+// raw Agent config, requests, credentials or private note contents.
+// PublicNote is explicitly snapshotted for the administrator-only history.
 func ServerOperationChanges(before, after *Server) []ServerOperationChange {
 	var changes []ServerOperationChange
 	if before != nil && after == nil {
@@ -93,10 +95,18 @@ func ServerOperationChanges(before, after *Server) []ServerOperationChange {
 	add("streaming_disabled", before.StreamingDisabled, after.StreamingDisabled)
 	add("enable_ddns", before.EnableDDNS, after.EnableDDNS)
 	add("ddns_profiles", before.DDNSProfiles, after.DDNSProfiles)
-	// Free-form fields can contain embedded passwords or signed URLs.
+	if before.PublicNote != after.PublicNote {
+		state := func(s string) string {
+			if s == "" {
+				return "未设置"
+			}
+			return "已设置"
+		}
+		changes = append(changes, ServerOperationChange{"public_note", state(before.PublicNote), state(after.PublicNote)})
+	}
+	// Private free-form fields can contain passwords or signed URLs.
 	for _, field := range []struct{ key, old, next string }{
 		{"note", before.Note, after.Note},
-		{"public_note", before.PublicNote, after.PublicNote},
 		{"ddns_domains", before.OverrideDDNSDomainsRaw, after.OverrideDDNSDomainsRaw},
 	} {
 		if field.old != field.next {
@@ -129,10 +139,10 @@ func RecordServerOperation(tx *gorm.DB, actor ServerOperationActor, action strin
 	if before != nil {
 		oldID = before.ID
 	}
-	return RecordServerOperationChanges(tx, actor, action, target, oldID, changes)
+	return RecordServerOperationChanges(tx, actor, action, target, oldID, changes, publicNoteOperationDetails(before, after))
 }
 
-func RecordServerOperationChanges(tx *gorm.DB, actor ServerOperationActor, action string, server *Server, previousID uint64, changes []ServerOperationChange) error {
+func RecordServerOperationChanges(tx *gorm.DB, actor ServerOperationActor, action string, server *Server, previousID uint64, changes []ServerOperationChange, details ...*ServerOperationDetails) error {
 	if len(changes) == 0 {
 		return nil
 	}
@@ -142,7 +152,12 @@ func RecordServerOperationChanges(tx *gorm.DB, actor ServerOperationActor, actio
 	if actor.Source == "" {
 		actor.Source = "system"
 	}
+	var snapshot *ServerOperationDetails
+	if len(details) > 0 {
+		snapshot = details[0]
+	}
 	return tx.Create(&ServerOperationLog{
+		Details:   snapshot,
 		CreatedAt: time.Now(), ServerUUID: server.UUID, ServerID: server.ID,
 		PreviousID: previousID, ServerName: server.Name, ActorID: actor.ID,
 		ActorName: actor.Name, Source: actor.Source, Action: action, Changes: changes,
@@ -207,7 +222,7 @@ func WithServerOperation(db *gorm.DB, actor ServerOperationActor, action string,
 			if target == nil {
 				target = old
 			}
-			if err := RecordServerOperationChanges(tx, actor, action, target, old.ID, changes); err != nil {
+			if err := RecordServerOperationChanges(tx, actor, action, target, old.ID, changes, publicNoteOperationDetails(old, next)); err != nil {
 				return err
 			}
 		}

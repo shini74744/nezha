@@ -57,5 +57,15 @@ func onlyOperationFields(rows []model.ServerOperationLog, fields []string) {
 			}
 		}
 		rows[i].Changes = changes
+		if rows[i].Details != nil {
+			details := *rows[i].Details
+			if !selected["ipv4"] && !selected["ipv6"] {
+				details.IPSnapshot = nil
+			}
+			if !selected["public_note"] {
+				details.PublicNote = nil
+			}
+			rows[i].Details = &details
+		}
 	}
 }

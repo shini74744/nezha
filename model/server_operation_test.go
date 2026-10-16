@@ -21,13 +21,13 @@ func operationTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
-func TestServerOperationDiffRedactsFreeFormSecrets(t *testing.T) {
+func TestServerOperationDiffRecordsPublicNoteAndRedactsPrivateSecrets(t *testing.T) {
 	db := operationTestDB(t)
-	s := &Server{Common: Common{ID: 11, UserID: 1}, UUID: "node-a", Name: "A", Note: "private-before", PublicNote: "token=before"}
+	s := &Server{Common: Common{ID: 11, UserID: 1}, UUID: "node-a", Name: "A", Note: "private-before", PublicNote: "旧公开内容"}
 	require.NoError(t, db.Create(s).Error)
 	actor := ServerOperationActor{ID: 9, Name: "operator", Source: "web"}
 	require.NoError(t, WithServerOperation(db, actor, "edit", []uint64{11}, func(tx *gorm.DB) error {
-		return tx.Model(&Server{}).Where("id = ?", 11).Updates(map[string]any{"name": "B", "note": "password=secret", "public_note": "https://example.test/?token=secret", "hide_for_guest": true}).Error
+		return tx.Model(&Server{}).Where("id = ?", 11).Updates(map[string]any{"name": "B", "note": "password=secret", "public_note": "新公开内容", "hide_for_guest": true}).Error
 	}))
 	var row ServerOperationLog
 	require.NoError(t, db.First(&row).Error)
@@ -41,6 +41,7 @@ func TestServerOperationDiffRedactsFreeFormSecrets(t *testing.T) {
 	require.NotContains(t, string(raw), "private-before")
 	require.NotContains(t, string(raw), "token=")
 	require.Len(t, row.Changes, 4)
+	require.Equal(t, &ServerOperationTextSnapshot{Before: "旧公开内容", After: "新公开内容"}, row.Details.PublicNote)
 	require.NoError(t, WithServerOperation(db, actor, "edit", []uint64{11}, func(tx *gorm.DB) error { return nil }))
 	var count int64
 	require.NoError(t, db.Model(&ServerOperationLog{}).Count(&count).Error)
