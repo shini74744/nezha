@@ -11,21 +11,22 @@ export function ServerReplacementCommand({ uuid, name, open, onOpenChange, gener
 }) {
     const [type, setType] = useState(1)
     const [busy, setBusy] = useState(false)
+    const [confirmed, setConfirmed] = useState(false)
     const [command, setCommand] = useState("")
     const [expires, setExpires] = useState("")
     const [error, setError] = useState("")
     const sending = useRef(false)
     const handleOpen = (next: boolean) => {
         if (sending.current) return
-        if (!next) { setCommand(""); setExpires(""); setError("") }
+        if (!next) { setCommand(""); setExpires(""); setError(""); setConfirmed(false) }
         onOpenChange(next)
     }
     const create = async () => {
-        if (sending.current) return
+        if (sending.current || !confirmed) return
         sending.current = true
         setBusy(true); setError("")
         try {
-            const result = await fetcher<{ secret: string; expires_at: string }>(FetcherMethod.POST, "/api/v1/server/replacement-command", { uuid, confirmed: true })
+            const result = await fetcher<{ secret: string; expires_at: string }>(FetcherMethod.POST, "/api/v1/server/replacement-command", { uuid, confirmed: true, reset_scope: "full_node_v1" })
             const text = generate(type, result.secret)
             setCommand(text); setExpires(result.expires_at)
             try { await copyToClipboard(text); toast.success("换机安装命令已复制；当前数据尚未清理") }
@@ -35,20 +36,25 @@ export function ServerReplacementCommand({ uuid, name, open, onOpenChange, gener
     }
     return (
         <Dialog open={open} onOpenChange={handleOpen}>
-            <DialogContent className="flex max-h-[85dvh] w-[94vw] max-w-xl flex-col gap-3 overflow-y-auto rounded-lg p-4 sm:p-6">
-                <DialogHeader className="pr-6 text-left">
+            <DialogContent className="flex max-h-[85dvh] w-[94vw] max-w-xl flex-col gap-3 overflow-hidden rounded-lg p-4 sm:p-6">
+                <DialogHeader className="shrink-0 pr-6 text-left">
                     <DialogTitle>清理数据换机安装命令</DialogTitle>
                     <DialogDescription>在新机器上执行，沿用当前节点身份。复制命令不会立即清理数据。</DialogDescription>
                 </DialogHeader>
+                <div className="min-h-0 space-y-3 overflow-y-auto pr-1">
                 <div className="rounded-md border p-3 text-sm">
                     <p className="break-words font-medium">{name || "所选服务器"}</p>
                     <p className="mt-1 break-all font-mono text-xs text-muted-foreground">{uuid}</p>
                 </div>
                 <div className="space-y-2 text-sm leading-6">
-                    <p>新机器成功连接并上报后，清理旧机器的监控曲线、流量统计和检测数据，并从新机器首次上报建立流量基准。</p>
-                    <p className="text-muted-foreground">保留系统 ID、UUID、名称、排序、分组及配置。服务器变更历史永久保留，需在历史记录中单独删除。</p>
-                    <p className="text-destructive">请确认旧机器不再使用此 UUID；清理完成后不能恢复旧监控数据。</p>
+                    <p>新机器成功连接并完整上报后，清空该节点全部旧历史：机器信息与操作历史、监控曲线、流量、检测快照、IP 历史、终端会话和通知发送记录。</p>
+                    <p className="text-muted-foreground">名称恢复为“新服务器”，公开／私有备注、购买／到期日期、套餐、分组归属、通知及任务关联等配置恢复初始状态。仅保留内部系统 ID、UUID、排序和所属账号；共享分组、通知渠道及其他节点不删除，全局规则按新节点生效。</p>
+                    <p className="text-destructive">请确认旧机器不再使用此 UUID；清理完成后无法通过面板恢复旧记录或配置，新凭据会使旧机器密钥失效。</p>
                 </div>
+                {!command && <label className="flex items-start gap-2 rounded-md border border-destructive/40 p-3 text-sm leading-6">
+                    <input type="checkbox" checked={confirmed} disabled={busy} onChange={(e) => setConfirmed(e.target.checked)} className="mt-1.5 shrink-0" />
+                    我确认清空全部旧历史和配置，作为新机器重新开始，仅保留 ID、UUID、排序和所属账号。
+                </label>}
                 {!command && <label className="flex items-center gap-3 text-sm">新机器系统
                     <select value={type} disabled={busy} onChange={(e) => setType(Number(e.target.value))} className="h-9 flex-1 rounded-md border bg-background px-3">
                         <option value={1}>Linux</option><option value={2}>macOS</option><option value={3}>Windows</option>
@@ -59,9 +65,10 @@ export function ServerReplacementCommand({ uuid, name, open, onOpenChange, gener
                     <textarea aria-label="换机安装命令" readOnly value={command} className="min-h-32 w-full resize-y rounded-md border bg-muted p-3 font-mono text-xs leading-5" onFocus={(e) => e.target.select()} />
                 </div>}
                 {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-                <DialogFooter className="gap-2">
+                </div>
+                <DialogFooter className="shrink-0 gap-2">
                     <Button variant="outline" disabled={busy} onClick={() => handleOpen(false)}>{command ? "关闭" : "取消"}</Button>
-                    {!command && <Button disabled={busy} onClick={() => void create()}>{busy ? "生成中…" : "确认并复制命令"}</Button>}
+                    {!command && <Button disabled={busy || !confirmed} onClick={() => void create()}>{busy ? "生成中…" : "确认并复制命令"}</Button>}
                 </DialogFooter>
             </DialogContent>
         </Dialog>

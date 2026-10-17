@@ -614,11 +614,19 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 	request("GET", "/api/v1/server/operation-servers?field=cpu", token, nil, &cards)
 	require.Len(t, cards.Value, 1)
 	require.Equal(t, 1, cards.Value[0].Position)
+	var deleted uint64
+	request("POST", "/api/v1/server/operations/delete", token, map[string]any{"uuid": agentPair.UUID, "id": history.Value[0].ID}, &deleted)
+	require.EqualValues(t, 1, deleted)
+	identityDB := openDB()
+	var beforeID, beforeOrder, beforeOwner int64
+	var beforeUUID string
+	require.NoError(t, identityDB.QueryRow("SELECT id,uuid,display_index,user_id FROM servers WHERE id=1").Scan(&beforeID, &beforeUUID, &beforeOrder, &beforeOwner))
+	_ = identityDB.Close()
 	var ticket struct {
 		Secret    string
 		ExpiresAt time.Time `json:"expires_at"`
 	}
-	request("POST", "/api/v1/server/replacement-command", token, map[string]any{"uuid": agentPair.UUID, "confirmed": true}, &ticket)
+	request("POST", "/api/v1/server/replacement-command", token, map[string]any{"uuid": agentPair.UUID, "confirmed": true, "reset_scope": "full_node_v1"}, &ticket)
 	require.True(t, strings.HasPrefix(ticket.Secret, "nzreplace_"))
 	require.True(t, ticket.ExpiresAt.After(time.Now()))
 	checkReturnSaved(token) // Issuing a command must not clear data.
@@ -643,21 +651,33 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 	require.True(t, accepted.Proced)
 	_ = replacementStream.CloseSend()
 	request("GET", "/api/v1/server/operations?uuid="+agentPair.UUID+"&field=cpu", token, nil, &history)
-	require.Len(t, history.Value, 2)
-	require.Equal(t, "test", history.Value[0].Changes[0].Before)
-	require.Equal(t, "replacement CPU", history.Value[0].Changes[0].After)
+	require.Empty(t, history.Value, "full replacement must erase old machine and operation history")
 	proof := openDB()
 	var remainingDetections, generation int
 	require.NoError(t, proof.QueryRow("SELECT count(*) FROM network_insight_records").Scan(&remainingDetections))
 	require.Zero(t, remainingDetections)
 	require.NoError(t, proof.QueryRow("SELECT machine_generation FROM servers WHERE id=1").Scan(&generation))
 	require.Equal(t, 1, generation)
+	var afterID, afterOrder, afterOwner int64
+	var afterUUID, name, note, publicNote string
+	require.NoError(t, proof.QueryRow("SELECT id,uuid,display_index,user_id,name,note,public_note FROM servers WHERE id=1").Scan(&afterID, &afterUUID, &afterOrder, &afterOwner, &name, &note, &publicNote))
+	require.Equal(t, beforeID, afterID)
+	require.Equal(t, beforeUUID, afterUUID)
+	require.Equal(t, beforeOrder, afterOrder)
+	require.Equal(t, beforeOwner, afterOwner)
+	require.Equal(t, "新服务器", name)
+	require.Empty(t, note)
+	require.Empty(t, publicNote)
+	var oldOperations int
+	require.NoError(t, proof.QueryRow("SELECT count(*) FROM server_operation_logs WHERE server_uuid=?", agentPair.UUID).Scan(&oldOperations))
+	require.Zero(t, oldOperations)
 	_ = proof.Close()
-	var deleted uint64
-	request("POST", "/api/v1/server/operations/delete", token, map[string]any{"uuid": agentPair.UUID, "id": history.Value[0].ID}, &deleted)
-	require.EqualValues(t, 1, deleted)
-	request("GET", "/api/v1/server/operations?uuid="+agentPair.UUID+"&field=cpu", token, nil, &history)
-	require.Len(t, history.Value, 1)
+	// New credentials work and old credentials must fail after activation.
+	oldContext, cancelOld := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelOld()
+	oldContext = metadata.NewOutgoingContext(oldContext, metadata.Pairs("client-secret", agentPair.Secret, "client-uuid", agentPair.UUID))
+	_, err = replacementAgent.ReportSystemInfo2(oldContext, &pb.Host{Platform: "old machine"})
+	require.Error(t, err)
 	t.Log("inventory category/date persistence, replacement admission/cleanup and manual history deletion passed")
 	require.NoError(t, stopProcess(p.cmd))
 	select {

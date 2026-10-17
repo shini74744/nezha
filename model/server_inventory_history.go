@@ -106,3 +106,14 @@ func RecordServerInventory(tx *gorm.DB, server *Server, values map[string]string
 	}
 	return tx.Save(&baseline).Error
 }
+
+// SeedServerInventoryBaseline creates the first comparison baseline without
+// manufacturing an operation event. Full replacement uses the same value
+// normalization as ordinary history, so unchanged reports remain silent.
+func SeedServerInventoryBaseline(tx *gorm.DB, uuid string, values map[string]string) error {
+	normalized := make(map[string]string, len(values))
+	for key, value := range values {
+		normalized[key] = operationValue(value)
+	}
+	return tx.Create(&ServerInventoryBaseline{ServerUUID: uuid, Values: normalized, UpdatedAt: time.Now()}).Error
+}

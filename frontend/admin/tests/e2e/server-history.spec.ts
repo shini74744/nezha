@@ -168,6 +168,9 @@ for (const width of [320, 390, 1024, 1440])
                 animations: "disabled",
                 path: info.outputPath("replacement-review.png"),
             })
+            await expect(dialog.getByRole("button", { name: "确认并复制命令", exact: true })).toBeDisabled()
+            await expect(dialog).toContainText("仅保留内部系统 ID、UUID、排序和所属账号")
+            await dialog.getByRole("checkbox").check()
             await dialog.getByRole("button", { name: "确认并复制命令", exact: true }).click()
             await expect(dialog.getByRole("textbox", { name: "换机安装命令" })).toHaveValue(
                 /nzreplace_fixture-only/,
@@ -182,7 +185,7 @@ for (const width of [320, 390, 1024, 1440])
             expect(writes).toEqual([
                 {
                     path: "/api/v1/server/replacement-command",
-                    body: { uuid: identity.server_uuid, confirmed: true },
+                    body: { uuid: identity.server_uuid, confirmed: true, reset_scope: "full_node_v1" },
                 },
             ])
             expect(errors).toEqual([])

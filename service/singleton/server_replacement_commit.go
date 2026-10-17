@@ -8,8 +8,14 @@ import (
 )
 
 // Controller-owned detection stores participate in the identity-guarded SQLite
-// transaction. Operation/inventory history is never deleted by replacement.
+// transaction. Full-reset tickets also erase node configuration and history.
 var ReplacementDataCleanupHook func(*gorm.DB, *model.Server) (func(), error)
+
+// Excludes controller-owned terminal mutations while reset removes their history.
+var ReplacementQuiesceHook func(*model.Server) func()
+
+// The controller serializes this file-backed setting with other settings edits.
+var ReplacementConfigResetHook = ResetReplacementIPNotification
 
 func CompleteServerReplacement(secret, uuid string, host *model.Host, state *model.HostState) (*model.Server, error) {
 	if host == nil || state == nil || host.Platform == "" || state.NetInTransfer > 1<<63-1 || state.NetOutTransfer > 1<<63-1 || state.Uptime > 100*366*86400 {
@@ -41,12 +47,25 @@ func CompleteServerReplacement(secret, uuid string, host *model.Host, state *mod
 		return nil, err
 	}
 	replacementClearing.Store(uuid, true)
+	fullReset := row.ResetScope == FullNodeReplacementScope
+	// Do not let an in-flight expiry worker restore an old delivery record.
+	serverExpiryMu.Lock()
+	defer serverExpiryMu.Unlock()
+	if fullReset {
+		if err := ReplacementConfigResetHook(current.ID); err != nil {
+			return nil, err
+		}
+	}
+	if fullReset && ReplacementQuiesceHook != nil {
+		resume := ReplacementQuiesceHook(current)
+		defer resume()
+	}
 	ServerShared.lockLifecycleWrite()
 	defer ServerShared.unlockLifecycleWrite()
 	current.RetireMachineRuntime()
 	ServerTransferRevokeStreamsForServer(current.ID)
 	var fresh model.Server
-	var resetCaches func()
+	var resetCaches, resetReferences func()
 	var adopted *model.AgentCredential
 	now := time.Now()
 	err = DB.Transaction(func(tx *gorm.DB) error {
@@ -81,16 +100,29 @@ func CompleteServerReplacement(secret, uuid string, host *model.Host, state *mod
 		if e := tx.Where("uuid = ?", uuid).Delete(&model.AgentUUIDConflict{}).Error; e != nil {
 			return e
 		}
-		fresh.MachineGeneration++
-		if e := tx.Model(&model.Server{}).Where("id = ? AND uuid = ?", fresh.ID, uuid).Update("machine_generation", fresh.MachineGeneration).Error; e != nil {
-			return e
-		}
-		if e := model.RecordServerInventory(tx, &fresh, model.HostInventoryValues(host)); e != nil {
-			return e
-		}
-		if e := model.RecordServerOperationChanges(tx, model.ServerOperationActor{ID: row.ActorID, Name: row.ActorName, Source: "web"}, "replace_machine", &fresh, fresh.ID,
-			[]model.ServerOperationChange{{Field: "replacement", Before: "旧机器监控及流量数据", After: "新机器首次上报成功；监控已清理，流量从新基准计数；变更历史保留"}}); e != nil {
-			return e
+		if fullReset {
+			var e error
+			resetReferences, e = resetReplacementNode(tx, &fresh)
+			if e != nil {
+				return e
+			}
+			if e = seedReplacementInventory(tx, &fresh, host); e != nil {
+				return e
+			}
+		} else {
+			// Resume already-clearing legacy tickets under their original narrow
+			// scope; deployment must not expand previously granted deletion rights.
+			fresh.MachineGeneration++
+			if e := tx.Model(&model.Server{}).Where("id = ? AND uuid = ?", fresh.ID, uuid).Update("machine_generation", fresh.MachineGeneration).Error; e != nil {
+				return e
+			}
+			if e := model.RecordServerInventory(tx, &fresh, model.HostInventoryValues(host)); e != nil {
+				return e
+			}
+			if e := model.RecordServerOperationChanges(tx, model.ServerOperationActor{ID: row.ActorID, Name: row.ActorName, Source: "web"}, "replace_machine", &fresh, fresh.ID,
+				[]model.ServerOperationChange{{Field: "replacement", Before: "旧机器监控及流量数据", After: "新机器首次上报成功；监控已清理，流量从新基准计数；变更历史保留"}}); e != nil {
+				return e
+			}
 		}
 		if TSDBEnabled() {
 			if e := TSDBShared.DeleteServerIDs([]uint64{fresh.ID}); e != nil {
@@ -120,6 +152,9 @@ func CompleteServerReplacement(secret, uuid string, host *model.Host, state *mod
 	fresh.SetTransferSnapshots(state.NetInTransfer, state.NetOutTransfer)
 	if resetCaches != nil {
 		resetCaches()
+	}
+	if resetReferences != nil {
+		resetReferences()
 	}
 	if ServiceSentinelShared != nil {
 		ServiceSentinelShared.forgetReplacedServer(current.ID)

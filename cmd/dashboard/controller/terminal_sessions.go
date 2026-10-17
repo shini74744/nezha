@@ -27,6 +27,7 @@ type managedTerminal struct {
 	ID                                          string
 	UserID, ServerID, ServerOwner, TokenVersion uint64
 	ServerUUID                                  string
+	MachineGeneration                           uint64
 	Role                                        model.Role
 	Name, Kind                                  string
 	RowID                                       uint64
@@ -69,6 +70,9 @@ func terminalAuthorizedServer(c *gin.Context, id uint64) (*model.User, *model.Se
 	if !ok || s == nil || !s.HasPermission(c) {
 		return nil, nil, errors.New("服务器不存在或无权访问")
 	}
+	if singleton.ServerReplacementClearing(s.UUID) || !s.MachineRuntimeActive() {
+		return nil, nil, errors.New("节点正在换机，请稍后刷新")
+	}
 	return u, s, nil
 }
 func managedLookup(id string) *managedTerminal {
@@ -84,7 +88,7 @@ func (m *managedTerminal) valid() bool {
 		return false
 	}
 	s, ok := singleton.ServerShared.Get(m.ServerID)
-	if !ok || s.UUID != m.ServerUUID || s.GetUserID() != m.ServerOwner {
+	if !ok || s.UUID != m.ServerUUID || s.GetUserID() != m.ServerOwner || s.MachineGeneration != m.MachineGeneration || singleton.ServerReplacementClearing(s.UUID) || !s.MachineRuntimeActive() {
 		return false
 	}
 	var u model.User
@@ -131,7 +135,7 @@ func newManagedTerminal(c *gin.Context, serverID uint64, kind string, rowID uint
 	if err = handler.CreateStreamWithPurpose(id, u.ID, s.ID, rpc.PurposeTerminal); err != nil {
 		return nil, err
 	}
-	m := &managedTerminal{TGAccess: tgUIAccessFor(c), ID: id, UserID: u.ID, ServerID: s.ID, ServerOwner: s.GetUserID(), ServerUUID: s.UUID, TokenVersion: u.TokenVersion, Role: u.Role, Name: s.Name, Kind: kind, RowID: rowID, Created: time.Now(), Bridge: terminalsession.New(), Handler: handler}
+	m := &managedTerminal{TGAccess: tgUIAccessFor(c), ID: id, UserID: u.ID, ServerID: s.ID, ServerOwner: s.GetUserID(), ServerUUID: s.UUID, MachineGeneration: s.MachineGeneration, TokenVersion: u.TokenVersion, Role: u.Role, Name: s.Name, Kind: kind, RowID: rowID, Created: time.Now(), Bridge: terminalsession.New(), Handler: handler}
 	if err = handler.UserConnected(id, m.Bridge); err != nil {
 		m.close()
 		return nil, err
@@ -281,6 +285,11 @@ func keepTerminalSession(c *gin.Context) (*managedTerminalView, error) {
 	if e != nil {
 		return nil, e
 	}
+	unlock := lockTerminalOperation(m.ServerUUID)
+	defer unlock()
+	if !m.valid() {
+		return nil, errors.New("节点状态已变化，请刷新")
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Kind != "native" {
@@ -358,6 +367,11 @@ func stopNativeTerminal(c *gin.Context) (any, error) {
 	}
 	if m.Kind != "native" {
 		return nil, errors.New("请使用 tmux 会话的结束按钮")
+	}
+	unlock := lockTerminalOperation(m.ServerUUID)
+	defer unlock()
+	if !m.valid() {
+		return nil, errors.New("节点状态已变化，请刷新")
 	}
 	m.mu.Lock()
 	rid := m.RowID

@@ -70,6 +70,11 @@ func installTmux(c *gin.Context) (*tmuxInstallView, error) {
 	if e != nil {
 		return nil, e
 	}
+	unlock := lockTerminalOperation(s.UUID)
+	defer unlock()
+	if singleton.ServerReplacementClearing(s.UUID) || !s.MachineRuntimeActive() {
+		return nil, errors.New("节点正在换机，请稍后刷新")
+	}
 	if !form.Confirm {
 		return nil, errors.New("请确认在此节点安装 tmux 及必要依赖")
 	}
