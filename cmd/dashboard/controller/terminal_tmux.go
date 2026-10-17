@@ -47,6 +47,9 @@ func scanTmux(ctx context.Context, s *model.Server) ([]terminalsession.Tmux, boo
 	return terminalsession.ParseTmux(raw)
 }
 func syncTmuxRecords(uid uint64, s *model.Server, rows []terminalsession.Tmux) ([]terminalSessionItem, error) {
+	if singleton.ServerReplacementClearing(s.UUID) || !s.MachineRuntimeActive() {
+		return nil, errors.New("节点正在换机，请稍后刷新")
+	}
 	result := make([]terminalSessionItem, 0, len(rows))
 	err := singleton.DB.Transaction(func(tx *gorm.DB) error {
 		var previous []model.TerminalSession
@@ -177,6 +180,9 @@ func createTmuxSession(c *gin.Context) (*managedTerminalView, error) {
 	}
 	unlock := lockTerminalOperation(s.UUID)
 	defer unlock()
+	if singleton.ServerReplacementClearing(s.UUID) || !s.MachineRuntimeActive() {
+		return nil, errors.New("节点正在换机，请稍后刷新")
+	}
 	// Reserve metadata before remote creation; even a lost response keeps the requested names.
 	row := model.TerminalSession{Common: model.Common{UserID: u.ID}, ServerID: s.ID, ServerUUID: s.UUID, Kind: "tmux", Name: strings.TrimSpace(form.Name), CreatedWindowName: strings.TrimSpace(form.Window), Source: "panel", Status: "creating"}
 	if e = singleton.DB.Transaction(func(tx *gorm.DB) error {

@@ -20,6 +20,10 @@ for (const width of [320, 390, 1440])
                 if (url.pathname === "/api/v1/profile") data = { id: 1, username: "admin", role: 0 }
                 if (url.pathname === "/api/v1/setting")
                     data = { config: { language: "zh-CN" }, version: "test" }
+                if (url.pathname === "/api/v1/server/operation-servers") {
+                    requests.push(url.search)
+                    data = { value: [{ server_uuid: "legacy-internal-identity-not-for-display", server_id: 122, server_name: "台湾Hinet物理机2", position: 1, count: 41, last_id: 1, last_at: 1791561600000, deleted: false }], pagination: { total: 1 } }
+                }
                 if (url.pathname === "/api/v1/server/operations") {
                     requests.push(url.search)
                     data = {
@@ -54,13 +58,15 @@ for (const width of [320, 390, 1440])
                 "名称 / 原 ID / 当前 ID",
             )
             await expect(dialog).not.toContainText("UUID")
+            await dialog.getByRole("button", { name: /台湾Hinet物理机2.*系统 ID 122/ }).click()
             await dialog.locator("summary").click()
             await expect(dialog.getByText("节点身份封禁状态", { exact: true })).toBeVisible()
             await expect(dialog.getByText("修改后已放行", { exact: true })).toBeVisible()
             await expect(dialog).not.toContainText("legacy-internal-identity-not-for-display")
-            await expect(dialog.locator("summary")).toContainText("#63 → #122")
+            await expect(dialog.locator("summary")).toContainText("当时：台湾Hinet物理机2（#122）")
             await dialog.getByRole("button", { name: "下一页", exact: true }).click()
             await expect.poll(() => new URLSearchParams(requests.at(-1)).get("offset")).toBe("20")
+            await dialog.getByRole("button", { name: "全部服务器", exact: true }).click()
             await dialog.getByLabel("搜索节点历史").fill("  122  ")
             await dialog.getByRole("button", { name: "搜索", exact: true }).click()
             await expect.poll(() => new URLSearchParams(requests.at(-1)).get("q")).toBe("122")
@@ -73,7 +79,7 @@ for (const width of [320, 390, 1440])
             await dialog.getByRole("button", { name: "搜索", exact: true }).click()
             await expect.poll(() => new URLSearchParams(requests.at(-1)).get("q")).toBe("台湾")
             expect(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true)
-            await expect(dialog.getByRole("heading", { name: "服务器操作历史" })).toBeInViewport()
+            await expect(dialog.getByRole("heading", { name: "服务器历史记录" })).toBeInViewport()
             await expect(dialog.getByLabel("搜索节点历史")).toBeInViewport()
             await page.screenshot({ path: info.outputPath("history-identity.png") })
             expect(errors).toEqual([])

@@ -11,7 +11,21 @@ import (
 	"gorm.io/gorm"
 )
 
-func init() { singleton.ReplacementDataCleanupHook = clearReplacedDetectionData }
+func init() {
+	singleton.ReplacementDataCleanupHook = clearReplacedDetectionData
+	singleton.ReplacementConfigResetHook = func(id uint64) error {
+		settingsMutationMu.Lock()
+		defer settingsMutationMu.Unlock()
+		return singleton.ResetReplacementIPNotification(id)
+	}
+	singleton.ReplacementQuiesceHook = func(server *model.Server) func() {
+		unlock := lockTerminalOperation(server.UUID)
+		tmuxInstalls.Lock()
+		delete(tmuxInstalls.rows, server.UUID)
+		tmuxInstalls.Unlock()
+		return unlock
+	}
+}
 func clearReplacedDetectionData(tx *gorm.DB, server *model.Server) (func(), error) {
 	key := connectivityKey(server)
 	var ipHistory model.ServerIPHistory

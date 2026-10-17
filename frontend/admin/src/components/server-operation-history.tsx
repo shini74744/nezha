@@ -272,7 +272,7 @@ export function ServerOperationHistory({ server }: { server?: ServerIdentity }) 
                         {selected
                             ? "系统 ID " + selected.server_id + " · "
                             : "按当前服务器排序，点击卡片查看详细变化。"}
-                        永久保存，仅手动删除；删除节点或换机不清除历史。时间按设备时区显示。
+                        历史长期保存；普通删除节点不清除历史，手动删除或全量换机重置会清除。时间按设备时区显示。
                     </DialogDescription>
                 </DialogHeader>
                 <form

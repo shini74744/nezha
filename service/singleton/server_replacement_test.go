@@ -11,6 +11,10 @@ import (
 
 func replacementFixture(t *testing.T) *model.Server {
 	setupPermanentDeleteTest(t)
+	oldConf, oldCron := Conf, CronShared
+	oldStore, oldPrev := alertsStore, alertsPrevState
+	Conf, CronShared = nil, nil
+	t.Cleanup(func() { Conf, CronShared = oldConf, oldCron; alertsStore, alertsPrevState = oldStore, oldPrev })
 	oldHook, oldCache := ReplacementDataCleanupHook, ServiceSentinelShared
 	ReplacementDataCleanupHook = nil
 	ServiceSentinelShared = nil
@@ -57,7 +61,7 @@ func TestReplacementOnlyExplicitCompleteReportClearsOnce(t *testing.T) {
 	require.Equal(t, s.ID, fresh.ID)
 	require.Equal(t, s.UUID, fresh.UUID)
 	require.Equal(t, s.DisplayIndex, fresh.DisplayIndex)
-	require.Equal(t, "keep", fresh.Note)
+	require.Empty(t, fresh.Note)
 	require.EqualValues(t, 1, fresh.MachineGeneration)
 	require.EqualValues(t, 999999, fresh.RuntimeSnapshot().PrevTransferInSnapshot)
 	require.NoError(t, DB.Model(&model.Transfer{}).Where("server_id = ?", 7).Count(&count).Error)
@@ -67,7 +71,7 @@ func TestReplacementOnlyExplicitCompleteReportClearsOnce(t *testing.T) {
 	require.NoError(t, DB.Model(&model.PlanTrafficDay{}).Where("uuid = ?", s.UUID).Count(&count).Error)
 	require.Zero(t, count)
 	require.NoError(t, DB.Model(&model.ServerOperationLog{}).Where("server_uuid = ?", s.UUID).Count(&count).Error)
-	require.EqualValues(t, 3, count)
+	require.Zero(t, count)
 	sample := model.RecordedServerState{At: time.Now().UnixMilli(), Host: host, State: state}
 	require.NoError(t, recordPlanTraffic(DB, fresh.ID, fresh.UUID, sample))
 	sample.At += 1000

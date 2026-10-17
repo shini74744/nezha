@@ -14,6 +14,9 @@ import (
 
 const replacementPrefix = "nzreplace_"
 
+// FullNodeReplacementScope is explicit consent to reset configuration and history.
+const FullNodeReplacementScope = "full_node_v1"
+
 func replacementHash(secret string) string {
 	sum := sha256.Sum256([]byte(secret))
 	return hex.EncodeToString(sum[:])
@@ -54,7 +57,7 @@ func IssueServerReplacement(uuid string, actor model.ServerOperationActor) (stri
 		if err := tx.Where("server_uuid = ? AND state = ?", uuid, "pending").Delete(&model.ServerReplacement{}).Error; err != nil {
 			return err
 		}
-		return tx.Create(&model.ServerReplacement{ServerUUID: uuid, OwnerID: server.GetUserID(), TokenHash: replacementHash(secret), State: "pending", ExpiresAt: expires, ActorID: actor.ID, ActorName: actor.Name}).Error
+		return tx.Create(&model.ServerReplacement{ServerUUID: uuid, OwnerID: server.GetUserID(), TokenHash: replacementHash(secret), State: "pending", ResetScope: FullNodeReplacementScope, ExpiresAt: expires, ActorID: actor.ID, ActorName: actor.Name}).Error
 	})
 	return secret, expires, err
 }
@@ -71,6 +74,12 @@ func AuthorizeServerReplacement(secret, uuid string) (*model.ServerReplacement, 
 	}
 	if row.State != "active" && row.State != "clearing" && (row.State != "pending" || time.Now().After(row.ExpiresAt)) {
 		return nil, nil, errors.New("换机命令已过期，请重新生成")
+	}
+	if row.State == "pending" && row.ResetScope != FullNodeReplacementScope {
+		return nil, nil, errors.New("换机清理范围已更新，请刷新页面并重新确认生成命令")
+	}
+	if row.ResetScope != "" && row.ResetScope != FullNodeReplacementScope {
+		return nil, nil, errors.New("不支持的换机清理范围")
 	}
 	id, ok := ServerShared.UUIDToID(uuid)
 	if !ok {

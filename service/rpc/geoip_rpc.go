@@ -58,8 +58,8 @@ func (s *NezhaHandler) ReportGeoIP(ctx context.Context, report *pb.GeoIP) (*pb.G
 		}
 	}
 	if ipChanged && singleton.Conf.EnableIPChangeNotification &&
-		((singleton.Conf.Cover == model.ConfigCoverAll && !singleton.Conf.IgnoredIPNotificationServerIDs[clientID]) ||
-			(singleton.Conf.Cover == model.ConfigCoverIgnoreAll && singleton.Conf.IgnoredIPNotificationServerIDs[clientID])) &&
+		((singleton.Conf.Cover == model.ConfigCoverAll && !singleton.Conf.IPNotificationSelected(clientID)) ||
+			(singleton.Conf.Cover == model.ConfigCoverIgnoreAll && singleton.Conf.IPNotificationSelected(clientID))) &&
 		oldIP.Join() != "" && joinedIP != "" {
 		singleton.NotificationShared.SendEvent(singleton.Conf.IPChangeNotificationGroupID,
 			fmt.Sprintf("[%s] %s, %s => %s", singleton.Localizer.T("IP Changed"), server.Name,

@@ -10,6 +10,7 @@ type ServerReplacement struct {
 	OwnerID     uint64
 	TokenHash   string `gorm:"uniqueIndex" json:"-"`
 	State       string `gorm:"index"`
+	ResetScope  string // Immutable authorization scope; legacy tickets must never gain broader deletion rights.
 	CreatedAt   time.Time
 	ExpiresAt   time.Time
 	CompletedAt *time.Time

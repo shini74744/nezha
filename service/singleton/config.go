@@ -4,12 +4,20 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/nezhahq/nezha/model"
 	"github.com/nezhahq/nezha/pkg/utils"
 )
 
 var Conf *ConfigClass
+var ipNotificationSelectionMu sync.RWMutex
+
+func (c *ConfigClass) IPNotificationSelected(id uint64) bool {
+	ipNotificationSelectionMu.RLock()
+	defer ipNotificationSelectionMu.RUnlock()
+	return c.IgnoredIPNotificationServerIDs[id]
+}
 
 type ConfigClass struct {
 	*model.Config
@@ -47,11 +55,12 @@ func (c *ConfigClass) Save() error {
 
 // updateIgnoredIPNotificationID 更新用于判断服务器ID是否属于特定服务器的map
 func (c *ConfigClass) updateIgnoredIPNotificationID() {
+	ipNotificationSelectionMu.Lock()
+	defer ipNotificationSelectionMu.Unlock()
+	c.IgnoredIPNotificationServerIDs = make(map[uint64]bool)
 	if c.IgnoredIPNotification == "" {
 		return
 	}
-
-	c.IgnoredIPNotificationServerIDs = make(map[uint64]bool)
 	for splitedID := range strings.SplitSeq(c.IgnoredIPNotification, ",") {
 		id, _ := strconv.ParseUint(splitedID, 10, 64)
 		if id > 0 {
