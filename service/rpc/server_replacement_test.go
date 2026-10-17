@@ -19,6 +19,7 @@ func TestReplacementRealTransportStagesUntilFirstState(t *testing.T) {
 	server := &model.Server{Common: model.Common{ID: 7, UserID: 1}, UUID: "11111111-1111-4111-8111-111111111111", Name: "fixture"}
 	setupApplyConfigAuthzFixture(t, []*model.Server{server}, map[uint64]model.UserInfo{1: {Role: model.RoleAdmin}}, map[string]uint64{"owner-fixture": 1})
 	require.NoError(t, singleton.DB.AutoMigrate(&model.Transfer{}, &model.ServerSnapshot{}, &model.ServiceHistory{}, &model.PlanTrafficCheckpoint{}, &model.PlanTrafficDay{}, &model.ServerIPHistory{}, &model.AgentUUIDConflict{}))
+	prepareFullReplacementSchema(t)
 	require.NoError(t, singleton.DB.Create(&model.Transfer{ServerID: 7, In: 100}).Error)
 	listener := bufconn.Listen(1 << 20)
 	rpcServer := grpc.NewServer()
@@ -70,4 +71,14 @@ func TestReplacementRealTransportStagesUntilFirstState(t *testing.T) {
 	require.NoError(t, singleton.DB.Model(&model.Transfer{}).Where("server_id = ?", 7).Count(&count).Error)
 	require.EqualValues(t, 1, count)
 	_ = stream.CloseSend()
+}
+
+// Full replacement now includes node associations and configuration. The RPC
+// fixture must contain the same tables as application startup, not only traffic.
+func prepareFullReplacementSchema(t *testing.T) {
+	t.Helper()
+	require.NoError(t, singleton.DB.AutoMigrate(
+		&model.NAT{}, &model.ServerGroupServer{}, &model.MCPAuditLog{},
+		&model.Cron{}, &model.Service{}, &model.AlertRule{}, &model.APIToken{},
+	))
 }
