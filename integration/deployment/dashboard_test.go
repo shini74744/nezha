@@ -650,6 +650,9 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, accepted.Proced)
 	_ = replacementStream.CloseSend()
+	// Empty API pages omit value; decode into a fresh response, not the old
+	// page that was read before deletion.
+	history = model.Value[[]model.ServerOperationLog]{}
 	request("GET", "/api/v1/server/operations?uuid="+agentPair.UUID+"&field=cpu", token, nil, &history)
 	require.Empty(t, history.Value, "full replacement must erase old machine and operation history")
 	proof := openDB()

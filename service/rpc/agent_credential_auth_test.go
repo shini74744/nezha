@@ -96,6 +96,7 @@ func TestDedicatedCredentialReplacementOnlyPromotedAfterCleanup(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, singleton.AgentCredentialHash(pair.Secret), binding.SecretHash, "pending cleanup must not replace the stable binding")
 	require.NoError(t, singleton.DB.AutoMigrate(&model.Transfer{}, &model.ServerSnapshot{}, &model.ServiceHistory{}, &model.ServerIPHistory{}, &model.PlanTrafficDay{}, &model.PlanTrafficCheckpoint{}, &model.AgentUUIDConflict{}))
+	prepareFullReplacementSchema(t)
 	_, err = singleton.CompleteServerReplacement(secret, pair.UUID, &model.Host{Platform: "ubuntu"}, &model.HostState{})
 	require.NoError(t, err)
 	_, err = authCheckWithSecret(secret, pair.UUID)
