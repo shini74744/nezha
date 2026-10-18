@@ -9,5 +9,5 @@ import (
 
 func openSQLiteDialector(path string) gorm.Dialector {
 	registerSQLiteAttributionDriver()
-	return sqlite.New(sqlite.Config{DriverName: sqliteAttributionDriverName, DSN: path})
+	return sqlite.New(sqlite.Config{DriverName: sqliteAttributionDriverName, DSN: sqliteWriteDSN(path)})
 }
