@@ -29,32 +29,38 @@ type dxgiDesc1 struct {
 	Flags                                                           uint32
 }
 
-func comMethod(object uintptr, index int) uintptr {
-	return (*[14]uintptr)(unsafe.Pointer(*(*uintptr)(unsafe.Pointer(object))))[index]
+// COM objects retain typed pointers until the syscall boundary. Keeping them as
+// uintptr and converting back loses pointer provenance and fails checkptr/vet.
+type comObject struct {
+	vtable *[14]uintptr
 }
-func releaseCOM(object uintptr) { syscall.SyscallN(comMethod(object, 2), object) }
+
+func comMethod(object *comObject, index int) uintptr { return object.vtable[index] }
+func releaseCOM(object *comObject) {
+	syscall.SyscallN(comMethod(object, 2), uintptr(unsafe.Pointer(object)))
+}
 func listWindowsAdapters() ([]windowsAdapter, error) {
 	if err := createDXGIFactory1.Find(); err != nil {
 		return nil, err
 	}
-	var factory uintptr
+	var factory *comObject
 	hr, _, _ := createDXGIFactory1.Call(uintptr(unsafe.Pointer(&iidDXGIFactory1)), uintptr(unsafe.Pointer(&factory)))
-	if int32(hr) < 0 || factory == 0 {
+	if int32(hr) < 0 || factory == nil {
 		return nil, fmt.Errorf("DXGI factory: 0x%x", hr)
 	}
 	defer releaseCOM(factory)
 	var out []windowsAdapter
 	for i := 0; i < 128; i++ {
-		var adapter uintptr
-		hr, _, _ = syscall.SyscallN(comMethod(factory, 12), factory, uintptr(i), uintptr(unsafe.Pointer(&adapter)))
+		var adapter *comObject
+		hr, _, _ = syscall.SyscallN(comMethod(factory, 12), uintptr(unsafe.Pointer(factory)), uintptr(i), uintptr(unsafe.Pointer(&adapter)))
 		if uint32(hr) == 0x887a0002 {
 			break
 		}
-		if int32(hr) < 0 || adapter == 0 {
+		if int32(hr) < 0 || adapter == nil {
 			return nil, fmt.Errorf("DXGI adapter: 0x%x", hr)
 		}
 		var desc dxgiDesc1
-		hr, _, _ = syscall.SyscallN(comMethod(adapter, 10), adapter, uintptr(unsafe.Pointer(&desc)))
+		hr, _, _ = syscall.SyscallN(comMethod(adapter, 10), uintptr(unsafe.Pointer(adapter)), uintptr(unsafe.Pointer(&desc)))
 		releaseCOM(adapter)
 		if int32(hr) < 0 {
 			continue
