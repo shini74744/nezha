@@ -84,6 +84,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           swag init --pd -d cmd/dashboard -g main.go -o cmd/dashboard/docs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Validate embedded GeoIP for release
+        run: go test -mod=readonly -tags go_json,releaseassets -count=1 -v ./pkg/geoip
       - name: Build native Windows binary
         env:
           RELEASE_TAG: ${{ inputs.release_tag }}

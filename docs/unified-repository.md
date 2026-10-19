@@ -9,9 +9,9 @@
 | 项目 | 主面板 | Agent |
 | --- | --- | --- |
 | 合仓首版 | v0.0.3 | v1.0.1 |
-| 当前正式版本 | v0.0.9 | v1.0.4 |
-| 当前 Git Release 标签 | `v0.0.9` | `agent-v1.0.4` |
-| 当前程序版本 | `v0.0.9` | `1.0.4` |
+| 当前正式版本 | v0.0.10 | v1.0.4 |
+| 当前 Git Release 标签 | `v0.0.10` | `agent-v1.0.4` |
+| 当前程序版本 | `v0.0.10` | `1.0.4` |
 | 最新版本入口 | `release/dashboard-version.txt` | `release/agent-version.txt` |
 | 源码 | 仓库根目录 Go module | `agent/` 独立 Go module |
 | 合仓首版安装包名称 | `dashboard-系统-架构.zip` | `nezha-agent_系统_架构.zip` |
@@ -53,6 +53,7 @@ v1.0.1 已从统一仓库更新，但不能原地升级为独立目录：v1.0.2 
 - Agent 原提交历史通过非 squash subtree 导入；保留双方原始许可证及署名，Go module 名称不作为下载来源。
 - 只递增实际变更组件的版本。不得改写已发布标签／附件；新修复发下一个版本。
 - 在准备分支更新版本文件和代码，测试管理脚本、Agent 更新器与安装器，以及主面板和 Agent 的各自 Go module。验证手机／电脑安装入口。
+- 源码中的 `pkg/geoip/geoip.db` 是占位文件。必须在源码导出后恢复已核验的 GeoIP 构建输入，运行 `go test -tags go_json,releaseassets ./pkg/geoip`；最终 Linux／Windows 安装包还须通过实际 GeoIP RPC 验收，不能只检查文件存在或页面返回 200。
 - 面板使用既有已核验的 Linux 构建及 Windows 原生工作流；Agent 使用根目录 `agent-release.yml`，18 个平台构建依赖 Linux／Windows／macOS 测试通过。
 - 先创建草稿、上传校验完整的资产，再重新下载核对 SHA-256、ZIP 内容、版本和来源提交。**未经验收不要更新 main 的版本入口。**
 - Agent Release 发布时设 `--latest=false`；主面板可保留仓库 Latest，照顾尚未更新脚本的安装。新安装器／更新器都走独立入口，不依赖 Latest。
