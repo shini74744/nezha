@@ -24,7 +24,7 @@ def main():
  (work/"official.zip").write_bytes(data)
  script=urllib.request.urlopen("https://raw.githubusercontent.com/nezhahq/scripts/"+PIN+"/agent/install.sh",timeout=60).read()
  (work/"official.sh").write_bytes(script)
- for version,binary in [("1.0.2",args.old_binary),("1.0.3",args.binary)]:
+ for version,binary in [("1.0.3",args.old_binary),("1.0.4",args.binary)]:
   with zipfile.ZipFile(work/(version+".zip"),"w",zipfile.ZIP_DEFLATED) as z: z.write(binary,"DDnezha")
   (work/(version+".sha256")).write_text(hashlib.sha256((work/(version+".zip")).read_bytes()).hexdigest()+"\n")
  mock=work/"bin"; mock.mkdir()
@@ -80,7 +80,7 @@ else: raise RuntimeError('Unexpected installer download: '+u)
   assert pid(binary,config)==process and process>0, "other service restarted/stopped"
  new=own/"DDnezha"; old=official/"nezha-agent"
  try:
-  (work/"selected-version").write_text("1.0.2")
+  (work/"selected-version").write_text("1.0.3")
   run(["sh",ownscript]);wait_running(new)
   own_start=snap(own);own_pid=pid(new)
   run(["sh",work/"official.sh"]);wait_running(old)
@@ -90,9 +90,9 @@ else: raise RuntimeError('Unexpected installer download: '+u)
   second.write_text((official/"config.yml").read_text().replace("22222222-2222-4222-8222-222222222222","33333333-3333-4333-8333-333333333333"))
   service(old,second,"install");wait_running(old,second)
   before=snap(official);p=pid(old);p2=pid(old,second);identity=(own/"config.yml").read_bytes()
-  (work/"selected-version").write_text("1.0.3")
+  (work/"selected-version").write_text("1.0.4")
   run(["sh",ownscript]);wait_running(new)
-  assert subprocess.check_output([str(new),"-v"],text=True).strip()=="DDnezha version 1.0.3"
+  assert subprocess.check_output([str(new),"-v"],text=True).strip()=="DDnezha version 1.0.4"
   assert (own/"config.yml").read_bytes()==identity
   unchanged(official,before,old,p);assert pid(old,second)==p2
   print("OWN_UPGRADE_PRESERVES_OFFICIAL_MULTI_INSTANCE_PASS",flush=True)
