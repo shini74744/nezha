@@ -282,8 +282,11 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 		agent := pb.NewNezhaServiceClient(conn)
 		_, err = agent.ReportSystemInfo2(ctx, &pb.Host{Platform: "linux", Arch: "amd64", Cpu: []string{"test"}, MemTotal: 1048576, BootTime: 1})
 		require.NoError(t, err)
-		_, err = agent.ReportGeoIP(ctx, &pb.GeoIP{Ip: &pb.IP{Ipv4: "8.8.8.8"}})
+		location, err := agent.ReportGeoIP(ctx, &pb.GeoIP{Ip: &pb.IP{Ipv4: "8.8.8.8"}})
 		require.NoError(t, err)
+		if os.Getenv("NEZHA_TEST_FRONTEND") == "1" {
+			require.Regexp(t, "^[a-z]{2}$", location.CountryCode, "the exact release binary must contain a working GeoIP database")
+		}
 		state, err := agent.ReportSystemState(ctx)
 		require.NoError(t, err)
 		require.NoError(t, state.Send(&pb.State{Cpu: 1, MemUsed: 1024, Uptime: 99}))
