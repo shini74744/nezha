@@ -7,23 +7,43 @@ import (
 	"strings"
 )
 
-var cpuSensorPattern = regexp.MustCompile("(?i)(^|[^a-z])(cpu|coretemp|k10temp|tctl|tdie|package id|core [0-9]|cpu_thermal|cpu-thermal)([^a-z]|$)|^tc0d$|^[pe]acc mtr temp sensor[0-9]+$")
+var cpuSensorPattern = regexp.MustCompile("(?i)(^|[^a-z])(cpu|coretemp|k10temp|tctl|tdie|package id|core [0-9]|cpu thermal)([^a-z]|$)|^tc0d$|^[pe]acc mtr temp sensor[0-9]+$")
+var cpuSensorSeparators = regexp.MustCompile("[_/.-]+")
+var cpuPackagePattern = regexp.MustCompile("(^|[^a-z])package([^a-z]|$)")
+var cpuCorePattern = regexp.MustCompile("(^|[^a-z])core *#? *[0-9]+([^a-z]|$)|^[pe]acc mtr temp sensor[0-9]+$")
 
 func validHardware(v, max float64) bool {
 	return v >= 0 && v <= max && !math.IsNaN(v) && !math.IsInf(v, 0)
 }
+
+// Package first, then hottest core, then an identified generic CPU sensor.
+// Keep in sync with frontend/user/src/lib/hardware-metrics.ts; both use shared fixtures.
 func cpuSensorTemperature(temps []SensorTemperature) (float64, bool) {
-	var highest float64
+	var highest [3]float64
 	for _, t := range temps {
-		n := strings.ToLower(t.Name)
-		if strings.Contains(n, "acpi") || strings.Contains(n, "thermalzone") || strings.Contains(n, "gpu") || strings.Contains(n, "nvme") || strings.Contains(n, "disk") || strings.Contains(n, "pmu") || strings.Contains(n, "pmgr") || strings.Contains(n, "heatsink") || strings.Contains(n, "proximity") {
+		if !validHardware(t.Temperature, 150) || t.Temperature <= 0 {
 			continue
 		}
-		if cpuSensorPattern.MatchString(n) && validHardware(t.Temperature, 150) && t.Temperature > highest {
-			highest = t.Temperature
+		n := cpuSensorSeparators.ReplaceAllString(strings.ToLower(t.Name), " ")
+		if strings.Contains(n, "acpi") || strings.Contains(n, "thermalzone") || strings.Contains(n, "gpu") || strings.Contains(n, "nvme") || strings.Contains(n, "disk") || strings.Contains(n, "pmu") || strings.Contains(n, "pmgr") || strings.Contains(n, "heatsink") || strings.Contains(n, "proximity") || !cpuSensorPattern.MatchString(n) {
+			continue
+		}
+		priority := 2
+		if cpuPackagePattern.MatchString(n) {
+			priority = 0
+		} else if cpuCorePattern.MatchString(n) {
+			priority = 1
+		}
+		if t.Temperature > highest[priority] {
+			highest[priority] = t.Temperature
 		}
 	}
-	return highest, highest > 0
+	for _, v := range highest {
+		if v > 0 {
+			return v, true
+		}
+	}
+	return 0, false
 }
 
 // These metrics belong to the saved last-minute snapshots, not TSDB's old aggregate GPU series.

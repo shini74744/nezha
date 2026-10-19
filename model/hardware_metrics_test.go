@@ -2,6 +2,8 @@ package model
 
 import (
 	"encoding/json"
+	"math"
+	"os"
 	"reflect"
 	"testing"
 )
@@ -73,6 +75,47 @@ func TestHardwareCPUSensorPlatformNames(t *testing.T) {
 	for _, name := range []string{"TC0H", "TC0P", "PMU tdie1", "CPU Heatsink", "CPU Proximity", "GPU MTR Temp Sensor0", "ACPI ThermalZone"} {
 		if _, ok := cpuSensorTemperature([]SensorTemperature{{Name: name, Temperature: 55}}); ok {
 			t.Fatal("non-core sensor", name)
+		}
+	}
+}
+
+func TestCPUTemperatureSharedCases(t *testing.T) {
+	raw, err := os.ReadFile("testdata/cpu_temperature_cases.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cases []struct {
+		Name         string
+		Temperatures []SensorTemperature
+		Expected     *float64
+	}
+	if err := json.Unmarshal(raw, &cases); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range cases {
+		t.Run(tc.Name, func(t *testing.T) {
+			s := RecordedServerState{At: 123456, State: &HostState{Temperatures: tc.Temperatures}}
+			before, _ := json.Marshal(s)
+			var saved RecordedServerState
+			if err := json.Unmarshal(before, &saved); err != nil {
+				t.Fatal(err)
+			}
+			v, ok := saved.Metrics()["cpu_temperature"]
+			if (tc.Expected != nil) != ok || (ok && v != *tc.Expected) {
+				t.Fatalf("got %v, %v; want %v", v, ok, tc.Expected)
+			}
+			after, _ := json.Marshal(saved)
+			if string(before) != string(after) {
+				t.Fatal("snapshot rewritten")
+			}
+		})
+	}
+}
+func TestCPUTemperatureNonFinitePackageFallsBack(t *testing.T) {
+	for _, invalid := range []float64{math.NaN(), math.Inf(1), math.Inf(-1)} {
+		v, ok := cpuSensorTemperature([]SensorTemperature{{Name: "CPU Package", Temperature: invalid}, {Name: "CPU Core 0", Temperature: 47}})
+		if !ok || v != 47 {
+			t.Fatal(v, ok)
 		}
 	}
 }

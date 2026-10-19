@@ -14,6 +14,7 @@ import { formatBytes } from "@/lib/format";
 import { snapshotInterval } from "@/lib/snapshot-interval";
 import {
 	availableModes,
+	cpuTemperatureReading,
 	hardwarePoints,
 	hardwareValue,
 	memoryPair,
@@ -180,7 +181,14 @@ export default function HardwareMetricCard({
 						) : mode === "temperature" ? (
 							<span>
 								{index === undefined
-									? t("hardware.cpuSensor", "已识别 CPU 传感器最高温度")
+									? cpuTemperatureReading(state)?.source === "package"
+										? t("hardware.cpuPackage", "CPU 封装温度")
+										: cpuTemperatureReading(state)?.source === "core"
+											? t("hardware.cpuCoreMax", "最高核心温度")
+											: t(
+													"hardware.cpuSensorFallback",
+													"CPU 传感器温度（未识别封装或核心）",
+												)
 									: t("hardware.gpuCore", "GPU 核心温度")}
 							</span>
 						) : pair ? (
