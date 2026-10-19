@@ -362,9 +362,9 @@ export default function ServerDetailOverview({
 									<AccordionContent className="pb-0">
 										<section className="flex items-start flex-wrap gap-2">
 											{server?.state.temperatures.map((item, index) => (
-												<div className="text-xs flex items-center" key={index}>
-													<p className="font-semibold">{item.Name}</p>:{" "}
-													{item.Temperature.toFixed(2)} °C
+												<div className="text-xs flex min-w-0 max-w-full flex-wrap items-center gap-1" key={index}>
+ <p className="min-w-0 break-all font-semibold" title={item.Name}>{item.Name.startsWith("GPU Core / ") ? t("hardware.gpuCore", "GPU 核心温度") + " · " + item.Name.slice(11) : item.Name}</p>
+ <span className="whitespace-nowrap">{item.Temperature.toFixed(2)} °C</span>
 												</div>
 											))}
 										</section>

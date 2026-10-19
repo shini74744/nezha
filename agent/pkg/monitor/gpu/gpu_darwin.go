@@ -138,6 +138,7 @@ func findDevices(key string) ([]string, error) {
 
 		cfStr := CFStringCreateWithCString(kCFAllocatorDefault, key, kCFStringEncodingUTF8)
 		r, _ := findProperties(service, uintptr(cfStr), 0)
+		CFRelease(uintptr(cfStr))
 		result, _ := r.(string)
 		IOObjectRelease(service)
 
@@ -154,6 +155,7 @@ func findDevices(key string) ([]string, error) {
 func findUtilization(key, dictKey string) (int, error) {
 	var iterator ioIterator
 	var result int
+	var found bool
 	var err error
 
 	iv := IOServiceGetMatchingServices(kIOMainPortDefault, uintptr(IOServiceMatching(IOSERVICE_GPU)), &iterator)
@@ -178,33 +180,43 @@ func findUtilization(key, dictKey string) (int, error) {
 		CFRelease(uintptr(cfStr))
 		CFRelease(uintptr(cfDictStr))
 
+		IOObjectRelease(service)
 		if rerr != nil {
 			err = rerr
-			IOObjectRelease(service)
 			continue
-		} else if result != 0 {
-			break
 		}
+		found = true
+		break // A real zero is a valid idle reading.
 	}
-
-	IOObjectRelease(service)
 	IOObjectRelease(iterator)
-
-	return result, err
+	if found {
+		return result, nil
+	}
+	if err == nil {
+		err = fmt.Errorf("GPU utilization is unavailable")
+	}
+	return 0, err
 }
 
 func findProperties(service ioRegistryEntry, key, dictKey uintptr) (any, error) {
 	properties := IORegistryEntrySearchCFProperty(service, kIOServicePlane, key, kCFAllocatorDefault, kIORegistryIterateRecursively)
 	ptrValue := uintptr(properties)
 	if properties != nil {
+		defer CFRelease(ptrValue)
 		switch CFGetTypeID(ptrValue) {
 		// model
 		case CFStringGetTypeID():
-			length := CFStringGetLength(ptrValue) + 1 // null terminator
-			buf := make([]byte, length-1)
-			CFStringGetCString(ptrValue, &buf[0], length, uint32(kCFStringEncodingUTF8))
-			CFRelease(ptrValue)
-			return string(buf), nil
+			length := CFStringGetLength(ptrValue)
+			if length <= 0 || length > 1024 {
+				return nil, fmt.Errorf("invalid GPU model length")
+			}
+			// CFString length is UTF-16 units; reserve UTF-8 expansion plus NUL.
+			size := length*4 + 1
+			buf := make([]byte, size)
+			if !CFStringGetCString(ptrValue, &buf[0], size, uint32(kCFStringEncodingUTF8)) {
+				return nil, fmt.Errorf("GPU model conversion failed")
+			}
+			return strings.TrimRight(string(buf), "\x00"), nil
 		// PerformanceStatistics
 		case CFDictionaryGetTypeID():
 			cfValue := CFDictionaryGetValue(ptrValue, dictKey)

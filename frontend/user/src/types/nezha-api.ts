@@ -36,6 +36,8 @@ export interface NezhaServerHost {
 }
 
 export interface NezhaServerStatus {
+ cpu_frequency_mhz?: number;
+ cpu_frequency_kind?: string;
 	cpu: number;
 	mem_used: number;
 	swap_used: number;
@@ -56,6 +58,19 @@ export interface NezhaServerStatus {
 	process_count: number;
 	temperatures: temperature[];
 	gpu: number[];
+	// Per-card figures from the official GPU memory protocol, in MiB.
+	// Index-aligned with gpu. Prefer sample.name: host.gpu may also contain virtual adapters.
+	gpus?: NezhaGPUStat[];
+}
+
+export interface NezhaGPUStat {
+ name?: string;
+ shared_memory_used?: number;
+ shared_memory_total?: number;
+	utilization: number;
+	// Go omitempty omits a valid zero used value when total is known.
+	memory_used?: number;
+	memory_total?: number;
 }
 
 interface temperature {

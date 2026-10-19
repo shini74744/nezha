@@ -1,4 +1,5 @@
 import { ServerConfigCardBatch } from "@/components/server-config-batch"
+import { agentConfigFields } from "@/lib/agent-config-fields"
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, expect, test, vi } from "vitest"
 
@@ -43,6 +44,7 @@ test("default is no changes; removing a choice removes it from the payload", asy
     })
     await screen.findByText("已下发：1 台")
     expect(screen.getByText(/不代表配置已生效/)).toBeTruthy()
+    expect(screen.getByText("已下发配置，请核对节点状态")).toBeTruthy()
 })
 
 test("risky change requires acknowledgement and preserves selected targets", async () => {
@@ -121,4 +123,26 @@ test("double submit is guarded; pending close is prevented; failures preserve ed
     expect((screen.getByRole("button", { name: "确认下发" }) as HTMLButtonElement).disabled).toBe(
         false,
     )
+})
+
+test("batch labels expose raw keys without changing selection", () => {
+    render(<ServerConfigCardBatch sid={[7]} />)
+    open()
+    for (const field of agentConfigFields) {
+        expect(screen.getByTitle(field.key).textContent).toBe(field.label)
+    }
+    expect(screen.getByText("已选 0 项")).toBeTruthy()
+    expect(setServerConfig).not.toHaveBeenCalled()
+})
+
+test("all-offline or failed results do not claim configuration was dispatched", async () => {
+    setServerConfig.mockResolvedValue({ success: [], offline: [7], failure: [8] })
+    render(<ServerConfigCardBatch sid={[7, 8]} />)
+    open()
+    choose("GPU 监控")
+    review()
+    expect(screen.getByTitle("gpu").textContent).toBe("GPU 监控")
+    fireEvent.click(screen.getByRole("button", { name: "确认下发" }))
+    await screen.findByText("未下发配置，请核对节点状态")
+    expect(screen.queryByText("已下发配置，请核对节点状态")).toBeNull()
 })

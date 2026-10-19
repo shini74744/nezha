@@ -3,6 +3,8 @@ package temperature
 import (
 	"context"
 	"fmt"
+	"math"
+	"runtime"
 	"slices"
 	"strings"
 
@@ -16,17 +18,24 @@ var sensorIgnoreList = []string{
 	"noname",
 }
 
-func GetState(_ context.Context) ([]model.SensorTemperature, error) {
-	temperatures, err := sensors.SensorsTemperatures()
+var sensorTemperatures = sensors.TemperaturesWithContext
+var extraTemperatures = platformTemperatures
+
+func GetState(ctx context.Context) ([]model.SensorTemperature, error) {
+	extra := extraTemperatures(ctx)
+	temperatures, err := sensorTemperatures(ctx)
 	if err != nil {
-		if _, ok := err.(*sensors.Warnings); !ok {
+		if _, ok := err.(*sensors.Warnings); !ok && len(extra) == 0 && runtime.GOOS != "windows" && runtime.GOOS != "linux" && runtime.GOOS != "freebsd" {
 			return nil, fmt.Errorf("SensorsTemperatures: %v", err)
 		}
 	}
 
-	var tempStat []model.SensorTemperature
+	tempStat := slices.Clone(extra)
+	if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
+		tempStat = append(tempStat, appleIntegratedTemperature(temperatures)...)
+	}
 	for _, t := range temperatures {
-		if t.Temperature > 0 && !slices.Contains(sensorIgnoreList, t.SensorKey) {
+		if t.Temperature > 0 && t.Temperature <= 150 && !math.IsNaN(t.Temperature) && !math.IsInf(t.Temperature, 0) && !slices.Contains(sensorIgnoreList, t.SensorKey) {
 			tempStat = append(tempStat, model.SensorTemperature{
 				Name:        t.SensorKey,
 				Temperature: t.Temperature,

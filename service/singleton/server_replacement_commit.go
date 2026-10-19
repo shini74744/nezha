@@ -102,7 +102,7 @@ func CompleteServerReplacement(secret, uuid string, host *model.Host, state *mod
 		}
 		if fullReset {
 			var e error
-			resetReferences, e = resetReplacementNode(tx, &fresh)
+			resetReferences, e = resetReplacementNode(tx, &fresh, row.CreatedAt)
 			if e != nil {
 				return e
 			}

@@ -1,9 +1,9 @@
 import { swrFetcher } from "@/api/api"
 import { deleteNotification } from "@/api/notification"
 import { ActionButtonGroup } from "@/components/action-button-group"
-import { CopyButton } from "@/components/copy-button"
 import { HeaderButtonGroup } from "@/components/header-button-group"
 import { NotificationTab } from "@/components/notification-tab"
+import { NotificationURLCopyButton } from "@/components/notification-url-copy-button"
 import { NotifierCard } from "@/components/notifier"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -94,7 +94,7 @@ export default function NotificationPage() {
             accessorFn: (row) => row.url,
             cell: ({ row }) => {
                 const s = row.original
-                return <CopyButton text={s.url} />
+                return <NotificationURLCopyButton key={s.id} notificationId={s.id} />
             },
         },
         {

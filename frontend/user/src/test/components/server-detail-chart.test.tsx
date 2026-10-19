@@ -253,7 +253,7 @@ describe("ServerDetailChart", () => {
 		).toBeInTheDocument();
 		expect(screen.getByText("serverDetailChart.period1d")).toBeInTheDocument();
 		expect(screen.getByText("serverDetailChart.period7d")).toBeInTheDocument();
-		expect(screen.getByText("CPU")).toBeInTheDocument();
+		expect(screen.getByRole("button", {name: "CPU hardware.usage"})).toBeInTheDocument();
 		expect(screen.getByText("GPU: NVIDIA T4")).toBeInTheDocument();
 		expect(screen.getByText("serverDetailChart.mem")).toBeInTheDocument();
 		expect(screen.getByText("serverDetailChart.swap")).toBeInTheDocument();
@@ -269,6 +269,50 @@ describe("ServerDetailChart", () => {
 		await user.click(screen.getByText("serverDetailChart.period7d"));
 
 		expect(detailChartMocks.fetchServerMetrics).not.toHaveBeenCalled();
+	});
+
+	it("maps VRAM by card, updates live values and clears absent readings", async () => {
+		seedWebSocketData();
+		const server = detailChartMocks.lastData!.servers[0];
+		server.host.gpu = ["NVIDIA T4", "NVIDIA A10"];
+		server.state.gpu = [33, 55];
+		server.state.gpus = [
+			{ utilization: 33, memory_used: 2048, memory_total: 8192 },
+			{ utilization: 55, memory_used: 6144, memory_total: 24576 },
+		];
+		const view = renderWithQuery(<ServerDetailChart server_id="7" />);
+		expect(screen.getByText("2.00 GiB / 8.00 GiB · 25.0%")).toBeInTheDocument();
+		expect(screen.getByText("6.00 GiB / 24.00 GiB · 25.0%")).toBeInTheDocument();
+		server.state.gpus[0].memory_used = 4096;
+		view.rerender(<QueryClientProvider client={createTestQueryClient()}><ServerDetailChart server_id="7" /></QueryClientProvider>);
+		expect(screen.getByText("4.00 GiB / 8.00 GiB · 50.0%")).toBeInTheDocument();
+		server.state.gpus = [{ utilization: 33 }];
+		view.rerender(<QueryClientProvider client={createTestQueryClient()}><ServerDetailChart server_id="7" /></QueryClientProvider>);
+		expect(document.querySelector("[data-gpu-memory]")).toBeNull();
+	});
+
+	it("keeps anonymous GPU index mapping and old agents working", () => {
+		seedWebSocketData();
+		const server = detailChartMocks.lastData!.servers[0];
+		server.host.gpu = [];
+		server.state.gpus = [{ utilization: 33, memory_used: 1937, memory_total: 6144 }];
+		renderWithQuery(<ServerDetailChart server_id="7" />);
+		expect(screen.getByText("GPU: #1")).toBeInTheDocument();
+		expect(screen.getByText("1.89 GiB / 6.00 GiB · 31.5%")).toBeInTheDocument();
+	});
+
+	it("does not substitute live VRAM for history and restores it on realtime", async () => {
+		seedWebSocketData();
+		detailChartMocks.lastData!.servers[0].state.gpus = [{ utilization: 33, memory_used: 2048, memory_total: 8192 }];
+		detailChartMocks.fetchServerMetrics.mockImplementation(
+			(_id: number, metric: string) => Promise.resolve(metricsResponse(metric)),
+		);
+		renderWithQuery(<ServerDetailChart server_id="7" />);
+		await screen.findByText("2.00 GiB / 8.00 GiB · 25.0%");
+		await userEvent.click(screen.getByText("serverDetailChart.period1d"));
+		await waitFor(() => expect(document.querySelector("[data-gpu-memory]")).toBeNull());
+		await userEvent.click(screen.getByText("serverDetailChart.realtime"));
+		expect(await screen.findByText("2.00 GiB / 8.00 GiB · 25.0%")).toBeInTheDocument();
 	});
 
 	it("keeps default network units without a theme formatter", async () => {

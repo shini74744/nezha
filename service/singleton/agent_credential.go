@@ -143,7 +143,7 @@ func AuthenticateAgentCredential(secret, value string) (uint64, error) {
 		if err := credentialDB().Transaction(func(tx *gorm.DB) error {
 			if newServer {
 				var err error
-				server, err = createServerWithLowestAvailableIDInTx(tx, row.OwnerID, value, "新服务器")
+				server, err = createServerWithLowestAvailableIDInTx(tx, current.OwnerID, value, installationCommandServerName(current.CreatedAt))
 				if err != nil {
 					return err
 				}

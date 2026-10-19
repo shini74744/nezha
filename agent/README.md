@@ -1,6 +1,6 @@
 # DDnezha Agent
 
-基于 Nezha Agent 的自有发行版，与主面板在 **shini74744/nezha** 同仓库维护、分别递增版本。Agent v1.0.1 使用旧目录；v1.0.2 起改为 DDnezha 独立安装。当前 Agent **v1.0.3** 与主面板 **v0.0.5** 配套，管理入口区分为 `agent.sh` 与 `nezha.sh`。源码版本不代表线上节点已迁移，现有节点须逐实例核对并保留原 UUID／独立密钥，其他配置和服务不动。
+基于 Nezha Agent 的自有发行版，与主面板在 **shini74744/nezha** 同仓库维护、分别递增版本。Agent v1.0.1 使用旧目录；v1.0.2 起改为 DDnezha 独立安装。当前 Agent **v1.0.4** 与主面板 **v0.0.8** 配套，管理入口区分为 `agent.sh` 与 `nezha.sh`。源码版本不代表线上节点已迁移，现有节点须逐实例核对并保留原 UUID／独立密钥，其他配置和服务不动。
 
 安装、自动更新及面板触发升级只使用自有仓库，不回退旧 Agent 仓库、官方 GitHub、Gitee 或 AtomGit。旧仓库保留历史、不再发布。
 
@@ -8,10 +8,14 @@
 - 安装变量：`DDNZ_SERVER`、`DDNZ_CLIENT_SECRET`、`DDNZ_TLS`、`DDNZ_UUID`。不读取官方 `NZ_*` 环境变量。
 - Linux/macOS/FreeBSD 脚本：`scripts/install.sh`，面板在独立临时目录下载为 `agent.sh`，成功安装后保存到 `/opt/DDnezha/agent.sh`；非 root 通过 sudo 请求提权，仅传必需参数。
 - Windows 脚本：`scripts/install.ps1`，需要管理员 PowerShell；安装成功后保存到 `C:\DDnezha\agent.ps1`。
-- 安装包：`DDnezha_系统_架构.zip`；标签 `agent-v1.0.3`，程序版本 `1.0.3`。与主面板版本独立递增。
+- 安装包：`DDnezha_系统_架构.zip`；标签 `agent-v1.0.4`，程序版本 `1.0.4`。与主面板版本独立递增。
 - 归属检查：程序名、相邻 `.DDnezha-owned` 标记、独立配置目录；拒绝链接和未确认的既有安装。
 
 只隔离生命周期，不改变通信协议。原有 UUID／密钥配对、磁盘读写采集、终端、检测等功能保留。详见 [隔离与迁移说明](../docs/ddnezha-isolation.md)、[统一仓库](../docs/unified-repository.md)、[发布说明](OWNED-RELEASE.md)。旧节点不能通过普通更新按钮自动迁移目录；必须备份并只迁移确认属于本项目的实例，保留每台机器自己的认证和配置，不能接管官方实例。
+
+## 硬件指标
+
+v1.0.4 新增 CPU 频率、Windows 核显／独显逐卡显存与可用 GPU 核心温度、Linux 多厂商逐卡采集，以及 macOS / FreeBSD 可用传感器支持。遵守原有 GPU／温度开关，不安装驱动、不改配置。配合主面板 v0.0.8 可点击 CPU／GPU 标题切换指标，并保留离线前读数。并非所有硬件均开放传感器，详细支持范围与测试边界见 [硬件指标说明](../docs/hardware-metrics.md)。
 
 ## 卸载独立 Agent
 

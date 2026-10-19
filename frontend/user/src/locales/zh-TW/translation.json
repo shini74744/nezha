@@ -74,6 +74,8 @@
 		"bootTime": "啟動時間"
 	},
 	"serverDetailChart": {
+		"gpuMemory": "顯存",
+		"gpuMemoryRecorded": "顯存（最後回報）",
 		"process": "進程數",
 		"disk": "磁盤",
 		"mem": "內存",

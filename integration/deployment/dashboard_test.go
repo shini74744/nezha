@@ -668,7 +668,9 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 	require.Equal(t, beforeUUID, afterUUID)
 	require.Equal(t, beforeOrder, afterOrder)
 	require.Equal(t, beforeOwner, afterOwner)
-	require.Equal(t, "新服务器", name)
+	var commandCreatedAt time.Time
+	require.NoError(t, proof.QueryRow("SELECT created_at FROM server_replacements WHERE server_uuid=? AND state='active'", agentPair.UUID).Scan(&commandCreatedAt))
+	require.Equal(t, commandCreatedAt.In(time.FixedZone("Asia/Shanghai", 8*3600)).Format("2006/01/02/15:04"), name)
 	require.Empty(t, note)
 	require.Empty(t, publicNote)
 	var oldOperations int

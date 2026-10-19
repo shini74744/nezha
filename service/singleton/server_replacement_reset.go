@@ -3,6 +3,7 @@ package singleton
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/nezhahq/nezha/model"
 	"github.com/robfig/cron/v3"
@@ -11,7 +12,7 @@ import (
 
 // resetReplacementNode is called only for a versioned full-reset ticket. UUID
 // history is never deleted by numeric ID, which may have belonged to other nodes.
-func resetReplacementNode(tx *gorm.DB, server *model.Server) (func(), error) {
+func resetReplacementNode(tx *gorm.DB, server *model.Server, issuedAt time.Time) (func(), error) {
 	id, uuid := server.ID, server.UUID
 	for _, target := range []any{
 		&model.ServerOperationLog{}, &model.ServerInventoryBaseline{},
@@ -117,7 +118,7 @@ func resetReplacementNode(tx *gorm.DB, server *model.Server) (func(), error) {
 	// Map updates intentionally include zero values. Identity, owner, display
 	// position, and identity creation metadata are not editable reset fields.
 	defaults := map[string]any{
-		"name": "新服务器", "note": "", "public_note": "",
+		"name": installationCommandServerName(issuedAt), "note": "", "public_note": "",
 		"hide_for_guest": false, "hide_for_display": false,
 		"connectivity_disabled": false, "connectivity_local_only": false,
 		"network_default_view": "connectivity", "network_display_mode": "",

@@ -305,7 +305,7 @@ export const ServerConfigCardBatch = ({ sid, ...props }: ServerConfigCardBatchPr
                                             key={change.key}
                                             className="flex flex-col gap-1 py-3 sm:flex-row sm:justify-between sm:gap-4"
                                         >
-                                            <span className="shrink-0 text-sm font-medium">
+                                            <span title={change.key} className="shrink-0 text-sm font-medium">
                                                 {change.label}
                                             </span>
                                             <span className="break-words text-sm text-muted-foreground sm:text-right">
@@ -427,7 +427,7 @@ export const ServerConfigCardBatch = ({ sid, ...props }: ServerConfigCardBatchPr
                                                                         setError("")
                                                                     }}
                                                                 />
-                                                                <span className="min-w-0 flex-1 text-sm font-medium">
+                                                                <span title={field.key} className="min-w-0 flex-1 text-sm font-medium">
                                                                     {field.label}
                                                                 </span>
                                                                 <span
@@ -512,7 +512,9 @@ export const ServerConfigCardBatch = ({ sid, ...props }: ServerConfigCardBatchPr
                             {pending
                                 ? "正在下发，请稍候…"
                                 : result
-                                  ? "请核对节点状态"
+                                  ? result.success?.length
+                                      ? "已下发配置，请核对节点状态"
+                                      : "未下发配置，请核对节点状态"
                                   : "已选 " + count + " 项"}
                         </span>
                         <div className="flex gap-2">

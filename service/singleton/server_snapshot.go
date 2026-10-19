@@ -39,6 +39,10 @@ func QueryServerSnapshot(id uint64, uuid string, days int) (*model.ServerLastRep
 	if len(rows) == 0 {
 		return nil, nil
 	}
+	var latest model.RecordedServerState
+	if err := json.Unmarshal([]byte(rows[0].Payload), &latest); err != nil {
+		return nil, err
+	}
 	result := &model.ServerLastReport{ServerID: id, TSDBEnabled: TSDBEnabled(), HistoryDays: days, SnapshotSeconds: 60,
 		Metrics: map[string]float64{}, Recent: map[string][]model.ServerMetricsDataPoint{}}
 	for i := len(rows) - 1; i >= 0; i-- {
@@ -54,7 +58,7 @@ func QueryServerSnapshot(id uint64, uuid string, days int) (*model.ServerLastRep
 		}
 		result.Snapshot = &sample
 		result.LastReportAt = sample.At
-		result.Metrics = sample.Metrics()
+		result.Metrics = model.AlignSnapshotGPU(sample.Metrics(), sample.State, latest.State)
 		for key, value := range result.Metrics {
 			result.Recent[key] = append(result.Recent[key], model.ServerMetricsDataPoint{Timestamp: sample.At, Value: value})
 		}
