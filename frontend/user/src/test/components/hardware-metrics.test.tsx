@@ -1,9 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
+import cpuTemperatureCases from "../../../../../model/testdata/cpu_temperature_cases.json";
 import { render, screen, fireEvent } from "@testing-library/react";
 import HardwareMetricCard from "@/components/HardwareMetricCard";
 import {
 	availableModes,
 	cpuTemperature,
+	cpuTemperatureReading,
 	hardwarePoints,
 	hardwareValue,
 	memoryPair,
@@ -87,6 +89,57 @@ describe("hardware metric selection", () => {
 		).toBeInTheDocument();
 		fireEvent.click(screen.getByRole("button", { name: "点击切换到GPU 温度" }));
 		expect(screen.getByText("45.0 °C")).toBeInTheDocument();
+	});
+	it.each([
+		false,
+		true,
+	])("GPU cycles usage, VRAM, temperature, shared memory (recorded=%s)", (recorded) => {
+		const complete = {
+			...state,
+			gpus: [
+				state.gpus![0],
+				{
+					...state.gpus![1],
+					shared_memory_used: 1024,
+					shared_memory_total: 8192,
+				},
+			],
+		};
+		expect(availableModes(complete, 1, "RTX [2]")).toEqual([
+			"usage",
+			"memory",
+			"temperature",
+			"shared",
+		]);
+		const view = render(
+			<HardwareMetricCard
+				id={1}
+				now={1000}
+				state={complete}
+				index={1}
+				identity="RTX [2]"
+				name="RTX [2]"
+				recorded={recorded}
+			/>,
+		);
+		for (const [next, mode, value, pair] of [
+			["GPU 显存", "memory", "12.5%", "512.00 MiB / 4.00 GiB"],
+			["GPU 温度", "temperature", "45.0 °C", null],
+			["GPU 共享内存", "shared", "12.5%", "1.00 GiB / 8.00 GiB"],
+			["GPU 使用率", "usage", "0.0%", null],
+		]) {
+			fireEvent.click(
+				screen.getByRole("button", { name: `点击切换到${next}` }),
+			);
+			expect(
+				view.container.querySelector(`[data-hardware-mode="${mode}"]`),
+			).toBeInTheDocument();
+			expect(screen.getByText(value!)).toBeInTheDocument();
+			if (pair) expect(screen.getByText(pair)).toBeInTheDocument();
+		}
+		expect(
+			availableModes({ ...complete, temperatures: [] }, 1, "RTX [2]"),
+		).toEqual(["usage", "memory", "shared"]);
 	});
 	it("hides unsupported and invalid metrics, accepts omitted idle memory", () => {
 		expect(
@@ -216,4 +269,99 @@ it("identifies platform CPU sensors without heatsink or PMU substitution", () =>
 			cpuTemperature({ temperatures: [{ Name: name, Temperature: 55 }] }),
 		).toBeUndefined();
 	}
+});
+
+describe("CPU package priority", () => {
+	it.each(cpuTemperatureCases)("$name", ({
+		temperatures,
+		expected,
+		source,
+	}) => {
+		const reading = cpuTemperatureReading({ temperatures });
+		expect(reading?.value ?? null).toBe(expected);
+		expect(reading?.source ?? null).toBe(source);
+		const server = createServer({ id: 1 });
+		server.state.temperatures = temperatures;
+		const before = JSON.stringify(server);
+		expect(
+			hardwarePoints(
+				[{ now: 900, servers: [server] }],
+				1,
+				1000,
+				server.state,
+				"temperature",
+			).map((p) => p.value),
+		).toEqual([expected, expected]);
+		expect(JSON.stringify(server)).toBe(before);
+	});
+	it.each([
+		NaN,
+		Infinity,
+		-Infinity,
+	])("rejects non-finite package %s", (Temperature) => {
+		expect(
+			cpuTemperature({
+				temperatures: [
+					{ Name: "CPU Package", Temperature },
+					{ Name: "CPU Core 0", Temperature: 47 },
+				],
+			}),
+		).toBe(47);
+	});
+	it.each([
+		false,
+		true,
+	])("updates source labels without changing offline time (recorded=%s)", (recorded) => {
+		const packaged = {
+			...state,
+			temperatures: [
+				...state.temperatures!,
+				{ Name: "coretemp_package_id_0", Temperature: 45 },
+			],
+		};
+		const view = render(
+			<HardwareMetricCard
+				id={1}
+				now={1000}
+				state={packaged}
+				recorded={recorded}
+				recent={{ cpu_temperature: [{ ts: 900, value: 44 }] }}
+			/>,
+		);
+		fireEvent.click(screen.getByRole("button", { name: "点击切换到CPU 温度" }));
+		expect(screen.getByText("45.0 °C")).toBeInTheDocument();
+		expect(screen.getByText("CPU 封装温度")).toBeInTheDocument();
+		view.rerender(
+			<HardwareMetricCard
+				id={1}
+				now={1000}
+				state={packaged}
+				recorded={recorded}
+				recent={{ cpu_temperature: [{ ts: 900, value: 44 }] }}
+			/>,
+		);
+		expect(screen.getByText("45.0 °C")).toBeInTheDocument();
+		view.rerender(
+			<HardwareMetricCard
+				id={1}
+				now={1000}
+				state={state}
+				recorded={recorded}
+			/>,
+		);
+		expect(screen.getByText("60.0 °C")).toBeInTheDocument();
+		expect(screen.getByText("最高核心温度")).toBeInTheDocument();
+		view.rerender(
+			<HardwareMetricCard
+				id={1}
+				now={1000}
+				state={{ ...state, temperatures: [{ Name: "TC0D", Temperature: 55 }] }}
+				recorded={recorded}
+			/>,
+		);
+		expect(
+			screen.getByText("CPU 传感器温度（未识别封装或核心）"),
+		).toBeInTheDocument();
+		expect(screen.getByText("55.0 °C")).toBeInTheDocument();
+	});
 });

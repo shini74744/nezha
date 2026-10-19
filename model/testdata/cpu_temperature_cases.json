@@ -1,0 +1,299 @@
+[
+  {
+    "name": "package beats hotter cores",
+    "temperatures": [
+      {
+        "Name": "coretemp_package_id_0",
+        "Temperature": 52
+      },
+      {
+        "Name": "coretemp_core_0",
+        "Temperature": 80
+      },
+      {
+        "Name": "coretemp_core_1",
+        "Temperature": 70
+      }
+    ],
+    "expected": 52,
+    "source": "package"
+  },
+  {
+    "name": "multiple packages use hottest package",
+    "temperatures": [
+      {
+        "Name": "coretemp_package_id_0",
+        "Temperature": 45
+      },
+      {
+        "Name": "coretemp_package_id_1",
+        "Temperature": 55
+      },
+      {
+        "Name": "coretemp_core_0",
+        "Temperature": 90
+      }
+    ],
+    "expected": 55,
+    "source": "package"
+  },
+  {
+    "name": "Windows package name",
+    "temperatures": [
+      {
+        "Name": "CPU Package",
+        "Temperature": 51
+      },
+      {
+        "Name": "CPU Core #1",
+        "Temperature": 89
+      }
+    ],
+    "expected": 51,
+    "source": "package"
+  },
+  {
+    "name": "Linux normalized package name",
+    "temperatures": [
+      {
+        "Name": "CoreTemp/Package-id-0",
+        "Temperature": 48
+      },
+      {
+        "Name": "coretemp_core_2",
+        "Temperature": 80
+      }
+    ],
+    "expected": 48,
+    "source": "package"
+  },
+  {
+    "name": "package id standalone",
+    "temperatures": [
+      {
+        "Name": "Package id 0",
+        "Temperature": 49
+      },
+      {
+        "Name": "CPU Core 0",
+        "Temperature": 65
+      }
+    ],
+    "expected": 49,
+    "source": "package"
+  },
+  {
+    "name": "core fallback",
+    "temperatures": [
+      {
+        "Name": "coretemp_core_0",
+        "Temperature": 50
+      },
+      {
+        "Name": "coretemp_core_1",
+        "Temperature": 60
+      }
+    ],
+    "expected": 60,
+    "source": "core"
+  },
+  {
+    "name": "invalid packages fall back",
+    "temperatures": [
+      {
+        "Name": "CPU Package",
+        "Temperature": 0
+      },
+      {
+        "Name": "coretemp_package_id_1",
+        "Temperature": -1
+      },
+      {
+        "Name": "coretemp_package_id_2",
+        "Temperature": 151
+      },
+      {
+        "Name": "CPU Core 0",
+        "Temperature": 44
+      }
+    ],
+    "expected": 44,
+    "source": "core"
+  },
+  {
+    "name": "CPU core versus hotter generic",
+    "temperatures": [
+      {
+        "Name": "CPU Core 0",
+        "Temperature": 40
+      },
+      {
+        "Name": "k10temp_tctl",
+        "Temperature": 65
+      }
+    ],
+    "expected": 40,
+    "source": "core"
+  },
+  {
+    "name": "Apple cluster fallback",
+    "temperatures": [
+      {
+        "Name": "pACC MTR Temp Sensor0",
+        "Temperature": 50
+      },
+      {
+        "Name": "eACC MTR Temp Sensor12",
+        "Temperature": 58
+      }
+    ],
+    "expected": 58,
+    "source": "core"
+  },
+  {
+    "name": "BSD core fallback",
+    "temperatures": [
+      {
+        "Name": "CPU Core 0",
+        "Temperature": 39
+      },
+      {
+        "Name": "CPU Core 2",
+        "Temperature": 43
+      }
+    ],
+    "expected": 43,
+    "source": "core"
+  },
+  {
+    "name": "AMD die retained accurately",
+    "temperatures": [
+      {
+        "Name": "k10temp_tdie",
+        "Temperature": 55
+      }
+    ],
+    "expected": 55,
+    "source": "sensor"
+  },
+  {
+    "name": "Intel Mac die retained accurately",
+    "temperatures": [
+      {
+        "Name": "TC0D",
+        "Temperature": 56
+      }
+    ],
+    "expected": 56,
+    "source": "sensor"
+  },
+  {
+    "name": "generic CPU retained",
+    "temperatures": [
+      {
+        "Name": "cpu_thermal",
+        "Temperature": 42
+      }
+    ],
+    "expected": 42,
+    "source": "sensor"
+  },
+  {
+    "name": "unrelated package ignored",
+    "temperatures": [
+      {
+        "Name": "NVMe Package id 0",
+        "Temperature": 95
+      },
+      {
+        "Name": "GPU CPU Package",
+        "Temperature": 88
+      },
+      {
+        "Name": "Disk Package",
+        "Temperature": 90
+      },
+      {
+        "Name": "Package delivery",
+        "Temperature": 77
+      },
+      {
+        "Name": "ACPI CPU Package",
+        "Temperature": 99
+      },
+      {
+        "Name": "CPU Core 1",
+        "Temperature": 45
+      }
+    ],
+    "expected": 45,
+    "source": "core"
+  },
+  {
+    "name": "all invalid hidden",
+    "temperatures": [
+      {
+        "Name": "CPU Package",
+        "Temperature": 0
+      },
+      {
+        "Name": "CPU Core 0",
+        "Temperature": -3
+      },
+      {
+        "Name": "coretemp_core_2",
+        "Temperature": 200
+      }
+    ],
+    "expected": null,
+    "source": null
+  },
+  {
+    "name": "non CPU hidden",
+    "temperatures": [
+      {
+        "Name": "ACPI ThermalZone",
+        "Temperature": 80
+      },
+      {
+        "Name": "TC0H",
+        "Temperature": 79
+      },
+      {
+        "Name": "CPU Proximity",
+        "Temperature": 70
+      },
+      {
+        "Name": "CPU Heatsink",
+        "Temperature": 75
+      },
+      {
+        "Name": "PMU tdie1",
+        "Temperature": 65
+      }
+    ],
+    "expected": null,
+    "source": null
+  },
+  {
+    "name": "empty hidden",
+    "temperatures": [],
+    "expected": null,
+    "source": null
+  },
+  {
+    "name": "package max boundary",
+    "temperatures": [
+      {
+        "Name": "CPU Package",
+        "Temperature": 150
+      },
+      {
+        "Name": "CPU Core 0",
+        "Temperature": 52
+      }
+    ],
+    "expected": 150,
+    "source": "package"
+  }
+]

@@ -12,20 +12,41 @@ export type HardwareMode =
 	| "shared";
 export const valid = (v: unknown, max = Number.MAX_VALUE): v is number =>
 	typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= max;
-export function cpuTemperature(state: State): number | undefined {
-	const values = (state.temperatures ?? [])
-		.filter(
-			(t) =>
-				!/acpi|thermalzone|gpu|nvme|disk|pmu|pmgr|heatsink|proximity/i.test(
-					t.Name,
-				) &&
-				/(^|[^a-z])(cpu|coretemp|k10temp|tctl|tdie|package id|core [0-9]|cpu_thermal|cpu-thermal)([^a-z]|$)|^tc0d$|^[pe]acc mtr temp sensor[0-9]+$/i.test(
-					t.Name,
-				),
+export type CPUTemperatureSource = "package" | "core" | "sensor";
+// Keep this selection in sync with model/hardware_metrics.go. Shared fixtures
+// cover live cards and the backend's saved/offline snapshot metrics.
+export function cpuTemperatureReading(
+	state: State,
+): { value: number; source: CPUTemperatureSource } | undefined {
+	const highest: Partial<Record<CPUTemperatureSource, number>> = {};
+	for (const t of state.temperatures ?? []) {
+		if (!valid(t.Temperature, 150) || t.Temperature <= 0) continue;
+		const name = t.Name.toLowerCase().replace(/[_/.-]+/g, " ");
+		if (
+			/acpi|thermalzone|gpu|nvme|disk|pmu|pmgr|heatsink|proximity/.test(name) ||
+			!/(^|[^a-z])(cpu|coretemp|k10temp|tctl|tdie|package id|core [0-9]|cpu thermal)([^a-z]|$)|^tc0d$|^[pe]acc mtr temp sensor[0-9]+$/.test(
+				name,
+			)
 		)
-		.map((t) => t.Temperature)
-		.filter((v) => valid(v, 150) && v > 0);
-	return values.length ? Math.max(...values) : undefined;
+			continue;
+		const source: CPUTemperatureSource = /(^|[^a-z])package([^a-z]|$)/.test(
+			name,
+		)
+			? "package"
+			: /(^|[^a-z])core *#? *[0-9]+([^a-z]|$)|^[pe]acc mtr temp sensor[0-9]+$/.test(
+						name,
+					)
+				? "core"
+				: "sensor";
+		highest[source] = Math.max(highest[source] ?? 0, t.Temperature);
+	}
+	for (const source of ["package", "core", "sensor"] as const) {
+		const value = highest[source];
+		if (value !== undefined) return { value, source };
+	}
+}
+export function cpuTemperature(state: State): number | undefined {
+	return cpuTemperatureReading(state)?.value;
 }
 export function gpuTemperature(
 	state: State,
@@ -98,7 +119,7 @@ export function availableModes(
 	const modes: HardwareMode[] =
 		index === undefined
 			? ["usage", "temperature", "frequency"]
-			: ["usage", "memory", "shared", "temperature"];
+			: ["usage", "memory", "temperature", "shared"];
 	return modes.filter(
 		(mode) => hardwareValue(state, mode, index, name) !== undefined,
 	);
