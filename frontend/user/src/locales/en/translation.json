@@ -74,6 +74,8 @@
 		"bootTime": "Boot time"
 	},
 	"serverDetailChart": {
+		"gpuMemory": "VRAM",
+		"gpuMemoryRecorded": "VRAM (last report)",
 		"process": "Process",
 		"disk": "Disk",
 		"mem": "Mem",

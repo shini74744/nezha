@@ -15,6 +15,25 @@ export type ConfigField = {
     warning?: string
 }
 
+// Single-node checkboxes expose raw values. Do not reuse the batch form's
+// positive labels for inverse disable_/skip_ flags.
+export const singleAgentConfigLabels: Record<string, string> = {
+    ip_report_period: "IP 更新间隔（秒）",
+    report_delay: "状态上报间隔（秒）",
+    hard_drive_partition_allowlist: "监控磁盘分区",
+    nic_allowlist: "监控网卡",
+    disable_auto_update: "禁用自动更新",
+    disable_command_execute: "禁用远程命令与文件管理",
+    disable_force_update: "禁用面板强制更新",
+    disable_nat: "禁用内网穿透",
+    disable_send_query: "禁用网络探测",
+    gpu: "GPU 监控",
+    temperature: "温度监控",
+    skip_connection_count: "跳过网络连接数统计",
+    skip_procs_count: "跳过进程数统计",
+    debug: "调试日志",
+}
+
 export const configGroups = ["监控采集", "上报频率", "更新设置", "远程功能", "网络设置"]
 
 export const agentConfigFields: ConfigField[] = [

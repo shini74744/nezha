@@ -1,4 +1,4 @@
-//go:build !linux
+//go:build !linux && !windows && !(darwin && arm64)
 
 package gpu
 
@@ -8,7 +8,7 @@ import (
 	"github.com/nezhahq/agent/pkg/monitor/gpu/vendor"
 )
 
-// detailedStat has no memory-capable path outside Linux yet; GetStat falls
+// Other platforms keep their existing utilization-only collectors; GetStat falls
 // back to utilization-only.
 func detailedStat(_ context.Context) ([]vendor.GPUStat, bool, error) {
 	return nil, false, nil

@@ -43,11 +43,14 @@ import {
 import type {
 	MetricPeriod,
 	NezhaServer,
+	NezhaGPUStat,
 	NezhaWebsocketResponse,
 } from "@/types/nezha-api";
 
 import ChartSkeleton from "./loading/ChartSkeleton";
 import DiskChart from "./ServerDiskChart";
+import GpuMemorySummary from "./GpuMemorySummary";
+import HardwareMetricCard from "./HardwareMetricCard";
 import { ServerDetailChartLoading } from "./loading/ServerDetailLoading";
 import AnimatedCircularProgressBar from "./ui/animated-circular-progress-bar";
 
@@ -280,6 +283,7 @@ export default function ServerDetailChart({
 
 	const gpuStats = server.state.gpu || [];
 	const gpuList = server.host.gpu || [];
+	const gpuDetails = server.state.gpus || [];
 
 	return (
 		<section className="flex flex-col">
@@ -290,39 +294,12 @@ export default function ServerDetailChart({
 				isTsdbEnabled={isTsdbEnabled}
 			/>
 			<section className="grid md:grid-cols-2 lg:grid-cols-3 grid-cols-1 gap-3 server-charts">
-				<CpuChart
-					now={nezhaWsData.now}
-					data={server}
-					messageHistory={messageHistory}
-					period={selectedPeriod}
-				/>
-				{gpuStats.length >= 1 && gpuList.length === gpuStats.length
-					? gpuList.map((gpu, index) => (
-							<GpuChart
-								index={index}
-								id={server.id}
-								now={nezhaWsData.now}
-								gpuStat={gpuStats[index]}
-								gpuName={gpu}
-								messageHistory={messageHistory}
-								period={selectedPeriod}
-								key={index}
-							/>
-						))
-					: gpuStats.length > 0
-						? gpuStats.map((gpu, index) => (
-								<GpuChart
-									index={index}
-									id={server.id}
-									now={nezhaWsData.now}
-									gpuStat={gpu}
-									gpuName={`#${index + 1}`}
-									messageHistory={messageHistory}
-									period={selectedPeriod}
-									key={index}
-								/>
-							))
-						: null}
+    {selectedPeriod==="realtime"?<HardwareMetricCard id={server.id} now={nezhaWsData.now} state={server.state} history={messageHistory}/>:<CpuChart now={nezhaWsData.now} data={server} messageHistory={messageHistory} period={selectedPeriod}/>}
+    {gpuStats.map((gpu,index)=>{
+     const name=gpuDetails[index]?.name || (gpuList.length===gpuStats.length?gpuList[index]:undefined) || "#"+(index+1);
+     return selectedPeriod==="realtime"?<HardwareMetricCard key={gpuDetails[index]?.name??index} id={server.id} now={nezhaWsData.now} state={server.state} index={index} identity={gpuDetails[index]?.name} name={name} history={messageHistory}/>:
+      <GpuChart key={index} index={index} id={server.id} now={nezhaWsData.now} gpuStat={gpu} gpuName={name} gpuMemory={gpuDetails[index]} messageHistory={messageHistory} period={selectedPeriod}/>;
+    })}
 				<MemChart
 					now={nezhaWsData.now}
 					data={server}
@@ -432,6 +409,7 @@ function GpuChart({
 	index,
 	gpuStat,
 	gpuName,
+	gpuMemory,
 	messageHistory,
 	period,
 }: {
@@ -440,6 +418,7 @@ function GpuChart({
 	index: number;
 	gpuStat: number;
 	gpuName?: string;
+	gpuMemory?: NezhaGPUStat;
 	messageHistory: NezhaWebsocketResponse[];
 	period: ChartPeriod;
 }) {
@@ -534,13 +513,13 @@ function GpuChart({
 		>
 			<CardContent className="px-6 py-3">
 				<section className="flex flex-col gap-1">
-					<div className="flex items-center justify-between">
-						<section className="flex flex-col items-center gap-2">
+					<div className="flex min-w-0 items-center justify-between gap-2">
+						<section className="flex min-w-0 flex-1 flex-col items-start gap-2">
 							{!gpuName && <p className="text-md font-medium">GPU</p>}
-							{gpuName && <p className="text-xs mt-1 mb-1.5">GPU: {gpuName}</p>}
+							{gpuName && <p className="text-xs mt-1 mb-1.5 break-all">GPU: {gpuName}</p>}
 						</section>
-						<section className="flex items-center gap-2">
-							<p className="text-xs text-end w-10 font-medium">
+						<section className="flex shrink-0 items-center gap-2">
+							<p className="text-xs text-end min-w-10 whitespace-nowrap font-medium tabular-nums">
 								{gpuStat.toFixed(2)}%
 							</p>
 							<AnimatedCircularProgressBar
@@ -552,6 +531,8 @@ function GpuChart({
 							/>
 						</section>
 					</div>
+					{/* TSDB stores utilization only, not historical VRAM. */}
+					{period === "realtime" && <GpuMemorySummary memory={gpuMemory} />}
 					<ChartContainer deferMount
 						config={chartConfig}
 						className="aspect-auto h-[130px] w-full"

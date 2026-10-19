@@ -9,10 +9,17 @@ import (
 
 	"github.com/nezhahq/agent/model"
 	"github.com/nezhahq/agent/pkg/monitor/disk"
+	"github.com/nezhahq/agent/pkg/monitor/frequency"
 )
+
+var cpuFrequencyProbe = frequency.Get
 
 func GetState(config *model.AgentConfig, skipConnectionCount bool, skipProcsCount bool) *model.HostState {
 	var result model.HostState
+	freqContext, cancelFrequency := context.WithTimeout(context.Background(), time.Second)
+	freq := cpuFrequencyProbe(freqContext)
+	cancelFrequency()
+	result.CPUFrequencyMHz, result.CPUFrequencyKind = freq.MHz, freq.Kind
 
 	cpuState := tryStat(context.Background(), CPU, cpuStateProbe)
 	if len(cpuState) > 0 {
@@ -73,9 +80,12 @@ func GetState(config *model.AgentConfig, skipConnectionCount bool, skipProcsCoun
 		for i, g := range stats {
 			result.GPU[i] = g.Utilization
 			result.GPUs[i] = model.GPUStat{
-				Utilization: g.Utilization,
-				MemoryUsed:  g.MemoryUsed,
-				MemoryTotal: g.MemoryTotal,
+				Name:              g.Name,
+				Utilization:       g.Utilization,
+				MemoryUsed:        g.MemoryUsed,
+				MemoryTotal:       g.MemoryTotal,
+				SharedMemoryUsed:  g.SharedMemoryUsed,
+				SharedMemoryTotal: g.SharedMemoryTotal,
 			}
 		}
 	}

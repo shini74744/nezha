@@ -2,13 +2,16 @@ package vendor
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"io"
+	"math"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/jaypipes/ghw"
 )
@@ -30,6 +33,7 @@ var (
 
 type IntelGPUTop struct {
 	BinPath string
+	Device  string // Optional DRM node; selects exactly this GPU on mixed systems.
 	usage   float64
 }
 
@@ -81,6 +85,10 @@ func (igt *IntelGPUTop) GatherUsage() ([]float64, error) {
 }
 
 func (igt *IntelGPUTop) Start() error {
+	return igt.StartContext(context.Background())
+}
+
+func (igt *IntelGPUTop) StartContext(ctx context.Context) error {
 	// Use cached detection result
 	if !igt.IsAvailable() {
 		return errors.New("Intel GPU or intel_gpu_top not available")
@@ -91,7 +99,7 @@ func (igt *IntelGPUTop) Start() error {
 		igt.BinPath = intelGPUTopPath
 	}
 
-	usage, err := igt.collectStats()
+	usage, err := igt.collectStats(ctx)
 	if err != nil {
 		return err
 	}
@@ -101,10 +109,20 @@ func (igt *IntelGPUTop) Start() error {
 
 // collectStats executes intel_gpu_top in text mode (-l) and parses the output
 // This avoids JSON corruption issues that can occur with -J mode
-func (igt *IntelGPUTop) collectStats() (float64, error) {
-	// Use -l for list/text mode instead of -J (JSON) to avoid corrupted JSON issues
-	args := []string{"-s", intelGPUStatsInterval, "-l"}
-	cmd := exec.Command(igt.BinPath, args...)
+func (igt *IntelGPUTop) collectStats(parent context.Context) (float64, error) {
+	ctx, cancel := context.WithTimeout(parent, 2500*time.Millisecond)
+	defer cancel()
+	// Explicit selection prevents an Intel card from taking another adapter's readings.
+	interval := intelGPUStatsInterval
+	if igt.Device != "" {
+		interval = "250"
+	}
+	args := []string{"-s", interval, "-l"}
+	if igt.Device != "" {
+		args = append(args, "-d", "drm:"+igt.Device)
+	}
+	cmd := exec.CommandContext(ctx, igt.BinPath, args...)
+	cmd.WaitDelay = 100 * time.Millisecond
 
 	// Avoid blocking if intel_gpu_top writes to stderr
 	cmd.Stderr = io.Discard
@@ -220,8 +238,8 @@ func parseIntelHeaders(header1, header2 string) (engineNames []string, preEngine
 // 300  100     0 95.29   0.00    0.00   0.00    0.00   0.00    0.00   5.32   0.00    0.00
 func parseIntelDataRow(line string, engineNames []string, preEngineCols int) (float64, error) {
 	fields := strings.Fields(line)
-	if len(fields) == 0 {
-		return 0, errors.New("empty data row")
+	if len(fields) == 0 || len(engineNames) == 0 || preEngineCols < 0 {
+		return 0, errors.New("missing Intel engine data")
 	}
 
 	// Make sure row has enough columns for engines
@@ -232,13 +250,15 @@ func parseIntelDataRow(line string, engineNames []string, preEngineCols int) (fl
 	}
 
 	var maxBusy float64
+	valid := false
 
 	// Parse engine busy percentages
 	for k := range engineNames {
 		// busy% is at position: preEngineCols + 3*k
 		base := preEngineCols + 3*k
 		if base < len(fields) {
-			if v, err := strconv.ParseFloat(fields[base], 64); err == nil {
+			if v, err := strconv.ParseFloat(fields[base], 64); err == nil && !math.IsNaN(v) && !math.IsInf(v, 0) && v >= 0 && v <= 100 {
+				valid = true
 				if v > maxBusy {
 					maxBusy = v
 				}
@@ -246,6 +266,9 @@ func parseIntelDataRow(line string, engineNames []string, preEngineCols int) (fl
 		}
 	}
 
+	if !valid {
+		return 0, errors.New("Intel engine readings unavailable")
+	}
 	return maxBusy, nil
 }
 

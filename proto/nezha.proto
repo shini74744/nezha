@@ -52,6 +52,9 @@ message State {
   uint64 disk_read_speed = 19;
   uint64 disk_write_speed = 20;
   bool disk_io_available = 21;
+  // MHz and provenance; absent/zero means unsupported, never idle zero.
+  double cpu_frequency_mhz = 22;
+  string cpu_frequency_kind = 23;
 }
 
 // State_GPU carries per-card figures. Index-aligned with Host.gpu, matching
@@ -61,6 +64,10 @@ message State_GPU {
   double utilization = 1;
   uint64 memory_used = 2;
   uint64 memory_total = 3;
+  // Optional per-sample identity prevents virtual/mixed adapter index mismatch.
+  string name = 4;
+  uint64 shared_memory_used = 5;
+  uint64 shared_memory_total = 6;
 }
 
 message State_SensorTemperature {

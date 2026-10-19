@@ -31,6 +31,8 @@ for (const width of [320, 390, 844, 1440]) for (const theme of ["light", "dark"]
         await dialog.evaluate(async el => {
             await Promise.all(el.getAnimations().map(animation => animation.finished.catch(() => undefined)))
         })
+        await expect(dialog.getByTitle("gpu", { exact: true })).toHaveText("GPU 监控")
+        await expect(dialog.getByTitle("disable_auto_update", { exact: true })).toHaveText("自动更新 Agent")
         const first = dialog.locator('[data-config-field="gpu"]')
         const second = dialog.locator('[data-config-field="temperature"]')
         const firstBox = await first.boundingBox()
@@ -73,6 +75,7 @@ for (const width of [320, 390, 844, 1440]) for (const theme of ["light", "dark"]
         await page.screenshot({ animations: "disabled", path: info.outputPath("visual-review.png") })
         await dialog.getByRole("button", { name: "确认下发" }).click()
         await expect(dialog.getByText("节点离线：1 台")).toBeVisible()
+        await expect(dialog.getByText("已下发配置，请核对节点状态")).toBeVisible()
         expect(writes).toEqual([{ servers: [7, 8], config: '{"report_delay":2,"disable_command_execute":true}' }])
         expect(errors).toEqual([])
         await page.screenshot({ animations: "disabled", path: info.outputPath("visual-result.png") })

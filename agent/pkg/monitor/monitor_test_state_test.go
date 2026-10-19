@@ -13,10 +13,12 @@ import (
 
 	"github.com/nezhahq/agent/model"
 	"github.com/nezhahq/agent/pkg/monitor/disk"
+	"github.com/nezhahq/agent/pkg/monitor/frequency"
 	"github.com/nezhahq/agent/pkg/monitor/gpu/vendor"
 )
 
 type monitorProbeSnapshot struct {
+	cpuFrequency      func(context.Context) frequency.Reading
 	hostInfo          func() (*host.InfoStat, error)
 	virtualMemory     func() (*mem.VirtualMemoryStat, error)
 	cpuHost           hostStateFunc[[]string]
@@ -75,7 +77,8 @@ func captureMonitorTestState() monitorTestStateSnapshot {
 
 	return monitorTestStateSnapshot{
 		probes: monitorProbeSnapshot{
-			hostInfo: hostInfoProbe, virtualMemory: virtualMemoryProbe,
+			cpuFrequency: cpuFrequencyProbe,
+			hostInfo:     hostInfoProbe, virtualMemory: virtualMemoryProbe,
 			cpuHost: cpuHostProbe, cpuState: cpuStateProbe,
 			diskHost: diskHostProbe, diskState: diskStateProbe, diskIOState: diskIOStateProbe,
 			gpuHost: gpuHostProbe, gpuStat: gpuStatProbe,
@@ -110,6 +113,7 @@ func (s monitorTestStateSnapshot) restore() {
 	geoIPLock.Lock()
 	defer geoIPLock.Unlock()
 
+	cpuFrequencyProbe = s.probes.cpuFrequency
 	hostInfoProbe, virtualMemoryProbe = s.probes.hostInfo, s.probes.virtualMemory
 	cpuHostProbe, cpuStateProbe = s.probes.cpuHost, s.probes.cpuState
 	diskHostProbe, diskStateProbe = s.probes.diskHost, s.probes.diskState

@@ -4,6 +4,7 @@ package gpu
 
 import (
 	"context"
+	"os/exec"
 
 	"github.com/nezhahq/agent/pkg/monitor/gpu/vendor"
 )
@@ -17,16 +18,12 @@ const (
 var vendorType = getVendor()
 
 func getVendor() uint8 {
-	// Check NVIDIA first (most common discrete GPU)
-	// Use Start() which is lightweight for NVIDIA (just checks binary exists)
-	smi := &vendor.NvidiaSMI{BinPath: "/usr/bin/nvidia-smi"}
-	if smi.Start() == nil {
+	// Detection must not execute a potentially stalled driver query at package
+	// initialization. The detailed collector probes every available vendor.
+	if linuxToolAvailable("/usr/bin/nvidia-smi", "nvidia-smi") {
 		return vendorNVIDIA
 	}
-
-	// Check AMD second
-	rsmi := &vendor.ROCmSMI{BinPath: "/opt/rocm/bin/rocm-smi"}
-	if rsmi.Start() == nil {
+	if linuxToolAvailable("/opt/rocm/bin/rocm-smi", "rocm-smi") {
 		return vendorAMD
 	}
 
@@ -38,6 +35,15 @@ func getVendor() uint8 {
 
 	// Default fallback - no GPU detected
 	return 0
+}
+
+func linuxToolAvailable(paths ...string) bool {
+	for _, path := range paths {
+		if _, err := exec.LookPath(path); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 func getNvidiaStat() ([]float64, error) {

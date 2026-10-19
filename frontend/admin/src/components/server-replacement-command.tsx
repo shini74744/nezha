@@ -39,7 +39,7 @@ export function ServerReplacementCommand({ uuid, name, open, onOpenChange, gener
             <DialogContent className="flex max-h-[85dvh] w-[94vw] max-w-xl flex-col gap-3 overflow-hidden rounded-lg p-4 sm:p-6">
                 <DialogHeader className="shrink-0 pr-6 text-left">
                     <DialogTitle>清理数据换机安装命令</DialogTitle>
-                    <DialogDescription>在新机器上执行，沿用当前节点身份。复制命令不会立即清理数据。</DialogDescription>
+                    <DialogDescription>用于更换当前节点的机器。仅复制命令不会清理数据。</DialogDescription>
                 </DialogHeader>
                 <div className="min-h-0 space-y-3 overflow-y-auto pr-1">
                 <div className="rounded-md border p-3 text-sm">
@@ -47,13 +47,13 @@ export function ServerReplacementCommand({ uuid, name, open, onOpenChange, gener
                     <p className="mt-1 break-all font-mono text-xs text-muted-foreground">{uuid}</p>
                 </div>
                 <div className="space-y-2 text-sm leading-6">
-                    <p>新机器成功连接并完整上报后，清空该节点全部旧历史：机器信息与操作历史、监控曲线、流量、检测快照、IP 历史、终端会话和通知发送记录。</p>
-                    <p className="text-muted-foreground">名称恢复为“新服务器”，公开／私有备注、购买／到期日期、套餐、分组归属、通知及任务关联等配置恢复初始状态。仅保留内部系统 ID、UUID、排序和所属账号；共享分组、通知渠道及其他节点不删除，全局规则按新节点生效。</p>
-                    <p className="text-destructive">请确认旧机器不再使用此 UUID；清理完成后无法通过面板恢复旧记录或配置，新凭据会使旧机器密钥失效。</p>
+                    <p>新机器成功接入后，将清空此节点的全部历史记录，名称、备注、购买／到期日期、分组、通知等设置恢复初始状态。</p>
+                    <p className="text-muted-foreground">仅保留节点身份、排序和所属账号。不影响其他节点、共享分组和通知渠道。</p>
+                    <p className="text-destructive">请先停用旧机器上的 Agent。清理后无法通过面板恢复旧记录和设置，旧机器的安装密钥也会失效。</p>
                 </div>
                 {!command && <label className="flex items-start gap-2 rounded-md border border-destructive/40 p-3 text-sm leading-6">
                     <input type="checkbox" checked={confirmed} disabled={busy} onChange={(e) => setConfirmed(e.target.checked)} className="mt-1.5 shrink-0" />
-                    我确认清空全部旧历史和配置，作为新机器重新开始，仅保留 ID、UUID、排序和所属账号。
+                    我确认清空此节点的全部历史记录并重置设置，作为新机器重新开始。
                 </label>}
                 {!command && <label className="flex items-center gap-3 text-sm">新机器系统
                     <select value={type} disabled={busy} onChange={(e) => setType(Number(e.target.value))} className="h-9 flex-1 rounded-md border bg-background px-3">

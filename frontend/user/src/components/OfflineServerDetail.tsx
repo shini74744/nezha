@@ -1,3 +1,5 @@
+import GpuMemorySummary from "@/components/GpuMemorySummary";
+import HardwareMetricCard from "@/components/HardwareMetricCard";
 import { useNetworkCardView } from "@/hooks/use-network-card-view";
 import ServerLatency from "@/components/ServerLatency";
 import ServerReturnRoute from "@/components/ServerReturnRoute";
@@ -72,7 +74,7 @@ export function OfflineServerDetail({server,now,initialTab="Detail",onTabIntent}
  const report=query.data,last=report?.last_report_at;
  const saved=report?.snapshot;
  const snapshotServer:NezhaServer|undefined=saved?{...server,last_active:new Date(saved.at).toISOString(),country_code:saved.country_code||"",host:{platform:"",platform_version:"",cpu:[],gpu:[],mem_total:0,disk_total:0,swap_total:0,arch:"",boot_time:0,version:"",...saved.host},state:{cpu:0,mem_used:0,swap_used:0,disk_used:0,net_in_transfer:0,net_out_transfer:0,net_in_speed:0,net_out_speed:0,uptime:0,load_1:0,load_5:0,load_15:0,tcp_conn_count:0,udp_conn_count:0,process_count:0,temperatures:[],gpu:[],...saved.state}}:undefined;
- const chartGroups=[...groups,...(period==="last"||!report?.tsdb_enabled?saved?.state.gpu||[]:[]).map((_,i)=>({title:saved?.host?.gpu?.[i]||"GPU #"+(i+1),keys:["gpu_"+i],labels:["GPU"],unit:"percent",colors:[5]}))];
+ const chartGroups=[...groups,...(period==="last"||!report?.tsdb_enabled?saved?.state.gpu||[]:[]).map((_,i)=>({title:saved?.state.gpus?.[i]?.name||saved?.host?.gpu?.[i]||"GPU #"+(i+1),keys:["gpu_"+i],labels:["GPU"],unit:"percent",colors:[5]}))];
  const activePeriod=!report?.tsdb_enabled?"last":!viewer&&(period==="7d"||period==="30d")?"1d":period;
  return <div className="mx-auto w-full max-w-5xl px-0 flex flex-col gap-4 server-info" data-offline-detail>
   <ServerDetailOverview server_id={String(server.id)} recorded={{at:last,metrics:report?.metrics||{},elapsed:last?elapsedText(now-last):"未知",server:snapshotServer}}/>
@@ -91,7 +93,7 @@ export function OfflineServerDetail({server,now,initialTab="Detail",onTabIntent}
     <PeriodSelector selectedPeriod={activePeriod==="last"?"realtime":activePeriod} onPeriodChange={p=>setPeriod(p==="realtime"?"last":p)} isLogin={!!viewer} isTsdbEnabled={!!report?.tsdb_enabled} offline/>
     <p className="text-xs text-muted-foreground mb-3">{saved?"离线前最后 1 分钟的记录，非实时数据。":"历史主机信息不完整，服务器重新上线后更新。"}</p>
     <div className="grid md:grid-cols-2 lg:grid-cols-3 grid-cols-1 gap-3 server-charts">
-     {chartGroups.map(group=><OfflineMetricCard key={group.title} group={group} report={report!} period={activePeriod}/>)}
+     {chartGroups.map(group=><OfflineMetricCard key={group.keys[0]} group={group} report={report!} period={activePeriod}/>)}
     </div>
    </section>:null}
   {(tab==="BGP"||tab==="Streaming")&&<Suspense fallback={<p role="status">正在加载…</p>}><ServerNetworkInsight key={server.id+tab} serverId={server.id} kind={tab==="BGP"?"bgp":"streaming"}/></Suspense>}
@@ -114,11 +116,19 @@ function MetricHeader({group,report,title}:{group:typeof groups[number];report:L
  if(group.keys.length>1)return <section className="flex items-center gap-4">{group.keys.map((key,i)=><div key={key}>
   <p className="text-xs text-muted-foreground">{group.labels[i]}</p><p className="flex items-center gap-1 text-xs font-medium"><span className="size-1.5 rounded-full" style={{backgroundColor:"hsl(var(--chart-"+group.colors[i]+"))"}}/>{valueText(metrics[key],group.unit)}</p>
  </div>)}</section>;
- return <div className="flex items-center justify-between"><p className="text-md font-medium">{group.title}</p><section className="flex items-center gap-2"><p className="text-xs text-end font-medium">{valueText(value,group.unit)}</p>
+ return <div className="flex min-w-0 items-center justify-between gap-2"><p className={cn("text-md font-medium",/^gpu_\d+$/.test(group.keys[0])&&"min-w-0 break-all")}>{group.title}</p><section className="flex shrink-0 items-center gap-2"><p className="text-xs text-end font-medium">{valueText(value,group.unit)}</p>
   {group.unit==="percent"&&value!==undefined&&<AnimatedCircularProgressBar className="size-3 text-[0px]" max={100} min={0} value={value} primaryColor="hsl(var(--chart-1))"/>}
  </section></div>;
 }
-export function OfflineMetricCard({group:originalGroup,report,period}:{group:typeof groups[number];report:LastReport;period:"last"|MetricPeriod}) {
+export function OfflineMetricCard({group,report,period}:{group:typeof groups[number];report:LastReport;period:"last"|MetricPeriod}) {
+ const key=group.keys[0],saved=report.snapshot;
+ if(period==="last"&&saved&&(key==="cpu"||/^gpu_\d+$/.test(key))){
+  const index=key==="cpu"?undefined:Number(key.slice(4));
+  return <HardwareMetricCard id={report.server_id} now={saved.at} state={saved.state} index={index} name={index===undefined?undefined:group.title} identity={index===undefined?undefined:saved.state.gpus?.[index]?.name} recorded recent={report.recent}/>;
+ }
+ return <LegacyOfflineMetricCard group={group} report={report} period={period}/>;
+}
+function LegacyOfflineMetricCard({group:originalGroup,report,period}:{group:typeof groups[number];report:LastReport;period:"last"|MetricPeriod}) {
  const isDisk=originalGroup.keys[0]==="disk";
  const [diskIO,setDiskIO]=useState(false);
  const group=isDisk&&diskIO?{title:"磁盘读写",keys:["disk_read_speed","disk_write_speed"],labels:["读取","写入"],unit:"speed",colors:[1,10]}:originalGroup;
@@ -157,6 +167,7 @@ export function OfflineMetricCard({group:originalGroup,report,period}:{group:typ
    <DiskModeToggle io={diskIO} onToggle={toggle}/>
    {diskIO?<DiskIORates read={valueText(report.metrics.disk_read_speed,"speed")} write={valueText(report.metrics.disk_write_speed,"speed")}/>:<MetricHeader group={originalGroup} report={report} title={null}/>}
   </div>:<MetricHeader group={group} report={report}/>}
+  {period==="last" && /^gpu_\d+$/.test(group.keys[0]) && <GpuMemorySummary recorded memory={report.snapshot?.state.gpus?.[Number(group.keys[0].slice(4))]}/>}
   <div key={diskIO?"io":"capacity"} className={cn(isDisk&&"animate-in fade-in duration-200 motion-reduce:animate-none")}>
   {period!=="last"&&history.isPending?<p className="h-[130px] flex items-center justify-center text-xs">正在读取历史记录…</p>:
    history.isError&&period!=="last"?<p className="h-[130px] flex items-center justify-center text-xs" role="alert">历史记录读取失败</p>:

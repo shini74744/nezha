@@ -52,5 +52,6 @@ func (r RecordedServerState) Metrics() map[string]float64 {
 	for i, v := range s.GPU {
 		values[fmt.Sprintf("gpu_%d", i)] = v
 	}
+	appendHardwareMetrics(values, s)
 	return values
 }

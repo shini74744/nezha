@@ -20,7 +20,7 @@ import {
     FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { singleAgentConfigLabels } from "@/lib/agent-config-fields"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
 import { IconButton } from "@/components/xui/icon-button"
@@ -226,7 +226,7 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
                                         name="ip_report_period"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>ip_report_period</FormLabel>
+                                                <FormLabel title="ip_report_period">{singleAgentConfigLabels.ip_report_period}</FormLabel>
                                                 <FormControl>
                                                     <Input
                                                         type="number"
@@ -243,7 +243,7 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
                                         name="report_delay"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>report_delay</FormLabel>
+                                                <FormLabel title="report_delay">{singleAgentConfigLabels.report_delay}</FormLabel>
                                                 <FormControl>
                                                     <Input
                                                         type="number"
@@ -260,8 +260,8 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
                                         name="hard_drive_partition_allowlist_raw"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>
-                                                    hard_drive_partition_allowlist
+                                                <FormLabel title="hard_drive_partition_allowlist">
+                                                    {singleAgentConfigLabels.hard_drive_partition_allowlist}
                                                 </FormLabel>
                                                 <FormControl>
                                                     <Textarea className="resize-y" {...field} />
@@ -275,7 +275,7 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
                                         name="nic_allowlist_raw"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>nic_allowlist</FormLabel>
+                                                <FormLabel title="nic_allowlist">{singleAgentConfigLabels.nic_allowlist}</FormLabel>
                                                 <FormControl>
                                                     <Textarea className="resize-y" {...field} />
                                                 </FormControl>
@@ -284,29 +284,24 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
                                         )}
                                     />
                                     {groupedBoolFields.map((group, idx) => (
-                                        <div className="flex gap-8" key={idx}>
+                                        <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2" key={idx}>
                                             {group.map((field) => (
                                                 <FormField
                                                     key={field}
                                                     control={form.control}
                                                     name={field}
                                                     render={({ field: controllerField }) => (
-                                                        <FormItem className="flex items-center w-full">
+                                                        <FormItem className="flex min-w-0 items-start gap-2 space-y-0">
                                                             <FormControl>
-                                                                <div className="flex items-center gap-2">
-                                                                    <Checkbox
-                                                                        checked={
-                                                                            !!controllerField.value
-                                                                        }
-                                                                        onCheckedChange={
-                                                                            controllerField.onChange
-                                                                        }
-                                                                    />
-                                                                    <Label className="text-sm">
-                                                                        {t(field)}
-                                                                    </Label>
-                                                                </div>
+                                                                <Checkbox
+                                                                    className="mt-0.5 shrink-0"
+                                                                    checked={!!controllerField.value}
+                                                                    onCheckedChange={controllerField.onChange}
+                                                                />
                                                             </FormControl>
+                                                            <FormLabel title={field} className="min-w-0 cursor-pointer text-sm leading-5">
+                                                                {singleAgentConfigLabels[field]}
+                                                            </FormLabel>
                                                             <FormMessage />
                                                         </FormItem>
                                                     )}
