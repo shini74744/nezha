@@ -208,6 +208,8 @@
 		"expired": "已过期",
 		"days": "天",
 		"price": "价格",
+		"remainingValue": "预估剩余价值",
+		"remainingValueHelp": "按价格、计费周期和剩余时间折算，仅供参考，不代表可退款金额。",
 		"free": "免费",
 		"usage-baseed": "按量计费"
 	},

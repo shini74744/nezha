@@ -1,4 +1,5 @@
 import { createPortal } from "react-dom";
+import "./snapshot-timeline.css";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -30,6 +31,15 @@ export default function SnapshotTimeline({
 				prev.left === next.left && prev.right === next.right ? prev : next,
 			);
 		};
+		const wheel = (event: WheelEvent) => {
+			if (event.ctrlKey || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+			const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? el.clientWidth : 1);
+			const max = el.scrollWidth - el.clientWidth;
+			if (!delta || max <= 1 || (delta < 0 ? el.scrollLeft <= 1 : el.scrollLeft >= max - 1)) return;
+			event.preventDefault();
+			el.scrollLeft = Math.max(0, Math.min(max, el.scrollLeft + delta));
+		};
+		el.addEventListener("wheel", wheel, { passive: false });
 		const observer = new ResizeObserver(measure);
 		observer.observe(el);
 		for (const child of el.children) observer.observe(child);
@@ -38,6 +48,7 @@ export default function SnapshotTimeline({
 		return () => {
 			observer.disconnect();
 			el.removeEventListener("scroll", measure);
+			el.removeEventListener("wheel", wheel);
 		};
 	}, [children]);
 	const scroll = (direction: number) => {
@@ -58,7 +69,7 @@ export default function SnapshotTimeline({
 				aria-label="较新快照"
 				disabled={!edges.left}
 				onClick={() => scroll(-1)}
-				className="rounded-md border p-1 disabled:opacity-30"
+				className="flex size-8 shrink-0 items-center justify-center rounded-md border p-1 disabled:opacity-30 sm:size-7"
 			>
 				<ChevronLeft className="size-4" />
 			</button>
@@ -67,7 +78,7 @@ export default function SnapshotTimeline({
 				aria-label="较早快照"
 				disabled={!edges.right}
 				onClick={() => scroll(1)}
-				className="rounded-md border p-1 disabled:opacity-30"
+				className="flex size-8 shrink-0 items-center justify-center rounded-md border p-1 disabled:opacity-30 sm:size-7"
 			>
 				<ChevronRight className="size-4" />
 			</button>
@@ -86,7 +97,7 @@ export default function SnapshotTimeline({
 					<div
 						className={
 							inlineControls
-								? "order-2 hidden shrink-0 gap-1 sm:flex"
+								? (mobileControls ? "order-2 hidden shrink-0 gap-1 sm:flex" : "order-2 flex shrink-0 flex-col gap-1 sm:flex-row")
 								: mobileControls
 									? "hidden sm:flex justify-end gap-1 mb-1"
 									: "flex justify-end gap-1 mb-1"
@@ -106,7 +117,7 @@ export default function SnapshotTimeline({
 			<nav
 				ref={viewport}
 				aria-label={label}
-				className="flex flex-nowrap w-full min-w-0 max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:thin]"
+				className="snapshot-timeline-viewport flex flex-nowrap w-full min-w-0 max-w-full flex-1 gap-2 overflow-x-auto overscroll-x-contain py-1"
 			>
 				{children}
 			</nav>

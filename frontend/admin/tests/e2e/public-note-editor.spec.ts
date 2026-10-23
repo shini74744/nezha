@@ -86,7 +86,8 @@ for(const width of [1366,390])test("bilingual note autofill and roundtrip "+widt
  doc.套餐信息.流量="6TB/月";await raw.fill(JSON.stringify(doc));
  await dialog.getByRole("button",{name:"自定义字段",exact:true}).click();
  await expect(dialog.locator("#route-telecom")).toHaveValue("CN2 GIA");
- await expect(dialog.locator('input[value="6TB/月"]')).toBeVisible();
+ await expect(dialog.locator('#plan-traffic-volume')).toHaveValue("6");
+ await expect(dialog.getByRole("combobox",{name:"流量配额单位",exact:true})).toHaveText("TB");
  await dialog.getByRole("button",{name:"自定义字段",exact:true}).click();
  await expect(dialog.locator("#route-telecom")).toHaveValue("CN2 GIA");
  await dialog.locator("#route-unicom").scrollIntoViewIfNeeded();

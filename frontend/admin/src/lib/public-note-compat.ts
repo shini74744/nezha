@@ -2,7 +2,7 @@
 type Obj = Record<string, any>;
 const object = (v: unknown): v is Obj => !!v && typeof v === "object" && !Array.isArray(v);
 const billing = {startDate:"开始时间",endDate:"到期时间",autoRenewal:"自动续费",cycle:"付费周期",amount:"价格"};
-const plan = {bandwidth:"带宽",trafficVol:"流量",trafficType:"流量统计方向",resetDay:"流量重置日",IPv4:"IPv4",IPv6:"IPv6",networkRoute:"网络线路",networkRoutes:"运营商线路",networkRouteColors:"运营商颜色",networkRouteLogos:"运营商图标",providerLogo:"厂商图标",networkRouteEntries:"其他运营商线路",linkTags:"链接标签",extra:"补充说明"};
+const plan = {bandwidth:"带宽",trafficVol:"流量",trafficType:"流量统计方向",resetDay:"流量重置日",IPv4:"IPv4",IPv6:"IPv6",networkRoute:"网络线路",networkRoutes:"运营商线路",networkRouteColors:"运营商颜色",networkRouteLogos:"运营商图标",providerLogo:"厂商图标",networkRouteEntries:"其他运营商线路",linkTags:"链接标签",extra:"补充说明",extraColors:"补充说明颜色"};
 export const routeFields = [
  {key:"telecom",label:"中国电信",placeholder:"163PP/CN2",color:"#2563eb"},
  {key:"mobile",label:"中国移动",placeholder:"CMI/CMIN2",color:"#16a34a"},
@@ -57,7 +57,7 @@ export function normalizeNote(input:unknown):Obj {
   }
   if(p.linkTags!==undefined){
    if(!Array.isArray(p.linkTags))throw Error("链接标签必须为数组");
-   p.linkTags=p.linkTags.map((entry:unknown)=>aliases(entry,{name:"名称",url:"网址"}));
+   p.linkTags=p.linkTags.map((entry:unknown)=>aliases(entry,{name:"名称",url:"网址",color:"标签颜色"}));
   }
   out.planDataMod=p;
  }
@@ -121,7 +121,7 @@ export function chineseNote(input:Obj):string {
   if(p.networkRouteLogos)p.networkRouteLogos=translated(Object.fromEntries(Object.entries(p.networkRouteLogos).map(([k,v])=>[k,translated(v as Obj,logoNames)])),routeNames);
   if(p.networkRouteColors)p.networkRouteColors=translated(p.networkRouteColors,routeNames);
   if(p.networkRouteEntries)p.networkRouteEntries=p.networkRouteEntries.map((e:Obj)=>translated(e,{carrier:"运营商",text:"线路名称",country:"国家地区",name:"运营商名称",...logoNames,color:"标签颜色"}));
-  if(p.linkTags)p.linkTags=p.linkTags.map((e:Obj)=>translated(e,{name:"名称",url:"网址"}));
+  if(p.linkTags)p.linkTags=p.linkTags.map((e:Obj)=>translated(e,{name:"名称",url:"网址",color:"标签颜色"}));
   out.planDataMod=translated(p,plan);
  }
  return JSON.stringify(translated(out,{billingDataMod:"账单信息",planDataMod:"套餐信息"}),null,2);

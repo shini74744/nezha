@@ -207,6 +207,8 @@
 		"expired": "Expired",
 		"days": "days",
 		"price": "Price",
+		"remainingValue": "Estimated remaining value",
+		"remainingValueHelp": "Estimated from the price, billing cycle and remaining time; not a refund quote.",
 		"free": "Free",
 		"usage-baseed": "Usage-based"
 	},

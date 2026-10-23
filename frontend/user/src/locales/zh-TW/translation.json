@@ -198,6 +198,8 @@
 		"expired": "已過期",
 		"days": "天",
 		"price": "價格",
+		"remainingValue": "預估剩餘價值",
+		"remainingValueHelp": "依價格、計費週期及剩餘時間估算，僅供參考，不代表可退款金額。",
 		"free": "免費",
 		"usage-baseed": "按量計費"
 	},

@@ -14,13 +14,13 @@ for(const width of [390,1440])test("server connectivity default and persisted sw
  });
  await page.goto("/dashboard");
  const edit=page.getByRole("row").filter({hasText:"连通性开关测试"}).getByRole("button",{name:"编辑服务器",exact:true});
- const dialog=page.getByRole("dialog"), toggle=dialog.getByRole("switch",{name:"连通性",exact:true});
- await edit.click();await expect(toggle).toBeChecked();await toggle.scrollIntoViewIfNeeded();
+ const dialog=page.getByRole("dialog"), settings=dialog.getByRole("button",{name:/连通性.*设置/});
+ await edit.click();await settings.click();await expect(dialog.getByRole("radio",{name:"服务器＋本地",exact:true})).toBeChecked();
  await page.screenshot({path:info.outputPath("switch.png")});
- await toggle.click();await dialog.locator('button[type="submit"]').click();
+ await dialog.getByRole("radio",{name:"隐藏",exact:true}).click();await dialog.locator('button[type="submit"]').click();
  await expect.poll(()=>updates.length).toBe(1);expect(updates[0].connectivity_disabled).toBe(true);
  expect(JSON.parse(updates[0].public_note).unknown).toEqual({keep:true});
- await edit.click();await expect(toggle).not.toBeChecked();await toggle.click();
+ await edit.click();await settings.click();await expect(dialog.getByRole("radio",{name:"隐藏",exact:true})).toBeChecked();await dialog.getByRole("radio",{name:"服务器＋本地",exact:true}).click();
  await dialog.locator('button[type="submit"]').click();await expect.poll(()=>updates.length).toBe(2);expect(updates[1].connectivity_disabled).toBe(false);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });
