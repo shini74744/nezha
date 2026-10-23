@@ -81,7 +81,7 @@ describe("PlanInfo and BillingInfo", () => {
 		);
 
 		expect(
-			screen.getByTitle("billingInfo.price: 10/monthly"),
+			screen.getByTitle(/^billingInfo\.price: 10\/monthly\s+billingInfo\.remainingValue: ≈5\.16$/),
 		).toBeInTheDocument();
 		expect(screen.getByText(/billingInfo.remaining: 16/)).toBeInTheDocument();
 		expect(screen.getByRole("progressbar")).toBeInTheDocument();

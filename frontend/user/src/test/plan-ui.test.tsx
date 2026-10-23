@@ -9,8 +9,8 @@ describe("plan UI compatibility",()=>{
  it("renders matching safe extra colors and preserves normal tags",()=>{
   const parsed=parsePublicNote(JSON.stringify({planDataMod:{bandwidth:"500Mbps",extra:"1,2,3,4,5",extraColors:["#ffffff","url(x)"],linkTags:[{name:"Site",url:"example.com",color:"#111827"}]}}))!;
   render(<><PlanInfo parsedData={parsed}/><ServerLinkTags tags={parsed.planDataMod?.linkTags}/></>);
-  expect(screen.getByText("1")).toHaveStyle({backgroundColor:"#ffffff",color:"#000000"});
-  expect(screen.getByText("2")).toHaveStyle({backgroundColor:"#0f766e"});
+  expect(screen.getByText("1").closest("[data-extra-note]")).toHaveStyle({backgroundColor:"#ffffff",color:"#000000"});
+  expect(screen.getByText("2").closest("[data-extra-note]")).toHaveStyle({backgroundColor:"#0f766e"});
   expect(document.querySelectorAll("[data-extra-note]")).toHaveLength(5);
   expect(screen.getByText("500Mbps")).toHaveClass("bg-blue-600");
   expect(screen.getByRole("link")).toHaveStyle({backgroundColor:"#111827",color:"#ffffff"});
