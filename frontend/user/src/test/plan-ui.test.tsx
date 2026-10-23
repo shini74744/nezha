@@ -20,12 +20,16 @@ describe("plan UI compatibility",()=>{
   render(<ServerLinkTags tags={[{name:"A",url:"example.com"},{name:"B",url:"example.com",color:"red;display:none"}]}/>);
   for(const link of screen.getAllByRole("link")){expect(link).toHaveClass("bg-sky-700");expect(link.style.backgroundColor).toBe("")}
  });
- it("renders value only for priced dated service",()=>{
+ it("keeps estimated value only in the price hover title without adding a card row",()=>{
   vi.useFakeTimers();vi.setSystemTime(new Date("2026-10-16T00:00:00+08:00"));
   const base={startDate:"2026-10-01",endDate:"2026-11-01",amount:"31USD",cycle:"Month",autoRenewal:"0"};
   const {rerender}=render(<BillingInfo parsedData={{billingDataMod:base}}/>);
-  expect(document.querySelector("[data-billing-value]")).toHaveTextContent("16.00 USD");
-  for(const amount of ["","0","-1"]){rerender(<BillingInfo parsedData={{billingDataMod:{...base,amount}}}/>);expect(document.querySelector("[data-billing-value]")).toBeNull()}
+  expect(document.querySelector("[data-billing-price]")).toHaveAttribute("title",expect.stringContaining("16.00 USD"));
+  expect(document.querySelector("[data-billing-price]")).toHaveTextContent("31USD");
+  expect(document.querySelector("[data-billing-value]")).toBeNull();
+  expect(screen.queryByText(/16.00 USD/)).toBeNull();
+  for(const amount of ["","0","-1"]){rerender(<BillingInfo parsedData={{billingDataMod:{...base,amount}}}/>);expect(document.querySelector("[data-billing-value]")).toBeNull();expect(document.querySelector("[data-billing-price]")?.getAttribute("title")||"").not.toContain("16.00 USD")}
+  vi.useRealTimers();
  });
 });
 describe("snapshot timeline wheel handling",()=>{
