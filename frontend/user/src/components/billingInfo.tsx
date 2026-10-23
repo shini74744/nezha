@@ -21,9 +21,9 @@ export default function BillingInfo({
 
 	const remainingValue = estimateRemainingValue(parsedData.billingDataMod);
 	const valueText = remainingValue ? remainingValue.value.toLocaleString(i18n.resolvedLanguage||i18n.language,{minimumFractionDigits:2,maximumFractionDigits:2}) + (remainingValue.unit ? " " + remainingValue.unit : "") : "";
-	const valueDisplay = remainingValue ? <p data-billing-value className="text-[10px] text-muted-foreground" title={t("billingInfo.remainingValueHelp",{defaultValue:"Estimated from the price, billing cycle and remaining time; not a refund quote."})}>
-		{t("billingInfo.remainingValue",{defaultValue:"Estimated remaining value"})}: ≈{valueText}
-	</p> : null;
+	// Keep the card layout unchanged: the estimate belongs only to the existing price hover title.
+	const priceTitle = `${t("billingInfo.price")}: ${parsedData.billingDataMod.amount}/${formatBillingCycle(parsedData.billingDataMod.cycle,i18n.resolvedLanguage||i18n.language)}` +
+		(remainingValue ? `\n${t("billingInfo.remainingValue",{defaultValue:"Estimated remaining value"})}: ≈${valueText}` : "");
 
 	let isNeverExpire = false;
 	let daysLeftObject = {
@@ -59,7 +59,7 @@ export default function BillingInfo({
 			{parsedData.billingDataMod.amount &&
 			parsedData.billingDataMod.amount !== "0" &&
 			parsedData.billingDataMod.amount !== "-1" ? (
-				<p data-billing-price title={`${t("billingInfo.price")}: ${parsedData.billingDataMod.amount}/${formatBillingCycle(parsedData.billingDataMod.cycle,i18n.resolvedLanguage||i18n.language)}`} className={cn("text-[10px] text-muted-foreground ")}>
+				<p data-billing-price title={priceTitle} className={cn("text-[10px] text-muted-foreground ")}>
 					<span data-billing-price-label>{t("billingInfo.price")}: </span>{parsedData.billingDataMod.amount}/
 					{formatBillingCycle(parsedData.billingDataMod.cycle,i18n.resolvedLanguage||i18n.language)}
 				</p>
@@ -72,7 +72,6 @@ export default function BillingInfo({
 					{t("billingInfo.usage-baseed")}
 				</p>
 			) : null}
-			{valueDisplay}
 			{hasBillingDates && (
 				<div data-billing-expiry className={cn("text-[10px] text-muted-foreground")}>
 					{t("billingInfo.remaining")}:{" "}
@@ -93,7 +92,7 @@ export default function BillingInfo({
 			{parsedData.billingDataMod.amount &&
 			parsedData.billingDataMod.amount !== "0" &&
 			parsedData.billingDataMod.amount !== "-1" ? (
-				<p data-billing-price title={`${t("billingInfo.price")}: ${parsedData.billingDataMod.amount}/${formatBillingCycle(parsedData.billingDataMod.cycle,i18n.resolvedLanguage||i18n.language)}`} className={cn("text-[10px] text-muted-foreground ")}>
+				<p data-billing-price title={priceTitle} className={cn("text-[10px] text-muted-foreground ")}>
 					<span data-billing-price-label>{t("billingInfo.price")}: </span>{parsedData.billingDataMod.amount}/
 					{formatBillingCycle(parsedData.billingDataMod.cycle,i18n.resolvedLanguage||i18n.language)}
 				</p>
@@ -106,7 +105,6 @@ export default function BillingInfo({
 					{t("billingInfo.usage-baseed")}
 				</p>
 			) : null}
-			{valueDisplay}
 			<p data-billing-expiry className={cn("text-[10px] text-muted-foreground text-red-600")}>
 				{t("billingInfo.expired")}: {daysLeftObject.days * -1}{" "}
 				{t("billingInfo.days")}

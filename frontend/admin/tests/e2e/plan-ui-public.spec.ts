@@ -21,7 +21,13 @@ for(const theme of ["default","doraemon"])for(const width of [320,390,1440])test
  const cards=page.locator(theme==="doraemon"?"article":"[data-server-card]");
  const card=cards.filter({has:page.getByText("价值验证0",{exact:true})});
  await expect(card).toBeVisible();
- await expect(card.locator("[data-billing-value]:visible")).toHaveText(/预估剩余价值: ≈16.00 USD/);
+ const price=card.locator("[data-billing-price]:visible");
+ await expect(price).toHaveAttribute("title",/价格: 31USD\/月\n预估剩余价值: ≈16\.00 USD/);
+ await expect(card.locator("[data-billing-value]")).toHaveCount(0);
+ await expect(card.getByText(/预估剩余价值/)).toHaveCount(0);
+ const beforeHover=await card.boundingBox();
+ await price.hover();
+ expect((await card.boundingBox())?.height).toBe(beforeHover?.height);
  await expect(card.locator('[data-extra-note="0"]:visible')).toHaveCSS("background-color","rgb(255, 255, 255)");
  await expect(card.locator('[data-extra-note="1"]:visible')).toHaveCSS("color","rgb(255, 255, 255)");
  await expect(card.getByRole("link",{name:"默认蓝色",exact:true})).toHaveClass(/bg-sky-700/);
