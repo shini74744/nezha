@@ -229,9 +229,9 @@ function Card({ now, serverInfo: s }: Props) {
 					</div>
 				)}
 				{note?.billingDataMod && (
-					<div className="dora-billing">
+					<Link className="dora-billing" to={`/server/${s.id}`} onClick={saveMainPageScrollPosition}>
 						<BillingInfo parsedData={note} />
-					</div>
+					</Link>
 				)}
 				{note?.planDataMod && <PlanInfo parsedData={note} />}
 				<ServerLinkTags tags={note?.planDataMod?.linkTags} />
