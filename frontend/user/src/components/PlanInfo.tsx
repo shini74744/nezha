@@ -3,6 +3,7 @@ import { carrierRoutes, readNetworkRoutes } from "@/lib/network-routes";
 import RouteLogo from "./RouteLogo";
 import {carrierColorStyle} from "../../../shared/carrier-colors";
 import OtherCarrierBadges from "./OtherCarrierBadges";
+import {extraNotes,extraNoteColor} from "../../../shared/extra-note-colors";
 
 export default function PlanInfo({
 	parsedData,
@@ -13,12 +14,7 @@ export default function PlanInfo({
 		return null;
 	}
 
-	const extraList =
-		parsedData.planDataMod.extra.split(",").length > 1
-			? parsedData.planDataMod.extra.split(",")
-			: parsedData.planDataMod.extra.split(",")[0] === ""
-				? []
-				: [parsedData.planDataMod.extra];
+	const extraList = extraNotes(parsedData.planDataMod.extra);
 	const networkRoutes = readNetworkRoutes(parsedData.planDataMod);
 
 	return (
@@ -70,9 +66,9 @@ export default function PlanInfo({
 			{extraList.map((extra, index) => {
 				return (
 					<p
-						key={index}
+						key={index} data-extra-note={index} style={carrierColorStyle(extraNoteColor(parsedData.planDataMod?.extraColors,index))}
 						className={cn(
-							"text-[9px] bg-stone-600 text-stone-200 dark:bg-stone-800 dark:text-stone-300  w-fit rounded-[5px] px-[3px] py-[1.5px]",
+							"text-[9px] w-fit max-w-full break-words rounded-[5px] px-[3px] py-[1.5px]",
 						)}
 					>
 						{extra}

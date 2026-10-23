@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import {formatBillingCycle} from "@/lib/billing-cycle";
+import {estimateRemainingValue} from "@/lib/billing-value";
 import {
 	cn,
 	getDaysBetweenDatesWithAutoRenewal,
@@ -17,6 +18,12 @@ export default function BillingInfo({
 	if (!parsedData?.billingDataMod) {
 		return null;
 	}
+
+	const remainingValue = estimateRemainingValue(parsedData.billingDataMod);
+	const valueText = remainingValue ? remainingValue.value.toLocaleString(i18n.resolvedLanguage||i18n.language,{minimumFractionDigits:2,maximumFractionDigits:2}) + (remainingValue.unit ? " " + remainingValue.unit : "") : "";
+	const valueDisplay = remainingValue ? <p data-billing-value className="text-[10px] text-muted-foreground" title={t("billingInfo.remainingValueHelp",{defaultValue:"Estimated from the price, billing cycle and remaining time; not a refund quote."})}>
+		{t("billingInfo.remainingValue",{defaultValue:"Estimated remaining value"})}: ≈{valueText}
+	</p> : null;
 
 	let isNeverExpire = false;
 	let daysLeftObject = {
@@ -65,6 +72,7 @@ export default function BillingInfo({
 					{t("billingInfo.usage-baseed")}
 				</p>
 			) : null}
+			{valueDisplay}
 			{hasBillingDates && (
 				<div data-billing-expiry className={cn("text-[10px] text-muted-foreground")}>
 					{t("billingInfo.remaining")}:{" "}
@@ -98,6 +106,7 @@ export default function BillingInfo({
 					{t("billingInfo.usage-baseed")}
 				</p>
 			) : null}
+			{valueDisplay}
 			<p data-billing-expiry className={cn("text-[10px] text-muted-foreground text-red-600")}>
 				{t("billingInfo.expired")}: {daysLeftObject.days * -1}{" "}
 				{t("billingInfo.days")}

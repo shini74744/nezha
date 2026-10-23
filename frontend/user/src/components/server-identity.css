@@ -12,8 +12,8 @@
  }
 }
 @media (max-width:1023px) {
- /* Center expiry independently of price. Price uses only the free right side,
-    never shifts expiry or wraps into another line / increases card height. */
+ /* Keep the original centered expiry/price row. Estimated value gets its own
+    full-width second row without shifting the expiry or progress bar. */
  [data-mobile-billing], [data-mobile-billing-row] { width:100%; min-width:0; }
  [data-mobile-billing-row]:has([data-billing-expiry]) {
   display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
@@ -30,6 +30,7 @@
  }
  [data-mobile-billing-row]:not(:has([data-billing-expiry])) { justify-content:center; }
  [data-mobile-billing-row] [data-billing-price-label] { display:none; }
+ [data-mobile-billing-row] > [data-billing-value] { grid-column:1 / -1; grid-row:2; min-width:0; text-align:center; overflow-wrap:anywhere; }
 
  [data-provider-logo] { transform:translate(var(--nz-logo-mx,0px),var(--nz-logo-my,0px)) scale(var(--nz-logo-ms,1)); max-width:var(--nz-logo-mobile-width,64px)!important; max-height:var(--nz-logo-mobile-height,24px)!important; visibility:var(--nz-logo-mobile-visible,visible); }
  .nz-server-identity:not([data-inline]) { position:static; }

@@ -1,4 +1,5 @@
 import NetworkCardSettings from "./NetworkCardSettings"
+import PlanValueInput from "./plan-value-input"
 import { updateServer } from "@/api/server"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -58,6 +59,7 @@ import CarrierColorPicker from "./CarrierColorPicker"
 import ProviderLogoEditor from "./ProviderLogoEditor"
 import SettingHelp from "./SettingHelp"
 import LinkTagsEditor from "./LinkTagsEditor"
+import ExtraNotesEditor from "./ExtraNotesEditor"
 import { conv } from "@/lib/utils"
 import { asOptionalField } from "@/lib/utils"
 import { ModelServer } from "@/types"
@@ -378,7 +380,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                     <Checkbox aria-label="普通隐藏" checked={!!field.value} onCheckedChange={field.onChange} />
                                                 </FormControl>
                                                 <FormLabel className="cursor-pointer text-xs sm:text-sm">普通隐藏</FormLabel>
-                                                <button type="button" title="仅未登录访客默认不展示，连续点击前台小鸡插画 5 下展开，再点 5 下收起。登录后不受普通隐藏影响。不是权限保护；同时勾选“对游客隐藏”时，仍需管理员或所属用户登录。" aria-label="普通隐藏说明" className="flex min-h-6 min-w-6 items-center justify-center text-muted-foreground"><HelpCircle size={14} /></button>
+                                                <SettingHelp label="普通隐藏">未登录时默认不显示这台服务器。连续点击前台小鸡插画 5 下可展开，再点 5 下收起；登录后正常显示。如需限制访问，请同时开启“对游客隐藏”，仅管理员和所属用户登录后可见。</SettingHelp>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
@@ -790,17 +792,10 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                                 {t("PublicNote.PayAsYouGo")}
                                                             </Button>
                                                         </div>
-                                                        <Input
-                                                            placeholder="200EUR"
-                                                            value={
-                                                                publicNoteObj.billingDataMod?.amount
-                                                            }
-                                                            onChange={(e) =>
-                                                                patchPublicNote(
-                                                                    "billingDataMod.amount",
-                                                                    e.target.value,
-                                                                )
-                                                            }
+                                                        <PlanValueInput
+                                                            id="billing-amount" kind="amount" label={t("PublicNote.Amount")}
+                                                            value={publicNoteObj.billingDataMod?.amount}
+                                                            onChange={value => patchPublicNote("billingDataMod.amount", value)}
                                                         />
                                                     </div>
                                                 </div>
@@ -815,39 +810,22 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                         <Label className="text-xs">
                                                             {t("PublicNote.Bandwidth")}
                                                         </Label>
-                                                        <Input
-                                                            placeholder="30Mbps"
-                                                            value={
-                                                                publicNoteObj.planDataMod?.bandwidth
-                                                            }
-                                                            onChange={(e) =>
-                                                                patchPublicNote(
-                                                                    "planDataMod.bandwidth",
-                                                                    e.target.value,
-                                                                )
-                                                            }
+                                                        <PlanValueInput
+                                                            id="plan-bandwidth" kind="bandwidth" label={t("PublicNote.Bandwidth")}
+                                                            value={publicNoteObj.planDataMod?.bandwidth}
+                                                            onChange={value => patchPublicNote("planDataMod.bandwidth", value)}
                                                         />
                                                     </div>
                                                     <div className="space-y-1">
                                                         <div className="flex items-center flex-wrap gap-2">
                                                             <Label className="text-xs">{t("PublicNote.TrafficVolume")}</Label>
-                                                            {[["500G","500G/月"],["1T","1T/月"],["无限","无限流量"]].map(([label,value])=>(
-                                                                <Button key={label} type="button" variant="outline" className="text-xs px-2 py-0 h-auto"
-                                                                    onClick={()=>patchPublicNote("planDataMod.trafficVol",value)}>{label}</Button>
-                                                            ))}
+                                                            <Button type="button" variant="outline" className="text-xs px-2 py-0 h-auto"
+                                                                onClick={()=>patchPublicNote("planDataMod.trafficVol","无限流量")}>无限</Button>
                                                         </div>
-                                                        <Input
-                                                            placeholder="1TB/Month"
-                                                            value={
-                                                                publicNoteObj.planDataMod
-                                                                    ?.trafficVol
-                                                            }
-                                                            onChange={(e) =>
-                                                                patchPublicNote(
-                                                                    "planDataMod.trafficVol",
-                                                                    e.target.value,
-                                                                )
-                                                            }
+                                                        <PlanValueInput
+                                                            id="plan-traffic-volume" kind="traffic" label={t("PublicNote.TrafficVolume")}
+                                                            value={publicNoteObj.planDataMod?.trafficVol}
+                                                            onChange={value => patchPublicNote("planDataMod.trafficVol", value)}
                                                         />
                                                     </div>
                                                     <div className="space-y-1">
@@ -1017,32 +995,13 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                         </div>
                                                     </fieldset>
                                                     <div className="space-y-1 sm:col-span-2">
-                                                        <div className="flex items-center"><Label htmlFor="traffic-reset-day" className="text-xs">流量重置日</Label><SettingHelp label="流量重置日">每月该日北京时间 00:00 开始新周期，历史记录保留；没有该日则取月末。留空使用账单开始日期的日号，无开始日期则为 1 日。未指定流量类型按双向统计。</SettingHelp></div>
+                                                        <div className="flex items-center"><Label htmlFor="traffic-reset-day" className="text-xs">流量重置日</Label><SettingHelp label="流量重置日">每月在所选日期的北京时间 00:00 开始新的流量统计，历史记录不会删除。当月没有该日期时，按当月最后一天计算。留空则使用上方“开始时间”的日期（几号）；未设置开始时间时，默认每月 1 日。</SettingHelp></div>
                                                         <Input id="traffic-reset-day" type="number" min={1} max={31} placeholder="1–31，可留空"
                                                             value={publicNoteObj.planDataMod?.resetDay ?? ""}
                                                             onChange={e=>patchPublicNote("planDataMod.resetDay",e.target.value)}/>
                                                         {publicNoteErrors["plan.resetDay"] && <p className="text-xs text-destructive">{publicNoteErrors["plan.resetDay"]}</p>}
                                                     </div>
-                                                    <div className="space-y-1 sm:col-span-2">
-                                                        <Label className="text-xs">
-                                                            {t("PublicNote.Extra")}
-                                                        </Label>
-                                                        <Input
-                                                            placeholder={t(
-                                                                "PublicNote.CommaSeparated",
-                                                            )}
-                                                            value={
-                                                                publicNoteObj.planDataMod?.extra ??
-                                                                ""
-                                                            }
-                                                            onChange={(e) =>
-                                                                patchPublicNote(
-                                                                    "planDataMod.extra",
-                                                                    e.target.value,
-                                                                )
-                                                            }
-                                                        />
-                                                    </div>
+                                                    <ExtraNotesEditor note={publicNoteObj} onChange={setPublicNoteObj}/>
                                                 </div>
                                             </div>
                                         </>

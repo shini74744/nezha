@@ -1,4 +1,4 @@
-export type LinkTag = {name:string;url:string;[key:string]:unknown};
+export type LinkTag = {name:string;url:string;color?:string;[key:string]:unknown};
 export function safeLink(value:unknown):string {
  if(typeof value!=="string"||value.length>2048)return "";
  const input=value.trim();

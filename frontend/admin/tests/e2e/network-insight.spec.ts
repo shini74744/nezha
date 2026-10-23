@@ -837,7 +837,8 @@ test("snapshot timeline scroll and selection "+theme+" "+width,async({page},info
   const hit=document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2);
   return !!hit && el.contains(hit);
  })).resolves.toBe(true);
- await page.mouse.wheel(220,0);
+ await expect(nav).toHaveCSS("scrollbar-width","none");
+ await page.mouse.wheel(0,220);
  await expect.poll(()=>nav.evaluate(el=>el.scrollLeft)).toBeGreaterThan(20);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
  await page.locator("[data-snapshot-timeline]").screenshot({path:info.outputPath("timeline.png")});
@@ -1055,6 +1056,13 @@ for(const width of [320,390,1440]) test("return-route long details stay bounded 
  const routes=Array.from({length:9},(_,i)=>({id:String(i),name:"上海",carrier:"电信",family:"IPv4",protocol:"tcp",status:"reached",line:"CN2（类型待确认）",route:["电信 CTGNet","电信 CN2"],evidence:["跨境关键跳缺失，保留待确认。"],hops}));
  await page.route("**/api/v1/server/7/return-route",r=>r.fulfill({json:{success:true,data:{state:"complete",server_id:7,online:true,can_run:true,routes,finished_at:now,history:Array.from({length:10},(_,i)=>({state:"complete",finished_at:now-i*3600000,scheduled_at:now-i*3600000,routes}))}}}));
  await page.locator(".server-info-tab").getByText("回程",{exact:true}).click();
+ const timeline=page.getByRole("navigation",{name:"回程历史快照"});
+ await expect(timeline).toHaveCSS("scrollbar-width","none");
+ await timeline.scrollIntoViewIfNeeded();await timeline.hover();await page.mouse.wheel(0,220);
+ await expect.poll(()=>timeline.evaluate(el=>el.scrollLeft)).toBeGreaterThan(20);
+ await expect(timeline.getByRole("button").first()).toHaveAttribute("aria-pressed","true");
+ await page.getByRole("button",{name:"较早快照",exact:true}).click();
+ await expect.poll(()=>timeline.evaluate(el=>el.scrollLeft)).toBeGreaterThan(220);
  const first=page.locator("[data-return-route]").first(),card=await first.boundingBox();
  await first.getByRole("button").click();const dialog=page.getByRole("dialog");
  await expect(dialog).toBeVisible();await expect(dialog.getByText("8 跳未响应",{exact:true})).toBeVisible();

@@ -274,6 +274,7 @@ interface PlanData {
 	IPv6: string;
 	networkRoute: string;
 	extra: string;
+	extraColors?: string[];
 }
 
 export interface PublicNoteData {
@@ -317,6 +318,7 @@ export function parsePublicNote(publicNote: string): PublicNoteData | null {
                     ...(data.planDataMod.providerLogo ? {providerLogo:data.planDataMod.providerLogo}:{}),
                     ...(data.planDataMod.networkRouteLogos ? {networkRouteLogos:data.planDataMod.networkRouteLogos}:{}),
 					extra: data.planDataMod.extra || "",
+                    ...(Array.isArray(data.planDataMod.extraColors)?{extraColors:data.planDataMod.extraColors}:{}),
 				},
 			};
 		}
@@ -343,6 +345,7 @@ export function parsePublicNote(publicNote: string): PublicNoteData | null {
                     ...(data.planDataMod.providerLogo ? {providerLogo:data.planDataMod.providerLogo}:{}),
                     ...(data.planDataMod.networkRouteLogos ? {networkRouteLogos:data.planDataMod.networkRouteLogos}:{}),
 				extra: data.planDataMod.extra || "",
+                    ...(Array.isArray(data.planDataMod.extraColors)?{extraColors:data.planDataMod.extraColors}:{}),
 			},
 		};
 	} catch (error) {

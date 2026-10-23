@@ -1,0 +1,88 @@
+import {test,expect} from "@playwright/test";
+for(const [width,theme] of [[320,"light"],[390,"dark"],[1440,"light"]] as const)test("plan units colors and dismissible help "+width+" "+theme,async({page},info)=>{
+ test.setTimeout(90000);await page.setViewportSize({width,height:900});
+ await page.addInitScript(theme=>localStorage.setItem("nezha-dashboard-theme",theme),theme);
+ const original={billingDataMod:{amount:"90刀",cycle:"Month"},planDataMod:{bandwidth:"500mbps",trafficVol:"1TB/月",extra:"1,2,3,4,5",linkTags:[{name:"点我",url:"baidu.com"},{name:"点我2",url:"example.com",unknown:7}],custom:"keep"},unknown:{keep:true}};
+ let server:any={id:11,host:{version:"1.0.4"},name:"套餐交互测试",display_index:0,user_id:1,uuid:"fixture",public_note:JSON.stringify(original),note:"",enable_ddns:false,hide_for_guest:false};
+ const updates:any[]=[],errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
+ await page.route("**/api/v1/**",r=>{const path=new URL(r.request().url()).pathname;let data:any=[];
+  if(path==="/api/v1/profile")data={id:1,username:"admin",role:0};
+  if(path==="/api/v1/setting")data={config:{site_name:"测试",language:"zh-CN"},version:"test"};
+  if(path==="/api/v1/server")data=[server];
+  if(path==="/api/v1/server/11"&&r.request().method()==="PATCH"){updates.push(r.request().postDataJSON());server={...server,...updates.at(-1)}}
+  return r.fulfill({json:{success:true,data}});
+ });
+ await page.goto("/dashboard");
+ const edit=page.getByRole("row").filter({has:page.getByText("套餐交互测试",{exact:true})}).getByRole("button",{name:"编辑服务器",exact:true});
+ await edit.click();const dialog=page.getByRole("dialog").first();
+ await expect(dialog.locator("#billing-amount")).toHaveValue("90");
+ await expect(dialog.getByRole("combobox",{name:"金额币种",exact:true})).toContainText("USD");
+ // An untouched save must not rewrite old strings or create color data.
+ await dialog.locator('button[type="submit"]').click();await expect.poll(()=>updates.length).toBe(1);
+ expect(JSON.parse(updates[0].public_note)).toMatchObject(original);
+ expect(JSON.parse(updates[0].public_note).planDataMod.extraColors).toBeUndefined();
+ await edit.click();
+ const unit=async(name:string,value:string)=>{await dialog.getByRole("combobox",{name,exact:true}).click();await page.getByRole("option",{name:value,exact:true}).click()};
+ await dialog.locator("#plan-bandwidth").fill("2.5");
+ await dialog.getByRole("combobox",{name:"带宽单位",exact:true}).click();
+ await expect(page.getByRole("option")).toHaveText(["Mbps","Gbps","Tbps"]);
+ await page.getByRole("option",{name:"Gbps",exact:true}).click();
+ await dialog.locator("#billing-amount").fill("12.5");await unit("金额币种","欧元 (EUR)");
+ await expect(dialog.getByRole("button",{name:"500G",exact:true})).toHaveCount(0);
+ await expect(dialog.getByRole("button",{name:"1T",exact:true})).toHaveCount(0);
+ await dialog.locator("#plan-traffic-volume").fill(".5");await unit("流量配额单位","TB");
+ const extras=dialog.locator("[data-extra-notes-editor]");
+ await expect(extras.getByRole("button",{name:/标签颜色$/})).toHaveCount(5);
+ await extras.getByRole("button",{name:/额外备注 2.*标签颜色$/}).click();
+ await page.getByRole("button",{name:"预设颜色 #ffffff",exact:true}).click();
+ await extras.locator("input").fill("5,2,1,3,4");
+ const links=dialog.locator("[data-link-tags-editor]");
+ await expect(links.getByRole("button",{name:/标签颜色$/})).toHaveCount(2);
+ await links.getByRole("button",{name:/链接标签 2.*标签颜色$/}).click();
+ await page.getByRole("button",{name:"预设颜色 #111827",exact:true}).click();
+ await links.getByRole("button",{name:"删除标签 1",exact:true}).click();
+ await expect(links.getByRole("button",{name:/标签颜色$/})).toHaveCount(1);
+ await links.screenshot({path:info.outputPath("link-colors.png")});
+ await extras.screenshot({path:info.outputPath("extra-colors.png")});
+ // Help clicks never change the ordinary-hidden checkbox or submit the form.
+ const hidden=dialog.getByRole("checkbox",{name:"普通隐藏",exact:true}),was=await hidden.isChecked();
+ const help=dialog.getByRole("button",{name:"普通隐藏说明",exact:true});
+ await help.click();await expect(page.locator("[data-setting-help]")).toBeVisible();
+ expect(await hidden.isChecked()).toBe(was);
+ const scroll=dialog.locator("[data-radix-scroll-area-viewport]");
+ const beforeScroll=await scroll.evaluate(el=>el.scrollTop);
+ await page.mouse.wheel(0,200);await expect(page.locator("[data-setting-help]")).toHaveCount(0);
+ await expect.poll(()=>scroll.evaluate(el=>el.scrollTop)).toBeGreaterThan(beforeScroll);
+ if(width===390){
+  await help.click();await expect(page.locator("[data-setting-help]")).toBeVisible();
+  const rect=(await help.boundingBox())!,y=rect.y+rect.height/2,x=rect.x+rect.width/2;
+  const beforeTouch=await scroll.evaluate(el=>el.scrollTop),cdp=await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setTouchEmulationEnabled",{enabled:true});
+  await cdp.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x,y}]});
+  for(let step=1;step<=6;step++){await cdp.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{x,y:y-step*Math.min(15,(y-5)/7)}]});await page.waitForTimeout(20)}
+  await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
+  await expect(page.locator("[data-setting-help]")).toHaveCount(0);
+  await expect.poll(()=>scroll.evaluate(el=>el.scrollTop)).toBeGreaterThan(beforeTouch);
+ }
+ const reset=dialog.getByRole("button",{name:"流量重置日说明",exact:true});
+ await reset.click();await expect(page.locator("[data-setting-help]")).toContainText("历史记录不会删除");
+ await page.keyboard.press("Escape");await expect(page.locator("[data-setting-help]")).toHaveCount(0);
+ await reset.click();await page.evaluate(()=>window.dispatchEvent(new Event("touchmove")));await expect(page.locator("[data-setting-help]")).toHaveCount(0);
+ await reset.click();await dialog.locator("#traffic-reset-day").click();await expect(page.locator("[data-setting-help]")).toHaveCount(0);
+ expect(updates).toHaveLength(1);
+ expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
+ await dialog.locator('button[type="submit"]').click();await expect.poll(()=>updates.length).toBe(2);
+ const saved=JSON.parse(updates[1].public_note);
+ expect(saved.billingDataMod).toMatchObject({amount:"12.5EUR",cycle:"Month"});
+ expect(saved.planDataMod).toMatchObject({bandwidth:"2.5Gbps",trafficVol:"0.5TB/月",extra:"5,2,1,3,4",extraColors:["","#ffffff","","",""],linkTags:[{name:"点我2",url:"example.com",color:"#111827",unknown:7}],custom:"keep"});
+ expect(saved.unknown).toEqual({keep:true});
+ await edit.click();await expect(dialog.locator("#plan-bandwidth")).toHaveValue("2.5");
+ await expect(dialog.locator("#billing-amount")).toHaveValue("12.5");
+ await dialog.getByRole("button",{name:"免费",exact:true}).click();await expect(dialog.locator("#billing-amount")).toHaveValue("0");
+ await dialog.getByRole("button",{name:"按量付费",exact:true}).click();await expect(dialog.locator("#billing-amount")).toHaveValue("-1");
+ await dialog.getByRole("button",{name:"无限",exact:true}).click();await expect(dialog.locator("#plan-traffic-volume")).toHaveValue("无限流量");
+ await dialog.locator('button[type="submit"]').click();await expect.poll(()=>updates.length).toBe(3);
+ expect(JSON.parse(updates[2].public_note).planDataMod.trafficVol).toBe("无限流量");
+ expect(JSON.parse(updates[2].public_note).billingDataMod.amount).toBe("-1");
+ expect(errors).toEqual([]);
+});
