@@ -1,0 +1,28 @@
+.plan-badge-icon {
+ display: inline-flex;
+ flex: none;
+ align-self: center;
+ align-items: center;
+ justify-content: center;
+ line-height: 0;
+}
+.plan-badge-icon:empty { display: none; }
+.plan-badge-icon > img,
+.plan-badge-icon > svg { display: block; }
+.plan-badge-text {
+ display: block;
+ min-width: 0;
+ align-self: center;
+ line-height: 12px;
+ text-align: center;
+ white-space: normal;
+ overflow-wrap: anywhere;
+}
+/* Trim only the text's font leading; never translate or trim its sibling icon.
+   Browsers without text-box support keep the centered 12px line-box fallback. */
+@supports (text-box-trim: trim-both) and (text-box-edge: cap alphabetic) {
+ .plan-badge-text {
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+ }
+}

@@ -12,7 +12,7 @@ describe("plan UI compatibility",()=>{
   expect(screen.getByText("1").closest("[data-extra-note]")).toHaveStyle({backgroundColor:"#ffffff",color:"#000000"});
   expect(screen.getByText("2").closest("[data-extra-note]")).toHaveStyle({backgroundColor:"#0f766e"});
   expect(document.querySelectorAll("[data-extra-note]")).toHaveLength(5);
-  expect(screen.getByText("500Mbps")).toHaveClass("bg-blue-600");
+  expect(screen.getByText("500Mbps").closest("p")).toHaveClass("bg-blue-600");
   expect(screen.getByRole("link")).toHaveStyle({backgroundColor:"#111827",color:"#ffffff"});
   expect(screen.getByRole("link")).toHaveAttribute("href","https://example.com/");
  });
