@@ -13,7 +13,7 @@ export default function OtherCarrierBadges({entries,color}:{entries:unknown;colo
   const src=safeLogoSource(entry.logo)||((entry.logoLibraryId||entry.logoLibraryName)?"":selected?.icon);
   const title=entry.logoLibraryName||selected?.label||(typeof entry.name==="string"&&entry.name)||"其他运营商";
   return <p key={index} title={title} data-other-carrier={entry.carrier||"none"} style={carrierColorStyle(safeCarrierColor(entry.color)||color)}
-   className="inline-flex items-center justify-center min-h-[18px] text-center leading-[12px] gap-[3px] max-w-full text-[9px] bg-stone-600 text-stone-200 dark:bg-stone-800 dark:text-stone-300 w-fit rounded-[5px] px-[3px] py-[1.5px]">
+   className="inline-flex items-center justify-center min-h-[16px] text-center leading-[12px] gap-[3px] max-w-full text-[9px] bg-stone-600 text-stone-200 dark:bg-stone-800 dark:text-stone-300 w-fit rounded-[5px] px-[3px] py-[1px]">
    {src&&<Logo key={src} src={src} background={entry.logo?entry.logoBackground:selected?.logoBackground}/>}<span className="min-w-0 whitespace-normal [overflow-wrap:anywhere]">{entry.text}</span>
   </p>;
  })}</>;

@@ -36,6 +36,15 @@ for(const theme of ["default","doraemon"])for(const width of [320,390,1440])for(
  for(const i of [1,2])await expect(cards.filter({has:page.getByText("价值验证"+i,{exact:true})}).locator("[data-billing-value]")).toHaveCount(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
  expect(await card.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
+ const compactBadges=card.locator('[data-plan-info]:visible > p');
+ for(const badge of await compactBadges.all()){
+  const metrics=await badge.evaluate(el=>{
+   const styles=getComputedStyle(el);
+   return {height:(el as HTMLElement).offsetHeight,font:styles.fontSize,paddingTop:styles.paddingTop,paddingBottom:styles.paddingBottom};
+  });
+  expect(metrics.font).toBe("9px");expect(metrics.paddingTop).toBe("1px");expect(metrics.paddingBottom).toBe("1px");
+  if(["1000Mbps","无限","IPv4","163/PP/CN2","5"].includes((await badge.textContent())!.trim()))expect(metrics.height).toBe(16);
+ }
  const badges=card.locator('[data-extra-note]:visible, [data-carrier]:visible, [data-other-carrier]:visible');
  for(const badge of await badges.all()){
   await expect(badge).toHaveCSS("align-items","center");await expect(badge).toHaveCSS("justify-content","center");await expect(badge).toHaveCSS("text-align","center");
@@ -45,7 +54,7 @@ for(const theme of ["default","doraemon"])for(const width of [320,390,1440])for(
    const img=el.querySelector("img,svg")?.getBoundingClientRect();
    return {vertical:Math.abs(box.y+box.height/2-span.y-span.height/2),horizontal:img?0:Math.abs(box.x+box.width/2-span.x-span.width/2),icon:img?Math.abs(box.y+box.height/2-img.y-img.height/2):0,height:box.height};
   });
-  expect(centered.vertical).toBeLessThanOrEqual(1);expect(centered.horizontal).toBeLessThanOrEqual(1);expect(centered.icon).toBeLessThanOrEqual(1);expect(centered.height).toBeGreaterThanOrEqual(18);
+  expect(centered.vertical).toBeLessThanOrEqual(1);expect(centered.horizontal).toBeLessThanOrEqual(1);expect(centered.icon).toBeLessThanOrEqual(1);expect(centered.height).toBeGreaterThanOrEqual(16);
  }
  await card.screenshot({path:info.outputPath("card.png")});expect(errors).toEqual([]);
  if(theme==="doraemon"){await price.click();await expect(page).toHaveURL(/\/server\/11$/)}
