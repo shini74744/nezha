@@ -87,7 +87,7 @@ const brand=useFeature("branding");
 				<div data-mobile-billing-row className="flex items-center gap-2">{parsedData?.billingDataMod && <BillingInfo parsedData={parsedData} />}</div>
 <ServerLinkTags tags={parsedData?.planDataMod?.linkTags}/>
 			</div>
-			<div className="flex flex-col lg:items-start items-center gap-2">
+			<div className={cn("flex min-w-0 flex-col lg:items-start items-center gap-2", {"lg:flex-1": !fixedTopServerName})}>
 				<section
 					className={cn("grid grid-cols-5 items-center gap-3", {
 						"lg:grid-cols-6 lg:gap-4": fixedTopServerName,
@@ -215,7 +215,7 @@ const brand=useFeature("branding");
 <ServerLinkTags tags={parsedData?.planDataMod?.linkTags}/>
 			</div>
 			{/* Legacy traffic enhancement applies to online cards only. */}
-			{parsedData?.planDataMod && <PlanInfo parsedData={parsedData} />}
+			{parsedData?.planDataMod && <PlanInfo parsedData={parsedData} className={cn({"lg:flex-1": !fixedTopServerName})} />}
 		</Card>
 	);
 }
