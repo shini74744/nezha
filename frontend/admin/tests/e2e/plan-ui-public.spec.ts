@@ -25,9 +25,9 @@ for(const theme of ["default","doraemon"])for(const width of [320,390,1440])for(
  await expect(price).toHaveAttribute("title",/价格: 31USD\/月\n预估剩余价值: ≈16\.00 USD/);
  await expect(card.locator("[data-billing-value]")).toHaveCount(0);
  await expect(card.getByText(/预估剩余价值/)).toHaveCount(0);
- const beforeHover=await card.boundingBox();
+ const beforeHover=await card.evaluate(el=>(el as HTMLElement).offsetHeight);
  await price.hover();
- expect((await card.boundingBox())?.height).toBe(beforeHover?.height);
+ expect(await card.evaluate(el=>(el as HTMLElement).offsetHeight)).toBe(beforeHover);
  await expect(card.locator('[data-extra-note="0"]:visible')).toHaveCSS("background-color","rgb(255, 255, 255)");
  await expect(card.locator('[data-extra-note="1"]:visible')).toHaveCSS("color","rgb(255, 255, 255)");
  await expect(card.getByRole("link",{name:"默认蓝色",exact:true})).toHaveClass(/bg-sky-700/);
