@@ -215,6 +215,11 @@
     "CreatedAt": "建立時間",
     "BatchMoveServer": "批次轉移伺服器擁有者",
     "Servers": "伺服器",
+    "ServerSortSearch": "搜尋伺服器名稱或系統 ID",
+    "ServerSortSearchClear": "清除搜尋",
+    "ServerSortHint": "拖曳調整順序，完成後點擊儲存。",
+    "ServerSortSearchHint": "顯示 {{count}} / {{total}} 台",
+    "ServerSortSearchEmpty": "找不到符合的伺服器",
     "ToUser": "目標使用者",
     "Move": "轉移",
     "Transfer": {

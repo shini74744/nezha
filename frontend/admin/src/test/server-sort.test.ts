@@ -1,4 +1,4 @@
-import { moveServerToPosition, reorderServers } from "@/components/server-sort-dialog"
+import { filterSortableServers, moveServerToPosition, reorderServers } from "@/components/server-sort-dialog"
 import { ModelServer } from "@/types"
 import { describe, expect, it } from "vitest"
 
@@ -32,5 +32,31 @@ describe("server position input", () => {
         for (const position of [0, -1, 4, 1.5, NaN]) expect(moveServerToPosition(servers, 1, position)).toBe(servers)
         expect(moveServerToPosition(servers, 1, 1)).toBe(servers)
         expect(moveServerToPosition(servers, 999, 1)).toBe(servers)
+    })
+})
+
+describe("server sort search", () => {
+    const rows = [
+        { id: 91, name: "HK-Taiwan 物理机" },
+        { id: 17, name: "普通节点" },
+        { id: 204, name: "HK-Japan [test]" },
+    ] as ModelServer[]
+    it("matches trimmed case-insensitive names, Chinese and system IDs", () => {
+        expect(filterSortableServers(rows, "  hK- ")).toEqual([
+            { server: rows[0], index: 0 }, { server: rows[2], index: 2 },
+        ])
+        expect(filterSortableServers(rows, "物理机").map(x => x.server.id)).toEqual([91])
+        expect(filterSortableServers(rows, "204")).toEqual([{ server: rows[2], index: 2 }])
+        expect(filterSortableServers(rows, "2")).toEqual([{ server: rows[2], index: 2 }])
+        expect(filterSortableServers(rows, "[test]").map(x => x.server.id)).toEqual([204])
+        expect(filterSortableServers(rows, "不存在")).toEqual([])
+    })
+    it("preserves the full list and global indices after moving a filtered result", () => {
+        expect(filterSortableServers(rows, "  ").map(x => x.server)).toEqual(rows)
+        const reordered = moveServerToPosition(rows, 204, 2)
+        expect(filterSortableServers(reordered, "hk").map(x => [x.server.id, x.index])).toEqual([[91, 0], [204, 1]])
+        expect(reordered.map(x => x.id)).toEqual([91, 204, 17])
+        expect(rows.map(x => x.id)).toEqual([91, 17, 204])
+        expect(filterSortableServers([], "")).toEqual([])
     })
 })

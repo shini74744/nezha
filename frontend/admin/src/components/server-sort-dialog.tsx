@@ -11,6 +11,7 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
     Dialog,
     DialogContent,
@@ -23,7 +24,7 @@ import {
 import { IconButton } from "@/components/xui/icon-button"
 import { useServerOrderDrag } from "@/hooks/use-server-order-drag"
 import { ModelServer } from "@/types"
-import { ArrowDown, ArrowUp, GripVertical, ListRestart } from "lucide-react"
+import { ArrowDown, ArrowUp, GripVertical, ListRestart, Search, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
@@ -55,6 +56,13 @@ export function moveServerToPosition(current: ModelServer[], id: number, positio
     const from = current.findIndex(server => server.id === id)
     if (from < 0 || from === position - 1) return current
     return reorderServers(current, id, current[position - 1].id, from < position - 1)
+}
+
+export function filterSortableServers(current: ModelServer[], search: string) {
+    const query = search.trim().toLowerCase()
+    return current.map((server, index) => ({ server, index })).filter(({ server }) =>
+        !query || server.name.toLowerCase().includes(query) || String(server.id).includes(query),
+    )
 }
 
 function ServerPositionInput({ server, total, busy, onMove }: {
@@ -122,6 +130,9 @@ export function ServerSortDialog({ servers, mutate }: ServerSortDialogProps) {
     const [open, setOpen] = useState(false)
     const [ordered, setOrdered] = useState<ModelServer[]>(servers)
     const [originalIDs, setOriginalIDs] = useState<number[]>([])
+    const [search, setSearch] = useState("")
+    const searchRef = useRef<HTMLInputElement>(null)
+    const visibleServers = filterSortableServers(ordered, search)
     const [saving, setSaving] = useState(false)
     const [reassigning, setReassigning] = useState(false)
     const submitting = useRef(false)
@@ -140,10 +151,16 @@ export function ServerSortDialog({ servers, mutate }: ServerSortDialogProps) {
         if (next) {
             setOrdered(servers)
             setOriginalIDs(servers.map((server) => server.id))
+            setSearch("")
             drag.cancel()
         }
         if (!next) drag.cancel()
         setOpen(next)
+    }
+    const changeSearch = (value: string) => {
+        drag.cancel()
+        setSearch(value)
+        if (drag.listRef.current) drag.listRef.current.scrollTop = 0
     }
     const moveOne = (index: number, step: -1 | 1) => {
         if (busy || !ordered[index + step]) return
@@ -197,6 +214,24 @@ export function ServerSortDialog({ servers, mutate }: ServerSortDialogProps) {
                     <DialogTitle>{t("ServerSort")}</DialogTitle>
                     <DialogDescription>{t("ServerSortHint")}</DialogDescription>
                 </DialogHeader>
+                <div className="shrink-0 space-y-1.5">
+                    <div className="relative">
+                        <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input ref={searchRef} type="search" value={search} disabled={interactionBusy}
+                            aria-label={t("ServerSortSearch")} placeholder={t("ServerSortSearch")}
+                            aria-describedby="server-sort-search-hint" className="pl-9 pr-10 [&::-webkit-search-cancel-button]:appearance-none"
+                            onChange={event => changeSearch(event.target.value)} />
+                        {search && <Button type="button" variant="ghost" size="icon"
+                            className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2"
+                            disabled={interactionBusy} aria-label={t("ServerSortSearchClear")}
+                            onClick={() => { changeSearch(""); searchRef.current?.focus() }}>
+                            <X aria-hidden="true" className="h-4 w-4" />
+                        </Button>}
+                    </div>
+                    <p id="server-sort-search-hint" role="status" className="text-xs text-muted-foreground">
+                        {t("ServerSortSearchHint", { count: visibleServers.length, total: ordered.length })}
+                    </p>
+                </div>
                 <div
                     ref={drag.listRef}
                     className="min-h-0 space-y-2 overflow-y-auto overscroll-contain scroll-auto pr-1"
@@ -208,7 +243,8 @@ export function ServerSortDialog({ servers, mutate }: ServerSortDialogProps) {
                     onWheel={drag.onWheel}
                     onScroll={drag.onScroll}
                 >
-                    {ordered.map((server, index) => (
+                    {visibleServers.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">{t("ServerSortSearchEmpty")}</p>}
+                    {visibleServers.map(({ server, index }) => (
                         <div
                             key={server.id}
                             data-sort-server={server.id}
