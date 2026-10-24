@@ -317,9 +317,11 @@ export const generateCommand = (
     switch (type) {
         case OSTypes.Linux:
         case OSTypes.macOS:
-            return `(umask 077; ddnz_tmp=$(mktemp -d) || exit 1; trap 'rm -f "$ddnz_tmp/agent.sh"; rmdir "$ddnz_tmp" 2>/dev/null || true' EXIT; curl --fail --location --proto '=https' --tlsv1.2 --retry 3 ${scriptBase}/install.sh -o "$ddnz_tmp/agent.sh" && chmod +x "$ddnz_tmp/agent.sh" && env ${env} "$ddnz_tmp/agent.sh")`
+            // Use our own download filename; never overwrite an existing agent.sh.
+            // Execute only after a successful download, with credentials quoted as data.
+            return `curl -fL --proto '=https' --tlsv1.2 --retry 3 ${scriptBase}/install.sh -o DDnezha-install.sh && env ${env} sh DDnezha-install.sh`
         case OSTypes.Windows:
-            return `${envWin}$ErrorActionPreference='Stop';[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;$ddnzInstaller=Join-Path $env:TEMP ('DDnezha-install-'+[guid]::NewGuid().ToString('N')+'.ps1');try {Invoke-WebRequest -UseBasicParsing ${scriptBase}/install.ps1 -OutFile $ddnzInstaller;powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ddnzInstaller;if ($LASTEXITCODE -ne 0) {throw 'Agent installation failed'}} finally {if (Test-Path -LiteralPath $ddnzInstaller) {Remove-Item -LiteralPath $ddnzInstaller -Force}}`
+            return `${envWin}$ErrorActionPreference='Stop';[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;Invoke-WebRequest -UseBasicParsing ${scriptBase}/install.ps1 -OutFile DDnezha-install.ps1;powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./DDnezha-install.ps1;if ($LASTEXITCODE -ne 0) {throw 'Agent installation failed'}`
         default:
             throw new Error(`Unknown OS: ${type}`)
     }
