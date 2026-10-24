@@ -78,6 +78,8 @@ for (const width of [1366, 390]) {
             await expect(menu).toBeVisible()
             await page.getByRole("menuitem", { name: "复制安装命令", exact: true }).click()
             await page.getByRole("menuitem", { name: os, exact: true }).click()
+            await expect.poll(() => page.evaluate(() => (window as any).__copied))
+                .toContain("shini74744/nezha/main/agent/scripts/install.")
             const text = await page.evaluate(() => (window as any).__copied)
             expect(text).toContain("shini74744/nezha/main/agent/scripts/install.")
             expect(text).toContain("DDNZ_UUID='" + uuid + "'")
