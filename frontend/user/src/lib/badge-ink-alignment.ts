@@ -12,6 +12,14 @@ export function inkCenterOffset(badgeCenter: number, firstBaseline: number,
  return badgeCenter - (firstBaseline - ascent + lastBaseline + descent) / 2;
 }
 
+// Use the baseline body for Latin descenders. A lone p in "2000Mbps" must
+// not lift every other character to centre its narrow tail. The actual text
+// and its ascent are unchanged; only the lower visual alignment reference
+// uses an x-height glyph from the same font.
+export function bodyDescentSample(text: string): string {
+ return text.replace(/[gjpqy]/g, "x");
+}
+
 function edgeLines(node: Text, wrapped: boolean): [string,string] {
  const value = node.data;
  if (!wrapped) return [value,value];
@@ -60,7 +68,7 @@ function measure(element: HTMLElement): [HTMLElement,number] | undefined {
  const metricScale = 100;
  context.font = `${style.fontStyle} ${style.fontWeight} ${size * metricScale}px ${style.fontFamily}`;
  const a = context.measureText(firstLine).actualBoundingBoxAscent / metricScale;
- const d = context.measureText(lastLine).actualBoundingBoxDescent / metricScale;
+ const d = context.measureText(bodyDescentSample(lastLine)).actualBoundingBoxDescent / metricScale;
  if (!Number.isFinite(a) || !Number.isFinite(d)) return;
  const parent = badge.getBoundingClientRect();
  const current = Number.parseFloat(style.getPropertyValue("--badge-ink-offset")) || 0;

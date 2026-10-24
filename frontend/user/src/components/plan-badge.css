@@ -19,7 +19,8 @@
  overflow-wrap: anywhere;
  /* Font line boxes are not glyph bounds. Only the text receives the measured correction. */
  position: relative;
- top: var(--badge-ink-offset, 0px);
+ /* Preserve fractional correction at browser/CSS zoom without changing layout. */
+ transform: translateY(var(--badge-ink-offset, 0px));
  text-box-trim: none;
 }
 .plan-badge-text > [data-badge-baseline] {
