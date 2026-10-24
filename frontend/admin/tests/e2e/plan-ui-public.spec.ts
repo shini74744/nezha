@@ -19,6 +19,7 @@ for(const theme of ["default","doraemon"])for(const width of [320,390,1440])for(
  });
  await page.goto("https://127.0.0.1:"+(theme==="default"?"18477":"18478")+"/");
  if(info.project.name.includes("fallback"))await page.addStyleTag({content:".plan-badge-text{text-box-trim:none!important}"});
+ await page.addStyleTag({content:"[data-plan-info] > p{line-height:1.5!important}"});
  if(width===1440)await page.addStyleTag({content:"[data-plan-info]{font-family:Arial,sans-serif;font-weight:700}"});
  const cards=page.locator(theme==="doraemon"?"article":"[data-server-card]");
  const card=cards.filter({has:page.getByText("价值验证0",{exact:true})});
@@ -70,6 +71,7 @@ for(const theme of ["default","doraemon"])for(const width of [320,390,1440])for(
   await expect(badge.locator(":scope > [data-plan-badge-text]")).toHaveCount(1);
   await expect(badge.locator("[data-plan-badge-text]")).toHaveCSS("align-self","center");
   await expect(badge.locator("[data-plan-badge-text]")).toHaveCSS("text-box-trim","none");
+  await expect(badge.locator("[data-plan-badge-text]")).toHaveCSS("line-height","12px");
   for(const icon of await badge.locator("[data-plan-badge-icon]:visible").all())await expect(icon).toHaveCSS("align-self","center");
   await expect(badge).toHaveCSS("align-items","center");await expect(badge).toHaveCSS("justify-content","center");await expect(badge).toHaveCSS("text-align","center");
   expect(await badge.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
