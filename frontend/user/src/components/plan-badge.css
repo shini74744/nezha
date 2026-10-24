@@ -1,35 +1,50 @@
+:has(> .plan-badge-text) {
+	position: relative;
+	overflow: clip;
+}
 .plan-badge-icon {
- display: inline-flex;
- flex: none;
- align-self: center;
- align-items: center;
- justify-content: center;
- line-height: 0;
+	display: inline-flex;
+	flex: none;
+	align-self: center;
+	align-items: center;
+	justify-content: center;
+	line-height: 0;
 }
-.plan-badge-icon:empty { display: none; }
+.plan-badge-icon:empty {
+	display: none;
+}
 .plan-badge-icon > img,
-.plan-badge-icon > svg { display: block; }
-.plan-badge-text {
- display: block;
- min-width: 0;
- align-self: center;
- line-height: 12px;
- text-align: center;
- white-space: normal;
- overflow-wrap: anywhere;
- /* Font line boxes are not glyph bounds. Only the text receives the measured correction. */
- position: relative;
- /* Preserve fractional correction at browser/CSS zoom without changing layout. */
- transform: translateY(var(--badge-ink-offset, 0px));
- text-box-trim: none;
+.plan-badge-icon > svg {
+	display: block;
 }
-.plan-badge-text > [data-badge-baseline] {
- display: inline-block;
- width: 0;
- height: 0;
- padding: 0;
- margin: 0;
- border: 0;
- vertical-align: baseline;
- pointer-events: none;
+.plan-badge-text {
+	display: block;
+	min-width: 0;
+	align-self: center;
+	line-height: inherit;
+	text-align: center;
+	white-space: normal;
+	overflow-wrap: anywhere;
+	text-box-trim: none;
+}
+.plan-badge-text > canvas[data-badge-paint] {
+	display: none;
+	position: absolute;
+	pointer-events: none;
+	max-width: none;
+	image-rendering: auto;
+}
+.plan-badge-text[data-badge-painted] {
+	-webkit-text-fill-color: transparent;
+}
+.plan-badge-text[data-badge-painted] > canvas[data-badge-paint] {
+	display: block;
+}
+@media (forced-colors: active), print {
+	.plan-badge-text[data-badge-painted] {
+		-webkit-text-fill-color: currentColor;
+	}
+	.plan-badge-text > canvas[data-badge-paint] {
+		display: none !important;
+	}
 }
