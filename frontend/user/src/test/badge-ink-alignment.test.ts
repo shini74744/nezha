@@ -1,7 +1,21 @@
 import {describe,it,expect,vi} from "vitest";
-import {inkCenterOffset,observeBadgeText} from "@/lib/badge-ink-alignment";
+import {bodyDescentSample,inkCenterOffset,observeBadgeText} from "@/lib/badge-ink-alignment";
 
 describe("glyph centre, independent from the icon and the line box",()=>{
+ it.each([
+  ["2000Mbps","2000Mbxs"],["10Gbps","10Gbxs"],["gypqj","xxxxx"],
+  ["中文2TB/月","中文2TB/月"],["IPv4/IPv6","IPv4/IPv6"],
+  ["📡爱尔兰IP","📡爱尔兰IP"],["",""],
+ ])("uses the font body instead of Latin tails for %s",(label,expected)=>{
+  expect(bodyDescentSample(label)).toBe(expected);
+ });
+ it("keeps the icon centre fixed while moving only the text body",()=>{
+  const frame=9,baseline=10,ascent=7;
+  const old=inkCenterOffset(frame,baseline,baseline,ascent,2);
+  const body=inkCenterOffset(frame,baseline,baseline,ascent,0);
+  expect(body-old).toBe(1);
+  expect(baseline+body-ascent).toBe(frame-(ascent/2));
+ });
  it.each([
   [9,10,10,7,2,1.5],
   [9,12,12,7,2,-0.5],

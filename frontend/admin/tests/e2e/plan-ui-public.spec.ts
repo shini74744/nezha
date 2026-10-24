@@ -68,9 +68,10 @@ for(const theme of ["default","doraemon"])for(const width of [320,390,1440])for(
    const start=text.querySelector('[data-badge-baseline="start"]')!.getBoundingClientRect().top;
    const end=text.querySelector('[data-badge-baseline="end"]')!.getBoundingClientRect().top;
    const style=getComputedStyle(text),context=document.createElement("canvas").getContext("2d")!;
-   context.font=style.font;
+   context.font=`${style.fontStyle} ${style.fontWeight} ${parseFloat(style.fontSize)*100}px ${style.fontFamily}`;
    const ink=context.measureText(text.textContent!);
-   const inkCenter=(start-ink.actualBoundingBoxAscent+end+ink.actualBoundingBoxDescent)/2;
+   const body=context.measureText(text.textContent!.replace(/[gjpqy]/g,"x"));
+   const inkCenter=(start-ink.actualBoundingBoxAscent/100+end+body.actualBoundingBoxDescent/100)/2;
    const vertical=Math.abs(start-end)<1?Math.abs(box.y+box.height/2-inkCenter):0;
    const img=el.querySelector("img,svg")?.getBoundingClientRect();
    return {vertical,horizontal:img?0:Math.abs(box.x+box.width/2-span.x-span.width/2),icon:img?Math.abs(box.y+box.height/2-img.y-img.height/2):0,height:box.height};
