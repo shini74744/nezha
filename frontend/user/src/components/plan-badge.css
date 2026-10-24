@@ -17,12 +17,18 @@
  text-align: center;
  white-space: normal;
  overflow-wrap: anywhere;
+ /* Font line boxes are not glyph bounds. Only the text receives the measured correction. */
+ position: relative;
+ top: var(--badge-ink-offset, 0px);
+ text-box-trim: none;
 }
-/* Trim only the text's font leading; never translate or trim its sibling icon.
-   Browsers without text-box support keep the centered 12px line-box fallback. */
-@supports (text-box-trim: trim-both) and (text-box-edge: cap alphabetic) {
- .plan-badge-text {
-  text-box-trim: trim-both;
-  text-box-edge: cap alphabetic;
- }
+.plan-badge-text > [data-badge-baseline] {
+ display: inline-block;
+ width: 0;
+ height: 0;
+ padding: 0;
+ margin: 0;
+ border: 0;
+ vertical-align: baseline;
+ pointer-events: none;
 }

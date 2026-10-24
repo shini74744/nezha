@@ -319,7 +319,7 @@ export const generateCommand = (
         case OSTypes.macOS:
             // Use our own download filename; never overwrite an existing agent.sh.
             // Execute only after a successful download, with credentials quoted as data.
-            return `curl -fL --proto '=https' --tlsv1.2 --retry 3 ${scriptBase}/install.sh -o DDnezha-install.sh && env ${env} sh DDnezha-install.sh`
+            return `curl -fL ${scriptBase}/install.sh -o DDnezha-install.sh && env ${env} sh DDnezha-install.sh`
         case OSTypes.Windows:
             return `${envWin}$ErrorActionPreference='Stop';[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;Invoke-WebRequest -UseBasicParsing ${scriptBase}/install.ps1 -OutFile DDnezha-install.ps1;powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./DDnezha-install.ps1;if ($LASTEXITCODE -ne 0) {throw 'Agent installation failed'}`
         default:
