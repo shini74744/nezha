@@ -21,11 +21,14 @@
 	display: block;
 	min-width: 0;
 	align-self: center;
-	line-height: inherit;
+	line-height: 12px;
 	text-align: center;
 	white-space: normal;
 	overflow-wrap: anywhere;
 	text-box-trim: none;
+}
+[data-server-link-tags] .plan-badge-text {
+	line-height: inherit;
 }
 .plan-badge-text > canvas[data-badge-paint] {
 	display: none;
