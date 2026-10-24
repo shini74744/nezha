@@ -85,9 +85,12 @@ for (const width of [1366, 390]) {
             expect(text).toContain("DDNZ_SERVER='panel.example:443'")
             expect(text).not.toContain("DDNZ_CLIENT_SECRET='" + uuid + "'")
             if (os !== "Windows") {
-                expect(text).toContain("ddnz_tmp=$(mktemp -d)")
-                expect(text).toContain('-o "$ddnz_tmp/agent.sh"')
-                expect(text).not.toContain("-o agent.sh")
+                expect(text).toContain("-o DDnezha-install.sh && env ")
+                expect(text).toMatch(/ sh DDnezha-install\.sh$/)
+                expect(text).not.toMatch(/mktemp|ddnz_tmp|trap|chmod|-o agent\.sh/)
+            } else {
+                expect(text).toContain("-OutFile DDnezha-install.ps1;powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./DDnezha-install.ps1")
+                expect(text).not.toMatch(/NewGuid|Join-Path|finally|Remove-Item/)
             }
             await expect(trigger).toHaveAttribute("data-state", "closed")
             await expect(menu).toHaveCount(0)
