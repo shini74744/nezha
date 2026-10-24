@@ -85,6 +85,8 @@ for (const width of [1366, 390]) {
             expect(text).toContain("DDNZ_SERVER='panel.example:443'")
             expect(text).not.toContain("DDNZ_CLIENT_SECRET='" + uuid + "'")
             if (os !== "Windows") {
+                expect(text).toMatch(/^curl -fL https:\/\/raw\.githubusercontent\.com\//)
+                expect(text).not.toMatch(/--proto|--tlsv1\.2|--retry/)
                 expect(text).toContain("-o DDnezha-install.sh && env ")
                 expect(text).toMatch(/ sh DDnezha-install\.sh$/)
                 expect(text).not.toMatch(/mktemp|ddnz_tmp|trap|chmod|-o agent\.sh/)

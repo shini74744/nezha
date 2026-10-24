@@ -21,7 +21,7 @@ describe("owned Agent install commands", () => {
     it.each([1, 2])("uses the short download-and-run form for OS %s", (os) => {
         const command = generateCommand(os, settings, profile, "uuid-test")
         expect(command).toBe(
-            "curl -fL --proto '=https' --tlsv1.2 --retry 3 https://raw.githubusercontent.com/shini74744/nezha/main/agent/scripts/install.sh -o DDnezha-install.sh && env " +
+            "curl -fL https://raw.githubusercontent.com/shini74744/nezha/main/agent/scripts/install.sh -o DDnezha-install.sh && env " +
             "DDNZ_SERVER='panel.example:443' DDNZ_TLS='true' DDNZ_CLIENT_SECRET='secret with '\\''quotes'\\'' $() ` text' DDNZ_UUID='uuid-test' sh DDnezha-install.sh",
         )
         expect(command).not.toMatch(/mktemp|ddnz_tmp|umask|trap|chmod|rm -f|curl.*\|/)

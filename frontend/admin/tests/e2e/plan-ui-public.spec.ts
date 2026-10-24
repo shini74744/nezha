@@ -31,6 +31,8 @@ for(const theme of ["default","doraemon"])for(const width of [320,390,1440])for(
  await expect(price).toHaveAttribute("title",/价格: 31USD\/月\n预估剩余价值: ≈16\.00 USD/);
  await expect(card.locator("[data-billing-value]")).toHaveCount(0);
  await expect(card.getByText(/预估剩余价值/)).toHaveCount(0);
+ await page.evaluate(()=>document.fonts.ready);
+ await expect.poll(()=>card.evaluate(el=>(el as HTMLElement).offsetHeight)).toBeGreaterThan(0);
  const beforeHover=await card.evaluate(el=>(el as HTMLElement).offsetHeight);
  await price.hover();
  expect(await card.evaluate(el=>(el as HTMLElement).offsetHeight)).toBe(beforeHover);
@@ -55,14 +57,23 @@ for(const theme of ["default","doraemon"])for(const width of [320,390,1440])for(
  for(const badge of await badges.all()){
   await expect(badge.locator(":scope > [data-plan-badge-text]")).toHaveCount(1);
   await expect(badge.locator("[data-plan-badge-text]")).toHaveCSS("align-self","center");
-  await expect(badge.locator("[data-plan-badge-text]")).toHaveCSS("text-box-trim",info.project.name.includes("fallback")?"none":"trim-both");
+  await expect(badge.locator("[data-plan-badge-text]")).toHaveCSS("text-box-trim","none");
   for(const icon of await badge.locator("[data-plan-badge-icon]:visible").all())await expect(icon).toHaveCSS("align-self","center");
   await expect(badge).toHaveCSS("align-items","center");await expect(badge).toHaveCSS("justify-content","center");await expect(badge).toHaveCSS("text-align","center");
   expect(await badge.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
   const centered=await badge.evaluate(el=>{
-   const box=el.getBoundingClientRect(),span=el.querySelector("[data-plan-badge-text]")!.getBoundingClientRect();
+   const box=el.getBoundingClientRect(),text=el.querySelector<HTMLElement>("[data-plan-badge-text]")!,span=text.getBoundingClientRect();
+   // Independently check visible glyph metrics for single-line labels; the
+   // separate screenshot pixel matrix covers wrapped labels and custom fonts.
+   const start=text.querySelector('[data-badge-baseline="start"]')!.getBoundingClientRect().top;
+   const end=text.querySelector('[data-badge-baseline="end"]')!.getBoundingClientRect().top;
+   const style=getComputedStyle(text),context=document.createElement("canvas").getContext("2d")!;
+   context.font=style.font;
+   const ink=context.measureText(text.textContent!);
+   const inkCenter=(start-ink.actualBoundingBoxAscent+end+ink.actualBoundingBoxDescent)/2;
+   const vertical=Math.abs(start-end)<1?Math.abs(box.y+box.height/2-inkCenter):0;
    const img=el.querySelector("img,svg")?.getBoundingClientRect();
-   return {vertical:Math.abs(box.y+box.height/2-span.y-span.height/2),horizontal:img?0:Math.abs(box.x+box.width/2-span.x-span.width/2),icon:img?Math.abs(box.y+box.height/2-img.y-img.height/2):0,height:box.height};
+   return {vertical,horizontal:img?0:Math.abs(box.x+box.width/2-span.x-span.width/2),icon:img?Math.abs(box.y+box.height/2-img.y-img.height/2):0,height:box.height};
   });
   expect(centered.vertical).toBeLessThanOrEqual(1);expect(centered.horizontal).toBeLessThanOrEqual(1);expect(centered.icon).toBeLessThanOrEqual(1);expect(centered.height).toBeGreaterThanOrEqual(18);
  }
