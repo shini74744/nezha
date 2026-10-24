@@ -53,6 +53,10 @@ for(const theme of ["default","doraemon"])for(const width of [320,390,1440])for(
   expect(metrics.font).toBe("9px");expect(metrics.paddingTop).toBe("1.5px");expect(metrics.paddingBottom).toBe("1.5px");
   if(["2000Mbps","2TB/月","IPv4","IPv6","163PP/CN2","CMI/CMIN2","10099/9929","三网顶级优化","IX","5"].includes((await badge.textContent())!.trim()))expect(metrics.height).toBe(18);
  }
+ for(const link of await card.locator("[data-server-link-tags] a:visible").all()){
+  await expect(link.locator("[data-plan-badge-text]")).toHaveAttribute("data-badge-painted","true");
+  expect(await link.evaluate(el=>el.getBoundingClientRect().height)).toBe(16.5);
+ }
  const badges=compactBadges;
  for(const badge of await badges.all()){
   await expect(badge.locator(":scope > [data-plan-badge-text]")).toHaveCount(1);
@@ -61,22 +65,23 @@ for(const theme of ["default","doraemon"])for(const width of [320,390,1440])for(
   for(const icon of await badge.locator("[data-plan-badge-icon]:visible").all())await expect(icon).toHaveCSS("align-self","center");
   await expect(badge).toHaveCSS("align-items","center");await expect(badge).toHaveCSS("justify-content","center");await expect(badge).toHaveCSS("text-align","center");
   expect(await badge.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
+  await expect(badge.locator("[data-plan-badge-text]")).toHaveAttribute("data-badge-painted","true");
+  await expect(badge.locator("canvas")).toHaveAttribute("aria-hidden","true");
   const centered=await badge.evaluate(el=>{
    const box=el.getBoundingClientRect(),text=el.querySelector<HTMLElement>("[data-plan-badge-text]")!,span=text.getBoundingClientRect();
-   // Independently check visible glyph metrics for single-line labels; the
-   // separate screenshot pixel matrix covers wrapped labels and custom fonts.
-   const start=text.querySelector('[data-badge-baseline="start"]')!.getBoundingClientRect().top;
-   const end=text.querySelector('[data-badge-baseline="end"]')!.getBoundingClientRect().top;
-   const style=getComputedStyle(text),context=document.createElement("canvas").getContext("2d")!;
-   context.font=`${style.fontStyle} ${style.fontWeight} ${parseFloat(style.fontSize)*100}px ${style.fontFamily}`;
-   const ink=context.measureText(text.textContent!);
-   const body=context.measureText(text.textContent!.replace(/[gjpqy]/g,"x"));
-   const inkCenter=(start-ink.actualBoundingBoxAscent/100+end+body.actualBoundingBoxDescent/100)/2;
-   const vertical=Math.abs(start-end)<1?Math.abs(box.y+box.height/2-inkCenter):0;
+   const canvas=text.querySelector<HTMLCanvasElement>("canvas[data-badge-paint]")!;
+   const context=canvas.getContext("2d")!, rows=new Array(canvas.height).fill(0);
+   const pixels=context.getImageData(0,0,canvas.width,canvas.height).data;
+   for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++)rows[y]+=pixels[(y*canvas.width+x)*4+3];
+   const threshold=rows.reduce((a,b)=>a+b,0)*.04;let first=0,last=rows.length-1,sum=0;
+   while(first<last&&sum+rows[first]<=threshold)sum+=rows[first++];
+   sum=0;while(last>first&&sum+rows[last]<=threshold)sum+=rows[last--];
+   const painted=canvas.getBoundingClientRect();
+   const vertical=Math.abs((painted.top+(first+last+1)/2/window.devicePixelRatio)-(box.y+box.height/2))*window.devicePixelRatio;
    const img=el.querySelector("img,svg")?.getBoundingClientRect();
    return {vertical,horizontal:img?0:Math.abs(box.x+box.width/2-span.x-span.width/2),icon:img?Math.abs(box.y+box.height/2-img.y-img.height/2):0,height:box.height};
   });
-  expect(centered.vertical).toBeLessThanOrEqual(1);expect(centered.horizontal).toBeLessThanOrEqual(1);expect(centered.icon).toBeLessThanOrEqual(1);expect(centered.height).toBeGreaterThanOrEqual(18);
+  expect(centered.vertical).toBeLessThanOrEqual(.53);expect(centered.horizontal).toBeLessThanOrEqual(1);expect(centered.icon).toBeLessThanOrEqual(1);expect(centered.height).toBeGreaterThanOrEqual(18);
  }
  await card.screenshot({path:info.outputPath("card.png")});expect(errors).toEqual([]);
  if(theme==="doraemon"){await price.click();await expect(page).toHaveURL(/\/server\/11$/)}
