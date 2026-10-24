@@ -55,7 +55,15 @@ for(const theme of ["default","doraemon"])for(const width of [320,390,1440])for(
  }
  for(const link of await card.locator("[data-server-link-tags] a:visible").all()){
   await expect(link.locator("[data-plan-badge-text]")).toHaveAttribute("data-badge-painted","true");
-  expect(await link.evaluate(el=>el.getBoundingClientRect().height)).toBe(16.5);
+  const sizes=await link.evaluate(el=>{
+   const baseline=el.cloneNode(false) as HTMLElement;
+   baseline.textContent=el.textContent;baseline.style.display="block";baseline.style.position="absolute";
+   baseline.style.visibility="hidden";baseline.style.width=el.getBoundingClientRect().width+"px";
+   el.parentElement!.append(baseline);
+   const result={actual:el.getBoundingClientRect().height,native:baseline.getBoundingClientRect().height};
+   baseline.remove();return result;
+  });
+  expect(sizes.actual).toBe(sizes.native);
  }
  const badges=compactBadges;
  for(const badge of await badges.all()){
