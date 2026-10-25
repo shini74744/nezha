@@ -1,7 +1,13 @@
-> [!CAUTION]
-> 有关项目问题与意见请移步https://github.com/hamster1963/nezha-dash
-> 交流
+# 默认前台与哆啦 A 梦主题
 
-> [!NOTE]
-> 此项目为 nezha-dash 的官方实现，作为哪吒监控的默认前端，功能上可能与 nezha-dash 有所不同。
-> https://github.com/hamster1963/nezha-dash
+本目录是 `shini74744/nezha` 的定制前台，基于 [hamster1963/nezha-dash-v2](https://github.com/hamster1963/nezha-dash-v2)；不是上游官方发布包。保留原作者归属与 [许可证](LICENSE)。本仓库定制功能的问题请向 [本仓库 Issues](https://github.com/shini74744/nezha/issues) 反馈。
+
+默认主题与哆啦 A 梦共用数据、历史图表、登录状态和连接恢复逻辑，分别构建为 `dist` 与 `dist-doraemon`；两套主题的美化配置仍然独立。
+
+- 历史请求按服务器、指标和周期隔离，旧响应不覆盖当前选择；失败不伪装成零值，提供重试入口。
+- 详情区域加载异常不影响其他区域；模块加载失败时可重新加载，必要时刷新页面。
+- 连接中断、页面返回和会话变化有对应恢复流程；临时网络错误不等同于退出登录。
+- 浏览器存储被禁用或容量不足时页面仍可使用，但偏好不保证在刷新后保留。
+- 保留原有预加载、标签颜色与图文居中、剩余价值悬停和连通性／延迟切换。
+
+构建、测试命令与覆盖边界见 [前端说明](../README.md#recovery-and-preload-regressions)；主题使用和许可见 [哆啦 A 梦说明](src/themes/doraemon/README.md)。源码功能与正式安装包可能不同步，请以 [更新记录](../../CHANGELOG.md) 和组件发布版本为准。
