@@ -8,7 +8,7 @@ export const MONITOR_REFRESH_INTERVAL = 10000;
 export function monitorQueryOptions(serverId: number, period: MonitorPeriod) {
 	return queryOptions({
 		queryKey: ["monitor", serverId, period],
-		queryFn: () => fetchMonitor(serverId, period),
+		queryFn: ({ signal }) => fetchMonitor(serverId, period, signal),
 		staleTime: MONITOR_REFRESH_INTERVAL,
 		retry: 1,
 	});

@@ -140,12 +140,20 @@ it("waits for identity before preloading private BGP results into a viewer-scope
 	expect(c.getQueryData(["network-insight", 7, "bgp", 0])).toBeUndefined();
 	expect(c.getQueryData(["network-insight", 7, "bgp", 42])).toBeDefined();
 });
-it("a failed profile uses only the guest cache and cannot reuse administrator data", async () => {
-	mocks.member.mockRejectedValue(new Error("unauthorized"));
+it("a confirmed anonymous profile uses only the guest cache and cannot reuse administrator data", async () => {
+	mocks.member.mockResolvedValue(null);
 	const c = client();
 	c.setQueryData(["network-insight", 7, "bgp", 42], { secret: "admin-only" });
 	render(<QueryClientProvider client={c}><Entry /></QueryClientProvider>);
 	await act(async () => screen.getByText("BGP").click());
 	await waitFor(() => expect(c.getQueryData(["network-insight", 7, "bgp", 0])).toBeDefined());
 	expect(c.getQueryData(["network-insight", 7, "bgp", 0])).not.toHaveProperty("secret");
+});
+it("a transient profile failure never starts a private result read under the guest key", async () => {
+ mocks.member.mockRejectedValue(new Error("network unavailable"));
+ const c=client();render(<QueryClientProvider client={c}><Entry/></QueryClientProvider>);
+ await act(async()=>screen.getByText("BGP").click());
+ await waitFor(()=>expect(mocks.member).toHaveBeenCalled());
+ expect(mocks.insight).not.toHaveBeenCalled();
+ expect(c.getQueryData(["network-insight",7,"bgp",0])).toBeUndefined();
 });

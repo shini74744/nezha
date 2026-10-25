@@ -1,3 +1,4 @@
+import { LocalErrorBoundary } from "./LocalErrorBoundary";
 import { useEffect, useState, type ReactNode } from "react";
 
 // Paint the selected tab before mounting its pane. A deferred initial render
@@ -11,5 +12,5 @@ export default function DetailPanel({ children }: { children: ReactNode }) {
   return () => { cancelAnimationFrame(frame); clearTimeout(task); };
  }, []);
  if (!ready) return <div data-detail-section-loading role="status" className="rounded-xl border bg-card/70 p-5 text-sm text-muted-foreground">正在加载…</div>;
- return <div className="detail-pane-enter min-w-0 w-full">{children}</div>;
+ return <div className="detail-pane-enter min-w-0 w-full"><LocalErrorBoundary>{children}</LocalErrorBoundary></div>;
 }

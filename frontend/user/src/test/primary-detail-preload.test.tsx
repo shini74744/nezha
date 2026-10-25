@@ -43,7 +43,7 @@ it("starts both primary modules and network data without waiting for chart modul
 	for (const load of [mocks.detail, mocks.section, mocks.network]) load.mockReturnValue(new Promise(() => {}));
 	const client = preloadClient();
 	const view = render(<QueryClientProvider client={client}><Entry id={7} /></QueryClientProvider>);
-	await waitFor(() => expect(mocks.fetchMonitor).toHaveBeenCalledWith(7, "1d"));
+	await waitFor(() => expect(mocks.fetchMonitor).toHaveBeenCalledWith(7, "1d", expect.any(AbortSignal)));
 	for (const load of [mocks.detail, mocks.section, mocks.network]) expect(load).toHaveBeenCalledOnce();
 	await waitFor(() => expect(client.getQueryData(["monitor", 7, "1d"])).toEqual({ success: true, data: [7] }));
 	view.rerender(<QueryClientProvider client={client}><Entry id={7} show /></QueryClientProvider>);
@@ -70,7 +70,7 @@ it("isolates late results by node and does not preload again on ordinary rerende
 		: Promise.resolve({ success: true, data: [id] }));
 	const client = preloadClient();
 	const view = render(<QueryClientProvider client={client}><Entry id={7} /></QueryClientProvider>);
-	await waitFor(() => expect(mocks.fetchMonitor).toHaveBeenCalledWith(7, "1d"));
+	await waitFor(() => expect(mocks.fetchMonitor).toHaveBeenCalledWith(7, "1d", expect.any(AbortSignal)));
 	view.rerender(<QueryClientProvider client={client}><Entry id={8} show /></QueryClientProvider>);
 	await waitFor(() => expect(screen.getByTestId("network")).toHaveTextContent("[8]"));
 	await act(async () => { finishOld({ success: true, data: [7] }); });

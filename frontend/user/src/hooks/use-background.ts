@@ -1,3 +1,4 @@
+import { safeSessionStorage } from "@/lib/storage";
 import { useEffect, useState } from "react";
 
 declare global {
@@ -31,7 +32,7 @@ export function useBackground() {
 			if (window.CustomBackgroundImage) {
 				setBackgroundImage(window.CustomBackgroundImage);
 			} else {
-				const savedImage = sessionStorage.getItem("savedBackgroundImage");
+				const savedImage = safeSessionStorage.getItem("savedBackgroundImage");
 				if (savedImage) {
 					window.CustomBackgroundImage = savedImage;
 					setBackgroundImage(savedImage);
@@ -43,7 +44,7 @@ export function useBackground() {
 		const intervalId = setInterval(() => {
 			if (
 				window.CustomBackgroundImage ||
-				sessionStorage.getItem("savedBackgroundImage")
+				safeSessionStorage.getItem("savedBackgroundImage")
 			) {
 				checkInitialBackground();
 				clearInterval(intervalId);

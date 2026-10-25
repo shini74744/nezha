@@ -1,10 +1,11 @@
+import { SessionError } from "./SessionError";
+import { useLoginUser } from "@/hooks/use-login-user";
 import { formatDetectionTime } from "@/lib/detection-time";
 import { Suspense, memo, useState } from "react";
 import SnapshotTimeline from "./SnapshotTimeline";
 import BGPSnapshotCompare from "./BGPSnapshotCompare";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleHelp, RefreshCw, Tv } from "lucide-react";
-import { fetchLoginUser } from "@/lib/nezha-api";
 import {
 	insightRequest,
 	type InsightKind,
@@ -91,17 +92,12 @@ function ServerNetworkInsight({
 		[historyAt, setHistoryAt] = useState(0);
 	const [mobileSnapshotControls, setMobileSnapshotControls] =
 		useState<HTMLDivElement | null>(null);
-	const member = useQuery({
-		queryKey: ["login-user"],
-		queryFn: fetchLoginUser,
-		retry: 0,
-		staleTime: 30000,
-	});
-	const viewer = member.isError ? 0 : member.data?.data?.id || 0;
+	const member = useLoginUser();
+	const viewer = member.viewer;
 	const key = ["network-insight", serverId, kind, viewer];
 	const query = useQuery({
 		...insightQueryOptions(serverId, kind, viewer),
-		enabled: !member.isPending,
+		enabled: member.session !== "unknown",
 		refetchInterval: (q) => (q.state.data?.state === "running" ? 2500 : 30000),
 	});
 	const run = useMutation({
@@ -131,6 +127,7 @@ function ServerNetworkInsight({
 	);
 	const names = [...new Set(mediaResults.map((r) => r.id))];
 	const title = kind === "bgp" ? "BGP 路由拓扑" : "流媒体解锁";
+ if (member.session === "unknown" && member.isError) return <SessionError retry={() => { void member.refetch(); }} />;
 	return (
 		<section
 			className="rounded-2xl border bg-card/80 backdrop-blur-sm p-4 sm:p-5 text-card-foreground min-w-0"

@@ -1,3 +1,4 @@
+import { safeSessionStorage } from "@/lib/storage";
 import dayjs from "dayjs";
 import type { NezhaServer } from "@/types/nezha-api";
 import {NativeName} from "@/appearance/widgets";
@@ -41,7 +42,7 @@ export default function ServerDetailOverview({
 	const [hasHistory, setHasHistory] = useState(false);
 
 	useEffect(() => {
-		const previousPath = sessionStorage.getItem("fromMainPage");
+		const previousPath = safeSessionStorage.getItem("fromMainPage");
 		if (previousPath) {
 			setHasHistory(true);
 		}

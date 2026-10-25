@@ -1,6 +1,5 @@
 import type React from "react";
-import { useQuery } from "@tanstack/react-query";
-import { fetchLoginUser } from "@/lib/nezha-api";
+import { useLoginUser } from "@/hooks/use-login-user";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { NezhaWebsocketResponse } from "@/types/nezha-api";
 import {
@@ -12,6 +11,7 @@ interface WebSocketProviderProps {
 	url: string;
 	children: React.ReactNode;
 	authenticated?: boolean;
+ viewerId?: number;
 }
 
 type RawNezhaWebsocketResponse = Omit<
@@ -40,17 +40,15 @@ function normalizeWebSocketResponse(data: unknown): NezhaWebsocketResponse {
 
 // Share the existing login query; ordinary hiding applies only to anonymous visitors.
 export function AuthenticatedWebSocketProvider(props: Omit<WebSocketProviderProps, "authenticated">) {
- const {data, isError} = useQuery({
-  queryKey: ["login-user"], queryFn: fetchLoginUser, retry: 0,
-  refetchOnWindowFocus: true, refetchInterval: 30000,
- });
- return <WebSocketProvider {...props} authenticated={!isError && !!data?.data?.id} />;
+ const { isLogin, viewer } = useLoginUser();
+ return <WebSocketProvider {...props} authenticated={isLogin} viewerId={viewer} />;
 }
 
 export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
  url,
  children,
  authenticated = false,
+ viewerId,
 }) => {
 	const [lastData, setLastData] = useState<NezhaWebsocketResponse | null>(null);
 	const [messageHistory, setMessageHistory] = useState<
@@ -64,129 +62,117 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
 	const displayHiddenCount = lastData?.servers.filter(server => server.hide_for_display).length ?? 0;
 	const [connected, setConnected] = useState(false);
 	const [needReconnect, setNeedReconnect] = useState(false);
-	const ws = useRef<WebSocket | null>(null);
-	const reconnectTimeout = useRef<NodeJS.Timeout>(null);
-	const maxReconnectAttempts = 30;
-	const reconnectAttempts = useRef(0);
-	const isConnecting = useRef(false);
+ const ws = useRef<WebSocket | null>(null);
+ const reconnectTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+ const reconnectAttempts = useRef(0);
+ const isConnecting = useRef(false);
+ const active = useRef(false);
+ const lastRecovery = useRef(-Infinity);
 
-	const cleanup = useCallback(() => {
-		if (ws.current) {
-			// 移除所有事件监听器
-			ws.current.onopen = null;
-			ws.current.onclose = null;
-			ws.current.onmessage = null;
-			ws.current.onerror = null;
+ const cleanup = useCallback(() => {
+  const socket = ws.current;
+  ws.current = null;
+  isConnecting.current = false;
+  if (socket) {
+   socket.onopen = socket.onclose = socket.onmessage = socket.onerror = null;
+   if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) socket.close();
+  }
+  if (reconnectTimeout.current !== null) clearTimeout(reconnectTimeout.current);
+  reconnectTimeout.current = null;
+  setConnected(false);
+ }, []);
 
-			if (
-				ws.current.readyState === WebSocket.OPEN ||
-				ws.current.readyState === WebSocket.CONNECTING
-			) {
-				ws.current.close();
-			}
-			ws.current = null;
-		}
-		if (reconnectTimeout.current) {
-			clearTimeout(reconnectTimeout.current);
-			reconnectTimeout.current = null;
-		}
-		setConnected(false);
-	}, []);
+ const connect = useCallback(function connectSocket() {
+  if (!active.current || isConnecting.current) return;
+  cleanup();
+  isConnecting.current = true;
+  const scheduleRetry = () => {
+   if (!active.current || reconnectTimeout.current !== null || reconnectAttempts.current >= 30) return;
+   reconnectTimeout.current = setTimeout(() => {
+    reconnectTimeout.current = null;
+    reconnectAttempts.current++;
+    connectSocket();
+   }, 3000);
+  };
+  try {
+   const wsUrl = new URL(url, window.location.origin);
+   wsUrl.protocol = wsUrl.protocol.replace("http", "ws");
+   const publicNotes = new Map<number, string>();
+   const socket = new WebSocket(wsUrl.toString());
+   ws.current = socket;
+   const isCurrent = () => active.current && ws.current === socket;
+   socket.onopen = () => {
+    if (!isCurrent()) return;
+    setConnected(true);
+    reconnectAttempts.current = 0;
+    isConnecting.current = false;
+   };
+   const disconnected = () => {
+    if (!isCurrent()) return;
+    cleanup();
+    scheduleRetry();
+   };
+   socket.onclose = disconnected;
+   socket.onerror = disconnected;
+   socket.onmessage = event => {
+    if (!isCurrent()) return;
+    try {
+     if (typeof event.data !== "string") throw new Error("WebSocket message data must be a string");
+     const newData = normalizeWebSocketResponse(JSON.parse(event.data));
+     newData.servers = newData.servers.map(server => {
+      if (server.public_note !== undefined) publicNotes.set(server.id, server.public_note);
+      return { ...server, public_note: publicNotes.get(server.id) ?? "" };
+     });
+     setLastData(newData);
+     setMessageHistory(previous => [newData, ...previous].slice(0, 30));
+    } catch (error) { console.error("Failed to parse WebSocket message:", error); }
+   };
+  } catch (error) {
+   console.error("WebSocket connection error:", error);
+   isConnecting.current = false;
+   scheduleRetry();
+  }
+ }, [cleanup, url]);
 
-	const connect = useCallback(() => {
-		if (isConnecting.current) {
-			console.log("Connection already in progress");
-			return;
-		}
+ const reconnect = useCallback(() => {
+  if (!active.current) return;
+  reconnectAttempts.current = 0;
+  cleanup();
+  reconnectTimeout.current = setTimeout(() => {
+   reconnectTimeout.current = null;
+   connect();
+  }, 1000);
+ }, [cleanup, connect]);
 
-		cleanup();
-		isConnecting.current = true;
-
-		try {
-			const wsUrl = new URL(url, window.location.origin);
-			wsUrl.protocol = wsUrl.protocol.replace("http", "ws");
-
-			// Notes arrive only in the first frame. Keep them even for initially folded cards.
-			const publicNotes = new Map<number, string>();
-			ws.current = new WebSocket(wsUrl.toString());
-
-			ws.current.onopen = () => {
-				console.log("WebSocket connected");
-				setConnected(true);
-				reconnectAttempts.current = 0;
-				isConnecting.current = false;
-			};
-
-			ws.current.onclose = () => {
-				console.log("WebSocket disconnected");
-				setConnected(false);
-				ws.current = null;
-				isConnecting.current = false;
-
-				if (reconnectAttempts.current < maxReconnectAttempts) {
-					reconnectTimeout.current = setTimeout(() => {
-						reconnectAttempts.current++;
-						connect();
-					}, 3000);
-				}
-			};
-
-			ws.current.onmessage = (event) => {
-				try {
-					if (typeof event.data !== "string") {
-						throw new Error("WebSocket message data must be a string");
-					}
-
-					const newData = normalizeWebSocketResponse(JSON.parse(event.data));
-					newData.servers = newData.servers.map(server => {
-						if (server.public_note !== undefined) publicNotes.set(server.id, server.public_note);
-						return {...server, public_note: publicNotes.get(server.id) ?? ""};
-					});
-					setLastData(newData);
-					// 更新历史消息，保持最新的30条记录
-					setMessageHistory((prev) => {
-						const updated = [newData, ...prev];
-						return updated.slice(0, 30);
-					});
-				} catch (error) {
-					console.error("Failed to parse WebSocket message:", error);
-				}
-			};
-
-			ws.current.onerror = (error) => {
-				console.error("WebSocket error:", error);
-				isConnecting.current = false;
-			};
-		} catch (error) {
-			console.error("WebSocket connection error:", error);
-			isConnecting.current = false;
-		}
-	}, [cleanup, url]);
-
-	const reconnect = () => {
-		reconnectAttempts.current = 0;
-		// 等待一个小延时确保清理完成
-		cleanup();
-		setTimeout(() => {
-			connect();
-		}, 1000);
-	};
-
-	useEffect(() => {
-		connect();
-
-		// 添加页面卸载事件监听
-		const handleBeforeUnload = () => {
-			cleanup();
-		};
-
-		window.addEventListener("beforeunload", handleBeforeUnload);
-
-		return () => {
-			cleanup();
-			window.removeEventListener("beforeunload", handleBeforeUnload);
-		};
-	}, [cleanup, connect]);
+ useEffect(() => {
+  active.current = true;
+  reconnectAttempts.current = 0;
+  lastRecovery.current = -Infinity;
+  setLastData(null);
+  setMessageHistory([]);
+  connect();
+  const recover = () => {
+   if (!active.current || isConnecting.current || ws.current?.readyState === WebSocket.OPEN || reconnectTimeout.current !== null) return;
+   if (Date.now() - lastRecovery.current < 3000) return;
+   lastRecovery.current = Date.now();
+   reconnectAttempts.current = 0;
+   connect();
+  };
+  // pagehide/pageshow covers bfcache; beforeunload can be cancelled by the user.
+  const pause = () => cleanup();
+  window.addEventListener("online", recover);
+  window.addEventListener("focus", recover);
+  window.addEventListener("pageshow", recover);
+  window.addEventListener("pagehide", pause);
+  return () => {
+   active.current = false;
+   cleanup();
+   window.removeEventListener("online", recover);
+   window.removeEventListener("focus", recover);
+   window.removeEventListener("pageshow", recover);
+   window.removeEventListener("pagehide", pause);
+  };
+ }, [cleanup, connect, viewerId]);
 
 	const contextValue: WebSocketContextType = {
 		inventoryData, showDisplayHidden, setShowDisplayHidden, displayHiddenCount,

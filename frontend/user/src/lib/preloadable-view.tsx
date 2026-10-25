@@ -1,3 +1,4 @@
+import { LocalErrorBoundary } from "@/components/LocalErrorBoundary";
 import { lazy, useState, type ComponentType } from "react";
 
 // Preloading a native import alone does not initialize React.lazy. A warm view
@@ -15,12 +16,13 @@ export function preloadableView<Props extends object>(loader: () => Promise<{ de
 		});
 		return pending;
 	};
-	const Deferred = lazy(load);
-	function View(props: Props) {
+	let Deferred = lazy(load);
+	function Inner(props: Props) {
 		// Keep the chosen type for this mount. Switching from lazy to concrete
 		// after a cold load would remount it and discard history/form state.
 		const [Component] = useState(() => loaded?.default ?? Deferred);
 		return <Component {...props} />;
 	}
+	function View(props: Props) { return <LocalErrorBoundary onRetry={() => { Deferred = lazy(load); }}><Inner {...props} /></LocalErrorBoundary>; }
 	return { load, View };
 }

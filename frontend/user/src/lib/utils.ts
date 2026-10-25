@@ -1,3 +1,4 @@
+import { safeSessionStorage } from "@/lib/storage";
 import { type ClassValue, clsx } from "clsx";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -357,14 +358,14 @@ export function parsePublicNote(publicNote: string): PublicNoteData | null {
 // Function to handle public_note with sessionStorage
 export function handlePublicNote(serverId: number, publicNote: string): string {
 	const storageKey = `server_${serverId}_public_note`;
-	const storedNote = sessionStorage.getItem(storageKey);
+	const storedNote = safeSessionStorage.getItem(storageKey);
 
 	if (!publicNote && storedNote) {
 		return storedNote;
 	}
 
 	if (publicNote) {
-		sessionStorage.setItem(storageKey, publicNote);
+		safeSessionStorage.setItem(storageKey, publicNote);
 		return publicNote;
 	}
 

@@ -464,8 +464,7 @@ describe("ServerDetailChart", () => {
 				expect(detailChartMocks.fetchServerMetrics).toHaveBeenCalledWith(
 					7,
 					metric,
-					"1d",
-				);
+					"1d", expect.any(AbortSignal));
 			});
 		}
 	});
@@ -529,11 +528,11 @@ describe("disk card click-only switching", () => {
   detailChartMocks.fetchServerMetrics.mockImplementation((_id:number,metric:string)=>Promise.resolve(metricsResponse(metric)));
   renderWithQuery(<ServerDetailChart server_id="7"/>);
   await userEvent.click(await screen.findByText("serverDetailChart.period1d"));
-  await waitFor(()=>expect(detailChartMocks.fetchServerMetrics).toHaveBeenCalledWith(7,"disk","1d"));
+  await waitFor(()=>expect(detailChartMocks.fetchServerMetrics).toHaveBeenCalledWith(7,"disk","1d", expect.any(AbortSignal)));
   expect(detailChartMocks.fetchServerMetrics.mock.calls.some(call=>call[1]==="disk_read_speed")).toBe(false);
   await userEvent.click(screen.getByRole("button",{name:"点击切换到磁盘读写"}));
-  await waitFor(()=>expect(detailChartMocks.fetchServerMetrics).toHaveBeenCalledWith(7,"disk_read_speed","1d"));
-  expect(detailChartMocks.fetchServerMetrics).toHaveBeenCalledWith(7,"disk_write_speed","1d");
+  await waitFor(()=>expect(detailChartMocks.fetchServerMetrics).toHaveBeenCalledWith(7,"disk_read_speed","1d", expect.any(AbortSignal)));
+  expect(detailChartMocks.fetchServerMetrics).toHaveBeenCalledWith(7,"disk_write_speed","1d", expect.any(AbortSignal));
   await waitFor(()=>{
    const card=screen.getByRole("button",{name:"点击切换到磁盘占用"}).closest<HTMLElement>("[data-disk-mode]")!;
    const points=JSON.parse(card.querySelector('[data-testid="line-chart"]')!.getAttribute("data-values")!);

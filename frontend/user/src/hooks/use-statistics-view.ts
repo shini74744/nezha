@@ -1,3 +1,4 @@
+import { safeLocalStorage } from "@/lib/storage";
 import { useEffect, useRef, useState } from "react";
 
 export type StatisticsView = "closed" | "traffic" | "cycle" | "uptime";
@@ -15,8 +16,8 @@ export function useStatisticsView(prefix: string, ready: boolean, hasTraffic: bo
 		let saved: string | null = null;
 		let legacy = false;
 		try {
-			saved = localStorage.getItem(key);
-			legacy = localStorage.getItem(prefix + "showServices") === "1";
+			saved = safeLocalStorage.getItem(key);
+			legacy = safeLocalStorage.getItem(prefix + "showServices") === "1";
 		} catch { /* Private browsing still supports switching for this visit. */ }
 		if (isStatisticsView(saved)) {
 			restoredKey.current = key;
@@ -34,7 +35,7 @@ export function useStatisticsView(prefix: string, ready: boolean, hasTraffic: bo
 	function select(next: StatisticsView) {
 		restoredKey.current = key;
 		setView(next);
-		try { localStorage.setItem(key, next); } catch { /* Optional persistence. */ }
+		try { safeLocalStorage.setItem(key, next); } catch { /* Optional persistence. */ }
 	}
 	return [view, select] as const;
 }
