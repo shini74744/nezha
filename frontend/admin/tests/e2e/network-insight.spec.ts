@@ -1323,3 +1323,16 @@ for(const theme of ["default","doraemon"])for(const light of [false,true])for(co
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
  await page.screenshot({path:info.outputPath("bgp-retry-notice.png")});
 });
+
+for(const theme of ["default","doraemon"])for(const kind of ["bgp","return-route"])for(const width of [390,1440])
+test("snapshot wheel boundaries "+kind+" "+theme+" "+width,async({page})=>{
+ await page.setViewportSize({width,height:850});await setup(page,theme,true,false);
+ const now=Date.now(),routes=[{id:"test",name:"上海",carrier:"电信",family:"IPv4",protocol:"tcp",status:"reached",hops:[]}];
+ const history=Array.from({length:12},(_,i)=>({state:"complete",scheduled_at:now-i*3600000,finished_at:now-i*3600000,topologies:[topology],routes}));
+ await page.route("**/api/v1/server/7/"+kind,r=>r.fulfill({json:{success:true,data:{...history[0],server_id:7,online:true,can_run:false,available_families:["IPv4"],history}}}));
+ await page.locator(".server-info-tab").getByText(kind==="bgp"?"BGP":"回程",{exact:true}).click();
+ const nav=page.getByRole("navigation",{name:kind==="bgp"?"BGP 历史快照":"回程历史快照"});
+ await expect(nav.getByRole("button")).toHaveCount(12);
+ const {assertSnapshotWheelContained}=await import("./snapshot-wheel-helper");
+ await assertSnapshotWheelContained(page,nav);
+});

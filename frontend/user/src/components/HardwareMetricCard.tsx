@@ -1,3 +1,4 @@
+import ChartDetailButton from "@/components/ChartDetail";
 import { useMemo, useState } from "react";
 import { ArrowLeftRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -264,6 +265,8 @@ export default function HardwareMetricCard({
 						/>
 					</AreaChart>
 				</ChartContainer>
+                <ChartDetailButton scopeKey={cardKey+":"+mode+":"+recorded} title={title} data={points}
+                    period={recorded?"last":"realtime"} series={[{key:"value",label:title,color:"hsl(var(--chart-"+color+"))"}]} formatValue={format}/>
 			</CardContent>
 		</Card>
 	);

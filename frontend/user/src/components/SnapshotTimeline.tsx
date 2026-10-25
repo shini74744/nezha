@@ -17,11 +17,13 @@ export default function SnapshotTimeline({
 	label?: string;
 }) {
 	const viewport = useRef<HTMLElement>(null);
+    const region = useRef<HTMLDivElement>(null);
 	const [edges, setEdges] = useState({ left: false, right: false });
 	// biome-ignore lint/correctness/useExhaustiveDependencies: Snapshot children can change the scroll edges without resizing the viewport.
 	useEffect(() => {
 		const el = viewport.current;
-		if (!el) return;
+		const wheelRegion = region.current;
+        if (!el || !wheelRegion) return;
 		const measure = () => {
 			const next = {
 				left: el.scrollLeft > 1,
@@ -32,14 +34,18 @@ export default function SnapshotTimeline({
 			);
 		};
 		const wheel = (event: WheelEvent) => {
-			if (event.ctrlKey || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
-			const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? el.clientWidth : 1);
-			const max = el.scrollWidth - el.clientWidth;
-			if (!delta || max <= 1 || (delta < 0 ? el.scrollLeft <= 1 : el.scrollLeft >= max - 1)) return;
-			event.preventDefault();
-			el.scrollLeft = Math.max(0, Math.min(max, el.scrollLeft + delta));
+			if (event.ctrlKey) return; // Preserve browser zoom / trackpad pinch.
+            const amount = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+            if (!amount) return;
+            // Own wheel input throughout the region, including both ends and the controls.
+            // Touch scrolling remains native; only wheel chaining to the page is blocked.
+            event.preventDefault();
+            event.stopPropagation();
+            const delta = amount * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? el.clientWidth : 1);
+            const max = Math.max(0, el.scrollWidth - el.clientWidth);
+            el.scrollLeft = Math.max(0, Math.min(max, el.scrollLeft + delta));
 		};
-		el.addEventListener("wheel", wheel, { passive: false });
+		wheelRegion.addEventListener("wheel", wheel, { passive: false });
 		const observer = new ResizeObserver(measure);
 		observer.observe(el);
 		for (const child of el.children) observer.observe(child);
@@ -48,7 +54,7 @@ export default function SnapshotTimeline({
 		return () => {
 			observer.disconnect();
 			el.removeEventListener("scroll", measure);
-			el.removeEventListener("wheel", wheel);
+			wheelRegion.removeEventListener("wheel", wheel);
 		};
 	}, [children]);
 	const scroll = (direction: number) => {
@@ -86,6 +92,7 @@ export default function SnapshotTimeline({
 	);
 	return (
 		<div
+            ref={region}
 			className={
 				"relative min-w-0 max-w-full " +
 				(inlineControls ? "flex items-center gap-2" : "mb-2")
