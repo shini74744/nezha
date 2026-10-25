@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { loadNetworkChart, loadServerDetailChart, loadServerNetworkSection, loadServerConnectivity, loadServerNetworkInsight, loadBGPTopology } from "@/lib/detail-modules";
 import { monitorQueryOptions } from "@/lib/monitor-query";
 import { connectivityQueryOptions, insightQueryOptions } from "@/lib/detail-result-query";
-import { fetchLoginUser } from "@/lib/nezha-api";
+import { loginUserQueryOptions } from "@/hooks/use-login-user";
 
 interface SecondaryPanes { connectivity?: boolean; bgp?: boolean; streaming?: boolean }
 function whenIdle(work: () => void) {
@@ -27,9 +27,8 @@ export function usePrimaryDetailPreload(serverId?: number, { connectivity = fals
 			if (tab === "BGP") void loadBGPTopology().catch(() => {});
 			// Resolve identity before choosing a cache key: an administrator's
 			// IP-bearing response must never be cached as a guest response.
-			const member = await client.fetchQuery({
-				queryKey: ["login-user"], queryFn: fetchLoginUser, staleTime: 30000, retry: 0,
-			}).catch(() => undefined);
+			const member = await client.fetchQuery(loginUserQueryOptions()).catch(() => undefined);
+			if (member === undefined) return; // Unknown identity must not populate the guest cache.
 			const viewer = member?.data?.id || 0;
 			await client.prefetchQuery(insightQueryOptions(serverId, tab === "BGP" ? "bgp" : "streaming", viewer, preload));
 		}

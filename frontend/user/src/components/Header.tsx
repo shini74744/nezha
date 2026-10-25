@@ -1,3 +1,5 @@
+import { safeSessionStorage } from "@/lib/storage";
+import { useLoginUser } from "@/hooks/use-login-user";
 import {useFeature} from "@/appearance/context";
 import {NativeCounter,NativeClockPart} from "@/appearance/native-layout-widgets";
 import {NativeDesktopSponsor} from "@/appearance/native-sponsor";
@@ -14,7 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBackground } from "@/hooks/use-background";
 import { useWebSocketContext } from "@/hooks/use-websocket-context";
-import { fetchLoginUser, fetchSetting } from "@/lib/nezha-api";
+import { fetchSetting } from "@/lib/nezha-api";
 import { cn } from "@/lib/utils";
 
 import AnimateCountClient from "./AnimatedCount";
@@ -108,14 +110,14 @@ const linksStyle=useFeature('links').enabled;
 	const handleBackgroundToggle = () => {
 		if (window.CustomBackgroundImage) {
 			// Store the current background image before removing it
-			sessionStorage.setItem(
+			safeSessionStorage.setItem(
 				"savedBackgroundImage",
 				window.CustomBackgroundImage,
 			);
 			updateBackground(undefined);
 		} else {
 			// Restore the saved background image
-			const savedImage = sessionStorage.getItem("savedBackgroundImage");
+			const savedImage = safeSessionStorage.getItem("savedBackgroundImage");
 			if (savedImage) {
 				updateBackground(savedImage);
 			}
@@ -129,7 +131,7 @@ const linksStyle=useFeature('links').enabled;
 			<section className="flex items-center justify-between header-top">
 				<section
 					onClick={() => {
-						sessionStorage.removeItem("selectedGroup");
+						safeSessionStorage.removeItem("selectedGroup");
 						navigate("/");
 					}}
 					className="cursor-pointer flex items-center sm:text-base text-sm font-medium"
@@ -169,7 +171,7 @@ const linksStyle=useFeature('links').enabled;
 					{controlsReady && !(hidden.enabled&&hidden.language)&&<LanguageSwitcher />}
 					{controlsReady && !(hidden.enabled&&hidden.theme)&&<ModeToggle />}
 					{(customBackgroundImage ||
-						sessionStorage.getItem("savedBackgroundImage")) && (
+						safeSessionStorage.getItem("savedBackgroundImage")) && (
 						<Button
 							variant="outline"
 							size="sm"
@@ -281,7 +283,7 @@ export function RefreshToast() {
 	}
 
 	if (needReconnect) {
-		sessionStorage.removeItem("needRefresh");
+		safeSessionStorage.removeItem("needRefresh");
 		setTimeout(() => {
 			navigate(0);
 		}, 1000);
@@ -301,48 +303,12 @@ function DashboardLink() {
 	const { t } = useTranslation();
 	const { setNeedReconnect } = useWebSocketContext();
 	const previousLoginState = useRef<boolean | null>(null);
-	const {
-		data: userData,
-		isFetched,
-		isLoadingError,
-		isError,
-		refetch,
-	} = useQuery({
-		queryKey: ["login-user"],
-		queryFn: () => fetchLoginUser(),
-		refetchOnMount: false,
-		refetchOnWindowFocus: true,
-		refetchIntervalInBackground: true,
-		refetchInterval: 1000 * 30,
-		retry: 0,
-	});
-
-	const isLogin = isError
-		? false
-		: userData
-			? !!userData?.data?.id && !!document.cookie
-			: false;
-
-	if (isLoadingError) {
-		previousLoginState.current = isLogin;
-	}
-
-	useEffect(() => {
-		refetch();
-	}, [refetch]);
-
-	useEffect(() => {
-		if (isFetched || isError) {
-			// 只有当登录状态发生变化时才设置needReconnect
-			if (
-				previousLoginState.current !== null &&
-				previousLoginState.current !== isLogin
-			) {
-				setNeedReconnect(true);
-			}
-			previousLoginState.current = isLogin;
-		}
-	}, [isLogin, isError, isFetched, setNeedReconnect]);
+	const { session, isLogin } = useLoginUser();
+ useEffect(() => {
+  if (session === "unknown") return;
+  if (previousLoginState.current !== null && previousLoginState.current !== isLogin) setNeedReconnect(true);
+  previousLoginState.current = isLogin;
+ }, [session, isLogin, setNeedReconnect]);
 
 	return (
 		<div className="flex items-center gap-2">

@@ -212,3 +212,11 @@ it("shows retry time and actual per-family time without implying a failed cycle 
  await act(async()=>{view.client.setQueryData(key,{...fresh,auto_retry_at:0})});
  await waitFor(() => expect(screen.queryByText(/预计.*自动补测/)).not.toBeInTheDocument());
 });
+it("does not read private insight with an unknown identity and retries profile safely",async()=>{
+ api.fetchLoginUser.mockRejectedValue(new Error("network down"));
+ mount();await screen.findByText("暂时无法确认登录状态。");
+ expect(api.insightRequest).not.toHaveBeenCalled();
+ api.fetchLoginUser.mockResolvedValue(null);
+ fireEvent.click(screen.getByRole("button",{name:"重试",exact:true}));
+ await screen.findByTestId("topology");expect(api.insightRequest).toHaveBeenCalled();
+});

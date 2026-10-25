@@ -27,10 +27,11 @@ class ErrorBoundary extends React.Component<Props, State> {
 	render() {
 		if (this.state.hasError) {
 			return (
-				<ErrorPage
+				<><ErrorPage
 					code={500}
 					message={this.state.error?.message || "应用程序发生错误"}
 				/>
+                <div className="mt-4 flex justify-center gap-4 text-sm"><button type="button" className="underline" onClick={() => this.setState({hasError:false,error:undefined})}>重新加载</button><button type="button" className="underline" onClick={() => window.location.reload()}>刷新页面</button></div></>
 			);
 		}
 

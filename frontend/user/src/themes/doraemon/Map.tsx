@@ -1,3 +1,4 @@
+import { safeLocalStorage } from "@/lib/storage";
 import { geoEquirectangular, geoPath } from "d3-geo";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -53,7 +54,7 @@ export function DoraemonMap({
 	const [choices, setChoices] = useState<string[]>([]);
 	const [compact, setCompact] = useState(() => {
 		try {
-			return localStorage.getItem("doraemon:compact-map") !== "false";
+			return safeLocalStorage.getItem("doraemon:compact-map") !== "false";
 		} catch {
 			return true;
 		}
@@ -179,7 +180,7 @@ export function DoraemonMap({
 						onClick={() => {
 							setCompact(!compact);
 							try {
-								localStorage.setItem("doraemon:compact-map", String(!compact));
+								safeLocalStorage.setItem("doraemon:compact-map", String(!compact));
 							} catch {
 								/* Optional preference storage. */
 							}

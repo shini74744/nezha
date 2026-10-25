@@ -127,13 +127,13 @@ export default function ServerDiskChart({
 		enabled: period !== "realtime",
 		staleTime: 30_000,
 		retry: 1,
-		queryFn: async () => {
+		queryFn: async ({ signal }) => {
 			const metrics = io
 				? (["disk_read_speed", "disk_write_speed"] as const)
 				: (["disk"] as const);
 			const responses = await Promise.all(
 				metrics.map((metric) =>
-					fetchServerMetrics(data.id, metric, period as MetricPeriod),
+					fetchServerMetrics(data.id, metric, period as MetricPeriod, signal),
 				),
 			);
 			if (responses.some((response) => !response.success || !response.data))

@@ -1,15 +1,14 @@
+import { preloadableView } from "@/lib/preloadable-view";
 import { useNetworkCardView } from "@/hooks/use-network-card-view";
 import ServerLatency from "@/components/ServerLatency";
 import ServerReturnRoute from "@/components/ServerReturnRoute";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { fetchSetting } from "@/lib/nezha-api";
-import { loadServerDetailChart, loadServerNetworkSection, PreloadedServerConnectivity as ServerConnectivity, PreloadedServerNetworkInsight as ServerNetworkInsight } from "@/lib/detail-modules";
+import { PreloadedServerDetailChart as ServerDetailChart, PreloadedServerNetworkSection as ServerNetworkSection, PreloadedServerConnectivity as ServerConnectivity, PreloadedServerNetworkInsight as ServerNetworkInsight } from "@/lib/detail-modules";
 import { usePrimaryDetailPreload } from "@/hooks/use-primary-detail-preload";
-const ServerNetworkSection = lazy(loadServerNetworkSection);
-const ServerDetailChart = lazy(loadServerDetailChart);
 import ServerDetailOverview from "@/components/ServerDetailOverview";
 import TabSwitch from "@/components/TabSwitch";
 import DetailPanel from "@/components/DetailPanel";
@@ -17,7 +16,7 @@ import { useStableDetailViewport } from "@/hooks/use-stable-detail-viewport";
 import { Separator } from "@/components/ui/separator";
 import { useWebSocketContext } from "@/hooks/use-websocket-context";
 import { formatNezhaInfo } from "@/lib/utils";
-const OfflineServerDetail = lazy(() => import("@/components/OfflineServerDetail").then(module => ({default:module.OfflineServerDetail})));
+const { View: OfflineServerDetail } = preloadableView(async () => ({default: (await import("@/components/OfflineServerDetail")).OfflineServerDetail}));
 function SectionLoading() {return <div data-detail-section-loading role="status" className="rounded-xl border bg-card/70 p-5 text-sm text-muted-foreground">正在加载…</div>;}
 
 export default function ServerDetail() {

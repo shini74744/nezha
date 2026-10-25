@@ -1,6 +1,8 @@
+import { preloadableView } from "@/lib/preloadable-view";
+import { safeLocalStorage, safeSessionStorage } from "@/lib/storage";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Settings } from "lucide-react";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Link, Route, Routes, useMatch } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { AppearanceProvider } from "@/appearance/context";
@@ -21,8 +23,8 @@ import "./theme.css";
 import { beijingSky } from "./sky";
 
 import Detail from "@/pages/ServerDetail";
-const NotFound = lazy(() => import("@/pages/NotFound"));
-const ErrorPage = lazy(() => import("@/pages/ErrorPage"));
+const { View: NotFound } = preloadableView(() => import("@/pages/NotFound"));
+const { View: ErrorPage } = preloadableView(() => import("@/pages/ErrorPage"));
 const presentation: ServerPresentation = {
 	Card: DoraemonCard,
 	InlineCard: DoraemonInlineCard,
@@ -47,13 +49,13 @@ export default function DoraemonApp() {
 	const { setTheme } = useTheme();
 	const { i18n } = useTranslation();
 	useEffect(() => {
-		if (data?.data?.config?.language && !localStorage.getItem("language")) {
+		if (data?.data?.config?.language && !safeLocalStorage.getItem("language")) {
 			void i18n.changeLanguage(data.data.config.language);
 		}
 	}, [data?.data?.config?.language, i18n]);
 	const { connected } = useWebSocketContext();
 	const [mode, setMode] = useState<SkyMode>(() => {
-		const s = localStorage.getItem("doraemon-sky");
+		const s = safeLocalStorage.getItem("doraemon-sky");
 		return s === "light" || s === "dark" ? s : "auto";
 	});
 	const [pocket, setPocket] = useState(false);
@@ -71,7 +73,7 @@ export default function DoraemonApp() {
 		const apply = () => setTheme(mode === "auto" ? beijingSky() : mode);
 		apply();
 		const timer = mode === "auto" ? setInterval(apply, 60000) : undefined;
-		localStorage.setItem("doraemon-sky", mode);
+		safeLocalStorage.setItem("doraemon-sky", mode);
 		return () => clearInterval(timer);
 	}, [mode, setTheme]);
 	useEffect(() => {
@@ -116,7 +118,7 @@ export default function DoraemonApp() {
 									to="/"
 									className="dora-brand"
 									onClick={() =>
-										sessionStorage.removeItem("doraemon:selectedGroup")
+										safeSessionStorage.removeItem("doraemon:selectedGroup")
 									}
 								>
 									<strong>{site}</strong>

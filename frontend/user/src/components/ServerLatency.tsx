@@ -1,10 +1,11 @@
+import { SessionError } from "./SessionError";
+import { useLoginUser } from "@/hooks/use-login-user";
 import {useState} from "react";
 import {useQuery,useMutation,useQueryClient} from "@tanstack/react-query";
 import {Button} from "@/components/ui/button";
 import {Card,CardContent} from "@/components/ui/card";
 import {latencyRequest,fetchLatencySnapshot,type LatencyPoint,type LatencySummary} from "@/lib/latency-api";
 import SnapshotTimeline from "./SnapshotTimeline";
-import {fetchLoginUser} from "@/lib/nezha-api";
 import type {ConnectivityResult} from "@/lib/connectivity-api";
 import {formatDetectionTime} from "@/lib/detection-time";
 export function latencyColor(value?:number){
@@ -23,20 +24,21 @@ function date(value?:number){return value?formatDetectionTime(value):"暂无记�
 export default function ServerLatency({serverId}:{serverId:number}){
  const [carrier,setCarrier]=useState("最速"),[selected,setSelected]=useState<string>(),[page,setPage]=useState(0);
  const [family,setFamily]=useState("IPv4"),[snapshotAt,setSnapshotAt]=useState(0);
- const member=useQuery({queryKey:["login-user"],queryFn:fetchLoginUser,retry:0,staleTime:30000});
- const viewer=member.isError?0:member.data?.data?.id||0;
+ const member = useLoginUser();
+ const viewer=member.viewer;
  const client=useQueryClient(),key=["server-latency",serverId,viewer];
- const query=useQuery({queryKey:key,queryFn:({signal})=>latencyRequest(serverId,"GET",undefined,signal),refetchInterval:q=>q.state.data?.state==="running"?2000:15000,refetchIntervalInBackground:false,retry:1});
+ const query=useQuery({queryKey:key,enabled:member.session!=="unknown",queryFn:({signal})=>latencyRequest(serverId,"GET",undefined,signal),refetchInterval:q=>q.state.data?.state==="running"?2000:15000,refetchIntervalInBackground:false,retry:1});
  const mutation=useMutation({mutationFn:()=>latencyRequest(serverId,"POST"),onSuccess:async data=>{await client.cancelQueries({queryKey:key});client.setQueryData(key,data)},onError:()=>{void query.refetch()}});
  const live=query.data,running=live?.state==="running";
- const snapshot=useQuery({queryKey:["latency-snapshot",serverId,viewer,snapshotAt],queryFn:({signal})=>fetchLatencySnapshot(serverId,snapshotAt,signal),enabled:snapshotAt>0&&!query.isError,retry:1});
+ const snapshot=useQuery({queryKey:["latency-snapshot",serverId,viewer,snapshotAt],queryFn:({signal})=>fetchLatencySnapshot(serverId,snapshotAt,signal),enabled:member.session!=="unknown"&&snapshotAt>0&&!query.isError,retry:1});
  const data=snapshotAt?snapshot.data:running&&live?.latest?live.latest:live;
  const liveFamilies=live?.available_families?.length?live.available_families:["IPv4"];
  // Historical families remain viewable even when the current node loses a stack.
  const recordedFamilies:string[]=snapshotAt?(snapshot.data?.results||[]).map(r=>r.family||"IPv4"):[];
  const families=["IPv4","IPv6"].filter(f=>liveFamilies.includes(f)||recordedFamilies.includes(f));
  const activeFamily=families.includes(family)?family:families[0];
- const history=useQuery({queryKey:["latency-history",serverId,viewer,selected,data?.finished_at],queryFn:({signal})=>latencyRequest<LatencyPoint[]>(serverId,"GET",selected,signal),enabled:!!selected&&!snapshotAt&&!query.isError,retry:1});
+ const history=useQuery({queryKey:["latency-history",serverId,viewer,selected,data?.finished_at],queryFn:({signal})=>latencyRequest<LatencyPoint[]>(serverId,"GET",selected,signal),enabled:member.session!=="unknown"&&!!selected&&!snapshotAt&&!query.isError,retry:1});
+ if(member.session==="unknown"&&member.isError)return <SessionError retry={()=>{void member.refetch()}}/>;
  if(query.isError)return <Card><CardContent className="p-4"><p role="alert">无法读取延迟记录</p><Button variant="outline" onClick={()=>void query.refetch()}>重试</Button></CardContent></Card>;
  if(!live)return <p role="status" className="p-4 text-sm">正在读取延迟…</p>;
  const results=(data?.results||[]).filter(r=>(r.family||"IPv4")===activeFamily),groups=[...new Set(results.map(r=>r.group))],carriers=["最速",...new Set(results.map(r=>r.icon||"其他"))];

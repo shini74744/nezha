@@ -1,9 +1,11 @@
+import { preloadableView } from "@/lib/preloadable-view";
+import { safeLocalStorage } from "@/lib/storage";
 import {AppearanceProvider} from "./appearance/context";
 import {NativeEffects} from "./appearance/effects";
 import {NativeQuote} from "./appearance/native-layout-widgets";
 import { useQuery } from "@tanstack/react-query";
 import type React from "react";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Route, BrowserRouter as Router, Routes, useMatch } from "react-router-dom";
 
@@ -21,8 +23,8 @@ import Server from "./pages/Server";
 import { RetainedServerList } from "./components/RetainedServerList";
 import CardPreview from "./pages/CardPreview";
 
-const DoraemonApp = lazy(() => import("./themes/doraemon/App"));
-const NotFound = lazy(() => import("./pages/NotFound"));
+const { View: DoraemonApp } = preloadableView(() => import("./themes/doraemon/App"));
+const { View: NotFound } = preloadableView(() => import("./pages/NotFound"));
 import ServerDetail from "./pages/ServerDetail";
 
 // Route checker component
@@ -69,18 +71,16 @@ const MainApp: React.FC = () => {
 		}
 	}, [forceTheme, setTheme]);
 
+	useEffect(() => {
+  const language = settingData?.data?.config?.language;
+  if (language && !safeLocalStorage.getItem("language") && i18n.language !== language) void i18n.changeLanguage(language);
+ }, [settingData?.data?.config?.language, i18n]);
 	const initialBackendError = !settingData ? toError(error) : null;
 
 	if (!cardPreview && settingData?.data?.config?.custom_code && !isCustomCodeInjected) {
 		return null;
 	}
 
-	if (
-		settingData?.data?.config?.language &&
-		!localStorage.getItem("language")
-	) {
-		i18n.changeLanguage(settingData?.data?.config?.language);
-	}
 
 	if(cardPreview)return <ErrorBoundary><AppearanceProvider raw={settingData?.data?.config?.appearance_config}><NativeEffects preview/><CardPreview/></AppearanceProvider></ErrorBoundary>;
  const customMobileBackgroundImage =
@@ -158,7 +158,7 @@ const MainApp: React.FC = () => {
 const App: React.FC = () => {
 	return (
 		<Router basename={import.meta.env.BASE_URL}>
-			<Suspense fallback={null}>{import.meta.env.VITE_THEME_VARIANT === "doraemon" ? <DoraemonApp /> : <RouteChecker />}</Suspense>
+			<ErrorBoundary><Suspense fallback={null}>{import.meta.env.VITE_THEME_VARIANT === "doraemon" ? <DoraemonApp /> : <RouteChecker />}</Suspense></ErrorBoundary>
 		</Router>
 	);
 };

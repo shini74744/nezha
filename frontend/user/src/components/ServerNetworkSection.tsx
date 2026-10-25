@@ -1,13 +1,12 @@
-import { lazy, memo, Suspense } from "react";
+import { memo, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { fetchSetting } from "@/lib/nezha-api";
 import NetworkChartLoading from "./NetworkChartLoading";
 import { Separator } from "./ui/separator";
 
-import { loadNetworkChart } from "@/lib/detail-modules";
+import { PreloadedNetworkChart as NetworkChart } from "@/lib/detail-modules";
 
-const NetworkChart = lazy(loadNetworkChart);
 
 // Both views use one chart instance, so changing tabs preserves its filters
 // and never creates a second polling request.

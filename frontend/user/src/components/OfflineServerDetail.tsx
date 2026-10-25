@@ -1,3 +1,7 @@
+import { SessionError } from "./SessionError";
+import { IsolatedChildren } from "./LocalErrorBoundary";
+import { HistoryError } from "./HistoryError";
+import { useLoginUser } from "@/hooks/use-login-user";
 import GpuMemorySummary from "@/components/GpuMemorySummary";
 import HardwareMetricCard from "@/components/HardwareMetricCard";
 import { useNetworkCardView } from "@/hooks/use-network-card-view";
@@ -20,7 +24,7 @@ import DetailPanel from "@/components/DetailPanel";
 import { useStableDetailViewport } from "@/hooks/use-stable-detail-viewport";
 import ServerConnectivity from "@/components/ServerConnectivity";
 import ServerNetworkSection from "@/components/ServerNetworkSection";
-import { fetchLoginUser, fetchServerMetrics, fetchSetting } from "@/lib/nezha-api";
+import { fetchServerMetrics, fetchSetting } from "@/lib/nezha-api";
 import { formatBytes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { snapshotInterval } from "@/lib/snapshot-interval";
@@ -60,10 +64,11 @@ export function OfflineServerDetail({server,now,initialTab="Detail",onTabIntent}
  const tab=tabs.includes(selectedTab)?selectedTab:"Detail";
  const {viewportRef,preserveScroll}=useStableDetailViewport(server.id,tab);
  const selectTab=(next:string)=>{if(next===tab){if(next==="Connectivity"){preserveScroll();networkCard.toggle()}return;}preserveScroll();setTab(next)};
- const member=useQuery({queryKey:["login-user"],queryFn:fetchLoginUser,retry:0,staleTime:30000});
- const viewer=member.isError?0:member.data?.data?.id||0;
+ const member = useLoginUser();
+ const viewer=member.viewer;
  const query=useQuery({
   queryKey:["server-last-report",server.id,viewer],
+  enabled:member.session!=="unknown",
   queryFn:async({signal})=>{
    const response=await fetch("/api/v1/server/"+server.id+"/last-report",{signal});
    const body=await response.json();
@@ -78,7 +83,7 @@ export function OfflineServerDetail({server,now,initialTab="Detail",onTabIntent}
  const activePeriod=!report?.tsdb_enabled?"last":!viewer&&(period==="7d"||period==="30d")?"1d":period;
  return <div className="mx-auto w-full max-w-5xl px-0 flex flex-col gap-4 server-info" data-offline-detail>
   <ServerDetailOverview server_id={String(server.id)} recorded={{at:last,metrics:report?.metrics||{},elapsed:last?elapsedText(now-last):"未知",server:snapshotServer}}/>
-  {query.isPending?<p className="text-xs text-muted-foreground" role="status">正在读取最后上报记录…</p>:query.isError?
+  {member.session==="unknown"&&member.isError?<SessionError retry={()=>{void member.refetch()}}/>:query.isPending?<p className="text-xs text-muted-foreground" role="status">正在读取最后上报记录…</p>:query.isError?
    <p className="text-xs" role="alert">最后上报记录读取失败。<button className="underline ml-2" onClick={()=>query.refetch()}>重试</button></p>:
    !last?<div className="text-xs text-muted-foreground" data-offline-empty>
     <p>暂无可用的最后上报记录，无法确定掉线时间和掉线前状态。</p>
@@ -92,8 +97,8 @@ export function OfflineServerDetail({server,now,initialTab="Detail",onTabIntent}
   {tab==="Detail" && (report?.tsdb_enabled||saved)?<section>
     <PeriodSelector selectedPeriod={activePeriod==="last"?"realtime":activePeriod} onPeriodChange={p=>setPeriod(p==="realtime"?"last":p)} isLogin={!!viewer} isTsdbEnabled={!!report?.tsdb_enabled} offline/>
     <p className="text-xs text-muted-foreground mb-3">{saved?"离线前最后 1 分钟的记录，非实时数据。":"历史主机信息不完整，服务器重新上线后更新。"}</p>
-    <div className="grid md:grid-cols-2 lg:grid-cols-3 grid-cols-1 gap-3 server-charts">
-     {chartGroups.map(group=><OfflineMetricCard key={group.keys[0]} group={group} report={report!} period={activePeriod}/>)}
+    <div className="grid md:grid-cols-2 lg:grid-cols-3 grid-cols-1 gap-3 server-charts"><IsolatedChildren resetKey={server.id+":"+activePeriod}>
+     {chartGroups.map(group=><OfflineMetricCard key={group.keys[0]} group={group} report={report!} period={activePeriod}/>)}</IsolatedChildren>
     </div>
    </section>:null}
   {(tab==="BGP"||tab==="Streaming")&&<Suspense fallback={<p role="status">正在加载…</p>}><ServerNetworkInsight key={server.id+tab} serverId={server.id} kind={tab==="BGP"?"bgp":"streaming"}/></Suspense>}
@@ -136,10 +141,10 @@ function LegacyOfflineMetricCard({group:originalGroup,report,period}:{group:type
  const history=useQuery({
   queryKey:["offline-history",report.server_id,period,group.keys],
   enabled:period!=="last",
-  queryFn:async()=>{
+  queryFn:async({signal})=>{
    const entries=await Promise.all(group.keys.map(async key=>{
-    const response=await fetchServerMetrics(report.server_id,key as MetricType,period as MetricPeriod);
-    if(!response.success)throw new Error("历史记录读取失败");
+    const response=await fetchServerMetrics(report.server_id,key as MetricType,period as MetricPeriod,signal);
+    if(!response.success || !Array.isArray(response.data?.data_points))throw new Error("历史记录读取失败");
     return [key,response.data.data_points||[]] as const;
    }));
    return Object.fromEntries(entries);
@@ -170,7 +175,7 @@ function LegacyOfflineMetricCard({group:originalGroup,report,period}:{group:type
   {period==="last" && /^gpu_\d+$/.test(group.keys[0]) && <GpuMemorySummary recorded memory={report.snapshot?.state.gpus?.[Number(group.keys[0].slice(4))]}/>}
   <div key={diskIO?"io":"capacity"} className={cn(isDisk&&"animate-in fade-in duration-200 motion-reduce:animate-none")}>
   {period!=="last"&&history.isPending?<p className="h-[130px] flex items-center justify-center text-xs">正在读取历史记录…</p>:
-   history.isError&&period!=="last"?<p className="h-[130px] flex items-center justify-center text-xs" role="alert">历史记录读取失败</p>:
+   history.isError&&period!=="last"?<div className="h-[130px]"><HistoryError retry={()=>{void history.refetch()}}/></div>:
    !data.length?<p className="h-[130px] flex items-center justify-center text-xs text-muted-foreground">该时间范围没有记录</p>:
    <ChartContainer config={config} className="aspect-auto h-[130px] w-full" data-recorded-chart>
     <AreaChart syncId="offlineDetailCharts" accessibilityLayer data={data} margin={{top:12,left:12,right:12}}>

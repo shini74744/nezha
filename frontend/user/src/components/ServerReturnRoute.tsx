@@ -1,3 +1,5 @@
+import { SessionError } from "./SessionError";
+import { useLoginUser } from "@/hooks/use-login-user";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	ArrowRight,
@@ -15,7 +17,6 @@ import {
 	type ReturnResult,
 	type ReturnSelection,
 } from "@/lib/network-insight-api";
-import { fetchLoginUser } from "@/lib/nezha-api";
 import {
 	finalReturnRTT,
 	returnHopRows,
@@ -376,17 +377,12 @@ export default function ServerReturnRoute({ serverId }: { serverId: number }) {
 		[family, setFamily] = useState("IPv4"),
 		[historyAt, setHistoryAt] = useState(0),
 		[mobileControls, setMobileControls] = useState<HTMLDivElement | null>(null);
-	const member = useQuery({
-		queryKey: ["login-user"],
-		queryFn: fetchLoginUser,
-		retry: 0,
-		staleTime: 30000,
-	});
-	const viewer = member.isError ? 0 : member.data?.data?.id || 0,
+	const member = useLoginUser();
+	const viewer = member.viewer,
 		key = ["network-insight", serverId, "return-route", viewer];
 	const query = useQuery({
 		...insightQueryOptions(serverId, "return-route", viewer),
-		enabled: !member.isPending,
+		enabled: member.session !== "unknown",
 		refetchInterval: (q) =>
 			["running", "queued"].includes(q.state.data?.state || "") ? 2500 : 30000,
 	});
@@ -425,6 +421,7 @@ export default function ServerReturnRoute({ serverId }: { serverId: number }) {
 				(r.id === data.retest.id && r.family === data.retest.family),
 		),
 		done = all.filter((r) => r.status !== "pending").length;
+ if (member.session === "unknown" && member.isError) return <SessionError retry={() => { void member.refetch(); }} />;
 	return (
 		<section
 			className="rounded-2xl border bg-card/80 backdrop-blur-sm p-4 sm:p-5 text-card-foreground min-w-0"

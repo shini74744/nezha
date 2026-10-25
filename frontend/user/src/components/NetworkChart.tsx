@@ -1,6 +1,7 @@
+import { useLoginUser } from "@/hooks/use-login-user";
 "use client";
 
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { usePeakCutDefault } from "@/appearance/peak-cut";
 import * as React from "react";
 import { useCallback, useMemo } from "react";
@@ -36,7 +37,6 @@ import {
 } from "@/components/ui/tooltip";
 import { useActiveIndicator } from "@/hooks/use-active-indicator";
 import {
-	fetchLoginUser,
 	type MonitorPeriod,
 } from "@/lib/nezha-api";
 import { cn, formatTime } from "@/lib/utils";
@@ -147,20 +147,7 @@ export function NetworkChart({
 }) {
 	const { t } = useTranslation();
 	const [period, setPeriod] = React.useState<MonitorPeriod>("1d");
-	const { data: userData, isError: isLoginError } = useQuery({
-		queryKey: ["login-user"],
-		queryFn: () => fetchLoginUser(),
-		refetchOnMount: false,
-		refetchOnWindowFocus: true,
-		refetchIntervalInBackground: true,
-		refetchInterval: 1000 * 30,
-		retry: 0,
-	});
-	const isLogin = isLoginError
-		? false
-		: userData
-			? !!userData?.data?.id && !!document.cookie
-			: false;
+	const { isLogin } = useLoginUser();
 
 	React.useEffect(() => {
 		if (!isLogin && period !== "1d") {
@@ -169,9 +156,8 @@ export function NetworkChart({
 	}, [isLogin, period]);
 
 	const { data: monitorData, isPlaceholderData, isError, isFetching, refetch } = useQuery({
-		...monitorQueryOptions(server_id, period),
+		...monitorQueryOptions(server_id, isLogin ? period : "1d"),
 		enabled: show,
-		placeholderData: keepPreviousData,
 		refetchOnMount: true,
 		refetchOnWindowFocus: true,
 		refetchInterval: MONITOR_REFRESH_INTERVAL,
@@ -215,26 +201,23 @@ export function NetworkChart({
 		return { monitors, transformedData, formattedData, chartDataKey, initChartConfig };
 	}, [monitorData?.data, t]);
 
-	if ((!monitorData && isError) || monitorData?.success === false) {
-		return <div role="alert" className="rounded-lg border p-4 text-sm text-muted-foreground">
+	const unavailable = isError || monitorData?.success === false ? (<div role="alert" className="rounded-lg border p-4 text-sm text-muted-foreground">
 			{t("monitor.loadError")}
 			<button type="button" className="ml-2 underline" disabled={isFetching} onClick={() => refetch()}>
 				{t("statistics.retry")}
 			</button>
-		</div>;
-	}
-	if (!monitorData) return <NetworkChartLoading />;
-	if (!monitors.length) return <div role="status" className="rounded-lg border p-4 text-sm text-muted-foreground">{t("monitor.noData")}</div>;
+		</div>) : !monitorData ? <NetworkChartLoading /> : !monitors.length ? <div role="status" className="rounded-lg border p-4 text-sm text-muted-foreground">{t("monitor.noData")}</div> : null;
 
 	return (
 		<NetworkChartClient
 			chartDataKey={chartDataKey}
 			chartConfig={initChartConfig}
 			chartData={transformedData}
-			serverName={monitors[0].server_name}
+			serverName={monitors[0]?.server_name ?? ""}
 			formattedData={formattedData}
+			unavailable={unavailable}
 			isPeriodLoading={isPlaceholderData}
-			period={period}
+			period={isLogin ? period : "1d"}
 			onPeriodChange={setPeriod}
 			isLogin={isLogin}
 		/>
@@ -251,6 +234,7 @@ export const NetworkChartClient = React.memo(function NetworkChart({
 	period,
 	onPeriodChange,
 	isLogin,
+	unavailable,
 }: {
 	chartDataKey: string[];
 	chartConfig: ChartConfig;
@@ -261,6 +245,7 @@ export const NetworkChartClient = React.memo(function NetworkChart({
 	period: MonitorPeriod;
 	onPeriodChange: (period: MonitorPeriod) => void;
 	isLogin: boolean;
+	unavailable?: React.ReactNode;
 }) {
 	const { t } = useTranslation();
 	const [showPeriodLoading, setShowPeriodLoading] = React.useState(false);
@@ -688,7 +673,7 @@ export const NetworkChartClient = React.memo(function NetworkChart({
 					</Label>
 				</div>
 			</div>
-			<Card
+			{unavailable || 			<Card
 				className={cn({
 					"bg-card/70": customBackgroundImage,
 				})}
@@ -845,7 +830,7 @@ export const NetworkChartClient = React.memo(function NetworkChart({
 						)}
 					</div>
 				</CardContent>
-			</Card>
+			</Card>}
 		</div>
 	);
 });

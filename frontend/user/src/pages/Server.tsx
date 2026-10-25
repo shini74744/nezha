@@ -1,3 +1,5 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { safeLocalStorage, safeSessionStorage } from "@/lib/storage";
 import {
 	ArrowDownIcon,
 	ArrowsUpDownIcon,
@@ -56,6 +58,9 @@ const getErrorMessage = (error: unknown) => {
 };
 
 function BackendErrorState({ error }: { error: unknown }) {
+ const client = useQueryClient();
+ const { reconnect } = useWebSocketContext();
+ const retry = () => { reconnect?.(); for (const key of ["setting", "server-group", "service"]) void client.refetchQueries({queryKey:[key]}); };
 	const { t } = useTranslation();
 	const message = getErrorMessage(error);
 
@@ -68,6 +73,7 @@ function BackendErrorState({ error }: { error: unknown }) {
 				<p className="text-sm text-muted-foreground">
 					{t("error.backendUnavailableDescription")}
 				</p>
+				<button type="button" className="underline text-sm" onClick={retry}>{t("statistics.retry")}</button>
 				{message && (
 					<p className="mt-1 max-w-full break-words rounded-md bg-stone-100 px-2 py-1 text-xs text-stone-500 dark:bg-stone-800 dark:text-stone-400">
 						{message}
@@ -144,10 +150,18 @@ export default function Servers({
 	);
 	const { lastData: rawData, inventoryData, connected, showDisplayHidden, setShowDisplayHidden } = useWebSocketContext();
 	const lastData = inventoryData ?? rawData;
+ const [initialTimedOut, setInitialTimedOut] = useState(false);
+ useEffect(() => {
+  setInitialTimedOut(false);
+  if (lastData) return;
+  const timer = window.setTimeout(() => setInitialTimedOut(true), 15000);
+  return () => window.clearTimeout(timer);
+ }, [lastData]);
+
 	const { status, setStatus } = useStatus();
-	const [showMap, setShowMap] = useState<string>(() => presentation ? "0" : window.ForceShowMap ? "1" : localStorage.getItem(preference("showMap")) || "0");
-	const [inline, setInline] = useState<string>(() => window.innerWidth < 768 ? "0" : window.ForceCardInline ? "1" : localStorage.getItem(preference("inline")) || "0");
-	const [currentGroup, setCurrentGroup] = useState<string>(() => sessionStorage.getItem(preference("selectedGroup")) || "All");
+	const [showMap, setShowMap] = useState<string>(() => presentation ? "0" : window.ForceShowMap ? "1" : safeLocalStorage.getItem(preference("showMap")) || "0");
+	const [inline, setInline] = useState<string>(() => window.innerWidth < 768 ? "0" : window.ForceCardInline ? "1" : safeLocalStorage.getItem(preference("inline")) || "0");
+	const [currentGroup, setCurrentGroup] = useState<string>(() => safeSessionStorage.getItem(preference("selectedGroup")) || "All");
 	const nezhaWsData = lastData;
 
 	const customBackgroundImage =
@@ -156,8 +170,8 @@ export default function Servers({
 			: undefined;
 
 	const restoreScrollPosition = useCallback(() => {
-		const isFromMainPage = sessionStorage.getItem("fromMainPage") === "true";
-		const savedPosition = sessionStorage.getItem("scrollPosition");
+		const isFromMainPage = safeSessionStorage.getItem("fromMainPage") === "true";
+		const savedPosition = safeSessionStorage.getItem("scrollPosition");
 		const scrollTop = savedPosition ? Number(savedPosition) : Number.NaN;
 
 		if (
@@ -168,13 +182,13 @@ export default function Servers({
 		}
 
 		window.scrollTo({ top: scrollTop, left: 0, behavior: "instant" });
-		sessionStorage.removeItem("fromMainPage");
+		safeSessionStorage.removeItem("fromMainPage");
 	}, []);
 
 	const handleTagChange = (newGroup: string) => {
 		setCurrentGroup(newGroup);
-		sessionStorage.setItem(preference("selectedGroup"), newGroup);
-		sessionStorage.setItem("scrollPosition", String(window.scrollY || 0));
+		safeSessionStorage.setItem(preference("selectedGroup"), newGroup);
+		safeSessionStorage.setItem("scrollPosition", String(window.scrollY || 0));
 	};
 
 
@@ -183,7 +197,7 @@ export default function Servers({
 			const isMobile = window.innerWidth < 768;
 
 			if (!isMobile) {
-				const inlineState = localStorage.getItem(preference("inline"));
+				const inlineState = safeLocalStorage.getItem(preference("inline"));
 				if (window.ForceCardInline) {
 					setInline("1");
 				} else if (inlineState !== null) {
@@ -204,7 +218,7 @@ export default function Servers({
 	useEffect(() => {
 		// The Doraemon map is opt-in on each visit; old saved/forced state must not open it.
 		if (presentation) return;
-		const showMapState = localStorage.getItem(preference("showMap"));
+		const showMapState = safeLocalStorage.getItem(preference("showMap"));
 		if (window.ForceShowMap) {
 			setShowMap("1");
 		} else if (showMapState !== null) {
@@ -213,7 +227,7 @@ export default function Servers({
 	}, [preference, presentation]);
 
 	useEffect(() => {
-		const savedGroup = sessionStorage.getItem(preference("selectedGroup")) || "All";
+		const savedGroup = safeSessionStorage.getItem(preference("selectedGroup")) || "All";
 		setCurrentGroup(savedGroup);
 	}, [preference]);
 
@@ -246,7 +260,7 @@ export default function Servers({
 	useEffect(() => {
 		if (groupData?.success && !groupTabs.includes(currentGroup)) {
 			setCurrentGroup("All");
-			sessionStorage.setItem(preference("selectedGroup"), "All");
+			safeSessionStorage.setItem(preference("selectedGroup"), "All");
 		}
 	}, [groupData?.success, groupTabs, currentGroup, preference]);
 	const {
@@ -422,8 +436,8 @@ export default function Servers({
 
 	const currentBackendError = backendError || groupError || serviceError;
 
-	if (!nezhaWsData && currentBackendError) {
-		return <BackendErrorState error={currentBackendError} />;
+	if (!nezhaWsData && (currentBackendError || initialTimedOut)) {
+		return <BackendErrorState error={currentBackendError || new Error(t("info.websocketConnecting"))} />;
 	}
 
 	if (!connected && !lastData) {
@@ -458,7 +472,7 @@ export default function Servers({
                 onToggleDisplayHidden={() => {
                     setShowDisplayHidden?.(!showDisplayHidden);
                     setCurrentGroup("All");
-                    sessionStorage.removeItem(preference("selectedGroup"));
+                    safeSessionStorage.removeItem(preference("selectedGroup"));
                     setStatus("all");
                 }}
 				total={totalServers}
@@ -477,7 +491,7 @@ export default function Servers({
 					<button
 						onClick={() => {
 							setShowMap(showMap === "0" ? "1" : "0");
-							if (!presentation) localStorage.setItem(preference("showMap"), showMap === "0" ? "1" : "0");
+							if (!presentation) safeLocalStorage.setItem(preference("showMap"), showMap === "0" ? "1" : "0");
 						}}
 						className={cn(
 							"inset-shadow-2xs inset-shadow-white/20 flex cursor-pointer flex-col items-center gap-0 rounded-[50px] bg-blue-100 p-2.5 text-blue-600 transition-all dark:bg-blue-900 dark:text-blue-100",
@@ -496,7 +510,7 @@ export default function Servers({
 					<button
 						onClick={() => {
 							setInline(inline === "0" ? "1" : "0");
-							localStorage.setItem(preference("inline"), inline === "0" ? "1" : "0");
+							safeLocalStorage.setItem(preference("inline"), inline === "0" ? "1" : "0");
 						}}
 						className={cn(
 							"inset-shadow-2xs inset-shadow-white/20 flex cursor-pointer flex-col items-center gap-0 rounded-[50px] bg-blue-100 p-2.5 text-blue-600 transition-all dark:bg-blue-900 dark:text-blue-100",
