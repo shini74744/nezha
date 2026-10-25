@@ -231,3 +231,35 @@ export interface ServerMetricsResponse {
 	success: boolean;
 	data: ServerMetricsData;
 }
+export interface OnlinePeriod {
+	start: string;
+	end: string;
+	ongoing: boolean;
+}
+
+export interface DailyOnlineStat {
+	date: string;
+	online_seconds: number;
+}
+
+export interface OnlineHistoryData {
+	server_id: number;
+	server_name: string;
+	days: number;
+	max_days: number;
+	/** 面板时区（Daily 拆日的日界），前端按同一时区渲染 */
+	timezone?: string;
+	window_start: string;
+	window_end: string;
+	total_online_seconds: number;
+	online_rate: number;
+	currently_online: boolean;
+	last_active?: string;
+	periods: OnlinePeriod[];
+	daily: DailyOnlineStat[];
+}
+
+export interface OnlineHistoryResponse {
+	success: boolean;
+	data: OnlineHistoryData;
+}

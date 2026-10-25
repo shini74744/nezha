@@ -1,6 +1,7 @@
 package model
 
 type SettingForm struct {
+	OnlineStatsDays             *int    `json:"online_stats_days"`
 	ShowNetworkInDetail         *bool   `json:"show_network_in_detail,omitempty" validate:"optional"`
 	DNSServers                  string  `json:"dns_servers,omitempty" validate:"optional"`
 	IgnoredIPNotification       string  `json:"ignored_ip_notification,omitempty" validate:"optional"`

@@ -106,6 +106,9 @@ func updateConfig(c *gin.Context) (any, error) {
 	if err := c.ShouldBindJSON(&sf); err != nil {
 		return nil, err
 	}
+	if sf.OnlineStatsDays != nil && (*sf.OnlineStatsDays < model.MinOnlineStatsDays || *sf.OnlineStatsDays > model.MaxOnlineStatsDays) {
+		return nil, errors.New("invalid online_stats_days")
+	}
 	var userTemplateValid bool
 	for _, v := range singleton.FrontendTemplates {
 		if !userTemplateValid && v.Path == sf.UserTemplate && !v.IsAdmin {
@@ -158,7 +161,9 @@ func updateConfig(c *gin.Context) (any, error) {
 	if err := applyEnableMCPTransition(
 		mcpWasEnabled, mcpNext,
 		singleton.Conf.SetMCPEnabled,
-		singleton.Conf.Save,
+		func() error {
+			return singleton.Conf.CommitOnlineHistoryRetention(sf.OnlineStatsDays, singleton.Conf.Save)
+		},
 		fireMCPKillSwitch,
 	); err != nil {
 		singleton.Conf.FrontendPasswordHash = previousFrontendPasswordHash

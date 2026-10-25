@@ -1,3 +1,6 @@
+import { metricTimeAxis, metricTimeWindow } from "@/lib/metric-time-window";
+import MetricTimeTick from "@/components/MetricTimeTick";
+import ChartDetailButton from "@/components/ChartDetail";
 import { SessionError } from "./SessionError";
 import { IsolatedChildren } from "./LocalErrorBoundary";
 import { HistoryError } from "./HistoryError";
@@ -94,12 +97,12 @@ export function OfflineServerDetail({server,now,initialTab="Detail",onTabIntent}
   </section>
   <div ref={viewportRef} data-detail-viewport className={`detail-viewport flex flex-col gap-4 min-w-0${tab === "Connectivity" ? " -mt-6" : ""}`}>
   {tab!=="Network" && <DetailPanel key={server.id + ":" + tab}>
-  {tab==="Detail" && (report?.tsdb_enabled||saved)?<section>
-    <PeriodSelector selectedPeriod={activePeriod==="last"?"realtime":activePeriod} onPeriodChange={p=>setPeriod(p==="realtime"?"last":p)} isLogin={!!viewer} isTsdbEnabled={!!report?.tsdb_enabled} offline/>
-    <p className="text-xs text-muted-foreground mb-3">{saved?"离线前最后 1 分钟的记录，非实时数据。":"历史主机信息不完整，服务器重新上线后更新。"}</p>
+  {tab==="Detail" ?<section>
+    <PeriodSelector serverId={String(server.id)} selectedPeriod={activePeriod==="last"?"realtime":activePeriod} onPeriodChange={p=>setPeriod(p==="realtime"?"last":p)} isLogin={!!viewer} isTsdbEnabled={!!report?.tsdb_enabled} offline/>
+    {(report?.tsdb_enabled||saved) && <><p className="text-xs text-muted-foreground mb-3">{saved?"离线前最后 1 分钟的记录，非实时数据。":"历史主机信息不完整，服务器重新上线后更新。"}</p>
     <div className="grid md:grid-cols-2 lg:grid-cols-3 grid-cols-1 gap-3 server-charts"><IsolatedChildren resetKey={server.id+":"+activePeriod}>
-     {chartGroups.map(group=><OfflineMetricCard key={group.keys[0]} group={group} report={report!} period={activePeriod}/>)}</IsolatedChildren>
-    </div>
+     {chartGroups.map(group=><OfflineMetricCard key={group.keys[0]} group={group} report={report!} period={activePeriod} now={now}/>)}</IsolatedChildren>
+    </div></>}
    </section>:null}
   {(tab==="BGP"||tab==="Streaming")&&<Suspense fallback={<p role="status">正在加载…</p>}><ServerNetworkInsight key={server.id+tab} serverId={server.id} kind={tab==="BGP"?"bgp":"streaming"}/></Suspense>}
   {tab==="ReturnRoute"&&<ServerReturnRoute key={server.id} serverId={server.id}/>}
@@ -125,15 +128,15 @@ function MetricHeader({group,report,title}:{group:typeof groups[number];report:L
   {group.unit==="percent"&&value!==undefined&&<AnimatedCircularProgressBar className="size-3 text-[0px]" max={100} min={0} value={value} primaryColor="hsl(var(--chart-1))"/>}
  </section></div>;
 }
-export function OfflineMetricCard({group,report,period}:{group:typeof groups[number];report:LastReport;period:"last"|MetricPeriod}) {
+export function OfflineMetricCard({group,report,period,now=Date.now()}:{group:typeof groups[number];report:LastReport;period:"last"|MetricPeriod;now?:number}) {
  const key=group.keys[0],saved=report.snapshot;
  if(period==="last"&&saved&&(key==="cpu"||/^gpu_\d+$/.test(key))){
   const index=key==="cpu"?undefined:Number(key.slice(4));
   return <HardwareMetricCard id={report.server_id} now={saved.at} state={saved.state} index={index} name={index===undefined?undefined:group.title} identity={index===undefined?undefined:saved.state.gpus?.[index]?.name} recorded recent={report.recent}/>;
  }
- return <LegacyOfflineMetricCard group={group} report={report} period={period}/>;
+ return <LegacyOfflineMetricCard group={group} report={report} period={period} now={now}/>;
 }
-function LegacyOfflineMetricCard({group:originalGroup,report,period}:{group:typeof groups[number];report:LastReport;period:"last"|MetricPeriod}) {
+function LegacyOfflineMetricCard({group:originalGroup,report,period,now}:{group:typeof groups[number];report:LastReport;period:"last"|MetricPeriod;now:number}) {
  const isDisk=originalGroup.keys[0]==="disk";
  const [diskIO,setDiskIO]=useState(false);
  const group=isDisk&&diskIO?{title:"磁盘读写",keys:["disk_read_speed","disk_write_speed"],labels:["读取","写入"],unit:"speed",colors:[1,10]}:originalGroup;
@@ -148,7 +151,7 @@ function LegacyOfflineMetricCard({group:originalGroup,report,period}:{group:type
     return [key,response.data.data_points||[]] as const;
    }));
    return Object.fromEntries(entries);
-  },retry:1,staleTime:30000,
+  },retry:1,staleTime:30000,refetchInterval:period==="last"?false:30000,
  });
  const percentChart=period==="last"&&group.unit==="bytes"&&!!report.recent[group.keys[0]+"_percent"]?.length;
  const unit=percentChart?"percent":group.unit;
@@ -167,24 +170,26 @@ function LegacyOfflineMetricCard({group:originalGroup,report,period}:{group:type
   data.push(row);
  }
  const config=Object.fromEntries(keys.map((key,i)=>[key,{label:group.labels[i],color:"hsl(var(--chart-"+group.colors[i]+"))"}]));
- return <Card data-disk-mode={isDisk?(diskIO?"io":"capacity"):undefined} className={cn({"bg-card/70":!!window.CustomBackgroundImage})}><CardContent className="px-6 py-3"><section className="flex flex-col gap-1">
+ return <Card data-disk-mode={isDisk?(diskIO?"io":"capacity"):undefined} className={cn({"bg-card/70":!!window.CustomBackgroundImage})}><CardContent className="relative flex h-full flex-col px-6 py-3"><section className="flex flex-1 flex-col gap-1">
   {isDisk?<div className="flex min-h-9 items-center justify-between gap-2">
    <DiskModeToggle io={diskIO} onToggle={toggle}/>
    {diskIO?<DiskIORates read={valueText(report.metrics.disk_read_speed,"speed")} write={valueText(report.metrics.disk_write_speed,"speed")}/>:<MetricHeader group={originalGroup} report={report} title={null}/>}
   </div>:<MetricHeader group={group} report={report}/>}
   {period==="last" && /^gpu_\d+$/.test(group.keys[0]) && <GpuMemorySummary recorded memory={report.snapshot?.state.gpus?.[Number(group.keys[0].slice(4))]}/>}
-  <div key={diskIO?"io":"capacity"} className={cn(isDisk&&"animate-in fade-in duration-200 motion-reduce:animate-none")}>
+  <div key={diskIO?"io":"capacity"} className={cn("mt-auto shrink-0",isDisk&&"animate-in fade-in duration-200 motion-reduce:animate-none")}>
   {period!=="last"&&history.isPending?<p className="h-[130px] flex items-center justify-center text-xs">正在读取历史记录…</p>:
    history.isError&&period!=="last"?<div className="h-[130px]"><HistoryError retry={()=>{void history.refetch()}}/></div>:
    !data.length?<p className="h-[130px] flex items-center justify-center text-xs text-muted-foreground">该时间范围没有记录</p>:
    <ChartContainer config={config} className="aspect-auto h-[130px] w-full" data-recorded-chart>
     <AreaChart syncId="offlineDetailCharts" accessibilityLayer data={data} margin={{top:12,left:12,right:12}}>
      <CartesianGrid vertical={false}/>
-     <XAxis dataKey="ts" type="number" domain={["dataMin","dataMax"]} tickLine={false} axisLine={false} tickMargin={8} minTickGap={200} interval="preserveStartEnd" tickFormatter={v=>dayjs(Number(v)).format(period==="last"?"HH:mm":"MM-DD HH:mm")}/>
+     <XAxis tick={<MetricTimeTick />} dataKey="ts" type="number" domain={["dataMin","dataMax"]} tickLine={false} axisLine={false} tickMargin={8} minTickGap={200} interval="preserveStartEnd" tickFormatter={v=>dayjs(Number(v)).format(period==="last"?"HH:mm":"MM-DD HH:mm")} {...metricTimeAxis(period,now)}/>
      <YAxis tickLine={false} axisLine={false} mirror tickMargin={-15} domain={unit==="percent"?[0,100]:[0,"auto"]} tickFormatter={v=>unit==="percent"?v+"%":valueText(v,unit).replace(/\s/g,"")}/>
      <ChartTooltip isAnimationActive={false} content={<ChartTooltipContent indicator="dot" labelFormatter={(_,payload)=>dateText(Number(payload[0]?.payload?.ts))} formatter={(value,name)=><div className="flex flex-1 items-center justify-between leading-none"><span className="text-muted-foreground">{config[String(name)]?.label}</span><span className="ml-2 font-medium text-foreground tabular-nums">{valueText(Number(value),unit)}</span></div>}/>}/>
      {keys.map((key,i)=><Area key={key} dataKey={key} type="step" stroke={"hsl(var(--chart-"+group.colors[i]+"))"} fill={"hsl(var(--chart-"+group.colors[i]+"))"} fillOpacity={0.3} dot={data.length===1} connectNulls={false} isAnimationActive={false}/>)}
     </AreaChart>
    </ChartContainer>}
- </div></section></CardContent></Card>;
+ </div><ChartDetailButton timeWindow={metricTimeWindow(period,now)} scopeKey={report.server_id+":"+period+":"+keys.join(",")} title={group.title} data={data} timeKey="ts" period={period}
+  series={keys.map((key,i)=>({key,label:group.labels[i],color:"hsl(var(--chart-"+group.colors[i]+"))"}))} formatValue={v=>valueText(v,unit)} disabled={period!=="last"&&(history.isPending||history.isError)}/>
+ </section></CardContent></Card>;
 }

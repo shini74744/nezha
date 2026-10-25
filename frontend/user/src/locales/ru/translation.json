@@ -159,5 +159,25 @@
 			"up_total": "Загружено",
 			"down_total": "Скачано"
 		}
-	}
+	},
+  "serverOnlineHistory": {
+  "days1": "1d",
+  "days7": "7d",
+  "days30": "30d",
+  "onlineRate": "Online rate",
+  "totalOnline": "Online in window",
+  "lastActive": "Last active",
+  "dailyOnline": "Daily online time",
+  "periods": "Online periods",
+  "ongoing": "Ongoing",
+  "noData": "No online records",
+  "loginRequired": "This window requires login; guests can switch to 1d",
+  "offlinePeriods": "Offline periods",
+  "periodsOnline": "Online",
+  "periodsOffline": "Offline",
+  "expandMore": "Expand more",
+  "today": "Today",
+  "loadFailed": "Unable to load online history",
+  "retry": "Retry"
+}
 }

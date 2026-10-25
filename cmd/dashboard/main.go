@@ -83,6 +83,12 @@ func initSystem(bus chan<- *model.Service) error {
 		return err
 	}
 
+	if _, err := singleton.CronShared.AddFunc("@every 30s", singleton.SweepOnlineSessions); err != nil {
+		return err
+	}
+	if _, err := singleton.CronShared.AddFunc("0 30 4 * * *", singleton.PruneOnlineSessions); err != nil {
+		return err
+	}
 	if err := singleton.StartJWTSessionGC(); err != nil {
 		return err
 	}

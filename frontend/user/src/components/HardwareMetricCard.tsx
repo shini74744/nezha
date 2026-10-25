@@ -1,3 +1,5 @@
+import MetricTimeTick from "@/components/MetricTimeTick";
+import ChartDetailButton from "@/components/ChartDetail";
 import { useMemo, useState } from "react";
 import { ArrowLeftRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -122,7 +124,7 @@ export default function HardwareMetricCard({
 			data-recorded={recorded || undefined}
 			className={cn({ "bg-card/70": !!window.CustomBackgroundImage })}
 		>
-			<CardContent className="px-6 py-3">
+			<CardContent className="relative flex h-full flex-col px-6 py-3">
 				<div className="flex h-[76px] min-w-0 flex-col justify-start gap-1">
 					<div className="flex min-h-7 min-w-0 items-center justify-between gap-2">
 						<button
@@ -202,7 +204,7 @@ export default function HardwareMetricCard({
 				</div>
 				<ChartContainer
 					config={{ value: { label: title } }}
-					className="aspect-auto h-[130px] w-full"
+					className="mt-auto aspect-auto h-[130px] w-full shrink-0"
 				>
 					<AreaChart
 						key={mode}
@@ -212,7 +214,7 @@ export default function HardwareMetricCard({
 						margin={{ top: 12, left: 12, right: 12 }}
 					>
 						<CartesianGrid vertical={false} />
-						<XAxis
+						<XAxis tick={<MetricTimeTick />}
 							dataKey="timeStamp"
 							tickLine={false}
 							axisLine={false}
@@ -264,6 +266,8 @@ export default function HardwareMetricCard({
 						/>
 					</AreaChart>
 				</ChartContainer>
+                <ChartDetailButton scopeKey={cardKey+":"+mode+":"+recorded} title={title} data={points}
+                    period={recorded?"last":"realtime"} series={[{key:"value",label:title,color:"hsl(var(--chart-"+color+"))"}]} formatValue={format}/>
 			</CardContent>
 		</Card>
 	);

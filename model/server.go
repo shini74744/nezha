@@ -281,10 +281,14 @@ func (lease StateStreamLease) ActiveReplacementContext() (context.Context, bool)
 }
 
 func (lease StateStreamLease) Clear() bool {
-	return lease.clear(nil)
+	return lease.clear(nil, nil)
 }
 
-func (lease StateStreamLease) clear(receiver *Server) bool {
+func (lease StateStreamLease) ClearWithIdentity(after func(uint64)) bool {
+	return lease.clear(nil, after)
+}
+
+func (lease StateStreamLease) clear(receiver *Server, after func(uint64)) bool {
 	if lease.holder == nil {
 		return false
 	}
@@ -292,6 +296,9 @@ func (lease StateStreamLease) clear(receiver *Server) bool {
 	defer lease.holder.mu.Unlock()
 	if lease.holder.generation != lease.generation || lease.holder.stream == nil || lease.holder.canonical == nil || (receiver != nil && lease.holder.canonical != receiver) {
 		return false
+	}
+	if after != nil {
+		after(lease.holder.canonical.ID)
 	}
 	lease.holder.stream = nil
 	lease.holder.lastActive = time.Time{}
@@ -444,7 +451,7 @@ func (s *Server) UpdateStateIfCurrentWithSideEffect(lease StateStreamLease, stat
 }
 
 func (s *Server) ClearStateStreamIfCurrent(lease StateStreamLease) bool {
-	return lease.clear(s)
+	return lease.clear(s, nil)
 }
 
 // RevokeStreams invalidates both long-lived Agent streams. Incrementing the

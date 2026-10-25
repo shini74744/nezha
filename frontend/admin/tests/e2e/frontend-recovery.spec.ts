@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import {test,expect,type Page,type WebSocketRoute} from "@playwright/test";
 import {createServer} from "../../../user/src/test/fixtures";
 test.use({ignoreHTTPSErrors:true});
@@ -109,19 +110,47 @@ for(const theme of ["default","doraemon"])for(const width of [390,900,1440])test
  await expect(grid.locator("[data-chart]")).toHaveCount(6);
  for(const period of ["实时","1 天"]){
   await page.getByText(period,{exact:true}).click();
+  if(period === "实时" && !process.env.METRIC_BASELINE) await page.getByRole("menuitem",{name:"实时图表",exact:true}).click();
   await expect(grid.locator("[data-chart]")).toHaveCount(6);
-  await expect(grid.getByRole("button",{name:/详细查看/})).toHaveCount(0);
+  await expect(grid.getByRole("button",{name:/详细查看/})).toHaveCount(process.env.METRIC_BASELINE ? 0 : 6);
+  for(const chart of await grid.locator("[data-chart]").all()){
+   await chart.scrollIntoViewIfNeeded();
+   await expect(chart.locator(".recharts-cartesian-grid")).toBeVisible();
+  }
   const geometry=await grid.evaluate(el=>{
    const style=getComputedStyle(el),cards=[...el.children].map(child=>{
-    const box=child.getBoundingClientRect();return {x:box.x,y:box.y,w:box.width,h:box.height};
+    const box=child.getBoundingClientRect(),plot=child.querySelector(".recharts-cartesian-grid")!.getBoundingClientRect();
+    const axisNode=child.querySelector(".recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-value");
+    if(!axisNode)throw new Error("Missing time label");
+    const axis=axisNode.getBoundingClientRect();
+    const zero=[...child.querySelectorAll(".recharts-yAxis-tick-labels .recharts-cartesian-axis-tick-value")].find(n=>parseFloat(n.textContent||"")===0)?.getBoundingClientRect();
+    const detail=child.querySelector(".chart-detail-open")?.getBoundingClientRect();
+    const labels=[...child.querySelectorAll(".recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-value")].map(n=>{const r=n.getBoundingClientRect();return {x:r.x,right:r.right}});
+    return {x:box.x,y:box.y,w:box.width,h:box.height,plotTop:plot.top,plotBottom:plot.bottom,zeroY:zero?.y ?? plot.bottom,axisY:axis.y,
+      detail:detail?{x:detail.x,y:detail.y,w:detail.width,h:detail.height}:undefined,labels};
+
    });
    return {columns:style.gridTemplateColumns.split(" ").length,gap:parseFloat(style.rowGap),cards};
   });
   const columns=width<768?1:width<1024?2:3;
   expect(geometry.columns).toBe(columns);expect(geometry.cards).toHaveLength(6);
+  const baselineFile=process.env.METRIC_BASELINE_DIR+"/"+theme+"-"+width+"-"+(period==="实时"?"live":"history")+".json";
+  if(process.env.METRIC_BASELINE)fs.writeFileSync(baselineFile,JSON.stringify(geometry));
+  const baseline=process.env.METRIC_BASELINE_DIR&&!process.env.METRIC_BASELINE?JSON.parse(fs.readFileSync(baselineFile,"utf8")):null;
   geometry.cards.forEach((box,i)=>{
+   if(baseline)expect(Math.abs(box.h-baseline.cards[i].h),"unchanged card height").toBeLessThan(1);
+   if(!process.env.METRIC_BASELINE){
+    expect(box.detail).toBeTruthy();
+    expect(Math.abs(box.detail!.x+box.detail!.w/2-(box.x+box.w/2))).toBeLessThan(1);
+    expect(box.detail!.y+box.detail!.h).toBeLessThanOrEqual(box.y+box.h);
+    for(const label of box.labels)expect(label.right<=box.detail!.x-2||label.x>=box.detail!.x+box.detail!.w+2,"time labels clear of detail button").toBe(true);
+   }
    expect(box.w).toBeGreaterThan(100);expect(box.h).toBeGreaterThan(150);
-   if(i%columns)expect(Math.abs(box.y-geometry.cards[i-i%columns].y)).toBeLessThan(1);
+   if(i%columns){
+    const first=geometry.cards[i-i%columns];
+    for(const key of process.env.METRIC_BASELINE ? ["y"] as const : ["y","plotTop","plotBottom","zeroY","axisY"] as const)
+     expect(Math.abs(box[key]-first[key]),period+" card "+i+" "+key).toBeLessThan(1);
+   }
    if(i>=columns)expect(box.y).toBeGreaterThanOrEqual(geometry.cards[i-columns].y+geometry.cards[i-columns].h+geometry.gap-1);
   });
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);

@@ -14,6 +14,13 @@ import (
 // history is never deleted by numeric ID, which may have belonged to other nodes.
 func resetReplacementNode(tx *gorm.DB, server *model.Server, issuedAt time.Time) (func(), error) {
 	id, uuid := server.ID, server.UUID
+	for _, table := range []any{&model.OnlineSession{}, &model.OnlineHistoryCoverage{}} {
+		if tx.Migrator().HasTable(table) {
+			if err := tx.Where("server_id = ?", id).Delete(table).Error; err != nil {
+				return nil, err
+			}
+		}
+	}
 	for _, target := range []any{
 		&model.ServerOperationLog{}, &model.ServerInventoryBaseline{},
 		&model.TerminalSessionEvent{}, &model.TerminalSession{},
@@ -145,6 +152,9 @@ func resetReplacementNode(tx *gorm.DB, server *model.Server, issuedAt time.Time)
 	server.MachineGeneration, server.UpdatedAt = clean.MachineGeneration, clean.UpdatedAt
 
 	return func() {
+		if OnlineHistoryShared != nil {
+			OnlineHistoryShared.Forget([]uint64{id})
+		}
 		if NATShared != nil && len(natIDs) > 0 {
 			NATShared.Delete(natIDs)
 		}

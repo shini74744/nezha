@@ -312,6 +312,7 @@ describe("ServerDetailChart", () => {
 		await userEvent.click(screen.getByText("serverDetailChart.period1d"));
 		await waitFor(() => expect(document.querySelector("[data-gpu-memory]")).toBeNull());
 		await userEvent.click(screen.getByText("serverDetailChart.realtime"));
+ await userEvent.click(screen.getByRole("menuitem", { name: "实时图表" }));
 		expect(await screen.findByText("2.00 GiB / 8.00 GiB · 25.0%")).toBeInTheDocument();
 	});
 

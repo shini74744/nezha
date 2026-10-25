@@ -1,3 +1,6 @@
+import { metricTimeAxis, metricTimeWindow } from "@/lib/metric-time-window";
+import MetricTimeTick from "@/components/MetricTimeTick";
+import ChartDetailButton from "@/components/ChartDetail";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { DiskIORates, DiskModeToggle } from "@/components/DiskCardHeader";
@@ -126,6 +129,7 @@ export default function ServerDiskChart({
 		queryKey: ["disk-chart-history", data.id, period, io ? "io" : "capacity"],
 		enabled: period !== "realtime",
 		staleTime: 30_000,
+		refetchInterval: period !== "realtime" ? 30_000 : false,
 		retry: 1,
 		queryFn: async ({ signal }) => {
 			const metrics = io
@@ -161,7 +165,7 @@ export default function ServerDiskChart({
 	const axes = (
 		<>
 			<CartesianGrid vertical={false} />
-			<XAxis
+			<XAxis tick={<MetricTimeTick />}
 				dataKey="timeStamp"
 				tickLine={false}
 				axisLine={false}
@@ -169,6 +173,7 @@ export default function ServerDiskChart({
 				minTickGap={200}
 				interval="preserveStartEnd"
 				tickFormatter={(value) => formatRelativeTime(value)}
+                                {...metricTimeAxis(period,now)}
 			/>
 			<YAxis
 				tickLine={false}
@@ -212,8 +217,8 @@ export default function ServerDiskChart({
 			data-disk-mode={io ? "io" : "capacity"}
 			className={cn({ "bg-card/70": !!window.CustomBackgroundImage })}
 		>
-			<CardContent className="px-6 py-3">
-				<section className="flex flex-col gap-1">
+			<CardContent className="relative flex h-full flex-col px-6 py-3">
+				<section className="flex flex-1 flex-col gap-1">
 					<div className="flex min-h-9 items-center justify-between gap-2">
 						<DiskModeToggle
 							io={io}
@@ -256,7 +261,7 @@ export default function ServerDiskChart({
 					</div>
 					<div
 						key={io ? "io" : "capacity"}
-						className="animate-in fade-in duration-200 motion-reduce:animate-none"
+						className="mt-auto shrink-0 animate-in fade-in duration-200 motion-reduce:animate-none"
 					>
 						{loading ? (
 							<div className="h-[130px]">
@@ -330,6 +335,9 @@ export default function ServerDiskChart({
 							</ChartContainer>
 						)}
 					</div>
+                    <ChartDetailButton timeWindow={metricTimeWindow(period,now)} scopeKey={data.id+":"+period+":disk:"+io} title={io?"磁盘读写":"磁盘"} data={points} period={period}
+                        series={io?[{key:"read",label:"读取",color:"hsl(var(--chart-1))"},{key:"write",label:"写入",color:"hsl(var(--chart-10))"}]:[{key:"disk",label:"磁盘",color:"hsl(var(--chart-5))"}]}
+                        formatValue={io?rate:value=>value.toFixed(1)+"%"} disabled={loading||failed||unavailable}/>
 				</section>
 			</CardContent>
 		</Card>

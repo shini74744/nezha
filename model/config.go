@@ -96,6 +96,7 @@ type ConfigDashboard struct {
 }
 
 type Config struct {
+	OnlineStatsDays int `koanf:"online_stats_days" json:"online_stats_days,omitempty"`
 	ConfigForGuests
 	ConfigDashboard
 
@@ -187,6 +188,9 @@ func (c *Config) Read(path string, frontendTemplates []FrontendTemplate) error {
 		return err
 	}
 
+	if c.OnlineStatsDays < MinOnlineStatsDays || c.OnlineStatsDays > MaxOnlineStatsDays {
+		c.OnlineStatsDays = DefaultOnlineStatsDays
+	}
 	if c.ListenPort == 0 {
 		c.ListenPort = 8008
 	}

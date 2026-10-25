@@ -42,3 +42,9 @@ export const fetchServerMetrics = async (server_id: number, metric: MetricType, 
  if (!Array.isArray(data.data?.data_points)) throw new Error("Invalid metric data");
  return data;
 };
+
+export const fetchServerOnlineHistory = async (id: number, days = 1, signal?: AbortSignal): Promise<import("@/types/nezha-api").OnlineHistoryResponse> => {
+ const response = await requestJson<import("@/types/nezha-api").OnlineHistoryResponse>(`/api/v1/server/${id}/online-history?days=${days}`, signal);
+ if (!Array.isArray(response.data?.periods) || !Array.isArray(response.data?.daily)) throw new Error("Invalid online history");
+ return response;
+};
