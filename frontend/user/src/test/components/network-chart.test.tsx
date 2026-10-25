@@ -365,3 +365,18 @@ it("reuses peak calculations without changing samples, selection, or refreshed d
  expect(clientFormattedData[0].Alpha).toBe(30);
  expect(clientChartData.Alpha[0].avg_delay).toBe(30);
 });
+
+it("keeps selected lines across missing history, errors and recovery", async () => {
+ const props = {chartDataKey:["Alpha","Beta"],chartConfig,chartData:clientChartData,serverName:"retry-check",formattedData:clientFormattedData,isPeriodLoading:false,period:"1d" as const,onPeriodChange:vi.fn(),isLogin:true};
+ const view = render(<NetworkChartClient {...props}/>);
+ await userEvent.setup().click(screen.getByText("Alpha"));
+ for (const unavailable of [<p role="status">loading</p>, <p role="alert">retry</p>]) {
+  view.rerender(<NetworkChartClient {...props} chartDataKey={[]} chartData={{}} formattedData={[]} unavailable={unavailable}/>);
+  expect(screen.getByText("monitor.period1d")).toBeVisible();
+  expect(screen.queryByTestId("composed-chart")).toBeNull();
+ }
+ view.rerender(<NetworkChartClient {...props}/>);
+ expect(screen.getByRole("button",{name:/^Alpha/})).toHaveAttribute("data-active","true");
+ expect(await screen.findByTestId("composed-chart")).toHaveAttribute("data-points","12");
+ expect(screen.getByTestId("area")).toHaveAttribute("data-key","packet_loss");
+});

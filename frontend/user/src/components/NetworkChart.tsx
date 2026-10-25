@@ -480,7 +480,7 @@ export const NetworkChartClient = React.memo(function NetworkChart({
 		let baseData = formattedData;
 		if (activeCharts.length === 1) {
 			const selectedChart = activeCharts[0];
-			baseData = chartData[selectedChart].map((item) => ({
+			baseData = (chartData[selectedChart] ?? []).map((item) => ({
 				created_at: item.created_at,
 				avg_delay: item.avg_delay,
 				packet_loss: item.packet_loss ?? 0,
