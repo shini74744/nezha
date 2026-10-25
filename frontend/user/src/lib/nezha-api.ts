@@ -17,7 +17,8 @@ export const fetchLoginUser = async ({ signal }: { signal?: AbortSignal } = {}):
  catch (error) {
   // Replace a previously cached identity on an explicit session expiry.
   // Transient network/5xx errors must not masquerade as a logout.
-  if (error instanceof ApiError && error.status === 401) return null;
+  // This dashboard also reports an expired or absent session as HTTP 200.
+  if (error instanceof ApiError && (error.status === 401 || (error.status === 200 && error.message === "ApiErrorUnauthorized"))) return null;
   throw error;
  }
  if (data.data?.id && (!lastestRefreshTokenAt || Date.now() - lastestRefreshTokenAt > 3600000)) {

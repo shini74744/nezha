@@ -84,6 +84,19 @@ describe("HTTP and identity", () => {
   await waitFor(()=>expect(view.result.current.session).toBe("anonymous"));
   expect(view.result.current.viewer).toBe(0);expect(view.result.current.data).toBeNull();
  });
+ it("recognizes the dashboard HTTP 200 unauthorized envelope and clears a cached member",async()=>{
+  let expired=false;
+  vi.stubGlobal("fetch",vi.fn(async(url:string)=>url.includes("refresh-token") ? response({success:true}) : response(expired ? {error:"ApiErrorUnauthorized"} : {success:true,data:{id:7}})));
+  const {Wrapper}=wrapper();const view=renderHook(()=>useLoginUser(),{wrapper:Wrapper});
+  await waitFor(()=>expect(view.result.current.viewer).toBe(7));
+  expired=true;await act(async()=>{await view.result.current.refetch()});
+  await waitFor(()=>expect(view.result.current.session).toBe("anonymous"));
+  expect(view.result.current.viewer).toBe(0);expect(view.result.current.data).toBeNull();
+ });
+ it.each([response({error:"storage unavailable"}),response({error:"ApiErrorUnauthorized"},503),response({error:"ApiErrorUnauthorized"},403)])("does not mistake unrelated or transient errors for a logout",async payload=>{
+  vi.stubGlobal("fetch",vi.fn(async()=>payload));
+  await expect(fetchLoginUser()).rejects.toThrow();
+ });
  it("failed initial identity is unknown, not authenticated; direct 401 resolves null",async()=>{
   vi.stubGlobal("fetch",vi.fn(async()=>response({success:false},401)));
   await expect(fetchLoginUser()).resolves.toBeNull();

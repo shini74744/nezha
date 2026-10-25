@@ -1,7 +1,7 @@
 import {test,expect,type Page,type WebSocketRoute} from "@playwright/test";
 import {createServer} from "../../../user/src/test/fixtures";
 const anchor=Date.parse("2026-10-26T00:00:00+08:00");
-async function setup(page:Page,theme:string){
+async function setup(page:Page,theme:string,guest=false){
  await page.clock.setFixedTime(new Date(anchor+86400000));
  const origin="https://127.0.0.1:"+(theme==="default"?"18477":"18478");
  const state={mode:"normal",requests:[] as string[],sockets:[] as WebSocketRoute[],tick:()=>{}};
@@ -15,7 +15,7 @@ async function setup(page:Page,theme:string){
   if(!u.pathname.startsWith("/api/"))return route.continue();
   state.requests.push(route.request().method()+" "+u.pathname+u.search);
   let data:any=[];
-  if(u.pathname==="/api/v1/profile")data={id:7};
+  if(u.pathname==="/api/v1/profile"){ if(guest)return route.fulfill({status:200,json:{error:"ApiErrorUnauthorized"}}); data={id:7}; }
   else if(u.pathname==="/api/v1/setting")data={tsdb_enabled:true,config:{language:"zh-CN",site_name:"图表查看测试",show_network_in_detail:false,appearance_config:'{"version":1,"enabled":false,"features":{}}',doraemon_appearance_config:'{"version":1,"enabled":false,"features":{}}'}};
   else if(u.pathname==="/api/v1/service")data={services:{},cycle_transfer_stats:{}};
   else if(u.pathname.endsWith("/online-history")){
@@ -170,4 +170,16 @@ for(const theme of ["default","doraemon"])test("sparse rolling chart windows "+t
   await expect(dialog).toContainText("2 / 2");
   await dialog.getByRole("button",{name:"Close",exact:true}).click();
  }
+});
+
+for(const theme of ["default","doraemon"])for(const width of [390,1440])
+test("guest online history accepts dashboard unauthorized envelope "+theme+" "+width,async({page})=>{
+ await page.setViewportSize({width,height:900});const state=await setup(page,theme,true);
+ await page.getByRole("button",{name:"实时",exact:true}).click();
+ await page.getByRole("menuitem",{name:"在线率",exact:true}).click();
+ const dialog=page.getByRole("dialog");
+ await expect(dialog).toContainText("25.0%");
+ expect(state.requests.some(x=>x.endsWith("/online-history?days=1"))).toBe(true);
+ expect(state.requests.some(x=>/online-history\?days=(7|30)$/.test(x))).toBe(false);
+ expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
 });
