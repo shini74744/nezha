@@ -268,5 +268,32 @@
 		"emptyUptime": "No uptime data yet. Configure service monitoring first.",
 		"error": "Could not load statistics. Please try again.",
 		"retry": "Retry"
-	}
+	},
+  "serverOnlineHistory": {
+  "loading": "Loading online history",
+  "originalSession": "Original session",
+  "dataCutoffHint": "Marker: data cutoff",
+  "dataCutoff": "Data through",
+  "notYetRecorded": "Not yet recorded",
+  "outsideWindow": "Outside selected window",
+  "days1": "1d",
+  "days7": "7d",
+  "days30": "30d",
+  "onlineRate": "Online rate",
+  "totalOnline": "Total online",
+  "totalOffline": "Total offline",
+  "lastActive": "Last active",
+  "dailyOnline": "Daily online time",
+  "periods": "Online periods",
+  "ongoing": "Ongoing",
+  "noData": "No online records",
+  "loginRequired": "This window requires login; guests can switch to 1d",
+  "offlinePeriods": "Offline periods",
+  "periodsOnline": "Online",
+  "periodsOffline": "Offline",
+  "expandMore": "Expand more",
+  "today": "Today",
+  "loadFailed": "Unable to load online history",
+  "retry": "Retry"
+}
 }

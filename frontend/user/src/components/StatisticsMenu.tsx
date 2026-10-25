@@ -8,6 +8,9 @@ import {
 	DropdownMenuRadioGroup, DropdownMenuRadioItem,
 } from "./ui/dropdown-menu";
 
+export const statisticsItemClass = "my-0.5 min-h-8 cursor-pointer rounded-md py-1 px-2 font-medium [&>span.absolute]:hidden transition-colors focus:bg-blue-50 focus:text-blue-700 data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700 dark:focus:bg-white/10 dark:focus:text-white dark:data-[state=checked]:bg-blue-400/15 dark:data-[state=checked]:text-blue-200 [@media(pointer:coarse)]:min-h-11";
+export const statisticsMenuClass = "statistics-menu w-auto min-w-24 max-w-[calc(100vw-24px)] rounded-xl border-stone-200/80 bg-white/95 p-1 text-stone-800 shadow-xl backdrop-blur-xl dark:border-white/15 dark:bg-stone-900/95 dark:text-stone-100";
+
 export default function StatisticsMenu({ value, onChange, split = true, disabled = false }: {
 	value: StatisticsView; onChange: (view: StatisticsView) => void; split?: boolean; disabled?: boolean;
 }) {
@@ -16,7 +19,7 @@ export default function StatisticsMenu({ value, onChange, split = true, disabled
 	// onSelect also fires when the selected radio item is activated again.
 	const selectView = (next: Exclude<StatisticsView, "closed">) =>
 		onChange(value === next ? "closed" : next);
-	const itemClass = "my-0.5 min-h-8 cursor-pointer rounded-md py-1 px-2 font-medium [&>span.absolute]:hidden transition-colors focus:bg-blue-50 focus:text-blue-700 data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700 dark:focus:bg-white/10 dark:focus:text-white dark:data-[state=checked]:bg-blue-400/15 dark:data-[state=checked]:text-blue-200 [@media(pointer:coarse)]:min-h-11";
+
 	if (!split) return <button type="button" data-statistics-trigger disabled={disabled}
 		aria-label={t("statistics.toggle")} aria-pressed={value !== "closed"}
 		onClick={() => onChange(value === "closed" ? "traffic" : "closed")}
@@ -44,15 +47,15 @@ export default function StatisticsMenu({ value, onChange, split = true, disabled
 					if (triggerRef.current?.contains(event.target as Node)) event.preventDefault();
 				}}
 				aria-label={t("statistics.choose")}
-				className="statistics-menu w-auto min-w-24 max-w-[calc(100vw-24px)] rounded-xl border-stone-200/80 bg-white/95 p-1 text-stone-800 shadow-xl backdrop-blur-xl dark:border-white/15 dark:bg-stone-900/95 dark:text-stone-100">
+				className={statisticsMenuClass}>
 				<DropdownMenuRadioGroup value={value}>
-					<DropdownMenuRadioItem value="traffic" className={itemClass} onSelect={() => selectView("traffic")}>
+					<DropdownMenuRadioItem value="traffic" className={statisticsItemClass} onSelect={() => selectView("traffic")}>
 						{t("statistics.traffic")}
 					</DropdownMenuRadioItem>
-					<DropdownMenuRadioItem value="cycle" className={itemClass} onSelect={() => selectView("cycle")}>
+					<DropdownMenuRadioItem value="cycle" className={statisticsItemClass} onSelect={() => selectView("cycle")}>
 						{t("statistics.cycle")}
 					</DropdownMenuRadioItem>
-					<DropdownMenuRadioItem value="uptime" className={itemClass} onSelect={() => selectView("uptime")}>
+					<DropdownMenuRadioItem value="uptime" className={statisticsItemClass} onSelect={() => selectView("uptime")}>
 						{t("statistics.uptime")}
 					</DropdownMenuRadioItem>
 				</DropdownMenuRadioGroup>

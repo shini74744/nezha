@@ -117,6 +117,7 @@ func reassignServerIDs(c *gin.Context) (*serverIDReassignResult, error) {
 	}
 
 	singleton.ServerIDReassignmentInProgress.Store(true)
+	singleton.DrainOnlineHistory()
 	success := false
 	defer func() {
 		if !success {
@@ -251,6 +252,8 @@ func serverIDReferences(tx *gorm.DB) [][2]string {
 		{"mcp_audit_logs", "server_id"},
 		{"service_histories", "server_id"},
 		{"server_snapshots", "server_id"},
+		{"online_sessions", "server_id"},
+		{"online_history_coverages", "server_id"},
 	} {
 		if tx.Migrator().HasTable(ref[0]) && tx.Migrator().HasColumn(ref[0], ref[1]) {
 			refs = append(refs, ref)

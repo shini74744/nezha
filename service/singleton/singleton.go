@@ -70,6 +70,10 @@ func LoadSingleton(bus chan<- *model.Service) (err error) {
 		return
 	}
 	ServerShared = NewServerClass()
+	if err := InitOnlineHistoryCoverage(); err != nil {
+		return err
+	}
+	OnlineHistoryShared = NewOnlineHistoryRecorder()
 	CronShared = NewCronClass()
 	ServerTransferShared = NewServerTransferClass()
 	// 最后初始化 ServiceSentinel
@@ -101,7 +105,7 @@ func InitDBFromPath(path string) error {
 	if Conf.Debug {
 		DB = DB.Debug()
 	}
-	err = DB.AutoMigrate(model.TelegramDailyDelivery{}, model.TelegramMenuCursor{}, networkinsight.DetectionPriority{}, networkinsight.Record{}, networkinsight.BGPPolicy{}, networkinsight.ReturnPolicy{}, connectivity.Record{}, connectivity.Policy{}, latency.Record{}, latency.Settings{}, model.ServerExpiryConfig{}, model.ServerExpiryDelivery{}, model.ServerIPHistory{}, model.Server{}, model.User{}, model.ServerGroup{}, model.NotificationGroup{},
+	err = DB.AutoMigrate(model.OnlineSession{}, model.OnlineHistoryCoverage{}, model.TelegramDailyDelivery{}, model.TelegramMenuCursor{}, networkinsight.DetectionPriority{}, networkinsight.Record{}, networkinsight.BGPPolicy{}, networkinsight.ReturnPolicy{}, connectivity.Record{}, connectivity.Policy{}, latency.Record{}, latency.Settings{}, model.ServerExpiryConfig{}, model.ServerExpiryDelivery{}, model.ServerIPHistory{}, model.Server{}, model.User{}, model.ServerGroup{}, model.NotificationGroup{},
 		model.Notification{}, model.AlertRule{}, model.Service{}, model.NotificationGroupNotification{},
 		model.Cron{}, model.Transfer{}, model.ServerGroupServer{},
 		model.NAT{}, model.DDNSProfile{}, model.NotificationGroupNotification{},

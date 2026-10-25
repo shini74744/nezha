@@ -17,6 +17,7 @@ export function useMetricHistory(serverId: number, metrics: MetricType[], period
    });
   },
   staleTime: 30000,
+  refetchInterval: enabled ? 30000 : false,
   retry: 1,
   retryDelay: 300,
  });

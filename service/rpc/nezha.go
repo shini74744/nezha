@@ -254,7 +254,18 @@ func (s *NezhaHandler) ReportSystemState(stream pb.NezhaService_ReportSystemStat
 	if !pending {
 		lease = server.AttachStateStream(stream)
 	}
-	defer func() { lease.Clear() }()
+	defer func() {
+		if !s.reportGate.Begin() {
+			lease.Clear()
+			return
+		}
+		defer s.reportGate.End()
+		lease.ClearWithIdentity(func(id uint64) {
+			if singleton.OnlineHistoryShared != nil {
+				singleton.OnlineHistoryShared.RecordOffline(id, time.Now())
+			}
+		})
+	}()
 	var state *pb.State
 	var stateCount uint64
 	report := reportLease{gate: &s.reportGate}
@@ -288,6 +299,9 @@ func (s *NezhaHandler) ReportSystemState(stream pb.NezhaService_ReportSystemStat
 
 		lastActive := time.Now()
 		accepted := lease.UpdateStateWithSnapshot(&innerState, lastActive, func(snapshotID uint64, snapshotUUID string, snapshot model.RecordedServerState) error {
+			if singleton.OnlineHistoryShared != nil {
+				singleton.OnlineHistoryShared.RecordOnline(snapshotID, lastActive)
+			}
 			if err := singleton.PersistServerSnapshot(snapshotID, snapshotUUID, snapshot); err != nil {
 				log.Printf("NEZHA>> Failed to persist server snapshot %d: %v", snapshotID, err)
 			}

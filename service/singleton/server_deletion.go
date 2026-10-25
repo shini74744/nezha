@@ -400,6 +400,13 @@ func DeleteServersThen(ids []uint64, expected map[uint64]ServerDeleteIdentity, a
 				return err
 			}
 		}
+		for _, table := range []any{&model.OnlineSession{}, &model.OnlineHistoryCoverage{}} {
+			if tx.Migrator().HasTable(table) {
+				if err := tx.Where("server_id IN ?", actualIDs).Delete(table).Error; err != nil {
+					return err
+				}
+			}
+		}
 		if tx.Migrator().HasTable(&model.ServerIPHistory{}) {
 			if err := tx.Delete(&model.ServerIPHistory{}, "server_uuid IN ?", uuids).Error; err != nil {
 				return err
@@ -427,6 +434,9 @@ func DeleteServersThen(ids []uint64, expected map[uint64]ServerDeleteIdentity, a
 		return err
 	}
 	committed = true
+	if OnlineHistoryShared != nil {
+		OnlineHistoryShared.Forget(actualIDs)
+	}
 
 	if ServerTransferShared != nil {
 		ServerTransferShared.OnServersDeleted(actualIDs)

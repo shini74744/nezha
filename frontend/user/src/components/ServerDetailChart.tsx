@@ -1,3 +1,7 @@
+import { metricTimeAxis, metricTimeWindow } from "@/lib/metric-time-window";
+import RealtimeViewMenu from "./RealtimeViewMenu";
+import MetricTimeTick from "@/components/MetricTimeTick";
+import ChartDetailButton from "@/components/ChartDetail";
 import { useMetricHistory } from "@/hooks/use-metric-history";
 import { HistoryError } from "./HistoryError";
 import { IsolatedChildren } from "./LocalErrorBoundary";
@@ -100,12 +104,14 @@ export function PeriodSelector({
 	isLogin,
 	isTsdbEnabled,
 	offline = false,
+ serverId,
 }: {
 	selectedPeriod: ChartPeriod;
 	onPeriodChange: (period: ChartPeriod) => void;
 	isLogin: boolean;
 	isTsdbEnabled: boolean;
 	offline?: boolean;
+ serverId?: string;
 }) {
 	const { t } = useTranslation();
 
@@ -163,7 +169,7 @@ export function PeriodSelector({
 							aria-pressed={selectedPeriod === period.value}
 							tabIndex={isLocked ? -1 : 0}
 							onClick={() => {
-								if (!isLocked) {
+								if (!isLocked && !(period.value === "realtime" && serverId)) {
 									if (selectedPeriod !== period.value) {
 										enableIndicatorAnimation();
 									}
@@ -206,7 +212,7 @@ export function PeriodSelector({
 						);
 					}
 
-					return <div key={period.value}>{periodItem}</div>;
+					return <div key={period.value} className="flex">{period.value === "realtime" && serverId ? <RealtimeViewMenu serverId={serverId} offline={offline} onRealtime={() => { if(selectedPeriod !== "realtime") enableIndicatorAnimation(); onPeriodChange("realtime"); }}>{periodItem}</RealtimeViewMenu> : periodItem}</div>;
 				})}
 			</div>
 		</TooltipProvider>
@@ -275,6 +281,7 @@ export default function ServerDetailChart({
 		<section className="flex flex-col">
 			<PeriodSelector
 				selectedPeriod={activePeriod}
+    serverId={server_id}
 				onPeriodChange={setSelectedPeriod}
 				isLogin={isLogin}
 				isTsdbEnabled={isTsdbEnabled}
@@ -332,6 +339,7 @@ function useHistoricalData<T>(
 }
 
 function GpuChart({
+	now,
 	id,
 	index,
 	gpuStat,
@@ -438,8 +446,8 @@ function GpuChart({
 				"bg-card/70": customBackgroundImage,
 			})}
 		>
-			<CardContent className="px-6 py-3">
-				<section className="flex flex-col gap-1">
+			<CardContent className="relative flex h-full flex-col px-6 py-3">
+				<section className="flex flex-1 flex-col gap-1">
 					<div className="flex min-w-0 items-center justify-between gap-2">
 						<section className="flex min-w-0 flex-1 flex-col items-start gap-2">
 							{!gpuName && <p className="text-md font-medium">GPU</p>}
@@ -462,7 +470,7 @@ function GpuChart({
 					{period === "realtime" && <GpuMemorySummary memory={gpuMemory} />}
 					<ChartContainer deferMount
 						config={chartConfig}
-						className="aspect-auto h-[130px] w-full"
+						className="mt-auto aspect-auto h-[130px] w-full shrink-0"
 					>
 						{error ? <HistoryError retry={retry} /> : isLoading ? (
 							<ChartSkeleton />
@@ -478,7 +486,7 @@ function GpuChart({
 								}}
 							>
 								<CartesianGrid vertical={false} />
-								<XAxis
+								<XAxis tick={<MetricTimeTick />}
 									dataKey="timeStamp"
 									tickLine={false}
 									axisLine={false}
@@ -486,6 +494,7 @@ function GpuChart({
 									minTickGap={200}
 									interval="preserveStartEnd"
 									tickFormatter={(value) => formatRelativeTime(value)}
+                                {...metricTimeAxis(period,now)}
 								/>
 								<YAxis
 									tickLine={false}
@@ -527,6 +536,8 @@ function GpuChart({
 							</AreaChart>
 						)}
 					</ChartContainer>
+					<ChartDetailButton timeWindow={metricTimeWindow(period,now)} scopeKey={id+":"+period+":gpu:"+index} title={gpuName ? "GPU "+gpuName : "GPU 使用率"} data={displayData} period={period}
+						series={[{key:"gpu",label:"GPU",color:"hsl(var(--chart-3))"}]} formatValue={value => value.toFixed(1)+"%"} disabled={isLoading || !!error}/>
 				</section>
 			</CardContent>
 		</Card>
@@ -636,8 +647,8 @@ function CpuChart({
 				"bg-card/70": customBackgroundImage,
 			})}
 		>
-			<CardContent className="px-6 py-3">
-				<section className="flex flex-col gap-1">
+			<CardContent className="relative flex h-full flex-col px-6 py-3">
+				<section className="flex flex-1 flex-col gap-1">
 					<div className="flex items-center justify-between">
 						<p className="text-md font-medium">CPU</p>
 						<section className="flex items-center gap-2">
@@ -655,7 +666,7 @@ function CpuChart({
 					</div>
 					<ChartContainer deferMount
 						config={chartConfig}
-						className="aspect-auto h-[130px] w-full"
+						className="mt-auto aspect-auto h-[130px] w-full shrink-0"
 					>
 						{error ? <HistoryError retry={retry} /> : isLoading ? (
 							<ChartSkeleton />
@@ -671,7 +682,7 @@ function CpuChart({
 								}}
 							>
 								<CartesianGrid vertical={false} />
-								<XAxis
+								<XAxis tick={<MetricTimeTick />}
 									dataKey="timeStamp"
 									tickLine={false}
 									axisLine={false}
@@ -679,6 +690,7 @@ function CpuChart({
 									minTickGap={200}
 									interval="preserveStartEnd"
 									tickFormatter={(value) => formatRelativeTime(value)}
+                                {...metricTimeAxis(period,now)}
 								/>
 								<YAxis
 									tickLine={false}
@@ -720,6 +732,8 @@ function CpuChart({
 							</AreaChart>
 						)}
 					</ChartContainer>
+					<ChartDetailButton timeWindow={metricTimeWindow(period,now)} scopeKey={data.id+":"+period+":cpu"} title="CPU 使用率" data={displayData} period={period}
+						series={[{key:"cpu",label:"CPU",color:"hsl(var(--chart-1))"}]} formatValue={value => value.toFixed(1)+"%"} disabled={isLoading || !!error}/>
 				</section>
 			</CardContent>
 		</Card>
@@ -838,8 +852,8 @@ function ProcessChart({
 				"bg-card/70": customBackgroundImage,
 			})}
 		>
-			<CardContent className="px-6 py-3">
-				<section className="flex flex-col gap-1">
+			<CardContent className="relative flex h-full flex-col px-6 py-3">
+				<section className="flex flex-1 flex-col gap-1">
 					<div className="flex items-center justify-between">
 						<p className="text-md font-medium">
 							{t("serverDetailChart.process")}
@@ -850,7 +864,7 @@ function ProcessChart({
 					</div>
 					<ChartContainer deferMount
 						config={chartConfig}
-						className="aspect-auto h-[130px] w-full"
+						className="mt-auto aspect-auto h-[130px] w-full shrink-0"
 					>
 						{error ? <HistoryError retry={retry} /> : isLoading ? (
 							<ChartSkeleton />
@@ -866,7 +880,7 @@ function ProcessChart({
 								}}
 							>
 								<CartesianGrid vertical={false} />
-								<XAxis
+								<XAxis tick={<MetricTimeTick />}
 									dataKey="timeStamp"
 									tickLine={false}
 									axisLine={false}
@@ -874,6 +888,7 @@ function ProcessChart({
 									minTickGap={200}
 									interval="preserveStartEnd"
 									tickFormatter={(value) => formatRelativeTime(value)}
+                                {...metricTimeAxis(period,now)}
 								/>
 								<YAxis
 									tickLine={false}
@@ -915,6 +930,8 @@ function ProcessChart({
 							</AreaChart>
 						)}
 					</ChartContainer>
+					<ChartDetailButton timeWindow={metricTimeWindow(period,now)} scopeKey={data.id+":"+period+":process"} title="进程数" data={displayData} period={period}
+						series={[{key:"process",label:"进程数",color:"hsl(var(--chart-2))"}]} formatValue={value => value.toFixed(0)} disabled={isLoading || !!error}/>
 				</section>
 			</CardContent>
 		</Card>
@@ -1024,8 +1041,8 @@ function MemChart({
 				"bg-card/70": customBackgroundImage,
 			})}
 		>
-			<CardContent className="px-6 py-3">
-				<section className="flex flex-col gap-1">
+			<CardContent className="relative flex h-full flex-col px-6 py-3">
+				<section className="flex flex-1 flex-col gap-1">
 					<div className="flex items-center justify-between">
 						<section className="flex items-center gap-4">
 							<div className="flex flex-col">
@@ -1078,7 +1095,7 @@ function MemChart({
 					</div>
 					<ChartContainer deferMount
 						config={chartConfig}
-						className="aspect-auto h-[130px] w-full"
+						className="mt-auto aspect-auto h-[130px] w-full shrink-0"
 					>
 						{history.error ? <HistoryError retry={history.retry} /> : isMemLoading ? (
 							<ChartSkeleton />
@@ -1094,7 +1111,7 @@ function MemChart({
 								}}
 							>
 								<CartesianGrid vertical={false} />
-								<XAxis
+								<XAxis tick={<MetricTimeTick />}
 									dataKey="timeStamp"
 									tickLine={false}
 									axisLine={false}
@@ -1102,6 +1119,7 @@ function MemChart({
 									minTickGap={200}
 									interval="preserveStartEnd"
 									tickFormatter={(value) => formatRelativeTime(value)}
+                                {...metricTimeAxis(period,now)}
 								/>
 								<YAxis
 									tickLine={false}
@@ -1159,6 +1177,8 @@ function MemChart({
 							</AreaChart>
 						)}
 					</ChartContainer>
+					<ChartDetailButton timeWindow={metricTimeWindow(period,now)} scopeKey={data.id+":"+period+":memory"} title="内存" data={displayData} period={period}
+						series={[{key:"mem",label:"内存",color:"hsl(var(--chart-8))"},{key:"swap",label:"虚拟内存",color:"hsl(var(--chart-10))"}]} formatValue={value => value.toFixed(1)+"%"} disabled={isMemLoading || !!history.error}/>
 				</section>
 			</CardContent>
 		</Card>
@@ -1285,8 +1305,8 @@ function NetworkChart({
 				"bg-card/70": customBackgroundImage,
 			})}
 		>
-			<CardContent className="px-6 py-3">
-				<section className="flex flex-col gap-1">
+			<CardContent className="relative flex h-full flex-col px-6 py-3">
+				<section className="flex flex-1 flex-col gap-1">
 					<div className="flex items-center">
 						<section className="flex items-center gap-4">
 							<div className="flex flex-col w-20">
@@ -1323,7 +1343,7 @@ function NetworkChart({
 					</div>
 					<ChartContainer deferMount
 						config={chartConfig}
-						className="aspect-auto h-[130px] w-full"
+						className="mt-auto aspect-auto h-[130px] w-full shrink-0"
 					>
 						{history.error ? <HistoryError retry={history.retry} /> : isNetworkLoading ? (
 							<ChartSkeleton />
@@ -1339,7 +1359,7 @@ function NetworkChart({
 								}}
 							>
 								<CartesianGrid vertical={false} />
-								<XAxis
+								<XAxis tick={<MetricTimeTick />}
 									dataKey="timeStamp"
 									tickLine={false}
 									axisLine={false}
@@ -1347,6 +1367,7 @@ function NetworkChart({
 									minTickGap={200}
 									interval="preserveStartEnd"
 									tickFormatter={(value) => formatRelativeTime(value)}
+                                {...metricTimeAxis(period,now)}
 								/>
 								<YAxis
 									tickLine={false}
@@ -1358,7 +1379,7 @@ function NetworkChart({
 									interval="preserveStartEnd"
 									width={rateFormatter ? 100 : undefined}
                                     tick={rateFormatter ? {fontSize: 11} : undefined}
-                                    domain={rateFormatter ? [0, maxDownload] : [1, maxDownload]}
+                                    domain={[0, maxDownload]}
 									tickFormatter={(value) => rateFormatter ? rateFormatter(Number(value) * 1024 ** 2) : `${value.toFixed(0)}M/s`}
 								/>
 								<ChartTooltip
@@ -1409,6 +1430,8 @@ function NetworkChart({
 							</LineChart>
 						)}
 					</ChartContainer>
+					<ChartDetailButton timeWindow={metricTimeWindow(period,now)} scopeKey={data.id+":"+period+":network"} title="网络速率" data={displayData} period={period}
+						series={[{key:"upload",label:"上传",color:"hsl(var(--chart-1))"},{key:"download",label:"下载",color:"hsl(var(--chart-4))"}]} formatValue={value => rateFormatter ? rateFormatter(value * 1024 ** 2) : value.toFixed(2)+" MB/s"} disabled={isNetworkLoading || !!history.error}/>
 				</section>
 			</CardContent>
 		</Card>
@@ -1520,8 +1543,8 @@ function ConnectChart({
 				"bg-card/70": customBackgroundImage,
 			})}
 		>
-			<CardContent className="px-6 py-3">
-				<section className="flex flex-col gap-1">
+			<CardContent className="relative flex h-full flex-col px-6 py-3">
+				<section className="flex flex-1 flex-col gap-1">
 					<div className="flex items-center">
 						<section className="flex items-center gap-4">
 							<div className="flex flex-col w-12">
@@ -1542,7 +1565,7 @@ function ConnectChart({
 					</div>
 					<ChartContainer deferMount
 						config={chartConfig}
-						className="aspect-auto h-[130px] w-full"
+						className="mt-auto aspect-auto h-[130px] w-full shrink-0"
 					>
 						{history.error ? <HistoryError retry={history.retry} /> : isConnectLoading ? (
 							<ChartSkeleton />
@@ -1558,7 +1581,7 @@ function ConnectChart({
 								}}
 							>
 								<CartesianGrid vertical={false} />
-								<XAxis
+								<XAxis tick={<MetricTimeTick />}
 									dataKey="timeStamp"
 									tickLine={false}
 									axisLine={false}
@@ -1566,6 +1589,7 @@ function ConnectChart({
 									minTickGap={200}
 									interval="preserveStartEnd"
 									tickFormatter={(value) => formatRelativeTime(value)}
+                                {...metricTimeAxis(period,now)}
 								/>
 								<YAxis
 									tickLine={false}
@@ -1620,6 +1644,8 @@ function ConnectChart({
 							</LineChart>
 						)}
 					</ChartContainer>
+					<ChartDetailButton timeWindow={metricTimeWindow(period,now)} scopeKey={data.id+":"+period+":connections"} title="连接数" data={displayData} period={period}
+						series={[{key:"tcp",label:"TCP",color:"hsl(var(--chart-1))"},{key:"udp",label:"UDP",color:"hsl(var(--chart-4))"}]} formatValue={value => value.toFixed(0)} disabled={isConnectLoading || !!history.error}/>
 				</section>
 			</CardContent>
 		</Card>

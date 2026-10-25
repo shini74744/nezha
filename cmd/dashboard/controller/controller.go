@@ -103,6 +103,7 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	optionalAuth.GET("/service/server", restScopeMiddleware(model.ScopeServiceRead), commonHandler(listServerWithServices))
 	optionalAuth.GET("/service/:id/history", restScopeMiddleware(model.ScopeServiceRead), commonHandler(getServiceHistory))
 	optionalAuth.GET("/server/:id/service", restScopeMiddleware(model.ScopeServiceRead), commonHandler(listServerServices))
+	optionalAuth.GET("/server/:id/online-history", restScopeMiddleware(model.ScopeServerRead), commonHandler(getServerOnlineHistory))
 	optionalAuth.GET("/server/:id/metrics", restScopeMiddleware(model.ScopeServerRead), commonHandler(getServerMetrics))
 	optionalAuth.GET("/server/:id/last-report", restScopeMiddleware(model.ScopeServerRead), commonHandler(getServerLastReport))
 	optionalAuth.GET("/server/:id/bgp", restScopeMiddleware(model.ScopeServerRead), csrfMiddleware(), commonHandler(getBGP))

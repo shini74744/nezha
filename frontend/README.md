@@ -120,3 +120,18 @@ Moving the pointer outside restores normal page scrolling. Browser Ctrl+wheel
 zoom and native touch gestures are preserved. Regression checks are in
 `src/test/plan-ui.test.tsx`, `network-insight.spec.ts` and
 `server-latency.spec.ts` (tests matching `snapshot wheel boundaries`).
+
+
+## 指标详细查看与在线率
+
+详情图表以同一行绘图区和坐标轴对齐，卡片高度保持原布局。“详细”位于原有底部留白中央，点击可选择时间范围、定位实际采样点、逐点查看、锁定或放大。手机纵向滑动仍滚动弹窗，点按和横向滑动用于选点。
+
+1／7／30 天指标横轴采用完整滚动时间范围，缺失区间不扩展成有数据。采样聚合粒度不变，详细查看只读取已加载数据，刷新快照才更新弹窗数据。
+
+点击现有“实时”可选择“实时图表”或“在线率”；离线机器使用“最后状态”入口。在线率弹窗展示在线比例、在线／离线累计、最后活跃、每日时间轴及在线／离线时段。访客最多查看 1 天，登录后可查看 7／30 天；默认在线记录保留 30 天，后台 API 或 online_stats_days 配置支持 7—3650 天。此保留策略仅作用于新建的 online_sessions 表，不影响 TSDB 和原有历史。
+
+本次启用前没有在线会话记录，不能还原历史在线率。online_history_coverages 标记每台机器的记录起点，起点以前不作为离线。升级仅新增表，原有 Agent 无需升级。授权的永久删除会清除该节点在线记录；系统 ID 调整会同步迁移；全量换机重置后从新记录起点统计。
+
+实现参考官方前台 nezha-dash-v2 提交 d9d59cc62b53b9658e86b97b024baa69148eabd0 的在线历史组件、算法及测试，以及官方后端 nezha 提交 15fa673c745005d0fef5d6d031fe77351d28bcbb 的在线会话记录。保留原有许可证，并适配本项目的菜单、权限、状态流租约和节点生命周期。
+
+回归入口：user 的 chart-detail、metric-time-window、online-history、server-detail-online-history 单元测试；admin/tests/e2e/chart-detail.spec.ts 和 frontend-recovery.spec.ts 验证两个主题的 320／390／900／1440 像素布局、绘图区对齐、卡片高度、时间范围和菜单。后端 online_history*_test.go 覆盖时区、断线、恢复、失败重试、保留范围、启用前未知时间和 ID 生命周期。
