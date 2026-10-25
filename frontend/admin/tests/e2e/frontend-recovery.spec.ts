@@ -101,3 +101,31 @@ for(const theme of ["default","doraemon"]) {
   await expect(page.getByRole("button",{name:"7 天",exact:true})).toHaveAttribute("aria-pressed","false");
  });
 }
+
+for(const theme of ["default","doraemon"])for(const width of [390,900,1440])test("original metric card layout "+theme+" "+width,async({page},info)=>{
+ await page.setViewportSize({width,height:1000});const {origin}=await setup(page,theme);
+ const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
+ await page.goto(origin+"/server/7");const grid=page.locator(".server-charts");
+ await expect(grid.locator("[data-chart]")).toHaveCount(6);
+ for(const period of ["实时","1 天"]){
+  await page.getByText(period,{exact:true}).click();
+  await expect(grid.locator("[data-chart]")).toHaveCount(6);
+  await expect(grid.getByRole("button",{name:/详细查看/})).toHaveCount(0);
+  const geometry=await grid.evaluate(el=>{
+   const style=getComputedStyle(el),cards=[...el.children].map(child=>{
+    const box=child.getBoundingClientRect();return {x:box.x,y:box.y,w:box.width,h:box.height};
+   });
+   return {columns:style.gridTemplateColumns.split(" ").length,gap:parseFloat(style.rowGap),cards};
+  });
+  const columns=width<768?1:width<1024?2:3;
+  expect(geometry.columns).toBe(columns);expect(geometry.cards).toHaveLength(6);
+  geometry.cards.forEach((box,i)=>{
+   expect(box.w).toBeGreaterThan(100);expect(box.h).toBeGreaterThan(150);
+   if(i%columns)expect(Math.abs(box.y-geometry.cards[i-i%columns].y)).toBeLessThan(1);
+   if(i>=columns)expect(box.y).toBeGreaterThanOrEqual(geometry.cards[i-columns].y+geometry.cards[i-columns].h+geometry.gap-1);
+  });
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await grid.screenshot({path:info.outputPath(period==="实时"?"cards-realtime.png":"cards-history.png")});
+ }
+ expect(errors).toEqual([]);
+});

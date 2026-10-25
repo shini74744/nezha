@@ -1,4 +1,3 @@
-import ChartDetailButton from "@/components/ChartDetail";
 import { useMetricHistory } from "@/hooks/use-metric-history";
 import { HistoryError } from "./HistoryError";
 import { IsolatedChildren } from "./LocalErrorBoundary";
@@ -528,8 +527,6 @@ function GpuChart({
 							</AreaChart>
 						)}
 					</ChartContainer>
-					<ChartDetailButton scopeKey={id+":"+period+":gpu:"+index} title={gpuName ? "GPU "+gpuName : "GPU 使用率"} data={displayData} period={period}
-						series={[{key:"gpu",label:"GPU",color:"hsl(var(--chart-3))"}]} formatValue={value => value.toFixed(1)+"%"} disabled={isLoading || !!error}/>
 				</section>
 			</CardContent>
 		</Card>
@@ -723,8 +720,6 @@ function CpuChart({
 							</AreaChart>
 						)}
 					</ChartContainer>
-					<ChartDetailButton scopeKey={data.id+":"+period+":cpu"} title="CPU 使用率" data={displayData} period={period}
-						series={[{key:"cpu",label:"CPU",color:"hsl(var(--chart-1))"}]} formatValue={value => value.toFixed(1)+"%"} disabled={isLoading || !!error}/>
 				</section>
 			</CardContent>
 		</Card>
@@ -920,8 +915,6 @@ function ProcessChart({
 							</AreaChart>
 						)}
 					</ChartContainer>
-					<ChartDetailButton scopeKey={data.id+":"+period+":process"} title="进程数" data={displayData} period={period}
-						series={[{key:"process",label:"进程数",color:"hsl(var(--chart-2))"}]} formatValue={value => value.toFixed(0)} disabled={isLoading || !!error}/>
 				</section>
 			</CardContent>
 		</Card>
@@ -1166,8 +1159,6 @@ function MemChart({
 							</AreaChart>
 						)}
 					</ChartContainer>
-					<ChartDetailButton scopeKey={data.id+":"+period+":memory"} title="内存" data={displayData} period={period}
-						series={[{key:"mem",label:"内存",color:"hsl(var(--chart-8))"},{key:"swap",label:"虚拟内存",color:"hsl(var(--chart-10))"}]} formatValue={value => value.toFixed(1)+"%"} disabled={isMemLoading || !!history.error}/>
 				</section>
 			</CardContent>
 		</Card>
@@ -1418,8 +1409,6 @@ function NetworkChart({
 							</LineChart>
 						)}
 					</ChartContainer>
-					<ChartDetailButton scopeKey={data.id+":"+period+":network"} title="网络速率" data={displayData} period={period}
-						series={[{key:"upload",label:"上传",color:"hsl(var(--chart-1))"},{key:"download",label:"下载",color:"hsl(var(--chart-4))"}]} formatValue={value => rateFormatter ? rateFormatter(value * 1024 ** 2) : value.toFixed(2)+" MB/s"} disabled={isNetworkLoading || !!history.error}/>
 				</section>
 			</CardContent>
 		</Card>
@@ -1631,8 +1620,6 @@ function ConnectChart({
 							</LineChart>
 						)}
 					</ChartContainer>
-					<ChartDetailButton scopeKey={data.id+":"+period+":connections"} title="连接数" data={displayData} period={period}
-						series={[{key:"tcp",label:"TCP",color:"hsl(var(--chart-1))"},{key:"udp",label:"UDP",color:"hsl(var(--chart-4))"}]} formatValue={value => value.toFixed(0)} disabled={isConnectLoading || !!history.error}/>
 				</section>
 			</CardContent>
 		</Card>
