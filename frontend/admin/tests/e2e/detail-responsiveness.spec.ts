@@ -327,7 +327,7 @@ for(const theme of ["default","doraemon"])for(const width of [390,1440])test("ta
   return scrollY
  })
  expect(initial).toBeGreaterThan(40)
- async function switchAtCurrent(label:string){
+ async function switchAtCurrent(label:string,expectedLabel=label){
   const samples=await tab(label).evaluate(async el=>{
    const before=scrollY,ys=[before]
    ;(el as HTMLElement).click()
@@ -335,7 +335,7 @@ for(const theme of ["default","doraemon"])for(const width of [390,1440])test("ta
    return {before,ys}
   })
   expect(Math.max(...samples.ys.map(y=>Math.abs(y-samples.before)))).toBeLessThanOrEqual(2)
-  await expect(tab(label)).toHaveAttribute("aria-pressed","true")
+  await expect(tab(expectedLabel)).toHaveAttribute("aria-pressed","true")
  }
  await switchAtCurrent("连通性")
  await expect(page.locator("[data-server-connectivity]")).toBeVisible()
@@ -347,7 +347,8 @@ for(const theme of ["default","doraemon"])for(const width of [390,1440])test("ta
  const changed=await page.evaluate(()=>scrollY)
  expect(changed).toBeLessThan(initial-20)
  await switchAtCurrent("连通性")
- await switchAtCurrent("连通性") // Repeated activation is a no-op.
+ await switchAtCurrent("连通性","延迟") // Existing combined-network toggle must preserve the scroll position too.
+ await expect(page.locator("[data-server-latency]")).toBeVisible()
  await switchAtCurrent("BGP")
  expect(await page.evaluate(()=>scrollY)).toBeCloseTo(changed,0)
  await page.screenshot({path:info.outputPath("stable-tab-scroll.png")})
