@@ -1,4 +1,3 @@
-import ChartDetailButton from "@/components/ChartDetail";
 import { SessionError } from "./SessionError";
 import { IsolatedChildren } from "./LocalErrorBoundary";
 import { HistoryError } from "./HistoryError";
@@ -187,7 +186,5 @@ function LegacyOfflineMetricCard({group:originalGroup,report,period}:{group:type
      {keys.map((key,i)=><Area key={key} dataKey={key} type="step" stroke={"hsl(var(--chart-"+group.colors[i]+"))"} fill={"hsl(var(--chart-"+group.colors[i]+"))"} fillOpacity={0.3} dot={data.length===1} connectNulls={false} isAnimationActive={false}/>)}
     </AreaChart>
    </ChartContainer>}
- </div><ChartDetailButton scopeKey={report.server_id+":"+period+":"+keys.join(",")} title={group.title} data={data} timeKey="ts" period={period}
-  series={keys.map((key,i)=>({key,label:group.labels[i],color:"hsl(var(--chart-"+group.colors[i]+"))"}))} formatValue={v=>valueText(v,unit)} disabled={period!=="last"&&(history.isPending||history.isError)}/>
- </section></CardContent></Card>;
+ </div></section></CardContent></Card>;
 }

@@ -1,4 +1,3 @@
-import ChartDetailButton from "@/components/ChartDetail";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { DiskIORates, DiskModeToggle } from "@/components/DiskCardHeader";
@@ -331,9 +330,6 @@ export default function ServerDiskChart({
 							</ChartContainer>
 						)}
 					</div>
-                    <ChartDetailButton scopeKey={data.id+":"+period+":disk:"+io} title={io?"磁盘读写":"磁盘"} data={points} period={period}
-                        series={io?[{key:"read",label:"读取",color:"hsl(var(--chart-1))"},{key:"write",label:"写入",color:"hsl(var(--chart-10))"}]:[{key:"disk",label:"磁盘",color:"hsl(var(--chart-5))"}]}
-                        formatValue={io?rate:value=>value.toFixed(1)+"%"} disabled={loading||failed||unavailable}/>
 				</section>
 			</CardContent>
 		</Card>
