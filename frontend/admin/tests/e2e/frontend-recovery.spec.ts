@@ -94,11 +94,10 @@ for(const theme of ["default","doraemon"]) {
   await page.getByText("7 天",{exact:true}).click();
   await expect.poll(()=>state.metrics.some(s=>s.includes("period=7d"))).toBe(true);
   state.profileStatus=401;
-  await page.evaluate(()=>document.dispatchEvent(new Event("visibilitychange")));
+  await page.evaluate(()=>document.dispatchEvent(new Event("visibilitychange", {bubbles:true})));
   await expect.poll(()=>state.sockets.length).toBeGreaterThan(before+1);
   await expect(page.locator(".server-charts [data-chart]")).toHaveCount(6);
-  const longReads=state.metrics.filter(s=>s.includes("period=7d")).length;
-  await page.getByText("7 天",{exact:true}).click();
-  await expect.poll(()=>state.metrics.filter(s=>s.includes("period=7d")).length).toBe(longReads);
+  await expect(page.getByRole("button",{name:"7 天",exact:true})).toBeDisabled();
+  await expect(page.getByRole("button",{name:"7 天",exact:true})).toHaveAttribute("aria-pressed","false");
  });
 }
