@@ -110,3 +110,42 @@ headless overlay scrollbars would conceal. They cover repeated opening/closing,
 keyboard selection, outside clicks/scrolling and mobile touch targets. The sort
 regressions use per-test screenshot output directories and must leave the page's
 scrollbar, body overflow, pointer events and compensation margins unchanged.
+
+
+## Detailed metric view
+
+Both default and Doraemon metric cards have a **详细查看** entry, including
+available CPU/GPU modes, memory, network rates, disk/IO, process and connection
+counts, and saved offline records. Existing small charts remain available.
+
+The enlarged dialog freezes the currently loaded samples when opened. Choose
+a preset or enter start/end times in Beijing time, or locate a time to select the
+nearest actual recorded point. Click/tap locks a point; previous/next buttons
+and arrow keys move between records. Home/End select the range endpoints.
+Escape unlocks first, then closes. Desktop drag selection is explicitly enabled
+with **拖选放大**. Mobile horizontal movement selects points while vertical
+movement scrolls the dialog. **更新查看快照** takes the latest already-loaded
+records; it does not send another history request.
+
+History aggregation remains 30 seconds for 1 day, 30 minutes for 7 days, and
+2 hours for 30 days. Zoom does not reconstruct missing samples or change
+retention/reporting. Gaps stay empty. Values use the current card's units.
+Changing node, period or metric closes the old view; unavailable data disables
+the entry. Existing history access rules and failure/retry behavior are retained.
+
+Regression entry points:
+- User unit tests: `src/test/lib/chart-detail.test.ts` and
+  `src/test/components/chart-detail.test.tsx`.
+- Browser tests: `frontend/admin/tests/e2e/chart-detail.spec.ts`; use the same
+  isolated HTTPS previews on ports 18477/18478 as the recovery tests above.
+  APIs and WebSockets are mocked; no production credentials or writes are needed.
+  Coverage includes both themes at phone/desktop widths, a 320px layout,
+  actual time selection, touch scrolling, frozen live snapshots and empty/error
+  history. Browser coverage is Chromium, not native iOS Safari certification.
+
+Snapshot timelines in latency, BGP and return-route views consume wheel input
+throughout their region, including the first/last item and a single-item list.
+Moving the pointer outside restores normal page scrolling. Browser Ctrl+wheel
+zoom and native touch gestures are preserved. Regression checks are in
+`src/test/plan-ui.test.tsx`, `network-insight.spec.ts` and
+`server-latency.spec.ts` (tests matching `snapshot wheel boundaries`).

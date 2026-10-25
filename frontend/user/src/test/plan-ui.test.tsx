@@ -33,21 +33,22 @@ describe("plan UI compatibility",()=>{
  });
 });
 describe("snapshot timeline wheel handling",()=>{
- it("scrolls horizontally only while possible, preserves zoom and releases page at edges",()=>{
+ it("keeps wheel input inside the timeline at both edges and preserves browser zoom",()=>{
   render(<SnapshotTimeline inlineControls><button>Latest</button><button>Old</button></SnapshotTimeline>);
   const nav=screen.getByRole("navigation");
   Object.defineProperties(nav,{clientWidth:{value:200,configurable:true},scrollWidth:{value:800,configurable:true}});
   const wheel=(deltaY:number,extra={})=>{const event=new WheelEvent("wheel",{deltaY,cancelable:true,bubbles:true,...extra});fireEvent(nav,event);return event};
   expect(wheel(120).defaultPrevented).toBe(true);expect(nav.scrollLeft).toBe(120);
   expect(wheel(-120).defaultPrevented).toBe(true);expect(nav.scrollLeft).toBe(0);
-  expect(wheel(-120).defaultPrevented).toBe(false);
+  expect(wheel(-120).defaultPrevented).toBe(true);expect(nav.scrollLeft).toBe(0);
   expect(wheel(120,{ctrlKey:true}).defaultPrevented).toBe(false);
-  expect(wheel(20,{deltaX:100}).defaultPrevented).toBe(false);
-  nav.scrollLeft=600;expect(wheel(120).defaultPrevented).toBe(false);
+  expect(wheel(20,{deltaX:100}).defaultPrevented).toBe(true);expect(nav.scrollLeft).toBe(100);
+  nav.scrollLeft=600;expect(wheel(120).defaultPrevented).toBe(true);expect(nav.scrollLeft).toBe(600);
+  const outside=new WheelEvent("wheel",{deltaY:-3,deltaMode:1,cancelable:true,bubbles:true});fireEvent(nav.parentElement!,outside);expect(outside.defaultPrevented).toBe(true);expect(nav.scrollLeft).toBe(552);
  });
- it("does not intercept a non-overflowing single snapshot",()=>{
+ it("contains wheel input even when there is only one snapshot",()=>{
   render(<SnapshotTimeline><button>Only</button></SnapshotTimeline>);
   const event=new WheelEvent("wheel",{deltaY:120,cancelable:true,bubbles:true});fireEvent(screen.getByRole("navigation"),event);
-  expect(event.defaultPrevented).toBe(false);expect(screen.queryByRole("button",{name:"较早快照"})).toBeNull();
+  expect(event.defaultPrevented).toBe(true);expect(screen.queryByRole("button",{name:"较早快照"})).toBeNull();
  });
 });

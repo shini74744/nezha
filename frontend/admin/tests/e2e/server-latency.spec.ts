@@ -1,8 +1,8 @@
 import {test,expect,type Page} from "@playwright/test";
 import {createServer} from "../../../user/src/test/fixtures";
 test.use({ignoreHTTPSErrors:true});
-async function setup(page:Page,mode="both",defaultView="connectivity",offline=false,fixture="complete",families=["IPv4"],snapshots=false){
- const origin="https://127.0.0.1:18477",now=Date.now();
+async function setup(page:Page,mode="both",defaultView="connectivity",offline=false,fixture="complete",families=["IPv4"],snapshots=false,theme="default"){
+ const origin="https://127.0.0.1:"+(theme==="doraemon"?"18478":"18477"),now=Date.now();
  const rows=(historical=false)=>families.flatMap(family=>["电信","联通","移动"].flatMap((carrier,c)=>["广东","广西","海南"].map((name,i)=>({id:"t"+c+i+(family==="IPv6"?"@IPv6":""),family,name,group:"华南",icon:carrier,host:"example.com:80",status:i===2?"timeout":"ok",delay_ms:i===2?undefined:(historical?11:35)+c*25+i*10+(family==="IPv6"?100:0),samples:i===2?[{status:"timeout"}]:[{status:"ok",delay_ms:35}]}))));
  const server=createServer({id:7,name:"延迟测试节点",network_display_mode:mode as any,network_default_view:defaultView as any,connectivity_disabled:mode==="latency"||mode==="hidden",last_active:offline?"0001-01-01T00:00:00Z":new Date(now).toISOString()});
  let posts=0;
@@ -252,4 +252,12 @@ for(const width of [390,1440])test("empty automatic history is not a request err
  await expect(panel.getByRole("alert")).toHaveCount(0);
  await expect(panel.locator("[data-latency-snapshots]")).toHaveCount(0);
  expect(errors.filter(e=>e.includes("Query data cannot be undefined"))).toEqual([]);
+});
+
+for(const theme of ["default","doraemon"])for(const width of [390,1440])test("latency snapshot wheel boundaries "+theme+" "+width,async({page})=>{
+ await page.setViewportSize({width,height:850});await setup(page,"both","latency",false,"complete",["IPv4"],true,theme);
+ await page.locator(".server-info-tab").getByRole("button",{name:"延迟",exact:true}).click();
+ const nav=page.getByRole("navigation",{name:"延迟历史快照"});await expect(nav.getByRole("button")).toHaveCount(3);
+ const {assertSnapshotWheelContained}=await import("./snapshot-wheel-helper");
+ await assertSnapshotWheelContained(page,nav);
 });
