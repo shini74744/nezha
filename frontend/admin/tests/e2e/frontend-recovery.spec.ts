@@ -48,7 +48,7 @@ for(const theme of ["default","doraemon"])for(const width of [390,1440]) {
   await expect.poll(()=>state.metrics.some(s=>s.includes("metric=disk_read_speed")&&s.includes("period=1d"))).toBe(true);
   await page.locator(".server-info-tab").getByRole("button",{name:"网络",exact:true}).click();
   await expect(page.locator("[data-server-network] .recharts-line-curve")).toHaveCount(1);
-  await page.getByText("测试线路",{exact:true}).click();
+  await page.getByRole("button",{name:/^测试线路/}).click();
   await expect(page.locator('[data-active="true"]').filter({hasText:"测试线路"})).toHaveCount(1);
   state.monitorFail=true;await page.getByText("7 天",{exact:true}).click();
   const network=page.locator("[data-server-network]");
