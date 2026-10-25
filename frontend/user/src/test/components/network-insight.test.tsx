@@ -217,6 +217,6 @@ it("does not read private insight with an unknown identity and retries profile s
  mount();await screen.findByText("暂时无法确认登录状态。");
  expect(api.insightRequest).not.toHaveBeenCalled();
  api.fetchLoginUser.mockResolvedValue(null);
- fireEvent.click(screen.getByRole("button",{name:"重试",exact:true}));
+ fireEvent.click(screen.getByRole("button",{name:"重试"}));
  await screen.findByTestId("topology");expect(api.insightRequest).toHaveBeenCalled();
 });
