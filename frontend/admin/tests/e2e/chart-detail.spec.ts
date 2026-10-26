@@ -50,6 +50,7 @@ for(const theme of ["default","doraemon"])for(const width of [390,1440]){
   await expect(dialog).toContainText("2881 / 2881");
   const requests=state.requests.filter(x=>x.includes("/metrics")).length;
   await dialog.getByRole("button",{name:"近 1 小时",exact:true}).click();await expect(dialog).toContainText("121 / 121");
+  if(width<=640)await dialog.getByRole("button",{name:"选择时间范围或定位"}).click();
   await dialog.getByLabel("定位时间",{exact:true}).fill("2026-10-26T12:00:14");
   await dialog.getByRole("button",{name:"定位",exact:true}).click();
   await expect(readout).toContainText("2026-10-26 12:00:00");await expect(readout).toContainText("最近的实际采样点");
@@ -84,6 +85,8 @@ for(const theme of ["default","doraemon"])for(const width of [390,1440]){
    await expect(dialog.getByRole("button",{name:"拖选放大",exact:true})).toBeVisible();
    expect(await dialog.locator(".chart-detail-navigation").innerText()).not.toContain("16 / 16");
   } else {
+   // Use a short viewport: the compact phone dialog now fits entirely at 760px.
+   await page.setViewportSize({width,height:560});
    // Native touch dispatch tests scroll arbitration, not just a synthetic DOM event.
    await dialog.evaluate(el=>el.scrollTop=0);await hit.scrollIntoViewIfNeeded();const b=(await hit.boundingBox())!;
    const cdp=await page.context().newCDPSession(page);await cdp.send("Emulation.setTouchEmulationEnabled",{enabled:true});
@@ -139,7 +142,8 @@ for(const theme of ["default","doraemon"])for(const width of [390,1440])test("on
  await trigger.click();await expect(page.getByRole("menuitem",{name:"在线率",exact:true})).toBeVisible();
  expect(await page.evaluate(()=>document.body.style.overflow)).not.toBe("hidden");
  await page.getByRole("menuitem",{name:"在线率",exact:true}).click();
- const dialog=page.getByRole("dialog");
+ const dialog=page.locator("[data-online-history]");
+ await expect(page.getByRole("dialog")).toHaveCount(0);await expect(page.locator(".server-charts")).toHaveCount(0);
  await expect(dialog).toBeVisible();await expect(dialog).toContainText("25.0%");
  await expect(dialog.getByTestId(width<768?"summary-mobile":"summary-desktop")).toBeVisible();
  expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
@@ -147,8 +151,7 @@ for(const theme of ["default","doraemon"])for(const width of [390,1440])test("on
  await dialog.getByText("30 天",{exact:true}).click();await expect(dialog).toContainText("0.8%");
  await expect.poll(() => dialog.getByTestId("days-selector").evaluate(el => { const active=[...el.children].find(n=>n.textContent==="30 天")!; return Math.abs(active.getBoundingClientRect().left-el.querySelector(".active-indicator-fade-in")!.getBoundingClientRect().left); })).toBeLessThan(1.1);
  await dialog.screenshot({path:info.outputPath("online-history.png")});
- await dialog.getByRole("button",{name:"Close",exact:true}).click();
- await trigger.click();await page.getByRole("menuitem",{name:"实时图表",exact:true}).click();
+ await dialog.getByRole("button",{name:"在线率",exact:true}).click();await page.getByRole("menuitem",{name:"实时图表",exact:true}).click();
  await expect(page.locator(".server-charts .chart-detail-open")).toHaveCount(6);
  state.mode="online-error";await trigger.click();await page.getByRole("menuitem",{name:"在线率",exact:true}).click();
  await expect(dialog.getByRole("button",{name:"重试",exact:true})).toBeVisible({timeout:30000});
@@ -177,7 +180,8 @@ test("guest online history accepts dashboard unauthorized envelope "+theme+" "+w
  await page.setViewportSize({width,height:900});const state=await setup(page,theme,true);
  await page.getByRole("button",{name:"实时",exact:true}).click();
  await page.getByRole("menuitem",{name:"在线率",exact:true}).click();
- const dialog=page.getByRole("dialog");
+ const dialog=page.locator("[data-online-history]");
+ await expect(page.getByRole("dialog")).toHaveCount(0);
  await expect(dialog).toContainText("25.0%");
  expect(state.requests.some(x=>x.endsWith("/online-history?days=1"))).toBe(true);
  expect(state.requests.some(x=>/online-history\?days=(7|30)$/.test(x))).toBe(false);
@@ -224,4 +228,47 @@ test("realtime history loading, failure, retry and empty range are explicit",asy
  await expect(dialog).toContainText("已加载的历史记录");await expect(dialog.getByRole("button",{name:"近 1 小时",exact:true})).toHaveAttribute("aria-pressed","true");
  state.mode="empty";await dialog.getByRole("button",{name:"刷新历史记录",exact:true}).click();
  await expect(dialog).toContainText("这个范围没有记录。");
+});
+
+for(const theme of ["default","doraemon"])for(const width of [320,390,640,641,900,1440])
+test("detail entry stays below plot without increasing card height "+theme+" "+width,async({page},info)=>{
+ await page.setViewportSize({width,height:900});await setup(page,theme);
+ const grid=page.locator(".server-charts");
+ for(const chart of await grid.locator("[data-chart]").all()){await chart.scrollIntoViewIfNeeded();await expect(chart.locator(".recharts-cartesian-grid")).toBeVisible();}
+ for(const mode of ["light","dark"]){
+  await page.evaluate(mode=>document.documentElement.classList.toggle("dark",mode==="dark"),mode);
+  const before=await grid.evaluate(el=>[...el.children].map(card=>{
+   const box=card.getBoundingClientRect(),b=card.querySelector(".chart-detail-open")!.getBoundingClientRect(),label=card.querySelector(".chart-detail-open-label")!.getBoundingClientRect(),plot=card.querySelector(".recharts-cartesian-grid")!.getBoundingClientRect();
+   const ticks=[...card.querySelectorAll("[data-metric-time-tick]")].map(n=>{const r=n.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom}});
+   return {height:box.height,top:box.top,bottom:box.bottom,button:{top:b.top,bottom:b.bottom,left:b.left,right:b.right,height:b.height,cx:b.x+b.width/2},label:{top:label.top,bottom:label.bottom,height:label.height},plotBottom:plot.bottom,cx:box.x+box.width/2,ticks};
+  }));
+  for(const c of before){
+   expect(c.button.top-c.plotBottom).toBeGreaterThanOrEqual(1);
+   expect(c.label.top-c.plotBottom).toBeGreaterThanOrEqual(width<=640?7:1);
+   expect(c.bottom-c.button.bottom).toBeGreaterThanOrEqual(3);
+   expect(Math.abs(c.button.cx-c.cx)).toBeLessThan(1);
+   if(width<=640){expect(c.button.height).toBe(36);expect(c.label.height).toBe(24);}
+   for(const t of c.ticks)expect(c.button.right<=t.left||c.button.left>=t.right||c.button.bottom<=t.top||c.button.top>=t.bottom).toBe(true);
+  }
+  // Restore only the former absolute button styling: card and plot dimensions must not change.
+  const previousStyle=await page.addStyleTag({content:".chart-detail-entry{bottom:8px!important}.chart-detail-open{height:28px!important;min-height:"+ (width<=640?36:0)+"px!important}.chart-detail-open-label{height:28px!important}"});
+  const old=await grid.evaluate(el=>[...el.children].map(c=>({height:c.getBoundingClientRect().height,bottom:c.querySelector(".recharts-cartesian-grid")!.getBoundingClientRect().bottom})));
+  old.forEach((c,i)=>{expect(c.height).toBe(before[i].height);expect(c.bottom).toBe(before[i].plotBottom)});
+  await previousStyle.evaluate(el=>el.remove());
+ }
+ await grid.locator(".chart-detail-open").first().scrollIntoViewIfNeeded();
+ await grid.locator(".chart-detail-open").first().click();
+ const dialog=page.getByRole("dialog");
+ if(width<=640){
+  await expect(dialog.getByLabel("开始时间",{exact:true})).toBeHidden();
+  const plot=dialog.locator("[data-detail-plot]");expect((await plot.boundingBox())!.y).toBeLessThan(310);
+  await dialog.screenshot({path:info.outputPath("mobile-detail-default.png")});
+  await dialog.getByRole("button",{name:"选择时间范围或定位"}).click();
+  await expect(dialog.getByLabel("开始时间",{exact:true})).toBeVisible();
+  await dialog.getByRole("button",{name:"收起时间选择"}).click();
+  await expect(dialog.getByLabel("开始时间",{exact:true})).toBeHidden();
+ }else await expect(dialog.getByLabel("开始时间",{exact:true})).toBeVisible();
+ expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
+ await dialog.getByRole("button",{name:"Close",exact:true}).click();
+ await grid.screenshot({path:info.outputPath("compact-card-entries.png")});
 });
