@@ -335,7 +335,7 @@ export default function ServerDiskChart({
 							</ChartContainer>
 						)}
 					</div>
-                    <ChartDetailButton timeWindow={metricTimeWindow(period,now)} scopeKey={data.id+":"+period+":disk:"+io} title={io?"磁盘读写":"磁盘"} data={points} period={period}
+                    <ChartDetailButton history={{serverId:data.id,metrics:io?[{metric:"disk_read_speed",key:"read"},{metric:"disk_write_speed",key:"write"}]:[{metric:"disk",key:"disk",scale:data.host.disk_total>0?100/data.host.disk_total:0}]}} timeWindow={metricTimeWindow(period,now)} scopeKey={data.id+":"+period+":disk:"+io} title={io?"磁盘读写":"磁盘"} data={points} period={period}
                         series={io?[{key:"read",label:"读取",color:"hsl(var(--chart-1))"},{key:"write",label:"写入",color:"hsl(var(--chart-10))"}]:[{key:"disk",label:"磁盘",color:"hsl(var(--chart-5))"}]}
                         formatValue={io?rate:value=>value.toFixed(1)+"%"} disabled={loading||failed||unavailable}/>
 				</section>

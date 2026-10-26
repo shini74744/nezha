@@ -9,6 +9,8 @@ import { describe, it, expect, vi } from "vitest";
 import type { ReactNode } from "react";
 import userEvent from "@testing-library/user-event";
 import ChartDetailButton from "@/components/ChartDetail";
+import { fetchServerMetrics } from "@/lib/nezha-api";
+vi.mock("@/lib/nezha-api",()=>({fetchServerMetrics:vi.fn()}));
 vi.mock("recharts", () => ({
 	ResponsiveContainer: ({ children }: { children: ReactNode }) => (
 		<div>{children}</div>
@@ -148,4 +150,62 @@ describe("chart detailed view", () => {
 		);
 		await waitFor(() => expect(entry).toHaveFocus());
 	});
+});
+
+
+describe("live detailed history presets",()=>{
+ const end=ts+86400000;
+ const live={...props,period:"realtime" as const,history:{serverId:7,metrics:[{metric:"cpu" as const,key:"value"}]},data:[{timeStamp:String(end-3000),value:11},{timeStamp:String(end),value:12}]};
+ const response=(value=42)=>({success:true,data:{data_points:Array.from({length:2881},(_,i)=>({ts:ts+i*30000,value}))}});
+ const bounds=()=>{const el=document.querySelector("[data-detail-plot]")!;return [Number(el.getAttribute("data-window-start")),Number(el.getAttribute("data-window-end"))];};
+ it("loads a full day once, selects exact 1/6/24 hour windows, restores all and returns to live",async()=>{
+  vi.spyOn(Date,"now").mockReturnValue(end);
+  vi.mocked(fetchServerMetrics).mockResolvedValue(response() as any);
+  render(<ChartDetailButton {...live}/>);open();
+  expect(screen.getByRole("button",{name:"恢复全部"})).toBeDisabled();
+  fireEvent.click(screen.getByRole("button",{name:"近 1 小时"}));
+  await waitFor(()=>expect(readout()).toHaveTextContent("42.0%"));
+  expect(bounds()).toEqual([end-3600000,end]);expect(screen.getByText("121 / 121")).toBeInTheDocument();
+  expect(screen.getByRole("button",{name:"近 1 小时"})).toHaveAttribute("aria-pressed","true");
+  fireEvent.click(screen.getByRole("button",{name:"近 6 小时"}));expect(bounds()).toEqual([end-21600000,end]);
+  expect(screen.getByText("721 / 721")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button",{name:"近 24 小时"}));expect(bounds()).toEqual([ts,end]);
+  expect(screen.getByText("2881 / 2881")).toBeInTheDocument();expect(screen.getByRole("button",{name:"恢复全部"})).toBeDisabled();
+  fireEvent.click(screen.getByRole("button",{name:"近 1 小时"}));fireEvent.click(screen.getByRole("button",{name:"恢复全部"}));
+  expect(bounds()).toEqual([ts,end]);expect(screen.getByRole("button",{name:"近 1 小时"})).toHaveAttribute("aria-pressed","false");
+  expect(fetchServerMetrics).toHaveBeenCalledTimes(1);expect(fetchServerMetrics).toHaveBeenCalledWith(7,"cpu","1d",expect.any(AbortSignal));
+  fireEvent.click(screen.getByRole("button",{name:"返回实时快照"}));expect(readout()).toHaveTextContent("12.0%");expect(bounds()).toEqual([end-3000,end]);
+ });
+ it("shows no records for an empty history without silently keeping the live minute",async()=>{
+  vi.spyOn(Date,"now").mockReturnValue(end);vi.mocked(fetchServerMetrics).mockResolvedValue({success:true,data:{data_points:[]}} as any);
+  render(<ChartDetailButton {...live}/>);open();fireEvent.click(screen.getByRole("button",{name:"近 6 小时"}));
+  await waitFor(()=>expect(screen.getByText("这个范围没有记录。")).toBeInTheDocument());
+  expect(bounds()).toEqual([end-21600000,end]);
+  fireEvent.click(screen.getByRole("button",{name:"近 24 小时"}));expect(bounds()).toEqual([ts,end]);
+  fireEvent.click(screen.getByRole("button",{name:"返回实时快照"}));expect(readout()).toHaveTextContent("12.0%");
+ });
+ it("preserves live values on failure and retry switches only after success",async()=>{
+  vi.spyOn(Date,"now").mockReturnValue(end);vi.mocked(fetchServerMetrics).mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce(response() as any);
+  render(<ChartDetailButton {...live}/>);open();fireEvent.click(screen.getByRole("button",{name:"近 1 小时"}));
+  await waitFor(()=>expect(screen.getByRole("alert")).toHaveTextContent("读取失败"));expect(readout()).toHaveTextContent("12.0%");
+  fireEvent.click(screen.getByRole("button",{name:"重试"}));await waitFor(()=>expect(readout()).toHaveTextContent("42.0%"));
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+ });
+ it("cancels superseded requests and ignores late responses; closing cancels pending work",async()=>{
+  vi.spyOn(Date,"now").mockReturnValue(end);
+  const pending:{resolve:(v:any)=>void,signal:AbortSignal}[]=[];
+  vi.mocked(fetchServerMetrics).mockImplementation((_id,_metric,_period,signal)=>new Promise(resolve=>pending.push({resolve,signal:signal!})));
+  const {unmount}=render(<ChartDetailButton {...live}/>);open();
+  fireEvent.click(screen.getByRole("button",{name:"近 1 小时"}));fireEvent.click(screen.getByRole("button",{name:"近 6 小时"}));
+  expect(pending[0].signal.aborted).toBe(true);
+  pending[1].resolve(response(60));await waitFor(()=>expect(readout()).toHaveTextContent("60.0%"));
+  pending[0].resolve(response(1));await waitFor(()=>expect(bounds()).toEqual([end-21600000,end]));
+  expect(readout()).not.toHaveTextContent("1.0%");
+  fireEvent.click(screen.getByRole("button",{name:"刷新历史记录"}));unmount();expect(pending[2].signal.aborted).toBe(true);
+ });
+ it("disables hour shortcuts when the exact metric has no historical source",()=>{
+  render(<ChartDetailButton {...props} period="realtime"/>);open();
+  for(const h of [1,6,24])expect(screen.getByRole("button",{name:"近 "+h+" 小时"})).toBeDisabled();
+  expect(screen.getByText(/该指标尚未保存小时级历史/)).toBeInTheDocument();
+ });
 });

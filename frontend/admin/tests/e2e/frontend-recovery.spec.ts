@@ -138,7 +138,10 @@ for(const theme of ["default","doraemon"])for(const width of [390,900,1440])test
   if(process.env.METRIC_BASELINE)fs.writeFileSync(baselineFile,JSON.stringify(geometry));
   const baseline=process.env.METRIC_BASELINE_DIR&&!process.env.METRIC_BASELINE?JSON.parse(fs.readFileSync(baselineFile,"utf8")):null;
   geometry.cards.forEach((box,i)=>{
-   if(baseline)expect(Math.abs(box.h-baseline.cards[i].h),"unchanged card height").toBeLessThan(1);
+   if(baseline) {
+    expect(box.h,"card height does not grow").toBeLessThanOrEqual(baseline.cards[i].h+1);
+    if(period==="实时" && i===0)expect(box.h,"compact hardware heading").toBeLessThanOrEqual(baseline.cards[i].h-20);
+   }
    if(!process.env.METRIC_BASELINE){
     expect(box.detail).toBeTruthy();
     expect(Math.abs(box.detail!.x+box.detail!.w/2-(box.x+box.w/2))).toBeLessThan(1);

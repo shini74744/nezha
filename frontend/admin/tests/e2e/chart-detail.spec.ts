@@ -183,3 +183,45 @@ test("guest online history accepts dashboard unauthorized envelope "+theme+" "+w
  expect(state.requests.some(x=>/online-history\?days=(7|30)$/.test(x))).toBe(false);
  expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
 });
+
+
+for(const theme of ["default","doraemon"])for(const width of [390,1440])
+test("realtime hour shortcuts load history and restore complete ranges "+theme+" "+width,async({page},info)=>{
+ await page.setViewportSize({width,height:900});const state=await setup(page,theme);
+ const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
+ for(const title of ["CPU 使用率","内存","磁盘","进程数","网络速率","连接数"]){
+  const entry=page.getByRole("button",{name:title+"详细查看",exact:true});await entry.scrollIntoViewIfNeeded();await entry.click();
+  const dialog=page.getByRole("dialog"),plot=dialog.locator("[data-detail-plot]");
+  await expect(dialog.getByRole("button",{name:"恢复全部",exact:true})).toBeDisabled();
+  const before=state.requests.filter(x=>x.includes("/metrics?")).length;
+  for(const hours of [1,6,24]){
+   const button=dialog.getByRole("button",{name:"近 "+hours+" 小时",exact:true});await button.click();
+   await expect(button).toHaveAttribute("aria-pressed","true");
+   await expect.poll(async()=>Number(await plot.getAttribute("data-window-end"))-Number(await plot.getAttribute("data-window-start"))).toBe(hours*3600000);
+   await expect(dialog).toContainText("30 秒");
+  }
+  const fetched=state.requests.filter(x=>x.includes("/metrics?")).length-before;
+  expect(fetched).toBe(["内存","网络速率","连接数"].includes(title)?2:1);
+  await dialog.getByRole("button",{name:"近 1 小时",exact:true}).click();
+  await dialog.getByRole("button",{name:"恢复全部",exact:true}).click();
+  expect(Number(await plot.getAttribute("data-window-end"))-Number(await plot.getAttribute("data-window-start"))).toBe(86400000);
+  await expect(dialog.getByRole("button",{name:"恢复全部",exact:true})).toBeDisabled();
+  expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
+  if(title==="内存")await dialog.screenshot({path:info.outputPath("history-presets.png")});
+  await dialog.getByRole("button",{name:"返回实时快照",exact:true}).click();
+  await expect(dialog).toContainText("打开时的实时快照");
+  await dialog.getByRole("button",{name:"Close",exact:true}).click();
+ }
+ expect(errors).toEqual([]);
+});
+test("realtime history loading, failure, retry and empty range are explicit",async({page})=>{
+ const state=await setup(page,"default");await page.getByRole("button",{name:"内存详细查看",exact:true}).click();
+ const dialog=page.getByRole("dialog");
+ state.mode="error";await dialog.getByRole("button",{name:"近 1 小时",exact:true}).click();
+ await expect(dialog.getByRole("alert")).toContainText("读取失败");
+ await expect(dialog).toContainText("打开时的实时快照");
+ state.mode="normal";await dialog.getByRole("button",{name:"重试",exact:true}).click();
+ await expect(dialog).toContainText("已加载的历史记录");await expect(dialog.getByRole("button",{name:"近 1 小时",exact:true})).toHaveAttribute("aria-pressed","true");
+ state.mode="empty";await dialog.getByRole("button",{name:"刷新历史记录",exact:true}).click();
+ await expect(dialog).toContainText("这个范围没有记录。");
+});

@@ -732,7 +732,7 @@ function CpuChart({
 							</AreaChart>
 						)}
 					</ChartContainer>
-					<ChartDetailButton timeWindow={metricTimeWindow(period,now)} scopeKey={data.id+":"+period+":cpu"} title="CPU 使用率" data={displayData} period={period}
+					<ChartDetailButton history={{serverId:data.id,metrics:[{metric:"cpu",key:"cpu"}]}} timeWindow={metricTimeWindow(period,now)} scopeKey={data.id+":"+period+":cpu"} title="CPU 使用率" data={displayData} period={period}
 						series={[{key:"cpu",label:"CPU",color:"hsl(var(--chart-1))"}]} formatValue={value => value.toFixed(1)+"%"} disabled={isLoading || !!error}/>
 				</section>
 			</CardContent>
@@ -930,7 +930,7 @@ function ProcessChart({
 							</AreaChart>
 						)}
 					</ChartContainer>
-					<ChartDetailButton timeWindow={metricTimeWindow(period,now)} scopeKey={data.id+":"+period+":process"} title="进程数" data={displayData} period={period}
+					<ChartDetailButton history={{serverId:data.id,metrics:[{metric:"process_count",key:"process"}]}} timeWindow={metricTimeWindow(period,now)} scopeKey={data.id+":"+period+":process"} title="进程数" data={displayData} period={period}
 						series={[{key:"process",label:"进程数",color:"hsl(var(--chart-2))"}]} formatValue={value => value.toFixed(0)} disabled={isLoading || !!error}/>
 				</section>
 			</CardContent>
@@ -1177,7 +1177,7 @@ function MemChart({
 							</AreaChart>
 						)}
 					</ChartContainer>
-					<ChartDetailButton timeWindow={metricTimeWindow(period,now)} scopeKey={data.id+":"+period+":memory"} title="内存" data={displayData} period={period}
+					<ChartDetailButton history={{serverId:data.id,metrics:[{metric:"memory",key:"mem",scale:data.host.mem_total>0?100/data.host.mem_total:0},{metric:"swap",key:"swap",scale:data.host.swap_total>0?100/data.host.swap_total:0}]}} timeWindow={metricTimeWindow(period,now)} scopeKey={data.id+":"+period+":memory"} title="内存" data={displayData} period={period}
 						series={[{key:"mem",label:"内存",color:"hsl(var(--chart-8))"},{key:"swap",label:"虚拟内存",color:"hsl(var(--chart-10))"}]} formatValue={value => value.toFixed(1)+"%"} disabled={isMemLoading || !!history.error}/>
 				</section>
 			</CardContent>
@@ -1430,7 +1430,7 @@ function NetworkChart({
 							</LineChart>
 						)}
 					</ChartContainer>
-					<ChartDetailButton timeWindow={metricTimeWindow(period,now)} scopeKey={data.id+":"+period+":network"} title="网络速率" data={displayData} period={period}
+					<ChartDetailButton history={{serverId:data.id,metrics:[{metric:"net_out_speed",key:"upload",scale:1/1024**2},{metric:"net_in_speed",key:"download",scale:1/1024**2}]}} timeWindow={metricTimeWindow(period,now)} scopeKey={data.id+":"+period+":network"} title="网络速率" data={displayData} period={period}
 						series={[{key:"upload",label:"上传",color:"hsl(var(--chart-1))"},{key:"download",label:"下载",color:"hsl(var(--chart-4))"}]} formatValue={value => rateFormatter ? rateFormatter(value * 1024 ** 2) : value.toFixed(2)+" MB/s"} disabled={isNetworkLoading || !!history.error}/>
 				</section>
 			</CardContent>
@@ -1644,7 +1644,7 @@ function ConnectChart({
 							</LineChart>
 						)}
 					</ChartContainer>
-					<ChartDetailButton timeWindow={metricTimeWindow(period,now)} scopeKey={data.id+":"+period+":connections"} title="连接数" data={displayData} period={period}
+					<ChartDetailButton history={{serverId:data.id,metrics:[{metric:"tcp_conn",key:"tcp"},{metric:"udp_conn",key:"udp"}]}} timeWindow={metricTimeWindow(period,now)} scopeKey={data.id+":"+period+":connections"} title="连接数" data={displayData} period={period}
 						series={[{key:"tcp",label:"TCP",color:"hsl(var(--chart-1))"},{key:"udp",label:"UDP",color:"hsl(var(--chart-4))"}]} formatValue={value => value.toFixed(0)} disabled={isConnectLoading || !!history.error}/>
 				</section>
 			</CardContent>
