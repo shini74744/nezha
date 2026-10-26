@@ -30,6 +30,9 @@ test("offline chart and online menu "+theme+" "+width+" saved="+saved,async({pag
   await page.getByRole("dialog").getByRole("button",{name:"Close"}).click();
  }
  await page.getByRole("button",{name:"最后状态",exact:true}).click();await page.getByRole("menuitem",{name:"在线率",exact:true}).click();
- await expect(page.getByRole("dialog")).toContainText("50.0%");
- expect(await page.getByRole("dialog").evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
+ await expect(page.locator("[data-online-history]")).toContainText("50.0%");
+ await expect(page.getByRole("dialog")).toHaveCount(0);await expect(grid).toHaveCount(0);
+ await page.locator("[data-online-history]").getByRole("button",{name:"在线率",exact:true}).click();await page.getByRole("menuitem",{name:"最后状态",exact:true}).click();
+ if(saved)await expect(grid.locator(".chart-detail-open")).toHaveCount(6);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });

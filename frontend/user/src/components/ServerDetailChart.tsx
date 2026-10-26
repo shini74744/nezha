@@ -1,3 +1,4 @@
+import OnlineHistoryPanel from "./OnlineHistoryPanel";
 import { metricTimeAxis, metricTimeWindow } from "@/lib/metric-time-window";
 import RealtimeViewMenu from "./RealtimeViewMenu";
 import MetricTimeTick from "@/components/MetricTimeTick";
@@ -104,14 +105,14 @@ export function PeriodSelector({
 	isLogin,
 	isTsdbEnabled,
 	offline = false,
- serverId,
+ onOnline,
 }: {
 	selectedPeriod: ChartPeriod;
 	onPeriodChange: (period: ChartPeriod) => void;
 	isLogin: boolean;
 	isTsdbEnabled: boolean;
 	offline?: boolean;
- serverId?: string;
+ onOnline?: () => void;
 }) {
 	const { t } = useTranslation();
 
@@ -135,6 +136,7 @@ export function PeriodSelector({
 		<TooltipProvider delayDuration={120}>
 			<div
 				ref={containerRef}
+                data-metric-period-selector
 				className="relative flex gap-0.5 mb-3 flex-wrap sm:-mt-5 -mt-3 p-0.5 bg-muted dark:bg-muted/40 rounded-full w-fit border border-border/60 dark:border-border"
 			>
 				{indicator && (
@@ -169,7 +171,7 @@ export function PeriodSelector({
 							aria-pressed={selectedPeriod === period.value}
 							tabIndex={isLocked ? -1 : 0}
 							onClick={() => {
-								if (!isLocked && !(period.value === "realtime" && serverId)) {
+								if (!isLocked && !(period.value === "realtime" && onOnline)) {
 									if (selectedPeriod !== period.value) {
 										enableIndicatorAnimation();
 									}
@@ -212,7 +214,7 @@ export function PeriodSelector({
 						);
 					}
 
-					return <div key={period.value} className="flex">{period.value === "realtime" && serverId ? <RealtimeViewMenu serverId={serverId} offline={offline} onRealtime={() => { if(selectedPeriod !== "realtime") enableIndicatorAnimation(); onPeriodChange("realtime"); }}>{periodItem}</RealtimeViewMenu> : periodItem}</div>;
+					return <div key={period.value} className="flex">{period.value === "realtime" && onOnline ? <RealtimeViewMenu onOnline={onOnline!} offline={offline} onRealtime={() => { if(selectedPeriod !== "realtime") enableIndicatorAnimation(); onPeriodChange("realtime"); }}>{periodItem}</RealtimeViewMenu> : periodItem}</div>;
 				})}
 			</div>
 		</TooltipProvider>
@@ -226,6 +228,8 @@ export default function ServerDetailChart({
 }) {
 	const { lastData, connected, messageHistory } = useWebSocketContext();
 	const [selectedPeriod, setSelectedPeriod] = useState<ChartPeriod>("realtime");
+ const [onlineView, setOnlineView] = useState(false);
+ useEffect(() => setOnlineView(false), [server_id]);
 
 	// Check if user is logged in
 	const { isLogin } = useLoginUser();
@@ -277,11 +281,12 @@ export default function ServerDetailChart({
 	const gpuDetails = server.state.gpus || [];
 
 	const activePeriod = !isTsdbEnabled ? "realtime" : !isLogin && selectedPeriod !== "realtime" ? "1d" : selectedPeriod;
+	if (onlineView) return <OnlineHistoryPanel serverId={server_id} onRealtime={() => { setOnlineView(false); setSelectedPeriod("realtime"); }}/>;
 	return (
 		<section className="flex flex-col">
 			<PeriodSelector
 				selectedPeriod={activePeriod}
-    serverId={server_id}
+    onOnline={() => setOnlineView(true)}
 				onPeriodChange={setSelectedPeriod}
 				isLogin={isLogin}
 				isTsdbEnabled={isTsdbEnabled}

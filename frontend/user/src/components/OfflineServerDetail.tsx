@@ -1,3 +1,4 @@
+import OnlineHistoryPanel from "./OnlineHistoryPanel";
 import { metricTimeAxis, metricTimeWindow } from "@/lib/metric-time-window";
 import MetricTimeTick from "@/components/MetricTimeTick";
 import ChartDetailButton from "@/components/ChartDetail";
@@ -59,6 +60,8 @@ function valueText(value:number|undefined,unit:string) {
 }
 export function OfflineServerDetail({server,now,initialTab="Detail",onTabIntent}:{server:NezhaServer;now:number;initialTab?:string;onTabIntent?:(tab:string)=>void}) {
  const networkCard=useNetworkCardView(server);
+ const [onlineView,setOnlineView]=useState(false);
+ useEffect(()=>setOnlineView(false),[server.id]);
  const [selectedTab,setTab]=useState(initialTab),[period,setPeriod]=useState<"last"|MetricPeriod>("last");
  const {data:setting}=useQuery({queryKey:["setting"],queryFn:fetchSetting,refetchOnWindowFocus:true,refetchInterval:30000});
  const combinedNetwork=setting?.data?.config?.show_network_in_detail===true;
@@ -97,8 +100,8 @@ export function OfflineServerDetail({server,now,initialTab="Detail",onTabIntent}
   </section>
   <div ref={viewportRef} data-detail-viewport className={`detail-viewport flex flex-col gap-4 min-w-0${tab === "Connectivity" ? " -mt-6" : ""}`}>
   {tab!=="Network" && <DetailPanel key={server.id + ":" + tab}>
-  {tab==="Detail" ?<section>
-    <PeriodSelector serverId={String(server.id)} selectedPeriod={activePeriod==="last"?"realtime":activePeriod} onPeriodChange={p=>setPeriod(p==="realtime"?"last":p)} isLogin={!!viewer} isTsdbEnabled={!!report?.tsdb_enabled} offline/>
+  {tab==="Detail" ? onlineView ? <OnlineHistoryPanel serverId={String(server.id)} offline onRealtime={()=>{setOnlineView(false);setPeriod("last")}}/> : <section>
+    <PeriodSelector onOnline={()=>setOnlineView(true)} selectedPeriod={activePeriod==="last"?"realtime":activePeriod} onPeriodChange={p=>setPeriod(p==="realtime"?"last":p)} isLogin={!!viewer} isTsdbEnabled={!!report?.tsdb_enabled} offline/>
     {(report?.tsdb_enabled||saved) && <><p className="text-xs text-muted-foreground mb-3">{saved?"离线前最后 1 分钟的记录，非实时数据。":"历史主机信息不完整，服务器重新上线后更新。"}</p>
     <div className="grid md:grid-cols-2 lg:grid-cols-3 grid-cols-1 gap-3 server-charts"><IsolatedChildren resetKey={server.id+":"+activePeriod}>
      {chartGroups.map(group=><OfflineMetricCard key={group.keys[0]} group={group} report={report!} period={activePeriod} now={now}/>)}</IsolatedChildren>

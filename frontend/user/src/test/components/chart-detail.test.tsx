@@ -37,10 +37,22 @@ const props = {
 		{ timeStamp: String(ts + 60000), value: 30 },
 	],
 };
-const open = () =>
-	fireEvent.click(screen.getByRole("button", { name: "CPU详细查看" }));
+const open = () => {
+ fireEvent.click(screen.getByRole("button", { name: "CPU详细查看" }));
+ fireEvent.click(screen.getByRole("button", { name: "选择时间范围或定位" }));
+};
 const readout = () => document.querySelector("[data-detail-readout]")!;
 describe("chart detailed view", () => {
+ it("keeps exact time controls collapsed on mobile until requested", () => {
+  render(<ChartDetailButton {...props}/>);
+  fireEvent.click(screen.getByRole("button",{name:"CPU详细查看"}));
+  expect(screen.queryByRole("button",{name:"定位",exact:true})).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button",{name:"选择时间范围或定位"}));
+  expect(screen.getByRole("button",{name:"定位",exact:true})).toBeVisible();
+  fireEvent.click(screen.getByRole("button",{name:"收起时间选择"}));
+  expect(screen.queryByRole("button",{name:"定位",exact:true})).not.toBeInTheDocument();
+ });
+
  it("does not redraw frozen charts on incoming reports, but refresh captures the newest report",()=>{
   const {rerender}=render(<ChartDetailButton {...props}/>);open();
   const count=renderProbe.chart.mock.calls.length;

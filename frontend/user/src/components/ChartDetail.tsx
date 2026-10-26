@@ -1,6 +1,8 @@
+import { useMediaQuery } from "@/hooks/use-media-query";
 import {
 	memo,
 	useCallback,
+	useId,
 	useEffect,
 	useLayoutEffect,
 	useMemo,
@@ -110,7 +112,7 @@ export default function ChartDetailButton(props: ChartDetailProps) {
 						aria-expanded={open}
 						aria-label={props.title + "详细查看"}
 					>
-						详细
+						<span className="chart-detail-open-label">详细</span>
 					</button>
 				</DialogTrigger>
 				{open && snapshot && (
@@ -135,6 +137,9 @@ function ChartDetailView({
 	refreshDisabled?: boolean;
 }) {
 	const [record, setRecord] = useState(snapshot);
+ const desktop = useMediaQuery("(min-width: 641px)");
+ const [showTimeControls, setShowTimeControls] = useState(false);
+ const timeControlsId = useId();
  const [activePreset, setActivePreset] = useState<number | null>(null);
  const [pendingHours, setPendingHours] = useState<number | null>(null);
  const [retryHours, setRetryHours] = useState<number | null>(null);
@@ -409,6 +414,10 @@ function ChartDetailView({
 			</div>
    {pendingHours!==null && <p role="status" className="chart-detail-caption">正在读取近 {pendingHours} 小时的历史记录…</p>}
    {!hoursAvailable && <p className="chart-detail-caption">该指标尚未保存小时级历史，只能查看当前快照。</p>}
+   <button type="button" className="chart-detail-time-toggle" aria-expanded={desktop || showTimeControls} aria-controls={timeControlsId} onClick={() => setShowTimeControls(value => !value)}>
+    {showTimeControls ? "收起时间选择" : "选择时间范围或定位"}
+   </button>
+   <div id={timeControlsId} className="chart-detail-time-options" hidden={!desktop && !showTimeControls}>
    <div className="chart-detail-forms">
 				<form
 					onSubmit={(event) => {
@@ -460,17 +469,18 @@ function ChartDetailView({
 					</button>
 				</form>
 			</div>
-			{error && (
-				<p role="alert" className="chart-detail-error">
-					{error}{retryHours!==null && <button type="button" className="underline ml-2" onClick={()=>{void loadHours(retryHours);}}>重试</button>}
-				</p>
-			)}
 			<p className="chart-detail-caption">
 				可查看：{detailDateLabel(first)} — {detailDateLabel(last)}。
 				{sampling
 					? "当前每 " + sampling + " 一个聚合点，放大不改变采样精度。"
 					: "仅显示当前已记录的数据。"}
 			</p>
+   </div>
+			{error && (
+				<p role="alert" className="chart-detail-error">
+					{error}{retryHours!==null && <button type="button" className="underline ml-2" onClick={()=>{void loadHours(retryHours);}}>重试</button>}
+				</p>
+			)}
 			<div className="chart-detail-plot-toolbar">
 				<span>
 					{detailDateLabel(window[0])} — {detailDateLabel(window[1])}
