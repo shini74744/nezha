@@ -11,11 +11,12 @@ import userEvent from "@testing-library/user-event";
 import ChartDetailButton from "@/components/ChartDetail";
 import { fetchServerMetrics } from "@/lib/nezha-api";
 vi.mock("@/lib/nezha-api",()=>({fetchServerMetrics:vi.fn()}));
+const renderProbe=vi.hoisted(()=>({chart:vi.fn()}));
 vi.mock("recharts", () => ({
 	ResponsiveContainer: ({ children }: { children: ReactNode }) => (
 		<div>{children}</div>
 	),
-	LineChart: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+	LineChart: ({ children }: { children: ReactNode }) => {renderProbe.chart();return <div>{children}</div>},
 	CartesianGrid: () => null,
 	Line: () => null,
 	ReferenceArea: () => null,
@@ -40,6 +41,16 @@ const open = () =>
 	fireEvent.click(screen.getByRole("button", { name: "CPU详细查看" }));
 const readout = () => document.querySelector("[data-detail-readout]")!;
 describe("chart detailed view", () => {
+ it("does not redraw frozen charts on incoming reports, but refresh captures the newest report",()=>{
+  const {rerender}=render(<ChartDetailButton {...props}/>);open();
+  const count=renderProbe.chart.mock.calls.length;
+  for(let i=1;i<=12;i++)rerender(<ChartDetailButton {...props} data={[...props.data,{timeStamp:String(ts+90000),value:80+i}]}/>);
+  expect(renderProbe.chart).toHaveBeenCalledTimes(count);
+  expect(readout()).toHaveTextContent("30.0%");
+  fireEvent.click(screen.getByRole("button",{name:"更新查看快照"}));
+  expect(readout()).toHaveTextContent("92.0%");
+ });
+
 	it("freezes open samples until explicitly refreshed and closes when server or period changes", () => {
 		const { rerender } = render(<ChartDetailButton {...props} />);
 		open();

@@ -1,4 +1,6 @@
 import {
+	memo,
+	useCallback,
 	useEffect,
 	useLayoutEffect,
 	useMemo,
@@ -64,11 +66,15 @@ type Snapshot = Omit<ChartDetailProps, "data"> & {
 	capturedAt: number;
 	revision: number;
 };
+const MemoChartDetailView = memo(ChartDetailView);
 export default function ChartDetailButton(props: ChartDetailProps) {
 	const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
 	const revision = useRef(0);
+	const latestProps = useRef(props);
+	useLayoutEffect(() => { latestProps.current = props; });
 	useEffect(() => setSnapshot(null), [props.scopeKey]);
-	const capture = () => {
+	const capture = useCallback(() => {
+		const props = latestProps.current;
 		const points = normalizeDetailPoints(
 			props.data,
 			props.series,
@@ -80,7 +86,7 @@ export default function ChartDetailButton(props: ChartDetailProps) {
 			capturedAt: Date.now(),
 			revision: ++revision.current,
 		});
-	};
+	}, []);
 	const disabled = props.disabled || !props.data.length;
 	useEffect(() => {
 		if (disabled) setSnapshot(null);
@@ -108,7 +114,7 @@ export default function ChartDetailButton(props: ChartDetailProps) {
 					</button>
 				</DialogTrigger>
 				{open && snapshot && (
-					<ChartDetailView
+					<MemoChartDetailView
 						key={snapshot.revision}
 						snapshot={snapshot}
 						onRefresh={capture}
