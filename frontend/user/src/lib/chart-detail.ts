@@ -100,7 +100,7 @@ export function detailWindow(
 	bounds?: TimeWindow,
 ): TimeWindow | undefined {
 	if (
-		!points.length ||
+		(!points.length && !bounds) ||
 		!Number.isFinite(start) ||
 		!Number.isFinite(end) ||
 		start > end

@@ -44,6 +44,7 @@ import {
 	type DetailSeries,
 	type TimeWindow,
 } from "@/lib/chart-detail";
+import { loadDetailHistory, type DetailHistorySource } from "@/lib/chart-detail-history";
 import "./ChartDetail.css";
 
 export type ChartDetailProps = {
@@ -54,6 +55,7 @@ export type ChartDetailProps = {
 	period: DetailPeriod;
 	formatValue: (value: number) => string;
 	timeWindow?: TimeWindow;
+	history?: DetailHistorySource;
 	timeKey?: string;
 	disabled?: boolean;
 };
@@ -126,9 +128,18 @@ function ChartDetailView({
 	onRefresh: () => void;
 	refreshDisabled?: boolean;
 }) {
-	const { points, series, period, formatValue, title } = snapshot;
-	const first = snapshot.timeWindow?.[0] ?? points[0]?.ts ?? snapshot.capturedAt;
-	const last = snapshot.timeWindow?.[1] ?? points[points.length - 1]?.ts ?? first;
+	const [record, setRecord] = useState(snapshot);
+ const [activePreset, setActivePreset] = useState<number | null>(null);
+ const [pendingHours, setPendingHours] = useState<number | null>(null);
+ const [retryHours, setRetryHours] = useState<number | null>(null);
+ const request = useRef<AbortController | null>(null);
+ useEffect(() => () => request.current?.abort(), []);
+ const { points, series, period, formatValue, title } = record;
+ const snapshotMode = snapshot.period === "realtime" || snapshot.period === "last";
+ const loadedHistory = snapshotMode && record !== snapshot;
+ const hoursAvailable = !snapshotMode || !!snapshot.history;
+	const first = record.timeWindow?.[0] ?? points[0]?.ts ?? snapshot.capturedAt;
+	const last = record.timeWindow?.[1] ?? points[points.length - 1]?.ts ?? first;
 	const [window, setWindow] = useState<TimeWindow>([first, last]);
 	const [selectedTs, setSelectedTs] = useState(last);
 	const [locked, setLocked] = useState(false);
@@ -182,11 +193,14 @@ function ChartDetailView({
 					? "2 小时"
 					: null;
 	const applyWindow = (next: TimeWindow) => {
-		const valid = detailWindow(points, next[0], next[1], snapshot.timeWindow);
+		const valid = detailWindow(points, next[0], next[1], record.timeWindow);
 		if (!valid) {
 			setError("这个范围没有记录，或超出了已加载数据。");
 			return false;
 		}
+		request.current?.abort();request.current=null;setPendingHours(null);setRetryHours(null);
+		setActivePreset(null);
+		setZoom(false);
 		setWindow(valid);
 		setStartInput(detailDateInput(valid[0]));
 		setEndInput(detailDateInput(valid[1]));
@@ -197,8 +211,47 @@ function ChartDetailView({
 		if (selectedTs < valid[0] || selectedTs > valid[1]) setSelectedTs(valid[1]);
 		return true;
 	};
-	const preset = (hours: number) =>
-		applyWindow([Math.max(first, last - hours * 3_600_000), last]);
+ const resetView = (next: Snapshot, range: TimeWindow, hours: number | null) => {
+  setRecord(next);setWindow(range);setStartInput(detailDateInput(range[0]));setEndInput(detailDateInput(range[1]));
+  setTargetInput(detailDateInput(range[1]));setSelectedTs(range[1]);setTargetTs(null);
+  setLocked(false);setZoom(false);setDrag(null);setError("");setRetryHours(null);setActivePreset(hours);
+ };
+ const loadHours = async (hours: number) => {
+  if(!snapshot.history)return;
+  request.current?.abort();
+  const controller=new AbortController();request.current=controller;
+  setPendingHours(hours);setError("");setRetryHours(null);
+  const end=Date.now(),bounds:TimeWindow=[end-86400000,end];
+  try {
+   const rows=await loadDetailHistory(snapshot.history,controller.signal);
+   if(controller.signal.aborted || request.current!==controller)return;
+   const next:Snapshot={...snapshot,points:rows.filter(p=>p.ts>=bounds[0]&&p.ts<=bounds[1]),period:"1d",timeWindow:bounds,capturedAt:end};
+   resetView(next,[end-hours*3600000,end],hours);
+  } catch(error) {
+   if(controller.signal.aborted || request.current!==controller)return;
+   setError("历史记录读取失败，原有查看内容已保留。");setRetryHours(hours);
+  } finally {
+   if(request.current===controller){request.current=null;setPendingHours(null);}
+  }
+ };
+ const preset = (hours: number) => {
+  if(!hoursAvailable)return;
+  if(snapshotMode && !loadedHistory){void loadHours(hours);return;}
+  request.current?.abort();request.current=null;setPendingHours(null);setRetryHours(null);
+  if(applyWindow([Math.max(first,last-hours*3600000),last]))setActivePreset(hours);
+ };
+ const restore = () => {
+  request.current?.abort();request.current=null;setPendingHours(null);setRetryHours(null);
+  applyWindow([first,last]);
+ };
+ const restoreDisabled = pendingHours===null && !error && !locked && !zoom && targetTs===null &&
+  window[0]===first && window[1]===last && startInput===detailDateInput(first) && endInput===detailDateInput(last);
+ const returnSnapshot = () => {
+  request.current?.abort();request.current=null;setPendingHours(null);
+  const start=snapshot.timeWindow?.[0]??snapshot.points[0]?.ts??snapshot.capturedAt;
+  const end=snapshot.timeWindow?.[1]??snapshot.points[snapshot.points.length-1]?.ts??start;
+  resetView(snapshot,[start,end],null);
+ };
 	const pick = (ts: number, pin = false) => {
 		const index = nearestDetailIndex(selectable, ts);
 		if (index < 0) return;
@@ -308,38 +361,49 @@ function ChartDetailView({
 					<button
 						type="button"
 						onClick={() => preset(1)}
-						disabled={!points.length}
+                        aria-pressed={activePreset === 1}
+                        aria-busy={pendingHours === 1}
+                        disabled={!hoursAvailable}
 					>
 						近 1 小时
 					</button>
 					<button
 						type="button"
 						onClick={() => preset(6)}
-						disabled={!points.length}
+                        aria-pressed={activePreset === 6}
+                        aria-busy={pendingHours === 6}
+                        disabled={!hoursAvailable}
 					>
 						近 6 小时
 					</button>
 					<button
 						type="button"
 						onClick={() => preset(24)}
-						disabled={!points.length}
+                        aria-pressed={activePreset === 24}
+                        aria-busy={pendingHours === 24}
+                        disabled={!hoursAvailable}
 					>
 						近 24 小时
 					</button>
 					<button
 						type="button"
-						onClick={() => applyWindow([first, last])}
-						disabled={!points.length}
+						onClick={restore}
+                        disabled={restoreDisabled}
 					>
 						<RotateCcw aria-hidden size={14} />
 						恢复全部
 					</button>
 				</div>
-				<button type="button" onClick={onRefresh} disabled={refreshDisabled}>
-					更新查看快照
-				</button>
+<div className="chart-detail-presets">
+     {loadedHistory && <button type="button" onClick={returnSnapshot}>{snapshot.period==="last"?"返回最后状态":"返回实时快照"}</button>}
+     <button type="button" onClick={loadedHistory ? () => {void loadHours(activePreset??24);} : onRefresh} disabled={pendingHours!==null || (!loadedHistory && refreshDisabled)}>
+      {loadedHistory ? "刷新历史记录" : "更新查看快照"}
+     </button>
+    </div>
 			</div>
-			<div className="chart-detail-forms">
+   {pendingHours!==null && <p role="status" className="chart-detail-caption">正在读取近 {pendingHours} 小时的历史记录…</p>}
+   {!hoursAvailable && <p className="chart-detail-caption">该指标尚未保存小时级历史，只能查看当前快照。</p>}
+   <div className="chart-detail-forms">
 				<form
 					onSubmit={(event) => {
 						event.preventDefault();
@@ -392,7 +456,7 @@ function ChartDetailView({
 			</div>
 			{error && (
 				<p role="alert" className="chart-detail-error">
-					{error}
+					{error}{retryHours!==null && <button type="button" className="underline ml-2" onClick={()=>{void loadHours(retryHours);}}>重试</button>}
 				</p>
 			)}
 			<p className="chart-detail-caption">
@@ -419,7 +483,7 @@ function ChartDetailView({
 					{zoom ? "退出拖选" : "拖选放大"}
 				</button>
 			</div>
-			<div className="chart-detail-plot" data-detail-plot>
+			<div className="chart-detail-plot" data-detail-plot data-window-start={window[0]} data-window-end={window[1]} aria-busy={pendingHours!==null}>
 				{visible.length ? (
 					<ResponsiveContainer width="100%" height="100%">
 						<LineChart

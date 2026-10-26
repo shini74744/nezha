@@ -125,7 +125,7 @@ export default function HardwareMetricCard({
 			className={cn({ "bg-card/70": !!window.CustomBackgroundImage })}
 		>
 			<CardContent className="relative flex h-full flex-col px-6 py-3">
-				<div className="flex h-[76px] min-w-0 flex-col justify-start gap-1">
+				<div className="flex min-h-[48px] min-w-0 shrink-0 flex-col justify-start gap-1">
 					<div className="flex min-h-7 min-w-0 items-center justify-between gap-2">
 						<button
 							type="button"
@@ -266,7 +266,7 @@ export default function HardwareMetricCard({
 						/>
 					</AreaChart>
 				</ChartContainer>
-                <ChartDetailButton scopeKey={cardKey+":"+mode+":"+recorded} title={title} data={points}
+                <ChartDetailButton history={index===undefined && mode==="usage" ? {serverId:id,metrics:[{metric:"cpu",key:"value"}]} : undefined} scopeKey={cardKey+":"+mode+":"+recorded} title={title} data={points}
                     period={recorded?"last":"realtime"} series={[{key:"value",label:title,color:"hsl(var(--chart-"+color+"))"}]} formatValue={format}/>
 			</CardContent>
 		</Card>
