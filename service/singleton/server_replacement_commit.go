@@ -91,6 +91,11 @@ func CompleteServerReplacement(secret, uuid string, host *model.Host, state *mod
 		if e := tx.Where("server_uuid = ?", uuid).Delete(&model.ServerIPHistory{}).Error; e != nil {
 			return e
 		}
+		if tx.Migrator().HasTable(&model.ServerNICNotice{}) {
+			if e := tx.Where("uuid = ?", uuid).Delete(&model.ServerNICNotice{}).Error; e != nil {
+				return e
+			}
+		}
 		if e := tx.Where("uuid = ?", uuid).Delete(&model.PlanTrafficDay{}).Error; e != nil {
 			return e
 		}
@@ -149,6 +154,7 @@ func CompleteServerReplacement(secret, uuid string, host *model.Host, state *mod
 	if _, err = fresh.RuntimeHandle().RefreshHostReport(host, now, nil); err != nil {
 		return nil, err
 	}
+	ForgetNICSelectionNotice(uuid)
 	fresh.SetTransferSnapshots(state.NetInTransfer, state.NetOutTransfer)
 	if resetCaches != nil {
 		resetCaches()

@@ -38,7 +38,7 @@ func listConfig(c *gin.Context) (*model.SettingResponse, error) {
 		}
 	}
 
-	config := *singleton.Conf
+	config := singleton.Conf
 	configForTheme := config.ConfigForGuests
 	configForTheme.Language = strings.ReplaceAll(configForTheme.Language, "_", "-")
 	// Built-in appearance belongs to the default user theme only.

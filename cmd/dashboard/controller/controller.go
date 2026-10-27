@@ -181,6 +181,8 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	auth.GET("/waf/credentials", restScopeMiddleware(model.ScopeAdminAll), pAdminHandler(listRejectedAgentCredentials))
 	auth.POST("/waf/credentials/admit", patForbidden, adminHandler(admitAgentCredential))
 	auth.PATCH("/server/:id", restScopeMiddleware(model.ScopeServerWrite), commonHandler(updateServer))
+	auth.GET("/server/nic-change-reminders", restScopeMiddleware(model.ScopeInventoryRead), commonHandler(listNICSelectionNotices))
+	auth.POST("/server/:id/nic-change-read", restScopeMiddleware(model.ScopeServerWrite), commonHandler(acknowledgeNICSelectionNotice))
 	auth.GET("/server/config/:id", restScopeMiddleware(serverConfigSensitiveScope()), commonHandler(getServerConfig))
 	auth.POST("/server/config", restScopeMiddleware(model.ScopeServerWrite), commonHandler(setServerConfig))
 	auth.POST("/batch-delete/server", restScopeAllOf(model.ScopeInventoryDelete, model.ScopeServerExec), commonHandler(batchDeleteServer))

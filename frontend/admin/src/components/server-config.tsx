@@ -1,5 +1,6 @@
 import { getServerConfig, setServerConfig } from "@/api/server"
 import { NetworkInterfacePicker } from "@/components/network-interface-picker"
+import { NICChangeReminder, useNICChangeReminder } from "@/components/nic-change-reminder"
 import { Button, ButtonProps } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -26,11 +27,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { IconButton } from "@/components/xui/icon-button"
 import { singleAgentConfigLabels } from "@/lib/agent-config-fields"
 import { parseNetworkInventory } from "@/lib/network-interfaces"
-import { asOptionalField } from "@/lib/utils"
+import { asOptionalField, cn } from "@/lib/utils"
 import { ModelServerTaskResponse } from "@/types"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { CogIcon } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
@@ -100,6 +101,19 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
     )
     const [loading, setLoading] = useState(true)
     const [open, setOpen] = useState(false)
+    const { notices } = useNICChangeReminder()
+    const unread = notices[sid]
+    const noticeRef = useRef(unread)
+    noticeRef.current = unread
+    const [openedNotice, setOpenedNotice] = useState<string>()
+    const changeOpen = (value: boolean) => {
+        setOpenedNotice(undefined)
+        if (value) {
+            setLoading(true)
+            setData(undefined)
+        }
+        setOpen(value)
+    }
 
     useEffect(() => {
         let active = true
@@ -108,7 +122,14 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
             setData(undefined)
             try {
                 const result = await getServerConfig(sid)
-                if (active) setData(JSON.parse(result))
+                const parsed = JSON.parse(result)
+                if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+                    throw new Error("暂时无法获取配置")
+                }
+                if (active) {
+                    setData(parsed)
+                    setOpenedNotice(noticeRef.current)
+                }
             } catch (error) {
                 if (!active) return
                 console.error(error)
@@ -178,19 +199,38 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
     }
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={changeOpen}>
             <DialogTrigger asChild>
                 {menuItem ? (
                     <button
                         type="button"
                         className="flex w-full items-center text-sm px-2 py-2 hover:bg-accent hover:text-accent-foreground"
-                        onClick={() => setOpen(true)}
+                        onClick={() => changeOpen(true)}
                     >
-                        <CogIcon className="h-4 w-4 mr-2" />
+                        <span className="relative mr-2">
+                            <CogIcon className="h-4 w-4" />
+                            {unread && (
+                                <span
+                                    aria-label="网口变化待查看"
+                                    className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500 ring-2 ring-background"
+                                />
+                            )}
+                        </span>
                         <span>{t("Config")}</span>
                     </button>
                 ) : (
-                    <IconButton {...props} icon="cog" />
+                    <IconButton
+                        {...props}
+                        icon="cog"
+                        aria-label={unread ? "配置，网口变化待查看" : t("Config")}
+                        data-nic-unread={unread ? "true" : undefined}
+                        className={cn(
+                            "relative rounded-lg shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]",
+                            props.className,
+                            unread &&
+                                "after:absolute after:right-1 after:top-1 after:h-2 after:w-2 after:rounded-full after:bg-red-500 after:ring-2 after:ring-background",
+                        )}
+                    />
                 )}
             </DialogTrigger>
             <DialogContent className="sm:max-w-xl">
@@ -297,6 +337,9 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
                                             </FormItem>
                                         )}
                                     />
+                                    {openedNotice && (
+                                        <NICChangeReminder sid={sid} eventID={openedNotice} />
+                                    )}
                                     {groupedBoolFields.map((group, idx) => (
                                         <div
                                             className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2"

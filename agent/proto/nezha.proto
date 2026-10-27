@@ -58,6 +58,8 @@ message State {
   // New baseline on Agent restart, selected NIC membership/identity change or reset.
   // Empty retains legacy accounting; never diff totals across different epochs.
   string network_counter_epoch = 24;
+  // Opaque token for a completed automatic NIC selection fallback.
+  string nic_selection_reset_id = 25;
 }
 
 // State_GPU carries per-card figures. Index-aligned with Host.gpu, matching

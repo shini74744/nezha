@@ -18,6 +18,8 @@ type SensorTemperature struct {
 }
 
 type HostState struct {
+	NICSelectionResetID string `json:"-"`
+
 	NetworkCounterEpoch string              `json:"network_counter_epoch,omitempty"`
 	CPUFrequencyMHz     float64             `json:"cpu_frequency_mhz,omitempty"`
 	CPUFrequencyKind    string              `json:"cpu_frequency_kind,omitempty"`
@@ -78,6 +80,7 @@ func (s *HostState) PB() *pb.State {
 	}
 
 	return &pb.State{
+		NicSelectionResetId: s.NICSelectionResetID,
 		NetworkCounterEpoch: s.NetworkCounterEpoch,
 		CpuFrequencyMhz:     s.CPUFrequencyMHz,
 		CpuFrequencyKind:    s.CPUFrequencyKind,
@@ -127,6 +130,7 @@ func PB2State(s *pb.State) HostState {
 	}
 
 	return HostState{
+		NICSelectionResetID: s.GetNicSelectionResetId(),
 		NetworkCounterEpoch: s.GetNetworkCounterEpoch(),
 		CPUFrequencyMHz:     s.GetCpuFrequencyMhz(),
 		CPUFrequencyKind:    s.GetCpuFrequencyKind(),

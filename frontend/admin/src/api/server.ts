@@ -90,3 +90,9 @@ export const setServerConfig = async (
 ): Promise<ModelServerTaskResponse> => {
     return fetcher<ModelServerTaskResponse>(FetcherMethod.POST, `/api/v1/server/config`, data)
 }
+
+export const getNICChangeReminders = async (): Promise<Record<string, string>> =>
+    fetcher(FetcherMethod.GET, "/api/v1/server/nic-change-reminders", null)
+
+export const acknowledgeNICChange = async (id: number, eventID: string): Promise<boolean> =>
+    fetcher(FetcherMethod.POST, "/api/v1/server/" + id + "/nic-change-read", { event_id: eventID })

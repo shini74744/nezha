@@ -208,14 +208,14 @@ func TestReportSystemState_CurrentCleanupClearsOnlineVisibility(t *testing.T) {
 func TestReportSystemStatePersistsCompleteSnapshotBeforeReceipt(t *testing.T) {
 	reporter := requestTaskSecurityServer(9, 200, "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
 	setupRequestTaskSecurityFixture(t, []*model.Server{reporter}, nil, map[uint64]model.UserInfo{200: {Role: model.RoleMember}}, map[string]uint64{"snapshot-secret": 200})
-	require.NoError(t, singleton.DB.AutoMigrate(&model.ServerSnapshot{}, &model.PlanTrafficCheckpoint{}, &model.PlanTrafficDay{}))
+	require.NoError(t, singleton.DB.AutoMigrate(&model.ServerNICNotice{}, &model.ServerSnapshot{}, &model.PlanTrafficCheckpoint{}, &model.PlanTrafficDay{}))
 	current, ok := singleton.ServerShared.Get(9)
 	require.True(t, ok)
 	current.SetHost(&model.Host{Platform: "ubuntu", Version: "2.3.5", CPU: []string{"EPYC"}, MemTotal: 8 << 30, DiskTotal: 100 << 30})
 	current.SetSnapshotCountry("JP")
 	stop := make(chan struct{})
 	stream := &stateGenerationHandlerStream{ctx: metadata.NewIncomingContext(context.Background(), metadata.Pairs("client_secret", "snapshot-secret", "client_uuid", reporter.UUID)), states: make(chan *pb.State, 1), receipts: make(chan *pb.Receipt, 1), stop: stop}
-	stream.states <- &pb.State{NetworkCounterEpoch: "snapshot-epoch", Cpu: 12.5, MemUsed: 2 << 30, DiskUsed: 25 << 30, DiskReadSpeed: 4096, DiskWriteSpeed: 8192, DiskIoAvailable: true}
+	stream.states <- &pb.State{NicSelectionResetId: "event-snapshot", NetworkCounterEpoch: "snapshot-epoch", Cpu: 12.5, MemUsed: 2 << 30, DiskUsed: 25 << 30, DiskReadSpeed: 4096, DiskWriteSpeed: 8192, DiskIoAvailable: true}
 	done := make(chan error, 1)
 	go func() { done <- NewNezhaHandler().ReportSystemState(stream) }()
 	select {
@@ -223,6 +223,10 @@ func TestReportSystemStatePersistsCompleteSnapshotBeforeReceipt(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("receipt timed out")
 	}
+	var notice model.ServerNICNotice
+	require.NoError(t, singleton.DB.First(&notice, "uuid = ?", reporter.UUID).Error)
+	require.True(t, notice.Unread)
+	require.Equal(t, "event-snapshot", notice.EventID)
 	saved, err := singleton.QueryServerSnapshot(9, reporter.UUID, 1)
 	require.NoError(t, err)
 	require.NotNil(t, saved)

@@ -286,6 +286,9 @@ func (s *NezhaHandler) ReportSystemState(stream pb.NezhaService_ReportSystemStat
 		if singleton.IsDeletedServerUUID(server.UUID) {
 			return status.Error(codes.PermissionDenied, "server UUID was permanently deleted")
 		}
+		if len(state.GetNicSelectionResetId()) > 64 {
+			return status.Error(codes.InvalidArgument, "NIC reminder is too long")
+		}
 		if len(state.GetNetworkCounterEpoch()) > 64 {
 			return status.Error(codes.InvalidArgument, "network counter epoch is too long")
 		}
@@ -302,6 +305,9 @@ func (s *NezhaHandler) ReportSystemState(stream pb.NezhaService_ReportSystemStat
 
 		lastActive := time.Now()
 		accepted := lease.UpdateStateWithSnapshot(&innerState, lastActive, func(snapshotID uint64, snapshotUUID string, snapshot model.RecordedServerState) error {
+			if err := singleton.PersistNICSelectionNotice(snapshotUUID, innerState.NICSelectionResetID); err != nil {
+				log.Printf("NEZHA>> Failed to persist NIC reminder %d: %v", snapshotID, err)
+			}
 			if singleton.OnlineHistoryShared != nil {
 				singleton.OnlineHistoryShared.RecordOnline(snapshotID, lastActive)
 			}

@@ -434,6 +434,8 @@ func reportStateDaemon(stateClient *reportStateSession, requestExit func(error))
 	defer func() { stateClient.finishTerminal(err) }()
 	for {
 		config := loadRuntimeConfig()
+		recoverMissingNICSelection(stateClient.Context(), config, time.Now())
+		config = loadRuntimeConfig()
 		reportConfig := reportConfigTupleFrom(config)
 		schedule, reportErr := reportState(stateClient, reportSchedule{host: lastReportHostInfo, ip: lastReportIPInfo}, reportConfig)
 		lastReportHostInfo, lastReportIPInfo, err = schedule.host, schedule.ip, reportErr
@@ -469,7 +471,9 @@ func reportState(statClient reportStateClient, schedule reportSchedule, config r
 	}
 	if initialized {
 		reportMonitorDependencies.trackNetworkSpeed(config.snapshot)
-		if err := statClient.Send(reportMonitorDependencies.getState(config.snapshot, config.skipConnectionCount, config.skipProcsCount).PB()); err != nil {
+		reportedState := reportMonitorDependencies.getState(config.snapshot, config.skipConnectionCount, config.skipProcsCount).PB()
+		reportedState.NicSelectionResetId = config.snapshot.NICSelectionResetID
+		if err := statClient.Send(reportedState); err != nil {
 			return schedule, err
 		}
 		_, err := statClient.Recv()
@@ -999,6 +1003,8 @@ func parseApplyConfigLocked(config *model.AgentConfig, task *pb.Task, result *pb
 		result.Data = err.Error()
 		return model.AgentConfig{}, false
 	}
+	// Notification tokens belong to the Agent, never to remote form input.
+	tmpConfig.NICSelectionResetID = config.NICSelectionResetID
 	if err := model.ValidateConfig(&tmpConfig, true); err != nil {
 		printf("Validate Config failed: %v", err)
 		result.Data = err.Error()
