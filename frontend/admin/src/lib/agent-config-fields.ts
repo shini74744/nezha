@@ -86,7 +86,7 @@ export const agentConfigFields: ConfigField[] = [
         group: "监控采集",
         kind: "nics",
         initial: [],
-        description: "按网卡名合并设置。名单非空时，仅采集名单中标记为监控的网卡；空列表恢复自动识别全部网卡。",
+        description: "按网卡名合并设置。名单非空时，仅采集名单中标记为监控的网卡；空列表恢复默认统计规则。",
     },
     {
         key: "debug",
