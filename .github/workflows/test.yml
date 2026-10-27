@@ -53,8 +53,20 @@ jobs:
         if: runner.os == 'Windows'
         run: go test -mod=readonly -count=10 -run '^TestTerminal' -v ./service/singleton
 
+      - name: Repeated Windows mixed fleet writes
+        if: runner.os == 'Windows'
+        run: go test -mod=readonly -count=3 -run '^TestSQLiteMixedFleetWritesPreserveHistory$' -v ./service/singleton
+
+      # Each package includes disk-heavy concurrency tests. Run Windows packages
+      # sequentially so unrelated suites cannot consume the SQLite lock budget.
+      # Preserve all in-package concurrency, assertions and production timeouts.
       - name: Unit test
+        if: runner.os != 'Windows'
         run: go test -mod=readonly -count=1 ./...
+
+      - name: Unit test (Windows sequential packages)
+        if: runner.os == 'Windows'
+        run: go test -mod=readonly -p=1 -count=1 ./...
 
       - name: Build dashboard
         run: go build -v ./cmd/dashboard
