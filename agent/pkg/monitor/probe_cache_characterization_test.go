@@ -3,6 +3,7 @@ package monitor
 import (
 	"context"
 	"errors"
+	"github.com/nezhahq/agent/pkg/monitor/nic"
 	"testing"
 	"time"
 
@@ -69,19 +70,22 @@ func TestTrackNetworkSpeedPreservesTransferAndSpeedFormula(t *testing.T) {
 	// Given
 	originalProbe := nicStateProbe
 	originalNow := networkNow
+	originalSample, originalEpoch := networkSample, networkCounterEpoch
+	networkSample, networkCounterEpoch = nic.Sample{In: 1000, Out: 2000}, "baseline"
 	metricLock.Lock()
 	originalNetInSpeed, originalNetOutSpeed := netInSpeed, netOutSpeed
 	originalNetInTransfer, originalNetOutTransfer := netInTransfer, netOutTransfer
 	originalLastUpdate := lastUpdateNetStats
 	netInTransfer, netOutTransfer, lastUpdateNetStats = 1000, 2000, 100
 	metricLock.Unlock()
-	nicStateProbe = func(context.Context) ([]uint64, error) {
-		return []uint64{1400, 2600}, nil
+	nicStateProbe = func(context.Context) (nic.Sample, error) {
+		return nic.Sample{In: 1400, Out: 2600}, nil
 	}
 	networkNow = func() time.Time { return time.Unix(104, 0) }
 	t.Cleanup(func() {
 		nicStateProbe = originalProbe
 		networkNow = originalNow
+		networkSample, networkCounterEpoch = originalSample, originalEpoch
 		metricLock.Lock()
 		netInSpeed, netOutSpeed = originalNetInSpeed, originalNetOutSpeed
 		netInTransfer, netOutTransfer = originalNetInTransfer, originalNetOutTransfer

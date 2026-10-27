@@ -42,6 +42,9 @@ func TestLinuxInventoryReadsTypesAndRelationshipsWithoutNameHeuristics(t *testin
 	write(filepath.Join(sys, "lo", "type"), "772")
 	write(filepath.Join(sys, "tagged", "iflink"), "2")
 	write(filepath.Join(vlans, "tagged"), "VLAN")
+	if err := os.Symlink(filepath.Join(sys, "uplink"), filepath.Join(sys, "tagged", "lower_uplink")); err != nil {
+		t.Fatal(err)
+	}
 	mkdir(filepath.Join(sys, "virtNIC", "device"))
 	mkdir(filepath.Join(root, "drivers", "virtio_net"))
 	if err := os.Symlink(filepath.Join(root, "drivers", "virtio_net"), filepath.Join(sys, "virtNIC", "device", "driver")); err != nil {

@@ -215,7 +215,7 @@ func TestReportSystemStatePersistsCompleteSnapshotBeforeReceipt(t *testing.T) {
 	current.SetSnapshotCountry("JP")
 	stop := make(chan struct{})
 	stream := &stateGenerationHandlerStream{ctx: metadata.NewIncomingContext(context.Background(), metadata.Pairs("client_secret", "snapshot-secret", "client_uuid", reporter.UUID)), states: make(chan *pb.State, 1), receipts: make(chan *pb.Receipt, 1), stop: stop}
-	stream.states <- &pb.State{Cpu: 12.5, MemUsed: 2 << 30, DiskUsed: 25 << 30, DiskReadSpeed: 4096, DiskWriteSpeed: 8192, DiskIoAvailable: true}
+	stream.states <- &pb.State{NetworkCounterEpoch: "snapshot-epoch", Cpu: 12.5, MemUsed: 2 << 30, DiskUsed: 25 << 30, DiskReadSpeed: 4096, DiskWriteSpeed: 8192, DiskIoAvailable: true}
 	done := make(chan error, 1)
 	go func() { done <- NewNezhaHandler().ReportSystemState(stream) }()
 	select {
@@ -232,6 +232,7 @@ func TestReportSystemStatePersistsCompleteSnapshotBeforeReceipt(t *testing.T) {
 	require.Equal(t, float64(4096), saved.Metrics["disk_read_speed"])
 	require.Equal(t, float64(8192), saved.Metrics["disk_write_speed"])
 	require.True(t, saved.Snapshot.State.DiskIOAvailable)
+	require.Equal(t, "snapshot-epoch", saved.Snapshot.State.NetworkCounterEpoch)
 	close(stop)
 	require.ErrorIs(t, <-done, context.Canceled)
 	require.True(t, current.RuntimeSnapshot().LastActive.IsZero())
@@ -243,4 +244,37 @@ func TestReportSystemStatePersistsCompleteSnapshotBeforeReceipt(t *testing.T) {
 	called := false
 	require.False(t, old.UpdateStateWithSnapshot(&model.HostState{}, time.Now(), func(uint64, string, model.RecordedServerState) error { called = true; return nil }))
 	require.False(t, called)
+}
+
+func TestReportSystemStateNICSelectionKeepsQuota(t *testing.T) {
+	reporter := requestTaskSecurityServer(9, 200, "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+	setupRequestTaskSecurityFixture(t, []*model.Server{reporter}, nil, map[uint64]model.UserInfo{200: {Role: model.RoleMember}}, map[string]uint64{"epoch-secret": 200})
+	require.NoError(t, singleton.DB.AutoMigrate(&model.ServerSnapshot{}, &model.PlanTrafficCheckpoint{}, &model.PlanTrafficDay{}))
+	current, ok := singleton.ServerShared.Get(9)
+	require.True(t, ok)
+	stop := make(chan struct{})
+	stream := &stateGenerationHandlerStream{ctx: metadata.NewIncomingContext(context.Background(), metadata.Pairs("client_secret", "epoch-secret", "client_uuid", reporter.UUID)), states: make(chan *pb.State, 1), receipts: make(chan *pb.Receipt, 1), stop: stop}
+	done := make(chan error, 1)
+	go func() { done <- NewNezhaHandler().ReportSystemState(stream) }()
+	defer func() { close(stop); require.ErrorIs(t, <-done, context.Canceled) }()
+	for i, x := range []struct {
+		in    uint64
+		epoch string
+	}{
+		{100 << 30, "a"}, {(100 << 30) + 50, "a"}, {600 << 30, "b"}, {(600 << 30) + 100, "b"}, {100 << 30, "c"}, {(100 << 30) + 5, "c"},
+	} {
+		stream.states <- &pb.State{NetInTransfer: x.in, Uptime: 1000 + uint64(i), NetworkCounterEpoch: x.epoch}
+		select {
+		case <-stream.receipts:
+		case <-time.After(5 * time.Second):
+			t.Fatal("receipt timed out")
+		}
+		time.Sleep(2 * time.Millisecond) // distinct persisted millisecond report timestamps
+	}
+	stat, err := singleton.QueryPlanTraffic(current, time.Now())
+	require.NoError(t, err)
+	require.EqualValues(t, 155, stat.Used)
+	require.Equal(t, "c", current.RuntimeSnapshot().State.NetworkCounterEpoch)
+	_, _, actual, _ := current.TransferDeltaAndAdvance()
+	require.EqualValues(t, 155, actual)
 }

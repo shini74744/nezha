@@ -15,6 +15,13 @@ import { useId, useState } from "react"
 const kinds: Record<string, string> = {
     physical: "物理网口",
     virtual: "虚拟网卡",
+    veth: "虚拟网卡（veth）",
+    macvlan: "MACVLAN",
+    macvtap: "MACVTAP",
+    ipvlan: "IPVLAN",
+    ipvtap: "IPVTAP",
+    wireguard: "WireGuard",
+    dummy: "虚拟网卡（Dummy）",
     bridge: "网桥",
     bond: "聚合接口",
     vlan: "VLAN",
@@ -125,8 +132,8 @@ export function NetworkInterfacePicker({
                                     {!!row.speed_mbps && (
                                         <span>
                                             {row.speed_mbps >= 1000
-                                                ? row.speed_mbps / 1000 + " Gbps"
-                                                : row.speed_mbps + " Mbps"}
+                                                ? "链路 " + row.speed_mbps / 1000 + " Gbps"
+                                                : "链路 " + row.speed_mbps + " Mbps"}
                                         </span>
                                     )}
                                 </span>

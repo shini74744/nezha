@@ -55,6 +55,9 @@ message State {
   // MHz and provenance; absent/zero means unsupported, never idle zero.
   double cpu_frequency_mhz = 22;
   string cpu_frequency_kind = 23;
+  // New baseline on Agent restart, selected NIC membership/identity change or reset.
+  // Empty retains legacy accounting; never diff totals across different epochs.
+  string network_counter_epoch = 24;
 }
 
 // State_GPU carries per-card figures. Index-aligned with Host.gpu, matching
