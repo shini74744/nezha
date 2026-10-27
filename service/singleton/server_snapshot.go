@@ -7,6 +7,9 @@ import (
 	"time"
 )
 
+// Include SQLite writer waiting in the persistence budget on slower disks.
+const snapshotPersistenceTimeout = 30 * time.Second
+
 var snapshotWriteGate = make(chan struct{}, 1)
 
 // PersistServerSnapshot returns only after its SQLite transaction completes.
@@ -20,7 +23,7 @@ func PersistServerSnapshot(id uint64, uuid string, sample model.RecordedServerSt
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), snapshotPersistenceTimeout)
 	defer cancel()
 	return serverSnapshotWriter.persist(&snapshotWriteRequest{
 		db: DB, ctx: ctx, id: id, uuid: uuid, sample: sample, payload: string(payload),
