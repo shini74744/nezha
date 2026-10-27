@@ -28,6 +28,7 @@ type AgentConfig struct {
 
 	HardDrivePartitionAllowlist []string        `koanf:"hard_drive_partition_allowlist" json:"hard_drive_partition_allowlist,omitempty"`
 	NICAllowlist                map[string]bool `koanf:"nic_allowlist" json:"nic_allowlist,omitempty"`
+	NICSelectionResetID         string          `koanf:"nic_selection_reset_id" json:"nic_selection_reset_id,omitempty"`
 	DNS                         []string        `koanf:"dns" json:"dns,omitempty"`
 	GPU                         bool            `koanf:"gpu" json:"gpu"`                                         // 是否检查GPU
 	Temperature                 bool            `koanf:"temperature" json:"temperature"`                         // 是否检查温度

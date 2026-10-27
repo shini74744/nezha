@@ -412,6 +412,11 @@ func DeleteServersThen(ids []uint64, expected map[uint64]ServerDeleteIdentity, a
 				return err
 			}
 		}
+		if tx.Migrator().HasTable(&model.ServerNICNotice{}) {
+			if err := tx.Delete(&model.ServerNICNotice{}, "uuid IN ?", uuids).Error; err != nil {
+				return err
+			}
+		}
 		if tx.Migrator().HasTable(&model.ServerSnapshot{}) {
 			if err := tx.Unscoped().Delete(&model.ServerSnapshot{}, "server_id IN ?", actualIDs).Error; err != nil {
 				return err
@@ -443,6 +448,9 @@ func DeleteServersThen(ids []uint64, expected map[uint64]ServerDeleteIdentity, a
 	}
 	for _, id := range actualIDs {
 		ServerTransferRevokeStreamsForServer(id)
+	}
+	for _, uuid := range uuids {
+		ForgetNICSelectionNotice(uuid)
 	}
 	ServerShared.Delete(actualIDs)
 	if afterCommit != nil {

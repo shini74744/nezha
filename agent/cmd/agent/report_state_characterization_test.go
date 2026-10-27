@@ -28,7 +28,7 @@ func TestReportStateDaemon_PreservesConfiguredCadenceAndReceipts(t *testing.T) {
 			lastReportIPInfo = originalIPReport
 		})
 
-		publishRuntimeConfig(model.AgentConfig{ReportDelay: 7, IPReportPeriod: 600})
+		publishRuntimeConfig(model.AgentConfig{ReportDelay: 7, IPReportPeriod: 600, NICSelectionResetID: "event-fixture"})
 		reportMonitorDependencies.trackNetworkSpeed = func(*model.AgentConfig) {}
 		reportMonitorDependencies.getState = func(*model.AgentConfig, bool, bool) *model.HostState {
 			return &model.HostState{}
@@ -66,6 +66,11 @@ func TestReportStateDaemon_PreservesConfiguredCadenceAndReceipts(t *testing.T) {
 		stream.releaseRecv(nil, errors.New("stop characterization daemon"))
 		<-daemonExited
 
+		for _, state := range stream.sentMessages() {
+			if state.GetNicSelectionResetId() != "event-fixture" {
+				t.Fatal("state lost pending reminder")
+			}
+		}
 		observation := stream.observe()
 		assertStreamEvents(t, observation.events, []string{
 			"send:start:1", "send:end:1", "recv:start:1", "recv:end:1",

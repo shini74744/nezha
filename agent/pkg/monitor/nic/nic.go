@@ -47,11 +47,15 @@ func GetState(ctx context.Context) (Sample, error) {
 	if err != nil {
 		return Sample{}, err
 	} // Do not invent identities from partial enumeration.
+	allow, _ := ctx.Value(NICKey).(map[string]bool)
+	return sampleCounters(counters, metadata, allow), nil
+}
+
+func sampleCounters(counters []net.IOCountersStat, metadata []net.InterfaceStat, allow map[string]bool) Sample {
 	indices := make(map[string]int, len(metadata))
 	for _, row := range metadata {
 		indices[row.Name] = row.Index
 	}
-	allow, _ := ctx.Value(NICKey).(map[string]bool)
 	result := Sample{Interfaces: make(map[string]Counter)}
 	for _, row := range counters {
 		if !IsMonitored(row.Name, allow) {
@@ -65,7 +69,7 @@ func GetState(ctx context.Context) (Sample, error) {
 		result.In += row.BytesRecv
 		result.Out += row.BytesSent
 	}
-	return result, nil
+	return result
 }
 
 // Preserve the original default filtering and explicit allowlist semantics.

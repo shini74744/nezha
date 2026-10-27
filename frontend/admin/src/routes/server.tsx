@@ -3,6 +3,7 @@ import { forceUpdateServer } from "@/api/server"
 import { AgentCredentialSettings } from "@/components/agent-credential-settings"
 import { BatchMoveServerIcon } from "@/components/batch-move-server-icon"
 import { InstallCommandsMenu } from "@/components/install-commands"
+import { NICReminderProvider } from "@/components/nic-change-reminder"
 import { NoteMenu } from "@/components/note-menu"
 import { ServerCard } from "@/components/server"
 import { ServerConfigCard } from "@/components/server-config"
@@ -214,158 +215,166 @@ export default function ServerPage() {
     const selectedRows = table.getSelectedRowModel().rows
 
     return (
-        <div className="server-page w-full min-w-0 px-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-3 mt-6 mb-4">
-                <div className="flex items-center gap-3">
-                    <h1 className="text-3xl font-bold tracking-tight">{t("Server")}</h1>
-                    {profile?.role === 0 && <ServerOperationHistory />}
-                </div>
-                <div className="flex gap-2 flex-wrap shrink-0">
-                    <ServerDeleteButton
-                        ids={selectedRows.map((r) => r.original.id)}
-                        onUpdated={() => mutate()}
-                    />
-                    <ServerVisibilityBatch
-                        servers={selectedRows.map((r) => r.original)}
-                        onUpdated={() => mutate()}
-                    />
-                    {profile?.role === 0 && (
-                        <ServerSortDialog servers={dataCache} mutate={mutate} />
-                    )}
-                    <IconButton
-                        icon="update"
-                        onClick={async () => {
-                            const id = selectedRows.map((r) => r.original.id)
-                            if (id.length < 1) {
-                                toast(t("Error"), {
-                                    description: t("Results.SelectAtLeastOneServer"),
-                                })
-                                return
-                            }
-
-                            let resp: ModelServerTaskResponse
-                            try {
-                                resp = await forceUpdateServer(id)
-                            } catch (e) {
-                                console.error(e)
-                                toast(t("Error"), {
-                                    description: t("Results.UnExpectedError"),
-                                })
-                                return
-                            }
-                            toast(t("Done"), {
-                                description:
-                                    t("Results.ForceUpdate") +
-                                    (resp.success?.length
-                                        ? t(`Success`) + ` [${resp.success.join(",")}]`
-                                        : "") +
-                                    (resp.failure?.length
-                                        ? t(`Failure`) + ` [${resp.failure.join(",")}]`
-                                        : "") +
-                                    (resp.offline?.length
-                                        ? t(`Offline`) + ` [${resp.offline.join(",")}]`
-                                        : ""),
-                            })
-                        }}
-                    />
-                    <BatchMoveServerIcon serverIds={selectedRows.map((r) => r.original.id)} />
-                    <ServerConfigCardBatch
-                        sid={selectedRows.map((r) => r.original.id)}
-                        className="shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] bg-yellow-600 text-white hover:bg-yellow-500 dark:hover:bg-yellow-700 rounded-lg"
-                    />
-                    {profile?.role === 0 && <AgentCredentialSettings />}
-                    <InstallCommandsMenu className="shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] bg-blue-700 text-white hover:bg-blue-600 dark:hover:bg-blue-800 rounded-lg" />
-                </div>
-            </div>
-            <p className="mb-2 text-xs text-muted-foreground xl:hidden">
-                表格可左右滑动，查看完整信息和操作按钮
-            </p>
-            <div
-                className="server-list-scroll rounded-md border"
-                role="region"
-                aria-label="服务器列表，可左右滑动"
-                tabIndex={0}
-            >
-                <Table className="server-list-table w-full table-fixed">
-                    <TableHeader className="sticky top-0 bg-background z-10">
-                        {table.getHeaderGroups().map((headerGroup) => (
-                            <TableRow key={headerGroup.id}>
-                                {headerGroup.headers.map((header) => {
-                                    return (
-                                        <TableHead
-                                            key={header.id}
-                                            data-column={header.column.id}
-                                            className={cn(
-                                                "px-2 text-sm leading-tight whitespace-normal break-words",
-                                                header.column.id === "select" && "w-12",
-                                                header.column.id === "id" && "w-12",
-                                                header.column.id === "groups" && "w-16",
-                                                header.column.id === "enableDDNS" && "w-20",
-                                                header.column.id === "hideForGuest" && "w-20",
-                                                header.column.id === "note" && "w-16",
-                                                header.column.id === "uuid" && "w-16",
-                                                header.column.id === "actions" && "w-[336px]",
-                                            )}
-                                        >
-                                            {header.isPlaceholder
-                                                ? null
-                                                : flexRender(
-                                                      header.column.columnDef.header,
-                                                      header.getContext(),
-                                                  )}
-                                        </TableHead>
-                                    )
-                                })}
-                            </TableRow>
-                        ))}
-                    </TableHeader>
-                    <TableBody>
-                        {isLoading ? (
-                            <TableRow>
-                                <TableCell colSpan={columns.length} className="h-24 text-center">
-                                    {t("Loading")}...
-                                </TableCell>
-                            </TableRow>
-                        ) : table.getRowModel().rows?.length ? (
-                            table.getRowModel().rows.map((row) => (
-                                <TableRow
-                                    key={row.id}
-                                    data-state={row.getIsSelected() && "selected"}
-                                >
-                                    {row.getVisibleCells().map((cell) => (
-                                        <TableCell
-                                            key={cell.id}
-                                            data-column={cell.column.id}
-                                            className={cn(
-                                                "px-2 text-xsm whitespace-normal break-words",
-                                                cell.column.id === "select" && "w-12",
-                                                cell.column.id === "id" && "w-12",
-                                                cell.column.id === "groups" && "w-16",
-                                                cell.column.id === "enableDDNS" && "w-20",
-                                                cell.column.id === "hideForGuest" && "w-20",
-                                                cell.column.id === "note" && "w-16",
-                                                cell.column.id === "uuid" && "w-16",
-                                                cell.column.id === "actions" && "w-[336px]",
-                                            )}
-                                        >
-                                            {flexRender(
-                                                cell.column.columnDef.cell,
-                                                cell.getContext(),
-                                            )}
-                                        </TableCell>
-                                    ))}
-                                </TableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell colSpan={columns.length} className="h-24 text-center">
-                                    {t("NoResults")}
-                                </TableCell>
-                            </TableRow>
+        <NICReminderProvider>
+            <div className="server-page w-full min-w-0 px-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-3 mt-6 mb-4">
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-3xl font-bold tracking-tight">{t("Server")}</h1>
+                        {profile?.role === 0 && <ServerOperationHistory />}
+                    </div>
+                    <div className="flex gap-2 flex-wrap shrink-0">
+                        <ServerDeleteButton
+                            ids={selectedRows.map((r) => r.original.id)}
+                            onUpdated={() => mutate()}
+                        />
+                        <ServerVisibilityBatch
+                            servers={selectedRows.map((r) => r.original)}
+                            onUpdated={() => mutate()}
+                        />
+                        {profile?.role === 0 && (
+                            <ServerSortDialog servers={dataCache} mutate={mutate} />
                         )}
-                    </TableBody>
-                </Table>
+                        <IconButton
+                            icon="update"
+                            onClick={async () => {
+                                const id = selectedRows.map((r) => r.original.id)
+                                if (id.length < 1) {
+                                    toast(t("Error"), {
+                                        description: t("Results.SelectAtLeastOneServer"),
+                                    })
+                                    return
+                                }
+
+                                let resp: ModelServerTaskResponse
+                                try {
+                                    resp = await forceUpdateServer(id)
+                                } catch (e) {
+                                    console.error(e)
+                                    toast(t("Error"), {
+                                        description: t("Results.UnExpectedError"),
+                                    })
+                                    return
+                                }
+                                toast(t("Done"), {
+                                    description:
+                                        t("Results.ForceUpdate") +
+                                        (resp.success?.length
+                                            ? t(`Success`) + ` [${resp.success.join(",")}]`
+                                            : "") +
+                                        (resp.failure?.length
+                                            ? t(`Failure`) + ` [${resp.failure.join(",")}]`
+                                            : "") +
+                                        (resp.offline?.length
+                                            ? t(`Offline`) + ` [${resp.offline.join(",")}]`
+                                            : ""),
+                                })
+                            }}
+                        />
+                        <BatchMoveServerIcon serverIds={selectedRows.map((r) => r.original.id)} />
+                        <ServerConfigCardBatch
+                            sid={selectedRows.map((r) => r.original.id)}
+                            className="shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] bg-yellow-600 text-white hover:bg-yellow-500 dark:hover:bg-yellow-700 rounded-lg"
+                        />
+                        {profile?.role === 0 && <AgentCredentialSettings />}
+                        <InstallCommandsMenu className="shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] bg-blue-700 text-white hover:bg-blue-600 dark:hover:bg-blue-800 rounded-lg" />
+                    </div>
+                </div>
+                <p className="mb-2 text-xs text-muted-foreground xl:hidden">
+                    表格可左右滑动，查看完整信息和操作按钮
+                </p>
+                <div
+                    className="server-list-scroll rounded-md border"
+                    role="region"
+                    aria-label="服务器列表，可左右滑动"
+                    tabIndex={0}
+                >
+                    <Table className="server-list-table w-full table-fixed">
+                        <TableHeader className="sticky top-0 bg-background z-10">
+                            {table.getHeaderGroups().map((headerGroup) => (
+                                <TableRow key={headerGroup.id}>
+                                    {headerGroup.headers.map((header) => {
+                                        return (
+                                            <TableHead
+                                                key={header.id}
+                                                data-column={header.column.id}
+                                                className={cn(
+                                                    "px-2 text-sm leading-tight whitespace-normal break-words",
+                                                    header.column.id === "select" && "w-12",
+                                                    header.column.id === "id" && "w-12",
+                                                    header.column.id === "groups" && "w-16",
+                                                    header.column.id === "enableDDNS" && "w-20",
+                                                    header.column.id === "hideForGuest" && "w-20",
+                                                    header.column.id === "note" && "w-16",
+                                                    header.column.id === "uuid" && "w-16",
+                                                    header.column.id === "actions" && "w-[336px]",
+                                                )}
+                                            >
+                                                {header.isPlaceholder
+                                                    ? null
+                                                    : flexRender(
+                                                          header.column.columnDef.header,
+                                                          header.getContext(),
+                                                      )}
+                                            </TableHead>
+                                        )
+                                    })}
+                                </TableRow>
+                            ))}
+                        </TableHeader>
+                        <TableBody>
+                            {isLoading ? (
+                                <TableRow>
+                                    <TableCell
+                                        colSpan={columns.length}
+                                        className="h-24 text-center"
+                                    >
+                                        {t("Loading")}...
+                                    </TableCell>
+                                </TableRow>
+                            ) : table.getRowModel().rows?.length ? (
+                                table.getRowModel().rows.map((row) => (
+                                    <TableRow
+                                        key={row.id}
+                                        data-state={row.getIsSelected() && "selected"}
+                                    >
+                                        {row.getVisibleCells().map((cell) => (
+                                            <TableCell
+                                                key={cell.id}
+                                                data-column={cell.column.id}
+                                                className={cn(
+                                                    "px-2 text-xsm whitespace-normal break-words",
+                                                    cell.column.id === "select" && "w-12",
+                                                    cell.column.id === "id" && "w-12",
+                                                    cell.column.id === "groups" && "w-16",
+                                                    cell.column.id === "enableDDNS" && "w-20",
+                                                    cell.column.id === "hideForGuest" && "w-20",
+                                                    cell.column.id === "note" && "w-16",
+                                                    cell.column.id === "uuid" && "w-16",
+                                                    cell.column.id === "actions" && "w-[336px]",
+                                                )}
+                                            >
+                                                {flexRender(
+                                                    cell.column.columnDef.cell,
+                                                    cell.getContext(),
+                                                )}
+                                            </TableCell>
+                                        ))}
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell
+                                        colSpan={columns.length}
+                                        className="h-24 text-center"
+                                    >
+                                        {t("NoResults")}
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
             </div>
-        </div>
+        </NICReminderProvider>
     )
 }
