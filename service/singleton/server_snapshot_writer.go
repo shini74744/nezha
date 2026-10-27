@@ -68,7 +68,7 @@ func (writer *snapshotBatchWriter) drain() {
 
 func persistSnapshotBatch(batch []*snapshotWriteRequest) {
 	active := make([]*snapshotWriteRequest, 0, len(batch))
-	deadline := time.Now().Add(5 * time.Second)
+	deadline := time.Now().Add(snapshotPersistenceTimeout)
 	for _, request := range batch {
 		if err := request.ctx.Err(); err != nil {
 			request.result <- err
