@@ -15,6 +15,7 @@ import (
 	"github.com/nezhahq/agent/pkg/monitor/disk"
 	"github.com/nezhahq/agent/pkg/monitor/frequency"
 	"github.com/nezhahq/agent/pkg/monitor/gpu/vendor"
+	"github.com/nezhahq/agent/pkg/monitor/nic"
 )
 
 type monitorProbeSnapshot struct {
@@ -29,13 +30,15 @@ type monitorProbeSnapshot struct {
 	gpuHost           hostStateFunc[[]string]
 	gpuStat           hostStateFunc[[]vendor.GPUStat]
 	loadState         hostStateFunc[*psLoad.AvgStat]
-	nicState          hostStateFunc[[]uint64]
+	nicState          hostStateFunc[nic.Sample]
 	temperature       hostStateFunc[[]model.SensorTemperature]
 	fetchIP           func([]string, bool) string
 	temperatureUpdate func()
 }
 
 type monitorMetricStateSnapshot struct {
+	networkSample      nic.Sample
+	networkEpoch       string
 	netInSpeed         uint64
 	netOutSpeed        uint64
 	netInTransfer      uint64
@@ -87,6 +90,7 @@ func captureMonitorTestState() monitorTestStateSnapshot {
 			temperatureUpdate: temperatureUpdated,
 		},
 		metrics: monitorMetricStateSnapshot{
+			networkSample: networkSample, networkEpoch: networkCounterEpoch,
 			netInSpeed: netInSpeed, netOutSpeed: netOutSpeed,
 			netInTransfer: netInTransfer, netOutTransfer: netOutTransfer,
 			lastUpdateNetStats: lastUpdateNetStats, cachedBootTime: cachedBootTime,
@@ -123,6 +127,7 @@ func (s monitorTestStateSnapshot) restore() {
 	temperatureProbe, fetchIPProbe = s.probes.temperature, s.probes.fetchIP
 	temperatureUpdated = s.probes.temperatureUpdate
 
+	networkSample, networkCounterEpoch = s.metrics.networkSample, s.metrics.networkEpoch
 	netInSpeed, netOutSpeed = s.metrics.netInSpeed, s.metrics.netOutSpeed
 	netInTransfer, netOutTransfer = s.metrics.netInTransfer, s.metrics.netOutTransfer
 	lastUpdateNetStats, cachedBootTime = s.metrics.lastUpdateNetStats, s.metrics.cachedBootTime

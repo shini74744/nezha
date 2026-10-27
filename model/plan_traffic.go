@@ -14,12 +14,13 @@ var PlanTrafficZone = time.FixedZone("Asia/Shanghai", 8*60*60)
 
 // UUID, not display ID, owns the durable accounting history.
 type PlanTrafficCheckpoint struct {
-	UUID        string `gorm:"primaryKey;size:64"`
-	At          int64
-	In          uint64
-	Out         uint64
-	Uptime      uint64
-	CoveredFrom int64
+	NetworkCounterEpoch string `gorm:"size:64;not null;default:''"`
+	UUID                string `gorm:"primaryKey;size:64"`
+	At                  int64
+	In                  uint64
+	Out                 uint64
+	Uptime              uint64
+	CoveredFrom         int64
 }
 type PlanTrafficDay struct {
 	UUID       string `gorm:"primaryKey;size:64"`

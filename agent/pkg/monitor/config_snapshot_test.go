@@ -27,9 +27,9 @@ func TestMonitorUsesAuthoritativeSnapshotReferenceFields(t *testing.T) {
 	var observedDisk []string
 	var observedEndpoints [][]string
 	var observedEndpointsLock sync.Mutex
-	nicStateProbe = func(ctx context.Context) ([]uint64, error) {
+	nicStateProbe = func(ctx context.Context) (nic.Sample, error) {
 		observedNIC, _ = ctx.Value(nic.NICKey).(map[string]bool)
-		return []uint64{1, 2}, nil
+		return nic.Sample{In: 1, Out: 2}, nil
 	}
 	diskHostProbe = func(ctx context.Context) (uint64, error) {
 		observedDisk, _ = ctx.Value(disk.DiskKey).([]string)
@@ -78,9 +78,9 @@ func TestMonitorNilSnapshotPreservesExistingEmptyBehavior(t *testing.T) {
 	originalDiskStateProbe := diskStateProbe
 	var observedNIC map[string]bool
 	var observedDisk []string
-	nicStateProbe = func(ctx context.Context) ([]uint64, error) {
+	nicStateProbe = func(ctx context.Context) (nic.Sample, error) {
 		observedNIC, _ = ctx.Value(nic.NICKey).(map[string]bool)
-		return []uint64{0, 0}, nil
+		return nic.Sample{In: 0, Out: 0}, nil
 	}
 	diskStateProbe = func(ctx context.Context) (uint64, error) {
 		observedDisk, _ = ctx.Value(disk.DiskKey).([]string)

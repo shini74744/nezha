@@ -286,6 +286,9 @@ func (s *NezhaHandler) ReportSystemState(stream pb.NezhaService_ReportSystemStat
 		if singleton.IsDeletedServerUUID(server.UUID) {
 			return status.Error(codes.PermissionDenied, "server UUID was permanently deleted")
 		}
+		if len(state.GetNetworkCounterEpoch()) > 64 {
+			return status.Error(codes.InvalidArgument, "network counter epoch is too long")
+		}
 		stateCount++
 		innerState := model.PB2State(state)
 		if pending {

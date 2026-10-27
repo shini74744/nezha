@@ -93,7 +93,7 @@ func installMonitorSnapshotProbeBarrier(t *testing.T, snapshotA *model.AgentConf
 	cpuHostProbe = func(context.Context) ([]string, error) { return nil, nil }
 	cpuStateProbe = func(context.Context) ([]float64, error) { return []float64{0}, nil }
 	loadStateProbe = func(context.Context) (*psLoad.AvgStat, error) { return &psLoad.AvgStat{}, nil }
-	nicStateProbe = func(ctx context.Context) ([]uint64, error) {
+	nicStateProbe = func(ctx context.Context) (nic.Sample, error) {
 		allowlist, _ := ctx.Value(nic.NICKey).(map[string]bool)
 		observation.recordNICAllowlist(allowlist)
 		observation.mu.Lock()
@@ -103,7 +103,7 @@ func installMonitorSnapshotProbeBarrier(t *testing.T, snapshotA *model.AgentConf
 		if barrierCalls == 1 {
 			afterTrack()
 		}
-		return []uint64{100, 200}, nil
+		return nic.Sample{In: 100, Out: 200}, nil
 	}
 	diskHostProbe = func(ctx context.Context) (uint64, error) {
 		observation.recordDiskAllowlist(ctx)

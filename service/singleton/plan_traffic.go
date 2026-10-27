@@ -74,7 +74,7 @@ func recordPlanTraffic(db *gorm.DB, id uint64, uuid string, s model.RecordedServ
 	return db.Transaction(func(tx *gorm.DB) error { return recordPlanTrafficTx(tx, id, uuid, s) })
 }
 func recordPlanTrafficTx(tx *gorm.DB, id uint64, uuid string, s model.RecordedServerState) error {
-	if s.State == nil || s.At <= 0 || s.State.NetInTransfer > 1<<63-1 || s.State.NetOutTransfer > 1<<63-1 || s.State.Uptime > 100*366*86400 {
+	if s.State == nil || s.At <= 0 || s.State.NetInTransfer > 1<<63-1 || s.State.NetOutTransfer > 1<<63-1 || s.State.Uptime > 100*366*86400 || len(s.State.NetworkCounterEpoch) > 64 {
 		return errors.New("invalid traffic sample")
 	}
 	var exists int64
@@ -95,7 +95,7 @@ func recordPlanTrafficTx(tx *gorm.DB, id uint64, uuid string, s model.RecordedSe
 	if last.CoveredFrom == 0 {
 		last.CoveredFrom = s.At
 	}
-	next := model.PlanTrafficCheckpoint{UUID: uuid, At: s.At, In: s.State.NetInTransfer, Out: s.State.NetOutTransfer, Uptime: s.State.Uptime, CoveredFrom: last.CoveredFrom}
+	next := model.PlanTrafficCheckpoint{UUID: uuid, At: s.At, In: s.State.NetInTransfer, Out: s.State.NetOutTransfer, Uptime: s.State.Uptime, CoveredFrom: last.CoveredFrom, NetworkCounterEpoch: s.State.NetworkCounterEpoch}
 	if last.At == 0 {
 		// Never treat the agent's lifetime counter as this month's consumption.
 		next.CoveredFrom = s.At
@@ -111,12 +111,18 @@ func recordPlanTrafficTx(tx *gorm.DB, id uint64, uuid string, s model.RecordedSe
 			return current - previous
 		}
 		in, out := delta(next.In, last.In), delta(next.Out, last.Out)
+		boundary := next.NetworkCounterEpoch != last.NetworkCounterEpoch
+		if boundary {
+			in, out = 0, 0
+		}
 		from := last.At
-		estimated := uptimeMismatch || elapsed > 120 || next.In < last.In || next.Out < last.Out
+		estimated := boundary || uptimeMismatch || elapsed > 120 || next.In < last.In || next.Out < last.Out
 		for _, day := range splitTrafficDays(uuid, from, s.At, in, out, estimated) {
+			day.Partial = boundary
 			if err := tx.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "uuid"}, {Name: "day"}}, DoUpdates: clause.Assignments(map[string]any{
 				"in": gorm.Expr("plan_traffic_days.`in` + excluded.`in`"), "out": gorm.Expr("plan_traffic_days.`out` + excluded.`out`"),
 				"estimated": gorm.Expr("plan_traffic_days.estimated OR excluded.estimated"),
+				"partial":   gorm.Expr("plan_traffic_days.partial OR excluded.partial"),
 			})}).Create(&day).Error; err != nil {
 				return err
 			}

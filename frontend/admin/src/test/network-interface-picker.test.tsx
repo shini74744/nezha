@@ -159,3 +159,94 @@ test("late config response after close cannot overwrite the next open", async ()
     await waitFor(() => expect(checkbox("enp2s0f1").getAttribute("aria-checked")).toBe("true"))
     expect(checkbox("enp2s0f0").getAttribute("aria-checked")).toBe("false")
 })
+
+test("unknown kinds and Unicode/space names remain selectable without renaming", async () => {
+    const names = ["以太网 2", "Ethernet 2", "wan<&>"]
+    await open({
+        ...baseline,
+        nic_allowlist: null,
+        network_interfaces: {
+            available: true,
+            interfaces: names.map((name) => ({
+                name,
+                kind: "future-kind",
+                state: "unknown",
+                default_monitored: true,
+                monitored: true,
+            })),
+        },
+    })
+    expect(screen.getAllByText("网络接口")).toHaveLength(3)
+    fireEvent.click(checkbox("以太网 2"))
+    const payload = await submit()
+    expect(payload.nic_allowlist).toEqual({ "以太网 2": false, "Ethernet 2": true, "wan<&>": true })
+})
+test("invalid discovery metadata does not erase an existing selection", async () => {
+    await open({
+        ...baseline,
+        nic_allowlist: { "Ethernet 2": true },
+        network_interfaces: { available: true, interfaces: [{ name: "incomplete" }] },
+    })
+    expect(checkbox("Ethernet 2").getAttribute("aria-checked")).toBe("true")
+    const payload = await submit()
+    expect(payload.nic_allowlist).toEqual({ "Ethernet 2": true })
+})
+test("new interfaces stay unselected under an explicit allowlist", async () => {
+    await open({ ...baseline, nic_allowlist: { enp2s0f0: true } })
+    expect(checkbox("enp2s0f1").getAttribute("aria-checked")).toBe("false")
+    const payload = await submit()
+    expect(payload.nic_allowlist).toEqual({ enp2s0f0: true })
+})
+test("stored all-false map stays off on reopening and restores only on request", async () => {
+    const off = Object.fromEntries(interfaces.map((x) => [x.name, false]))
+    await open({ ...baseline, nic_allowlist: off })
+    expect(screen.getByText("已选择 0 个网卡")).toBeTruthy()
+    expect(checkbox("enp2s0f0").getAttribute("aria-checked")).toBe("false")
+    fireEvent.click(screen.getByRole("button", { name: "恢复默认" }))
+    expect(checkbox("enp2s0f0").getAttribute("aria-checked")).toBe("true")
+    const payload = await submit()
+    expect(payload.nic_allowlist).toBeNull()
+})
+test("duplicate manual name cannot replace an existing unchecked entry", async () => {
+    await open({
+        ...baseline,
+        network_interfaces: undefined,
+        nic_allowlist: { "Ethernet 2": false },
+    })
+    fireEvent.change(screen.getByRole("textbox", { name: "网卡名称" }), {
+        target: { value: "Ethernet 2" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "添加" }))
+    expect(screen.getAllByRole("checkbox", { name: "统计 Ethernet 2" })).toHaveLength(1)
+    const payload = await submit()
+    expect(payload.nic_allowlist).toEqual({ "Ethernet 2": false })
+})
+
+test("Linux-specific kinds and link rates have distinct labels", async () => {
+    const kinds = ["veth", "macvlan", "macvtap", "ipvlan", "ipvtap", "wireguard", "dummy"]
+    await open({
+        ...baseline,
+        network_interfaces: {
+            available: true,
+            interfaces: kinds.map((kind) => ({
+                name: kind + "0",
+                kind,
+                state: "up",
+                speed_mbps: 1000,
+                default_monitored: true,
+                monitored: true,
+            })),
+        },
+    })
+    for (const label of [
+        "虚拟网卡（veth）",
+        "MACVLAN",
+        "MACVTAP",
+        "IPVLAN",
+        "IPVTAP",
+        "WireGuard",
+        "虚拟网卡（Dummy）",
+    ])
+        expect(screen.getByText(label)).toBeTruthy()
+    expect(screen.getAllByText("链路 1 Gbps")).toHaveLength(kinds.length)
+})

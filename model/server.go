@@ -95,6 +95,8 @@ type serverRuntimeHolder struct {
 	countryCode        string
 	prevIn             uint64
 	prevOut            uint64
+	pendingIn          uint64
+	pendingOut         uint64
 }
 
 type StateStreamLease struct {
@@ -186,7 +188,7 @@ func (handle RuntimeHandle) applyHostReport(host *Host, allowEarlier bool, creat
 	}
 	result.Restart = true
 	if holder.state != nil {
-		result.Transfer = Transfer{Common: Common{CreatedAt: createdAt}, ServerID: canonical.ID, In: holder.state.NetInTransfer - min(holder.state.NetInTransfer, holder.prevIn), Out: holder.state.NetOutTransfer - min(holder.state.NetOutTransfer, holder.prevOut)}
+		result.Transfer = Transfer{Common: Common{CreatedAt: createdAt}, ServerID: canonical.ID, In: holder.pendingIn + holder.state.NetInTransfer - min(holder.state.NetInTransfer, holder.prevIn), Out: holder.pendingOut + holder.state.NetOutTransfer - min(holder.state.NetOutTransfer, holder.prevOut)}
 	}
 	if persist != nil {
 		if err := persist(result.Transfer); err != nil {
@@ -197,6 +199,7 @@ func (handle RuntimeHandle) applyHostReport(host *Host, allowEarlier bool, creat
 	holder.state = &HostState{}
 	holder.lastActive = time.Time{}
 	holder.prevIn, holder.prevOut = 0, 0
+	holder.pendingIn, holder.pendingOut = 0, 0
 	canonical.Host = cloneHost(host)
 	canonical.State = &HostState{}
 	canonical.LastActive = time.Time{}
@@ -245,12 +248,19 @@ func (lease StateStreamLease) updateState(receiver *Server, state *HostState, la
 		return false
 	}
 	canonical := lease.holder.canonical
+	previous := lease.holder.state
+	boundary := previous != nil && previous.NetworkCounterEpoch != state.NetworkCounterEpoch
+	if boundary {
+		lease.holder.pendingIn += previous.NetInTransfer - min(previous.NetInTransfer, lease.holder.prevIn)
+		lease.holder.pendingOut += previous.NetOutTransfer - min(previous.NetOutTransfer, lease.holder.prevOut)
+	}
+	initialize := previous == nil
 	canonical.State = cloneHostState(state)
 	canonical.LastActive = lastActive
 	lease.holder.state = cloneHostState(state)
 	lease.holder.lastActive = lastActive
 	lease.holder.reportedGeneration = lease.generation
-	if lease.holder.prevIn == 0 || lease.holder.prevOut == 0 {
+	if boundary || initialize || (state.NetworkCounterEpoch == "" && (lease.holder.prevIn == 0 || lease.holder.prevOut == 0)) {
 		lease.holder.prevIn = state.NetInTransfer
 		lease.holder.prevOut = state.NetOutTransfer
 	}
@@ -522,6 +532,7 @@ func (s *Server) SetTransferSnapshots(inbound, outbound uint64) bool {
 	}
 	holder.prevIn = inbound
 	holder.prevOut = outbound
+	holder.pendingIn, holder.pendingOut = 0, 0
 	if holder.canonical != nil {
 		holder.canonical.PrevTransferInSnapshot = inbound
 		holder.canonical.PrevTransferOutSnapshot = outbound
@@ -552,8 +563,9 @@ func (s *Server) TransferDeltaAndAdvance() (inbound, outbound uint64, deltaIn, d
 		return 0, 0, 0, 0
 	}
 	inbound, outbound = holder.state.NetInTransfer, holder.state.NetOutTransfer
-	deltaIn = inbound - min(inbound, holder.prevIn)
-	deltaOut = outbound - min(outbound, holder.prevOut)
+	deltaIn = holder.pendingIn + inbound - min(inbound, holder.prevIn)
+	deltaOut = holder.pendingOut + outbound - min(outbound, holder.prevOut)
+	holder.pendingIn, holder.pendingOut = 0, 0
 	holder.prevIn, holder.prevOut = inbound, outbound
 	if holder.canonical != nil {
 		holder.canonical.PrevTransferInSnapshot = inbound

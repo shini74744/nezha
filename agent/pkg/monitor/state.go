@@ -92,6 +92,7 @@ func GetState(config *model.AgentConfig, skipConnectionCount bool, skipProcsCoun
 
 	metricLock.RLock()
 	result.NetInTransfer, result.NetOutTransfer = netInTransfer, netOutTransfer
+	result.NetworkCounterEpoch = networkCounterEpoch
 	result.NetInSpeed, result.NetOutSpeed = netInSpeed, netOutSpeed
 	result.Uptime = uint64(time.Since(cachedBootTime).Seconds())
 	metricLock.RUnlock()

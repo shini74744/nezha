@@ -18,29 +18,30 @@ type SensorTemperature struct {
 }
 
 type HostState struct {
-	CPUFrequencyMHz  float64             `json:"cpu_frequency_mhz,omitempty"`
-	CPUFrequencyKind string              `json:"cpu_frequency_kind,omitempty"`
-	CPU              float64             `json:"cpu,omitempty"`
-	MemUsed          uint64              `json:"mem_used,omitempty"`
-	SwapUsed         uint64              `json:"swap_used,omitempty"`
-	DiskUsed         uint64              `json:"disk_used,omitempty"`
-	DiskReadSpeed    uint64              `json:"disk_read_speed,omitempty"`
-	DiskWriteSpeed   uint64              `json:"disk_write_speed,omitempty"`
-	DiskIOAvailable  bool                `json:"disk_io_available,omitempty"`
-	NetInTransfer    uint64              `json:"net_in_transfer,omitempty"`
-	NetOutTransfer   uint64              `json:"net_out_transfer,omitempty"`
-	NetInSpeed       uint64              `json:"net_in_speed,omitempty"`
-	NetOutSpeed      uint64              `json:"net_out_speed,omitempty"`
-	Uptime           uint64              `json:"uptime,omitempty"`
-	Load1            float64             `json:"load_1,omitempty"`
-	Load5            float64             `json:"load_5,omitempty"`
-	Load15           float64             `json:"load_15,omitempty"`
-	TcpConnCount     uint64              `json:"tcp_conn_count,omitempty"`
-	UdpConnCount     uint64              `json:"udp_conn_count,omitempty"`
-	ProcessCount     uint64              `json:"process_count,omitempty"`
-	Temperatures     []SensorTemperature `json:"temperatures,omitempty"`
-	GPU              []float64           `json:"gpu,omitempty"`
-	GPUs             []GPUStat           `json:"gpus,omitempty"`
+	NetworkCounterEpoch string              `json:"network_counter_epoch,omitempty"`
+	CPUFrequencyMHz     float64             `json:"cpu_frequency_mhz,omitempty"`
+	CPUFrequencyKind    string              `json:"cpu_frequency_kind,omitempty"`
+	CPU                 float64             `json:"cpu,omitempty"`
+	MemUsed             uint64              `json:"mem_used,omitempty"`
+	SwapUsed            uint64              `json:"swap_used,omitempty"`
+	DiskUsed            uint64              `json:"disk_used,omitempty"`
+	DiskReadSpeed       uint64              `json:"disk_read_speed,omitempty"`
+	DiskWriteSpeed      uint64              `json:"disk_write_speed,omitempty"`
+	DiskIOAvailable     bool                `json:"disk_io_available,omitempty"`
+	NetInTransfer       uint64              `json:"net_in_transfer,omitempty"`
+	NetOutTransfer      uint64              `json:"net_out_transfer,omitempty"`
+	NetInSpeed          uint64              `json:"net_in_speed,omitempty"`
+	NetOutSpeed         uint64              `json:"net_out_speed,omitempty"`
+	Uptime              uint64              `json:"uptime,omitempty"`
+	Load1               float64             `json:"load_1,omitempty"`
+	Load5               float64             `json:"load_5,omitempty"`
+	Load15              float64             `json:"load_15,omitempty"`
+	TcpConnCount        uint64              `json:"tcp_conn_count,omitempty"`
+	UdpConnCount        uint64              `json:"udp_conn_count,omitempty"`
+	ProcessCount        uint64              `json:"process_count,omitempty"`
+	Temperatures        []SensorTemperature `json:"temperatures,omitempty"`
+	GPU                 []float64           `json:"gpu,omitempty"`
+	GPUs                []GPUStat           `json:"gpus,omitempty"`
 }
 
 // GPUStat carries per-card figures, index-aligned with Host.GPU. Memory is in
@@ -77,29 +78,30 @@ func (s *HostState) PB() *pb.State {
 	}
 
 	return &pb.State{
-		CpuFrequencyMhz:  s.CPUFrequencyMHz,
-		CpuFrequencyKind: s.CPUFrequencyKind,
-		Cpu:              s.CPU,
-		MemUsed:          s.MemUsed,
-		SwapUsed:         s.SwapUsed,
-		DiskUsed:         s.DiskUsed,
-		DiskReadSpeed:    s.DiskReadSpeed,
-		DiskWriteSpeed:   s.DiskWriteSpeed,
-		DiskIoAvailable:  s.DiskIOAvailable,
-		NetInTransfer:    s.NetInTransfer,
-		NetOutTransfer:   s.NetOutTransfer,
-		NetInSpeed:       s.NetInSpeed,
-		NetOutSpeed:      s.NetOutSpeed,
-		Uptime:           s.Uptime,
-		Load1:            s.Load1,
-		Load5:            s.Load5,
-		Load15:           s.Load15,
-		TcpConnCount:     s.TcpConnCount,
-		UdpConnCount:     s.UdpConnCount,
-		ProcessCount:     s.ProcessCount,
-		Temperatures:     ts,
-		Gpu:              s.GPU,
-		Gpus:             gs,
+		NetworkCounterEpoch: s.NetworkCounterEpoch,
+		CpuFrequencyMhz:     s.CPUFrequencyMHz,
+		CpuFrequencyKind:    s.CPUFrequencyKind,
+		Cpu:                 s.CPU,
+		MemUsed:             s.MemUsed,
+		SwapUsed:            s.SwapUsed,
+		DiskUsed:            s.DiskUsed,
+		DiskReadSpeed:       s.DiskReadSpeed,
+		DiskWriteSpeed:      s.DiskWriteSpeed,
+		DiskIoAvailable:     s.DiskIOAvailable,
+		NetInTransfer:       s.NetInTransfer,
+		NetOutTransfer:      s.NetOutTransfer,
+		NetInSpeed:          s.NetInSpeed,
+		NetOutSpeed:         s.NetOutSpeed,
+		Uptime:              s.Uptime,
+		Load1:               s.Load1,
+		Load5:               s.Load5,
+		Load15:              s.Load15,
+		TcpConnCount:        s.TcpConnCount,
+		UdpConnCount:        s.UdpConnCount,
+		ProcessCount:        s.ProcessCount,
+		Temperatures:        ts,
+		Gpu:                 s.GPU,
+		Gpus:                gs,
 	}
 }
 
@@ -125,29 +127,30 @@ func PB2State(s *pb.State) HostState {
 	}
 
 	return HostState{
-		CPUFrequencyMHz:  s.GetCpuFrequencyMhz(),
-		CPUFrequencyKind: s.GetCpuFrequencyKind(),
-		CPU:              s.GetCpu(),
-		MemUsed:          s.GetMemUsed(),
-		SwapUsed:         s.GetSwapUsed(),
-		DiskUsed:         s.GetDiskUsed(),
-		DiskReadSpeed:    s.GetDiskReadSpeed(),
-		DiskWriteSpeed:   s.GetDiskWriteSpeed(),
-		DiskIOAvailable:  s.GetDiskIoAvailable(),
-		NetInTransfer:    s.GetNetInTransfer(),
-		NetOutTransfer:   s.GetNetOutTransfer(),
-		NetInSpeed:       s.GetNetInSpeed(),
-		NetOutSpeed:      s.GetNetOutSpeed(),
-		Uptime:           s.GetUptime(),
-		Load1:            s.GetLoad1(),
-		Load5:            s.GetLoad5(),
-		Load15:           s.GetLoad15(),
-		TcpConnCount:     s.GetTcpConnCount(),
-		UdpConnCount:     s.GetUdpConnCount(),
-		ProcessCount:     s.GetProcessCount(),
-		Temperatures:     ts,
-		GPUs:             gs,
-		GPU:              s.GetGpu(),
+		NetworkCounterEpoch: s.GetNetworkCounterEpoch(),
+		CPUFrequencyMHz:     s.GetCpuFrequencyMhz(),
+		CPUFrequencyKind:    s.GetCpuFrequencyKind(),
+		CPU:                 s.GetCpu(),
+		MemUsed:             s.GetMemUsed(),
+		SwapUsed:            s.GetSwapUsed(),
+		DiskUsed:            s.GetDiskUsed(),
+		DiskReadSpeed:       s.GetDiskReadSpeed(),
+		DiskWriteSpeed:      s.GetDiskWriteSpeed(),
+		DiskIOAvailable:     s.GetDiskIoAvailable(),
+		NetInTransfer:       s.GetNetInTransfer(),
+		NetOutTransfer:      s.GetNetOutTransfer(),
+		NetInSpeed:          s.GetNetInSpeed(),
+		NetOutSpeed:         s.GetNetOutSpeed(),
+		Uptime:              s.GetUptime(),
+		Load1:               s.GetLoad1(),
+		Load5:               s.GetLoad5(),
+		Load15:              s.GetLoad15(),
+		TcpConnCount:        s.GetTcpConnCount(),
+		UdpConnCount:        s.GetUdpConnCount(),
+		ProcessCount:        s.GetProcessCount(),
+		Temperatures:        ts,
+		GPUs:                gs,
+		GPU:                 s.GetGpu(),
 	}
 }
 
