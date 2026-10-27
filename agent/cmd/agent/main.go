@@ -35,6 +35,7 @@ import (
 	"github.com/nezhahq/agent/pkg/fsnotifyx"
 	"github.com/nezhahq/agent/pkg/logger"
 	"github.com/nezhahq/agent/pkg/monitor"
+	"github.com/nezhahq/agent/pkg/monitor/nic"
 	"github.com/nezhahq/agent/pkg/processgroup"
 	"github.com/nezhahq/agent/pkg/util"
 	utlsx "github.com/nezhahq/agent/pkg/utls"
@@ -838,7 +839,9 @@ func handleReportConfigTaskWithConfig(config *model.AgentConfig, result *pb.Task
 
 	println("Executing Report Config Task")
 
-	c, err := json.Marshal(config)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	c, err := marshalReportedConfig(config, nic.Discover(ctx, config.NICAllowlist))
 	if err != nil {
 		result.Data = err.Error()
 		return

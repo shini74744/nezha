@@ -29,10 +29,7 @@ func GetState(ctx context.Context) ([]uint64, error) {
 	allowList, _ := ctx.Value(NICKey).(map[string]bool)
 
 	for _, v := range nc {
-		if defaultMatcher.Contains([]byte(v.Name)) && !allowList[v.Name] {
-			continue
-		}
-		if len(allowList) > 0 && !allowList[v.Name] {
+		if !IsMonitored(v.Name, allowList) {
 			continue
 		}
 		netInTransfer += v.BytesRecv
@@ -40,4 +37,13 @@ func GetState(ctx context.Context) ([]uint64, error) {
 	}
 
 	return []uint64{netInTransfer, netOutTransfer}, nil
+}
+
+// IsMonitored is shared by the sampler and the read-only inventory. Keep the
+// existing default name filters and explicit allowlist semantics unchanged.
+func IsMonitored(name string, allowList map[string]bool) bool {
+	if defaultMatcher.Contains([]byte(name)) && !allowList[name] {
+		return false
+	}
+	return len(allowList) == 0 || allowList[name]
 }

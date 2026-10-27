@@ -1,4 +1,5 @@
 import { getServerConfig, setServerConfig } from "@/api/server"
+import { NetworkInterfacePicker } from "@/components/network-interface-picker"
 import { Button, ButtonProps } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -20,10 +21,11 @@ import {
     FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { singleAgentConfigLabels } from "@/lib/agent-config-fields"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
 import { IconButton } from "@/components/xui/icon-button"
+import { singleAgentConfigLabels } from "@/lib/agent-config-fields"
+import { parseNetworkInventory } from "@/lib/network-interfaces"
 import { asOptionalField } from "@/lib/utils"
 import { ModelServerTaskResponse } from "@/types"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -59,22 +61,7 @@ const agentConfigSchema = z.object({
         ),
     ),
     ip_report_period: asOptionalField(z.coerce.number().int().min(30)),
-    nic_allowlist: asOptionalField(z.record(z.string(), z.boolean())),
-    nic_allowlist_raw: asOptionalField(
-        z.string().refine(
-            (val) => {
-                try {
-                    JSON.parse(val)
-                    return true
-                } catch {
-                    return false
-                }
-            },
-            {
-                message: "Invalid JSON string",
-            },
-        ),
-    ),
+    nic_allowlist: asOptionalField(z.record(z.string(), z.boolean()).nullable()),
     report_delay: asOptionalField(z.coerce.number().int().min(1).max(4)),
     skip_connection_count: asOptionalField(z.boolean()),
     skip_procs_count: asOptionalField(z.boolean()),
@@ -108,16 +95,22 @@ interface ServerConfigCardProps extends ButtonProps {
 
 export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConfigCardProps) => {
     const { t } = useTranslation()
-    const [data, setData] = useState<AgentConfig | undefined>(undefined)
+    const [data, setData] = useState<(AgentConfig & { network_interfaces?: unknown }) | undefined>(
+        undefined,
+    )
     const [loading, setLoading] = useState(true)
     const [open, setOpen] = useState(false)
 
     useEffect(() => {
+        let active = true
         const fetchData = async () => {
+            setLoading(true)
+            setData(undefined)
             try {
                 const result = await getServerConfig(sid)
-                setData(JSON.parse(result))
+                if (active) setData(JSON.parse(result))
             } catch (error) {
+                if (!active) return
                 console.error(error)
                 toast(t("Error"), {
                     description: (error as Error).message,
@@ -125,10 +118,13 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
                 setOpen(false)
                 return
             } finally {
-                setLoading(false)
+                if (active) setLoading(false)
             }
         }
         if (open) fetchData()
+        return () => {
+            active = false
+        }
     }, [open, sid, t])
 
     const form = useForm({
@@ -138,7 +134,6 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
             hard_drive_partition_allowlist_raw: JSON.stringify(
                 data?.hard_drive_partition_allowlist,
             ),
-            nic_allowlist_raw: JSON.stringify(data?.nic_allowlist),
         },
         resetOptions: {
             keepDefaultValues: false,
@@ -152,7 +147,6 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
                 hard_drive_partition_allowlist_raw: JSON.stringify(
                     data.hard_drive_partition_allowlist,
                 ),
-                nic_allowlist_raw: JSON.stringify(data.nic_allowlist),
             })
         }
     }, [data, form])
@@ -160,13 +154,11 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
     const onSubmit = async (values: any) => {
         let resp: ModelServerTaskResponse
         try {
-            values.nic_allowlist = values.nic_allowlist_raw
-                ? JSON.parse(values.nic_allowlist_raw)
-                : undefined
             values.hard_drive_partition_allowlist = values.hard_drive_partition_allowlist_raw
                 ? JSON.parse(values.hard_drive_partition_allowlist_raw)
                 : undefined
-            resp = await setServerConfig({ config: JSON.stringify(values), servers: [sid] })
+            const { hard_drive_partition_allowlist_raw: _raw, ...config } = values
+            resp = await setServerConfig({ config: JSON.stringify(config), servers: [sid] })
         } catch (e) {
             console.error(e)
             toast(t("Error"), {
@@ -226,12 +218,15 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
                                         name="ip_report_period"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel title="ip_report_period">{singleAgentConfigLabels.ip_report_period}</FormLabel>
+                                                <FormLabel title="ip_report_period">
+                                                    {singleAgentConfigLabels.ip_report_period}
+                                                </FormLabel>
                                                 <FormControl>
                                                     <Input
                                                         type="number"
                                                         placeholder="0"
                                                         {...field}
+                                                        value={field.value ?? ""}
                                                     />
                                                 </FormControl>
                                                 <FormMessage />
@@ -243,12 +238,15 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
                                         name="report_delay"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel title="report_delay">{singleAgentConfigLabels.report_delay}</FormLabel>
+                                                <FormLabel title="report_delay">
+                                                    {singleAgentConfigLabels.report_delay}
+                                                </FormLabel>
                                                 <FormControl>
                                                     <Input
                                                         type="number"
                                                         placeholder="0"
                                                         {...field}
+                                                        value={field.value ?? ""}
                                                     />
                                                 </FormControl>
                                                 <FormMessage />
@@ -261,10 +259,16 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel title="hard_drive_partition_allowlist">
-                                                    {singleAgentConfigLabels.hard_drive_partition_allowlist}
+                                                    {
+                                                        singleAgentConfigLabels.hard_drive_partition_allowlist
+                                                    }
                                                 </FormLabel>
                                                 <FormControl>
-                                                    <Textarea className="resize-y" {...field} />
+                                                    <Textarea
+                                                        className="resize-y"
+                                                        {...field}
+                                                        value={field.value ?? ""}
+                                                    />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -272,19 +276,32 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
                                     />
                                     <FormField
                                         control={form.control}
-                                        name="nic_allowlist_raw"
+                                        name="nic_allowlist"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel title="nic_allowlist">{singleAgentConfigLabels.nic_allowlist}</FormLabel>
+                                                <FormLabel title="nic_allowlist">
+                                                    {singleAgentConfigLabels.nic_allowlist}
+                                                </FormLabel>
                                                 <FormControl>
-                                                    <Textarea className="resize-y" {...field} />
+                                                    <div role="group" aria-label="监控网卡">
+                                                        <NetworkInterfacePicker
+                                                            inventory={parseNetworkInventory(
+                                                                data?.network_interfaces,
+                                                            )}
+                                                            value={field.value}
+                                                            onChange={field.onChange}
+                                                        />
+                                                    </div>
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
                                     />
                                     {groupedBoolFields.map((group, idx) => (
-                                        <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2" key={idx}>
+                                        <div
+                                            className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2"
+                                            key={idx}
+                                        >
                                             {group.map((field) => (
                                                 <FormField
                                                     key={field}
@@ -295,11 +312,18 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
                                                             <FormControl>
                                                                 <Checkbox
                                                                     className="mt-0.5 shrink-0"
-                                                                    checked={!!controllerField.value}
-                                                                    onCheckedChange={controllerField.onChange}
+                                                                    checked={
+                                                                        !!controllerField.value
+                                                                    }
+                                                                    onCheckedChange={
+                                                                        controllerField.onChange
+                                                                    }
                                                                 />
                                                             </FormControl>
-                                                            <FormLabel title={field} className="min-w-0 cursor-pointer text-sm leading-5">
+                                                            <FormLabel
+                                                                title={field}
+                                                                className="min-w-0 cursor-pointer text-sm leading-5"
+                                                            >
                                                                 {singleAgentConfigLabels[field]}
                                                             </FormLabel>
                                                             <FormMessage />
