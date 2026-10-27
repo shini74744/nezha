@@ -10,7 +10,7 @@
 
 ## 安装与管理
 
-主面板与 Agent 统一在本仓库维护：当前正式安装包为主面板 **v0.0.17**、Agent **v1.0.7**，以后分别递增版本（以正式 Releases 及组件版本入口为准）。源码与安装包的对应关系见 [更新记录](CHANGELOG.md)；`main` 后续可能包含尚未打包的修改，源码推送不等于安装包更新。Agent 源码在 [`agent/`](agent/)，两者安装包均在本仓库 Releases，更新使用独立版本入口，不能用全仓库 Latest 判断 Agent 版本。旧 `shini74744/agent` 仓库仅保留历史，不再用于新安装或后续更新。详见 [统一仓库、升级与发布](docs/unified-repository.md)。
+主面板与 Agent 统一在本仓库维护：当前正式安装包为主面板 **v0.0.18**、Agent **v1.0.7**，以后分别递增版本（以正式 Releases 及组件版本入口为准）。源码与安装包的对应关系见 [更新记录](CHANGELOG.md)；`main` 后续可能包含尚未打包的修改，源码推送不等于安装包更新。Agent 源码在 [`agent/`](agent/)，两者安装包均在本仓库 Releases，更新使用独立版本入口，不能用全仓库 Latest 判断 Agent 版本。旧 `shini74744/agent` 仓库仅保留历史，不再用于新安装或后续更新。详见 [统一仓库、升级与发布](docs/unified-repository.md)。
 
 **生命周期隔离**：Agent v1.0.2 使用独立 `DDnezha` 程序／服务、`/opt/DDnezha`（Windows 为 `C:\DDnezha`）和 `DDNZ_*` 变量。只隔离安装、升级和卸载，不改变通信协议；现有旧目录节点需要受控迁移。主面板入口为 `./nezha.sh`，Agent 入口为 `cd /opt/DDnezha && ./agent.sh uninstall`；v1.0.3 起自动保存 Agent 管理脚本，不覆盖当前目录的同名官方文件。详见 [DDnezha 隔离说明](docs/ddnezha-isolation.md)。
 
@@ -52,7 +52,7 @@ Linux systemd 部署请使用[本仓库 Releases](https://github.com/shini74744/
 
 ## 调整与优化
 
-- **监控网卡选择**（主面板 v0.0.17 / Agent v1.0.7）：自动显示接口列表，按需勾选；已选网口持续消失或改名后恢复默认，提供查看后消失的红点提醒；保留其他配置和业务网络。见 [使用说明](docs/network-interface-selection.md)。
+- **监控网卡选择**（主面板 v0.0.18 / Agent v1.0.7）：自动显示接口列表，按需勾选；已选网口持续消失或改名后恢复默认，提供查看后消失的红点提醒；保留其他配置和业务网络。见 [使用说明](docs/network-interface-selection.md)。
 - **前台恢复与重试**（v0.0.14）：历史图表防止旧请求覆盖当前选择，失败提供重试；断线、页面返回和会话变化有对应恢复逻辑，浏览器存储受限不再导致白屏。默认与哆啦 A 梦主题共用实现，保留现有预加载、定制标签、剩余价值悬停和连通性／延迟切换。使用边界和复测入口见 [前端说明](frontend/README.md#recovery-and-preload-regressions)。
 
 - **GPU 显存显示**：默认与哆啦 A 梦详情页沿用官方 `gpus` 协议，在每张 GPU 卡片内显示已用／总显存及占比；实时模式随上报更新，离线「最后状态」读取持久化快照并冻结，刷新仍保留，重新上线后恢复实时显示。历史曲线尚无显存时序数据，不将当前显存当作历史展示。无有效总显存的旧 Agent／不支持平台隐藏此行；有效总量下省略的零占用按后端 `omitempty` 规则显示 0。GPU 指标仍要求开启 GPU 监控，温度要求温度监控；Windows 新采集支持驱动提供计数器的核显／独显，NVIDIA 核心温度使用已有 `nvidia-smi`。CPU／GPU 卡片可点击切换有效指标；CPU 频率区分当前、系统报告与标称值。不自动修改 Agent 配置，支持范围与离线／历史边界见 [硬件指标说明](docs/hardware-metrics.md)。上游依据：[Agent #270](https://github.com/nezhahq/agent/pull/270)、[前端 #92](https://github.com/hamster1963/nezha-dash-v2/pull/92)。

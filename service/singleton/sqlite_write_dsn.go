@@ -22,5 +22,12 @@ func sqliteWriteDSN(path string) string {
 		return path
 	}
 	params.Set("_txlock", "immediate")
+	// A simultaneous fleet flush can spend more than the driver's five-second
+	// default committing durable writes on slower disks. Wait for the current
+	// writer without changing durability or retrying a partially applied write.
+	// Respect both aliases when an operator explicitly chose a lock budget.
+	if !params.Has("_busy_timeout") && !params.Has("_timeout") {
+		params.Set("_busy_timeout", "30000")
+	}
 	return name + "?" + params.Encode()
 }

@@ -33,6 +33,23 @@ func lockTestDB(t *testing.T) (*gorm.DB, string) {
 	return db, path
 }
 
+func TestSQLiteDefaultBusyBudgetAppliedToEveryConnection(t *testing.T) {
+	db, _ := lockTestDB(t)
+	pool, err := db.DB()
+	require.NoError(t, err)
+	first, err := pool.Conn(t.Context())
+	require.NoError(t, err)
+	defer first.Close()
+	second, err := pool.Conn(t.Context())
+	require.NoError(t, err)
+	defer second.Close()
+	for _, conn := range []*sql.Conn{first, second} {
+		var budget int
+		require.NoError(t, conn.QueryRowContext(t.Context(), "PRAGMA busy_timeout").Scan(&budget))
+		require.Equal(t, 30000, budget)
+	}
+}
+
 // An independent connection must not be able to take the writer reservation
 // between our baseline read and history INSERT (the production failure).
 func TestSQLiteTransactionReservesWriterBeforeReading(t *testing.T) {
@@ -81,6 +98,9 @@ func TestSQLiteWriteDSNPreservesOptions(t *testing.T) {
 		old, err := url.ParseQuery(oldQuery)
 		require.NoError(t, err)
 		old.Set("_txlock", "immediate")
+		if !old.Has("_busy_timeout") && !old.Has("_timeout") {
+			old.Set("_busy_timeout", "30000")
+		}
 		require.Equal(t, old, params)
 		require.Equal(t, dsn, sqliteWriteDSN(dsn))
 	}
