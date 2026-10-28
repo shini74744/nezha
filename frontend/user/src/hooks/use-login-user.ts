@@ -14,5 +14,5 @@ export const loginUserQueryOptions = () => queryOptions({
 export function useLoginUser() {
  const query = useQuery(loginUserQueryOptions());
  const viewer = query.data?.data?.id || 0;
- return { ...query, viewer, isLogin: viewer > 0, session: query.data === undefined ? "unknown" : viewer ? "authenticated" : "anonymous" };
+ return { ...query, viewer, isAdmin: viewer > 0 && query.data?.data?.role === 0, isLogin: viewer > 0, session: query.data === undefined ? "unknown" : viewer ? "authenticated" : "anonymous" };
 }

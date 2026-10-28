@@ -4,12 +4,20 @@ import (
 	pb "github.com/nezhahq/agent/proto"
 )
 
+type NetworkInterfaceSpeed struct {
+	Name      string
+	InSpeed   uint64
+	OutSpeed  uint64
+	Available bool
+}
+
 type SensorTemperature struct {
 	Name        string
 	Temperature float64
 }
 
 type HostState struct {
+	NetworkInterfaces   []NetworkInterfaceSpeed
 	NetworkCounterEpoch string
 	CPUFrequencyMHz     float64
 	CPUFrequencyKind    string
@@ -68,7 +76,12 @@ func (s *HostState) PB() *pb.State {
 		})
 	}
 
+	nics := make([]*pb.State_NetworkInterface, 0, len(s.NetworkInterfaces))
+	for _, n := range s.NetworkInterfaces {
+		nics = append(nics, &pb.State_NetworkInterface{Name: n.Name, InSpeed: n.InSpeed, OutSpeed: n.OutSpeed, Available: n.Available})
+	}
 	return &pb.State{
+		NetworkInterfaces:   nics,
 		NetworkCounterEpoch: s.NetworkCounterEpoch,
 		CpuFrequencyMhz:     s.CPUFrequencyMHz,
 		CpuFrequencyKind:    s.CPUFrequencyKind,

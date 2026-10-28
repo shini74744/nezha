@@ -56,5 +56,20 @@ func getServerLastReport(c *gin.Context) (*model.ServerLastReport, error) {
 	if result.Snapshot != nil && result.Snapshot.Host != nil && !callerIsAdmin(c) && (viewerID == 0 || viewerID != current.GetUserID()) {
 		result.Snapshot.Host = result.Snapshot.Host.Filter()
 	}
+	if !callerIsAdmin(c) {
+		if result.Snapshot != nil && result.Snapshot.State != nil {
+			result.Snapshot.State.NetworkInterfaces = nil
+		}
+		for key := range result.Metrics {
+			if model.IsNetworkInterfaceMetric(key) {
+				delete(result.Metrics, key)
+			}
+		}
+		for key := range result.Recent {
+			if model.IsNetworkInterfaceMetric(key) {
+				delete(result.Recent, key)
+			}
+		}
+	}
 	return result, nil
 }

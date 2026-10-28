@@ -579,6 +579,7 @@ func cloneHostState(state *HostState) *HostState {
 		return nil
 	}
 	clone := *state
+	clone.NetworkInterfaces = slices.Clone(state.NetworkInterfaces)
 	clone.GPU = slices.Clone(state.GPU)
 	clone.GPUs = slices.Clone(state.GPUs)
 	clone.Temperatures = slices.Clone(state.Temperatures)

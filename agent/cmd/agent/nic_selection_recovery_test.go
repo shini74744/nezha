@@ -99,3 +99,44 @@ func TestNICReminderMetadataIsReadOnly(t *testing.T) {
 		t.Fatal("token cannot survive persistence")
 	}
 }
+
+// Reconnects reuse the persisted configuration. Successful enumeration, not
+// connection availability, decides whether the saved interface still exists.
+func TestNICSelectionSurvivesRestartAndOfflineRecovery(t *testing.T) {
+	cfg, path := recoveryConfig(t)
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var detector nic.SelectionRecovery
+	cases := []struct {
+		names     []string
+		available bool
+		at        int64
+	}{
+		{[]string{"lo", "old0"}, true, 100},
+		{nil, false, 110}, {nil, false, 10000},
+		{[]string{"lo", "old0", "new0"}, true, 10010},
+		{[]string{"lo", "old0", "new0"}, true, 10050},
+	}
+	for _, c := range cases {
+		if detector.Observe(cfg.NICAllowlist, c.names, c.available, time.Unix(c.at, 0)) {
+			t.Fatal("offline/reconnect or new NIC reset selection")
+		}
+	}
+	var restarted model.AgentConfig
+	if err := restarted.Read(path); err != nil {
+		t.Fatal(err)
+	}
+	publishRuntimeConfig(restarted)
+	if !loadRuntimeConfig().NICAllowlist["old0"] || loadRuntimeConfig().NICAllowlist["new0"] {
+		t.Fatal("restart lost saved selection or selected new NIC")
+	}
+	after, err := os.ReadFile(path)
+	if err != nil || string(after) != string(before) {
+		t.Fatal("reconnect changed config file", err)
+	}
+	if restarted.UUID != cfg.UUID || restarted.ClientSecret != cfg.ClientSecret || restarted.NICSelectionResetID != "" {
+		t.Fatal("identity or reminder changed on reconnect")
+	}
+}

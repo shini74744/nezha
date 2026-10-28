@@ -1,3 +1,5 @@
+import NetworkInterfaceSelect from "./NetworkInterfaceSelect";
+import {networkInterfaceMetric, networkRate, networkRateHistory, networkHistoricalPoints} from "@/lib/network-interface-rates";
 import OnlineHistoryPanel from "./OnlineHistoryPanel";
 import { metricTimeAxis, metricTimeWindow } from "@/lib/metric-time-window";
 import RealtimeViewMenu from "./RealtimeViewMenu";
@@ -85,11 +87,6 @@ type memChartData = {
 	swap: number;
 };
 
-type networkChartData = {
-	timeStamp: string;
-	upload: number;
-	download: number;
-};
 
 type connectChartData = {
 	timeStamp: string;
@@ -1205,95 +1202,33 @@ function NetworkChart({
 	const themeRateFormatter = useContext(NetworkRateContext);
 	const speed = useFeature("speed");
 	const rateFormatter = themeRateFormatter ?? (speed.enabled && speed.cardEnabled && speed.bits ? formatCardBits : null);
-	const [networkChartData, setNetworkChartData] = useState(
-		[] as networkChartData[],
-	);
-	const hasInitialized = useRef(false);
-	const [historyLoaded, setHistoryLoaded] = useState(false);
-
-	const customBackgroundImage =
-		(window.CustomBackgroundImage as string) !== ""
-			? window.CustomBackgroundImage
-			: undefined;
-
-	const { up, down } = formatNezhaInfo(now, data);
-
-	const history = useMetricHistory(data.id, ["net_out_speed", "net_in_speed"], period);
- const downloadMap = new Map((history.series?.[1] ?? []).map(point => [point.ts, point.value / 1024 / 1024]));
- const networkHistoricalData: networkChartData[] = (history.series?.[0] ?? []).map(point => ({timeStamp: String(point.ts), upload: point.value / 1024 / 1024, download: downloadMap.get(point.ts) ?? 0}));
-
-
-	// 初始化历史数据
-	useEffect(() => {
-		if (
-			period === "realtime" &&
-			!hasInitialized.current &&
-			messageHistory.length > 0
-		) {
-			const historyData = messageHistory
-				.map((wsData) => {
-					const server = wsData.servers.find((s) => s.id === data.id);
-					if (!server) return null;
-					const { up, down } = formatNezhaInfo(wsData.now, server);
-					return {
-						timeStamp: wsData.now.toString(),
-						upload: up,
-						download: down,
-					};
-				})
-				.filter((item): item is networkChartData => item !== null)
-				.reverse();
-
-			setNetworkChartData(historyData);
-			hasInitialized.current = true;
-			setHistoryLoaded(true);
-		}
-	}, [messageHistory, data.id, period]);
-
-	// Reset when switching to realtime
-	useEffect(() => {
-		if (period === "realtime") {
-			hasInitialized.current = false;
-			setHistoryLoaded(false);
-		}
-	}, [period]);
-
-	// 修改实时数据更新逻辑
-	useEffect(() => {
-		if (data && historyLoaded && period === "realtime") {
-			const timestamp = Date.now().toString();
-			setNetworkChartData((prevData) => {
-				let newData = [] as networkChartData[];
-				if (prevData.length === 0) {
-					newData = [
-						{ timeStamp: timestamp, upload: up, download: down },
-						{ timeStamp: timestamp, upload: up, download: down },
-					];
-				} else {
-					newData = [
-						...prevData,
-						{ timeStamp: timestamp, upload: up, download: down },
-					];
-					if (newData.length > 30) {
-						newData.shift();
-					}
-				}
-				return newData;
-			});
-		}
-	}, [data, historyLoaded, down, up, period]);
-
-	const displayData =
-		period === "realtime" ? networkChartData : networkHistoricalData;
-	const isNetworkLoading = history.isLoading;
-
-	let maxDownload = rateFormatter
-		? Math.max(1, ...displayData.flatMap(item => [item.upload, item.download]).filter(Number.isFinite))
-		: Math.max(...displayData.map((item) => item.download));
-	maxDownload = Math.ceil(maxDownload);
-	if (maxDownload < 1) {
-		maxDownload = 1;
-	}
+ const {isAdmin}=useLoginUser();
+ const [chosen,setChosen]=useState("");
+ const selected=isAdmin?chosen:"";
+ useEffect(()=>setChosen(""),[data.id,isAdmin]);
+ const names=(data.state.network_interfaces??[]).map(n=>n.name);
+ const metrics=[networkInterfaceMetric(selected,"out"),networkInterfaceMetric(selected,"in")];
+ const history=useMetricHistory(data.id,metrics,period);
+ const rates=networkRate(data,selected);
+ const {up,down}=formatNezhaInfo(now,data);
+ const displayData=period==="realtime"
+  ?networkRateHistory(messageHistory,data,now,selected)
+  :networkHistoricalPoints(history.series,period==="7d"?1800000:period==="30d"?7200000:30000);
+ const isNetworkLoading=history.isLoading;
+ const selection=isAdmin&&(names.length>0||!!selected)?{
+  value:selected,names,pending:history.isLoading,
+  message:history.error?"记录读取失败，请重新选择网卡重试。":undefined,
+  onChange:(name:string)=>{if(name===selected)history.retry();else setChosen(name);}
+ }:undefined;
+ const formatCurrent=(value:number|null,fallback:number)=>{
+  if(value===null)return "—";
+  if(rateFormatter)return rateFormatter(value);
+  const speed=selected?value/1024**2:fallback;
+  return speed>=1024?(speed/1024).toFixed(2)+"G/s":speed>=1?speed.toFixed(2)+"M/s":(speed*1024).toFixed(2)+"K/s";
+ };
+ const customBackgroundImage=(window.CustomBackgroundImage as string)!==""?window.CustomBackgroundImage:undefined;
+ const values=displayData.flatMap(p=>[p.upload,p.download]).filter((v):v is number=>v!==null&&Number.isFinite(v));
+ const maxDownload=Math.max(1,Math.ceil(Math.max(0,...values)));
 
 	const chartConfig = {
 		upload: {
@@ -1312,39 +1247,32 @@ function NetworkChart({
 		>
 			<CardContent className="relative flex h-full flex-col px-6 py-3">
 				<section className="flex flex-1 flex-col gap-1">
-					<div className="flex items-center">
-						<section className="flex items-center gap-4">
-							<div className="flex flex-col w-20">
+					<div className="flex min-w-0 items-center gap-1">
+						<section className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-4">
+							<div className="flex min-w-[4.25rem] flex-col sm:min-w-20">
 								<p className="text-xs text-muted-foreground">
 									{t("serverDetailChart.upload")}
 								</p>
 								<div className="flex items-center gap-1">
 									<span className="relative inline-flex  size-1.5 rounded-full bg-[hsl(var(--chart-1))]" />
-									<p className="text-xs font-medium">
-										{rateFormatter ? rateFormatter(data.state.net_out_speed) : up >= 1024
-											? `${(up / 1024).toFixed(2)}G/s`
-											: up >= 1
-												? `${up.toFixed(2)}M/s`
-												: `${(up * 1024).toFixed(2)}K/s`}
-									</p>
+									<p data-network-rate className="whitespace-nowrap text-xs font-medium tabular-nums">
+										{formatCurrent(rates.upload,up)}
+</p>
 								</div>
 							</div>
-							<div className="flex flex-col w-20">
+							<div className="flex min-w-[4.25rem] flex-col sm:min-w-20">
 								<p className=" text-xs text-muted-foreground">
 									{t("serverDetailChart.download")}
 								</p>
 								<div className="flex items-center gap-1">
 									<span className="relative inline-flex  size-1.5 rounded-full bg-[hsl(var(--chart-4))]" />
-									<p className="text-xs font-medium">
-										{rateFormatter ? rateFormatter(data.state.net_in_speed) : down >= 1024
-											? `${(down / 1024).toFixed(2)}G/s`
-											: down >= 1
-												? `${down.toFixed(2)}M/s`
-												: `${(down * 1024).toFixed(2)}K/s`}
-									</p>
+									<p data-network-rate className="whitespace-nowrap text-xs font-medium tabular-nums">
+										{formatCurrent(rates.download,down)}
+</p>
 								</div>
 							</div>
 						</section>
+ {selection&&<NetworkInterfaceSelect selection={selection}/>}
 					</div>
 					<ChartContainer deferMount
 						config={chartConfig}
@@ -1435,7 +1363,7 @@ function NetworkChart({
 							</LineChart>
 						)}
 					</ChartContainer>
-					<ChartDetailButton history={{serverId:data.id,metrics:[{metric:"net_out_speed",key:"upload",scale:1/1024**2},{metric:"net_in_speed",key:"download",scale:1/1024**2}]}} timeWindow={metricTimeWindow(period,now)} scopeKey={data.id+":"+period+":network"} title="网络速率" data={displayData} period={period}
+					<ChartDetailButton selection={selection} history={{serverId:data.id,metrics:[{metric:metrics[0],key:"upload",scale:1/1024**2},{metric:metrics[1],key:"download",scale:1/1024**2}]}} timeWindow={metricTimeWindow(period,now)} scopeKey={data.id+":"+period+":network:"+isAdmin} title="网络速率" data={displayData} period={period}
 						series={[{key:"upload",label:"上传",color:"hsl(var(--chart-1))"},{key:"download",label:"下载",color:"hsl(var(--chart-4))"}]} formatValue={value => rateFormatter ? rateFormatter(value * 1024 ** 2) : value.toFixed(2)+" MB/s"} disabled={isNetworkLoading || !!history.error}/>
 				</section>
 			</CardContent>

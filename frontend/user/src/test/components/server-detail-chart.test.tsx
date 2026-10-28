@@ -1,5 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { isValidElement, type ReactNode } from "react";
 import { NetworkRateContext } from "@/context/network-rate-context";
@@ -64,6 +64,8 @@ vi.mock("recharts", () => {
 		),
 		Line: createElement("line"),
 		LineChart,
+        ReferenceLine: createElement("reference-line"),
+        ReferenceArea: createElement("reference-area"),
 		PieChart: genericChart,
 		RadarChart: genericChart,
 		RadialBarChart: genericChart,
@@ -474,6 +476,7 @@ describe("ServerDetailChart", () => {
 describe("disk card click-only switching", () => {
  it("starts with capacity, ignores hover/reports, and switches only after click", async () => {
   seedWebSocketData();
+  detailChartMocks.fetchSetting.mockResolvedValue(settingResponse());
   detailChartMocks.lastData!.servers[0].state.disk_io_available=true;
   detailChartMocks.lastData!.servers[0].state.disk_read_speed=1024;
   detailChartMocks.lastData!.servers[0].state.disk_write_speed=2048;
@@ -511,6 +514,7 @@ describe("disk card click-only switching", () => {
  });
  it("keeps valid idle zero rates and supports keyboard switching", async () => {
   seedWebSocketData();
+  detailChartMocks.fetchSetting.mockResolvedValue(settingResponse());
   detailChartMocks.lastData!.servers[0].state.disk_io_available=true;
   const user=userEvent.setup();
   renderWithQuery(<ServerDetailChart server_id="7"/>);
@@ -540,5 +544,48 @@ describe("disk card click-only switching", () => {
    expect(points[0].read).toBe(10);
    expect(points[0].write).toBe(10);
   });
+ });
+
+ it("keeps NIC viewing separate from monitoring and hides it after logout", async()=>{
+  const user=userEvent.setup();seedWebSocketData();
+  detailChartMocks.fetchServerMetrics.mockClear();
+  detailChartMocks.fetchSetting.mockResolvedValue(settingResponse());
+  const server=detailChartMocks.lastData!.servers[0];
+  server.state.network_interfaces=[
+   {name:"eth0",in_speed:1024**2,out_speed:2*1024**2,available:true},
+   {name:"eth1",in_speed:3*1024**2,out_speed:1024**2,available:true},
+  ];
+  detailChartMocks.fetchLoginUser.mockResolvedValue({success:true,data:{id:1,role:0}});
+  const client=createTestQueryClient();
+  render(<QueryClientProvider client={client}><ServerDetailChart server_id="7"/></QueryClientProvider>);
+  const trigger=await screen.findByRole("button",{name:"选择网卡，当前：全部"});
+  await user.click(trigger);await user.click(screen.getByRole("menuitemradio",{name:"eth0"}));
+  await screen.findByRole("button",{name:"选择网卡，当前：eth0"});
+  const line=screen.getAllByTestId("line-chart").find(el=>el.getAttribute("data-values")?.includes('"upload"'))!;
+  const points=JSON.parse(line.getAttribute("data-values")!);
+  expect(points.at(-1)).toMatchObject({upload:2,download:1});
+  expect(points.slice(0,-1).every((p:any)=>p.upload===null&&p.download===null)).toBe(true);
+  const tcp=screen.getByText("TCP").closest(".rounded-lg")!;
+  const tcpBefore=tcp.textContent;
+  await user.click(screen.getByRole("button",{name:"网络速率详细查看"}));
+  const dialog=await screen.findByRole("dialog");
+  await user.click(within(dialog).getByRole("button",{name:"选择网卡，当前：eth0"}));
+  await user.click(screen.getByRole("menuitemradio",{name:"eth1"}));
+  await waitFor(()=>expect(within(screen.getByRole("dialog")).getByRole("button",{name:"选择网卡，当前：eth1"})).toBeInTheDocument());
+  expect(tcp.textContent).toBe(tcpBefore);
+  expect(detailChartMocks.fetchServerMetrics).not.toHaveBeenCalled();
+  await act(async()=>client.setQueryData(["login-user"],{success:true,data:{id:0}}));
+  await waitFor(()=>expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  expect(screen.queryByRole("button",{name:/选择网卡/})).not.toBeInTheDocument();
+  expect(server.state.network_interfaces).toHaveLength(2);
+ });
+ it.each([undefined,2])("does not expose NIC selection to guest or member (role %s)",async(role)=>{
+  seedWebSocketData();
+  detailChartMocks.fetchSetting.mockResolvedValue(settingResponse());
+  detailChartMocks.lastData!.servers[0].state.network_interfaces=[{name:"eth0",in_speed:1,out_speed:2,available:true}];
+  detailChartMocks.fetchLoginUser.mockResolvedValue({success:true,data:role===undefined?{id:0}:{id:2,role}});
+  renderWithQuery(<ServerDetailChart server_id="7"/>);
+  await screen.findByText("serverDetailChart.upload");
+  expect(screen.queryByRole("button",{name:/选择网卡/})).not.toBeInTheDocument();
  });
 });

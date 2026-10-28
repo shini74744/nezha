@@ -241,6 +241,9 @@ func filterServersForViewer(servers []*model.Server, viewerUserID uint64, viewer
 		if publicHost != nil && !isOwnerOrAdmin {
 			publicHost = publicHost.Filter()
 		}
+		if !viewerIsAdmin && runtime.State != nil {
+			runtime.State.NetworkInterfaces = nil
+		}
 		out = append(out, model.StreamServer{
 			ID:                    server.ID,
 			Name:                  server.Name,

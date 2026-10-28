@@ -60,11 +60,20 @@ message State {
   string network_counter_epoch = 24;
   // Opaque token for a completed automatic NIC selection fallback.
   string nic_selection_reset_id = 25;
+  repeated State_NetworkInterface network_interfaces = 26;
 }
 
 // State_GPU carries per-card figures. Index-aligned with Host.gpu, matching
 // the existing `gpu` field it supersedes; that field stays populated so older
 // dashboards keep working.
+// Rates use bytes/second; unavailable samples are gaps, never idle zeros.
+message State_NetworkInterface {
+  string name = 1;
+  uint64 in_speed = 2;
+  uint64 out_speed = 3;
+  bool available = 4;
+}
+
 message State_GPU {
   double utilization = 1;
   uint64 memory_used = 2;

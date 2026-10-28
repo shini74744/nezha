@@ -36,6 +36,9 @@ func listServer(c *gin.Context) ([]*model.Server, error) {
 			continue
 		}
 		runtime := server.RuntimeSnapshot()
+		if !callerIsAdmin(c) && runtime.State != nil {
+			runtime.State.NetworkInterfaces = nil
+		}
 		ssl = append(ssl, server.RuntimeCopy(runtime))
 	}
 	return ssl, nil
@@ -560,7 +563,13 @@ func getServerMetrics(c *gin.Context) (*model.ServerMetricsResponse, error) {
 	_, isMember := c.Get(model.CtxKeyAuthorizedUser)
 
 	metricName := c.Query("metric")
+	if model.IsNetworkInterfaceMetric(metricName) && !callerIsAdmin(c) {
+		return nil, singleton.Localizer.ErrorT("unauthorized")
+	}
 	metricType, ok := serverMetricMap[metricName]
+	if !ok && model.IsNetworkInterfaceMetric(metricName) {
+		metricType, ok = tsdb.MetricType("nezha_server_"+metricName), true
+	}
 	if !ok {
 		return nil, singleton.Localizer.ErrorT("invalid metric name")
 	}
