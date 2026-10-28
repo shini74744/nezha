@@ -35,7 +35,10 @@ export interface NezhaServerHost {
 	version: string;
 }
 
+export interface NezhaNetworkInterfaceRate { name: string; in_speed: number; out_speed: number; available: boolean; }
+
 export interface NezhaServerStatus {
+ network_interfaces?: NezhaNetworkInterfaceRate[];
  cpu_frequency_mhz?: number;
  cpu_frequency_kind?: string;
 	cpu: number;
@@ -96,6 +99,7 @@ export interface ServerGroup {
 export interface LoginUserResponse {
 	success: boolean;
 	data: {
+ role?: number;
 		id: number;
 		username: string;
 		password: string;
@@ -193,6 +197,7 @@ export interface SettingResponse {
 }
 
 export type MetricType =
+ | `nic_${string}_${"in" | "out"}_speed`
 	| "cpu"
 	| "memory"
 	| "swap"

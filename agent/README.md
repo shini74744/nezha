@@ -1,6 +1,6 @@
 # DDnezha Agent
 
-基于 Nezha Agent 的自有发行版，与主面板在 **shini74744/nezha** 同仓库维护、分别递增版本。Agent v1.0.1 使用旧目录；v1.0.2 起改为 DDnezha 独立安装。当前 Agent **v1.0.4** 与主面板 **v0.0.8** 配套，管理入口区分为 `agent.sh` 与 `nezha.sh`。源码版本不代表线上节点已迁移，现有节点须逐实例核对并保留原 UUID／独立密钥，其他配置和服务不动。
+基于 Nezha Agent 的自有发行版，与主面板在 **shini74744/nezha** 同仓库维护、分别递增版本。Agent v1.0.1 使用旧目录；v1.0.2 起改为 DDnezha 独立安装。当前 Agent **v1.0.8** 与主面板 **v0.0.19** 配套，管理入口区分为 `agent.sh` 与 `nezha.sh`。源码版本不代表线上节点已迁移，现有节点须逐实例核对并保留原 UUID／独立密钥，其他配置和服务不动。
 
 安装、自动更新及面板触发升级只使用自有仓库，不回退旧 Agent 仓库、官方 GitHub、Gitee 或 AtomGit。旧仓库保留历史、不再发布。
 
@@ -88,3 +88,7 @@ Original project: Nezha Monitoring Agent (Apache-2.0). Upstream credits are reta
 <a href="https://github.com/matchch" title="卖女孩的小火柴"><img src="https://avatars.githubusercontent.com/u/44471469?v=4" width="50;" alt="卖女孩的小火柴"/></a>
 <a href="https://github.com/liuran001" title="baka"><img src="https://avatars.githubusercontent.com/u/32791471?v=4" width="50;" alt="baka"/></a>
 <a href="https://github.com/akiasprin" title="kevi"><img src="https://avatars.githubusercontent.com/u/25278728?v=4" width="50;" alt="kevi"/></a><!--GAMFC_DELIMITER_END-->
+
+## 按网卡查看速率
+
+v1.0.8 上报实际参与统计的各接口上传、下载速率，与原合计使用相同采样和监控名单。主面板 v0.0.19 的管理员可在网络卡片及详细查看中选择接口；选择只改变图表，不修改 Agent 配置。未登录用户及普通成员只能查看合计。普通离线、重连和重启保留监控名单；真实接口消失或改名仍按多次确认规则处理。历史从升级并成功采样后记录，不补造旧记录。详见[使用说明](../docs/network-interface-selection.md)。

@@ -1,3 +1,4 @@
+import NetworkInterfaceSelect, {type NetworkInterfaceSelection} from "./NetworkInterfaceSelect";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import {
 	memo,
@@ -52,6 +53,7 @@ import { loadDetailHistory, type DetailHistorySource } from "@/lib/chart-detail-
 import "./ChartDetail.css";
 
 export type ChartDetailProps = {
+ selection?: NetworkInterfaceSelection;
 	scopeKey: string;
 	title: string;
 	data: readonly Record<string, unknown>[];
@@ -91,8 +93,11 @@ export default function ChartDetailButton(props: ChartDetailProps) {
 	}, []);
 	const disabled = props.disabled || !props.data.length;
 	useEffect(() => {
-		if (disabled) setSnapshot(null);
-	}, [disabled]);
+		if (disabled && !props.selection) setSnapshot(null);
+	}, [disabled,props.selection]);
+ useEffect(()=>{
+  if(snapshot && props.selection && (snapshot.selection?.value!==props.selection.value || snapshot.selection?.pending!==props.selection.pending)) capture();
+ },[props.selection?.value,props.selection?.pending,snapshot?.selection?.value,snapshot?.selection?.pending,capture]);
 	const open = snapshot !== null && snapshot.scopeKey === props.scopeKey;
 	return (
 		<div className="chart-detail-entry">
@@ -119,6 +124,7 @@ export default function ChartDetailButton(props: ChartDetailProps) {
 					<MemoChartDetailView
 						key={snapshot.revision}
 						snapshot={snapshot}
+                        selection={props.selection}
 						onRefresh={capture}
 						refreshDisabled={disabled}
 					/>
@@ -129,10 +135,12 @@ export default function ChartDetailButton(props: ChartDetailProps) {
 }
 function ChartDetailView({
 	snapshot,
+ selection,
 	onRefresh,
 	refreshDisabled,
 }: {
 	snapshot: Snapshot;
+ selection?: NetworkInterfaceSelection;
 	onRefresh: () => void;
 	refreshDisabled?: boolean;
 }) {
@@ -367,6 +375,9 @@ function ChartDetailView({
 					，查看时不自动滚动。
 				</DialogDescription>
 			</header>
+ {selection&&<div className="flex items-center gap-2 text-sm"><span>网卡</span><NetworkInterfaceSelect selection={selection}/></div>}
+ {selection?.pending&&<p role="status" className="text-sm text-muted-foreground">正在读取…</p>}
+ {selection?.message&&<p role="alert" className="chart-detail-error">{selection.message}</p>}
 			<div className="chart-detail-toolbar">
 				<div className="chart-detail-presets" aria-label="查看范围">
 					<button

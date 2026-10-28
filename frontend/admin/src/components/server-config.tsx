@@ -99,6 +99,7 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
     const [data, setData] = useState<(AgentConfig & { network_interfaces?: unknown }) | undefined>(
         undefined,
     )
+    const [inventory, setInventory] = useState<unknown>()
     const [loading, setLoading] = useState(true)
     const [open, setOpen] = useState(false)
     const { notices } = useNICChangeReminder()
@@ -111,6 +112,7 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
         if (value) {
             setLoading(true)
             setData(undefined)
+            setInventory(undefined)
         }
         setOpen(value)
     }
@@ -128,6 +130,7 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
                 }
                 if (active) {
                     setData(parsed)
+                    setInventory(parsed.network_interfaces)
                     setOpenedNotice(noticeRef.current)
                 }
             } catch (error) {
@@ -171,6 +174,32 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
             })
         }
     }, [data, form])
+
+    useEffect(() => {
+        if (!open || loading || !data) return
+        let active = true
+        let busy = false
+        const refresh = async () => {
+            if (busy || document.visibilityState === "hidden") return
+            busy = true
+            try {
+                const parsed = JSON.parse(await getServerConfig(sid))
+                if (!active || !parsed || typeof parsed !== "object" || Array.isArray(parsed)) return
+                const latestInventory = parseNetworkInventory(parsed.network_interfaces)
+                if (!latestInventory?.available) return
+                setInventory(latestInventory)
+                const selection = agentConfigSchema.shape.nic_allowlist.safeParse(parsed.nic_allowlist)
+                if (Object.prototype.hasOwnProperty.call(parsed, "nic_allowlist") &&
+                    selection.success && !form.getFieldState("nic_allowlist").isDirty) {
+                    form.setValue("nic_allowlist", selection.data ?? null, {shouldDirty: false})
+                }
+            } catch {
+                // Keep the last complete inventory and every unsaved field.
+            } finally { busy = false }
+        }
+        const timer = window.setInterval(refresh, 10000)
+        return () => { active = false; window.clearInterval(timer) }
+    }, [open, loading, sid, data, form])
 
     const onSubmit = async (values: any) => {
         let resp: ModelServerTaskResponse
@@ -326,7 +355,7 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
                                                     <div role="group" aria-label="监控网卡">
                                                         <NetworkInterfacePicker
                                                             inventory={parseNetworkInventory(
-                                                                data?.network_interfaces,
+                                                                inventory,
                                                             )}
                                                             value={field.value}
                                                             onChange={field.onChange}

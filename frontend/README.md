@@ -135,3 +135,7 @@ zoom and native touch gestures are preserved. Regression checks are in
 实现参考官方前台 nezha-dash-v2 提交 d9d59cc62b53b9658e86b97b024baa69148eabd0 的在线历史组件、算法及测试，以及官方后端 nezha 提交 15fa673c745005d0fef5d6d031fe77351d28bcbb 的在线会话记录。保留原有许可证，并适配本项目的菜单、权限、状态流租约和节点生命周期。
 
 回归入口：user 的 chart-detail、metric-time-window、online-history、server-detail-online-history 单元测试；admin/tests/e2e/chart-detail.spec.ts 和 frontend-recovery.spec.ts 验证两个主题的 320／390／900／1440 像素布局、绘图区对齐、卡片高度、时间范围和菜单。后端 online_history*_test.go 覆盖时区、断线、恢复、失败重试、保留范围、启用前未知时间和 ID 生命周期。
+
+## Per-interface network rate view (v0.0.19 / Agent v1.0.8)
+
+The network card and detail dialog share an administrator-only interface menu. Aggregate view follows the current monitoring selection; viewing one interface does not submit configuration or alter traffic accounting. REST, WebSocket, offline snapshots, and metric queries enforce the same access boundary. Both themes retain mobile and desktop layouts. Missing history remains a gap, idle measurements remain zero, and switching cancels stale history requests. The configuration dialog refreshes inventory every 10 seconds while visible without replacing unsaved edits. Ordinary offline/reconnect/restart preserves saved monitoring configuration. See [network interface selection](../docs/network-interface-selection.md).

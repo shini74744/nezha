@@ -250,3 +250,33 @@ test("Linux-specific kinds and link rates have distinct labels", async () => {
         expect(screen.getByText(label)).toBeTruthy()
     expect(screen.getAllByText("链路 1 Gbps")).toHaveLength(kinds.length)
 })
+
+test("live discovery preserves unsaved selection across failure and reappearance", async () => {
+    const visible = vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible")
+    const callbacks: (() => unknown)[] = []
+    const original = window.setInterval.bind(window)
+    const spy = vi.spyOn(window, "setInterval").mockImplementation(((handler: TimerHandler, ms?: number, ...args: unknown[]) => {
+        if (ms === 10000 && typeof handler === "function") callbacks.push(handler as () => unknown)
+        return original(handler, ms, ...args)
+    }) as typeof window.setInterval)
+    try {
+        await open()
+        fireEvent.click(checkbox("enp2s0f0"))
+        expect(checkbox("enp2s0f0").getAttribute("aria-checked")).toBe("false")
+        const refresh = callbacks[callbacks.length - 1]
+        expect(refresh).toBeTypeOf("function")
+        mocks.get.mockRejectedValueOnce(new Error("offline"))
+        await act(async () => { await refresh() })
+        expect(checkbox("enp2s0f0").getAttribute("aria-checked")).toBe("false")
+        mocks.get.mockResolvedValueOnce(JSON.stringify({...baseline, network_interfaces:{available:true,interfaces:[
+            ...interfaces,{name:"usb-new",kind:"physical",state:"up",default_monitored:true,monitored:false}
+        ]}}))
+        await act(async () => { await refresh() })
+        expect(checkbox("usb-new")).toBeTruthy()
+        expect(checkbox("usb-new").getAttribute("aria-checked")).toBe("false")
+        expect(checkbox("enp2s0f0").getAttribute("aria-checked")).toBe("false")
+        const payload=await submit()
+        expect(payload.nic_allowlist.enp2s0f0).toBe(false)
+        expect(payload.report_delay).toBe(3)
+    } finally {spy.mockRestore();visible.mockRestore()}
+})

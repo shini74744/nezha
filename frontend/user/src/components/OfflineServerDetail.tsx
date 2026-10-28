@@ -1,3 +1,5 @@
+import NetworkInterfaceSelect from "./NetworkInterfaceSelect";
+import {networkInterfaceMetric} from "@/lib/network-interface-rates";
 import OnlineHistoryPanel from "./OnlineHistoryPanel";
 import { metricTimeAxis, metricTimeWindow } from "@/lib/metric-time-window";
 import MetricTimeTick from "@/components/MetricTimeTick";
@@ -141,8 +143,14 @@ export function OfflineMetricCard({group,report,period,now=Date.now()}:{group:ty
 }
 function LegacyOfflineMetricCard({group:originalGroup,report,period,now}:{group:typeof groups[number];report:LastReport;period:"last"|MetricPeriod;now:number}) {
  const isDisk=originalGroup.keys[0]==="disk";
+ const isNetwork=originalGroup.keys[0]==="net_out_speed";
+ const {isAdmin}=useLoginUser();
+ const [chosen,setChosen]=useState("");
+ const selected=isAdmin?chosen:"";
+ useEffect(()=>setChosen(""),[report.server_id,isAdmin]);
+ const names=(report.snapshot?.state.network_interfaces??[]).map(n=>n.name);
  const [diskIO,setDiskIO]=useState(false);
- const group=isDisk&&diskIO?{title:"磁盘读写",keys:["disk_read_speed","disk_write_speed"],labels:["读取","写入"],unit:"speed",colors:[1,10]}:originalGroup;
+ const group=isDisk&&diskIO?{title:"磁盘读写",keys:["disk_read_speed","disk_write_speed"],labels:["读取","写入"],unit:"speed",colors:[1,10]}:isNetwork&&selected?{...originalGroup,keys:[networkInterfaceMetric(selected,"out"),networkInterfaceMetric(selected,"in")]}:originalGroup;
  const toggle=()=>{if(isDisk)setDiskIO(value=>!value)};
  const history=useQuery({
   queryKey:["offline-history",report.server_id,period,group.keys],
@@ -156,6 +164,9 @@ function LegacyOfflineMetricCard({group:originalGroup,report,period,now}:{group:
    return Object.fromEntries(entries);
   },retry:1,staleTime:30000,refetchInterval:period==="last"?false:30000,
  });
+ const selection=isNetwork&&isAdmin&&(names.length>0||!!selected)?{value:selected,names,pending:period!=="last"&&history.isPending,
+ message:period!=="last"&&history.isError?"记录读取失败，请重新选择网卡重试。":undefined,
+ onChange:(name:string)=>{if(name===selected)void history.refetch();else setChosen(name);}}:undefined;
  const percentChart=period==="last"&&group.unit==="bytes"&&!!report.recent[group.keys[0]+"_percent"]?.length;
  const unit=percentChart?"percent":group.unit;
  const keys=group.keys.map(key=>percentChart?key+"_percent":key);
@@ -177,7 +188,7 @@ function LegacyOfflineMetricCard({group:originalGroup,report,period,now}:{group:
   {isDisk?<div className="flex min-h-9 items-center justify-between gap-2">
    <DiskModeToggle io={diskIO} onToggle={toggle}/>
    {diskIO?<DiskIORates read={valueText(report.metrics.disk_read_speed,"speed")} write={valueText(report.metrics.disk_write_speed,"speed")}/>:<MetricHeader group={originalGroup} report={report} title={null}/>}
-  </div>:<MetricHeader group={group} report={report}/>}
+  </div>:<div className="flex min-w-0 items-center gap-2"><MetricHeader group={group} report={report}/>{selection&&<NetworkInterfaceSelect selection={selection}/>}</div>}
   {period==="last" && /^gpu_\d+$/.test(group.keys[0]) && <GpuMemorySummary recorded memory={report.snapshot?.state.gpus?.[Number(group.keys[0].slice(4))]}/>}
   <div key={diskIO?"io":"capacity"} className={cn("mt-auto shrink-0",isDisk&&"animate-in fade-in duration-200 motion-reduce:animate-none")}>
   {period!=="last"&&history.isPending?<p className="h-[130px] flex items-center justify-center text-xs">正在读取历史记录…</p>:
@@ -192,9 +203,9 @@ function LegacyOfflineMetricCard({group:originalGroup,report,period,now}:{group:
      {keys.map((key,i)=><Area key={key} dataKey={key} type="step" stroke={"hsl(var(--chart-"+group.colors[i]+"))"} fill={"hsl(var(--chart-"+group.colors[i]+"))"} fillOpacity={0.3} dot={data.length===1} connectNulls={false} isAnimationActive={false}/>)}
     </AreaChart>
    </ChartContainer>}
- </div><ChartDetailButton history={group.keys.some(key=>key.startsWith("gpu_"))?undefined:{serverId:report.server_id,metrics:keys.map((key,i)=>({
+ </div><ChartDetailButton selection={selection} history={group.keys.some(key=>key.startsWith("gpu_"))?undefined:{serverId:report.server_id,metrics:keys.map((key,i)=>({
    metric:group.keys[i] as MetricType,key,scale:percentChart?(() => {const host=report.snapshot?.host;const total=group.keys[i]==="memory"?host?.mem_total:group.keys[i]==="swap"?host?.swap_total:host?.disk_total;return total?100/total:0;})():1
-  }))}} timeWindow={metricTimeWindow(period,now)} scopeKey={report.server_id+":"+period+":"+keys.join(",")} title={group.title} data={data} timeKey="ts" period={period}
+  }))}} timeWindow={metricTimeWindow(period,now)} scopeKey={report.server_id+":"+period+":"+(isNetwork?"network:"+isAdmin:keys.join(","))} title={group.title} data={data} timeKey="ts" period={period}
   series={keys.map((key,i)=>({key,label:group.labels[i],color:"hsl(var(--chart-"+group.colors[i]+"))"}))} formatValue={v=>valueText(v,unit)} disabled={period!=="last"&&(history.isPending||history.isError)}/>
  </section></CardContent></Card>;
 }

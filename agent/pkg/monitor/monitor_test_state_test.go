@@ -37,6 +37,7 @@ type monitorProbeSnapshot struct {
 }
 
 type monitorMetricStateSnapshot struct {
+	networkInterfaces  []model.NetworkInterfaceSpeed
 	networkSample      nic.Sample
 	networkEpoch       string
 	netInSpeed         uint64
@@ -91,7 +92,8 @@ func captureMonitorTestState() monitorTestStateSnapshot {
 		},
 		metrics: monitorMetricStateSnapshot{
 			networkSample: networkSample, networkEpoch: networkCounterEpoch,
-			netInSpeed: netInSpeed, netOutSpeed: netOutSpeed,
+			networkInterfaces: slices.Clone(networkInterfaceSpeeds),
+			netInSpeed:        netInSpeed, netOutSpeed: netOutSpeed,
 			netInTransfer: netInTransfer, netOutTransfer: netOutTransfer,
 			lastUpdateNetStats: lastUpdateNetStats, cachedBootTime: cachedBootTime,
 			temperatureStat: slices.Clone(temperatureStat), updateTempStatus: updateTempStatus.Load(),
@@ -128,6 +130,7 @@ func (s monitorTestStateSnapshot) restore() {
 	temperatureUpdated = s.probes.temperatureUpdate
 
 	networkSample, networkCounterEpoch = s.metrics.networkSample, s.metrics.networkEpoch
+	networkInterfaceSpeeds = slices.Clone(s.metrics.networkInterfaces)
 	netInSpeed, netOutSpeed = s.metrics.netInSpeed, s.metrics.netOutSpeed
 	netInTransfer, netOutTransfer = s.metrics.netInTransfer, s.metrics.netOutTransfer
 	lastUpdateNetStats, cachedBootTime = s.metrics.lastUpdateNetStats, s.metrics.cachedBootTime

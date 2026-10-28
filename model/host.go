@@ -12,13 +12,21 @@ const (
 	MTReportHostState
 )
 
+type NetworkInterfaceSpeed struct {
+	Name      string `json:"name"`
+	InSpeed   uint64 `json:"in_speed"`
+	OutSpeed  uint64 `json:"out_speed"`
+	Available bool   `json:"available"`
+}
+
 type SensorTemperature struct {
 	Name        string
 	Temperature float64
 }
 
 type HostState struct {
-	NICSelectionResetID string `json:"-"`
+	NetworkInterfaces   []NetworkInterfaceSpeed `json:"network_interfaces,omitempty"`
+	NICSelectionResetID string                  `json:"-"`
 
 	NetworkCounterEpoch string              `json:"network_counter_epoch,omitempty"`
 	CPUFrequencyMHz     float64             `json:"cpu_frequency_mhz,omitempty"`
@@ -79,7 +87,12 @@ func (s *HostState) PB() *pb.State {
 		})
 	}
 
+	nics := make([]*pb.State_NetworkInterface, 0, len(s.NetworkInterfaces))
+	for _, n := range s.NetworkInterfaces {
+		nics = append(nics, &pb.State_NetworkInterface{Name: n.Name, InSpeed: n.InSpeed, OutSpeed: n.OutSpeed, Available: n.Available})
+	}
 	return &pb.State{
+		NetworkInterfaces:   nics,
 		NicSelectionResetId: s.NICSelectionResetID,
 		NetworkCounterEpoch: s.NetworkCounterEpoch,
 		CpuFrequencyMhz:     s.CPUFrequencyMHz,
@@ -130,6 +143,7 @@ func PB2State(s *pb.State) HostState {
 	}
 
 	return HostState{
+		NetworkInterfaces:   decodeNetworkInterfaces(s.GetNetworkInterfaces()),
 		NICSelectionResetID: s.GetNicSelectionResetId(),
 		NetworkCounterEpoch: s.GetNetworkCounterEpoch(),
 		CPUFrequencyMHz:     s.GetCpuFrequencyMhz(),
