@@ -3,18 +3,19 @@ package model
 import "time"
 
 type StreamServer struct {
-	NetworkDefaultView    string `json:"network_default_view"`
-	NetworkDisplayMode    string `json:"network_display_mode"`
-	ConnectivityLocalOnly bool   `json:"connectivity_local_only"`
-	BGPDisabled           bool   `json:"bgp_disabled"`
-	ReturnRouteDisabled   bool   `json:"return_route_disabled"`
-	StreamingDisabled     bool   `json:"streaming_disabled"`
-	ConnectivityDisabled  bool   `json:"connectivity_disabled"`
-	HideForDisplay        bool   `json:"hide_for_display"` // 普通隐藏，不改变访问权限
-	ID                    uint64 `json:"id,omitempty"`
-	Name                  string `json:"name,omitempty"`
-	PublicNote            string `json:"public_note,omitempty"`   // 公开备注，只第一个数据包有值
-	DisplayIndex          int    `json:"display_index,omitempty"` // 展示排序，越大越靠前
+	HomeNetwork           *HomeNetworkView `json:"home_network,omitempty"`
+	NetworkDefaultView    string           `json:"network_default_view"`
+	NetworkDisplayMode    string           `json:"network_display_mode"`
+	ConnectivityLocalOnly bool             `json:"connectivity_local_only"`
+	BGPDisabled           bool             `json:"bgp_disabled"`
+	ReturnRouteDisabled   bool             `json:"return_route_disabled"`
+	StreamingDisabled     bool             `json:"streaming_disabled"`
+	ConnectivityDisabled  bool             `json:"connectivity_disabled"`
+	HideForDisplay        bool             `json:"hide_for_display"` // 普通隐藏，不改变访问权限
+	ID                    uint64           `json:"id,omitempty"`
+	Name                  string           `json:"name,omitempty"`
+	PublicNote            string           `json:"public_note,omitempty"`   // 公开备注，只第一个数据包有值
+	DisplayIndex          int              `json:"display_index,omitempty"` // 展示排序，越大越靠前
 
 	Host        *Host      `json:"host,omitempty"`
 	State       *HostState `json:"state,omitempty"`

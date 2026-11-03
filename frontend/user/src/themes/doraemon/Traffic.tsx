@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useEffect, type ReactNode } from "react";
 import { doraemonAppearance } from "./appearance";
 import { TrafficRow } from "@/appearance/traffic";
 
 export type DoraemonTrafficStat = {
+ scope_key?: string;
 	quota_type?: "limited" | "unlimited" | "unset";
 	name?: string;
 	max: number;
@@ -16,6 +17,7 @@ export type DoraemonTrafficStat = {
 	error?: string;
 };
 type TrafficState = {
+ refetch:()=>unknown;
 	data?: Record<string, DoraemonTrafficStat>;
 	pending: boolean;
 	failed: boolean;
@@ -36,10 +38,10 @@ export function DoraemonTrafficProvider({
  return <ActiveTrafficProvider interval={config.interval}>{children}</ActiveTrafficProvider>;
 }
 function ActiveTrafficProvider({children, interval}: {children: ReactNode; interval:number}) {
-	const { data, isPending, isError } = useQuery({
+	const { data, isPending, isError, refetch } = useQuery({
 		queryKey: doraemonTrafficKey,
 		queryFn: async ({ signal }) => {
-			const response = await fetch("/api/v1/server-traffic", {
+			const response = await fetch("/api/v1/server-traffic?scope=home", {
 				signal,
 				credentials: "same-origin",
 				cache: "no-store",
@@ -63,7 +65,7 @@ function ActiveTrafficProvider({children, interval}: {children: ReactNode; inter
 	});
 	return (
 		<TrafficContext.Provider
-			value={{ data, pending: isPending, failed: isError, interval }}
+			value={{ data, pending: isPending, failed: isError, interval, refetch }}
 		>
 			{children}
 		</TrafficContext.Provider>
@@ -83,7 +85,7 @@ export function DoraemonTrafficRow({
 	serverId?: number;
 	interval?: number;
 }) {
-	if (stat.error) return <TrafficMessage>流量套餐设置需检查</TrafficMessage>;
+	if (stat.error) return <TrafficMessage>{stat.error.startsWith("所选网卡") ? stat.error : "流量套餐设置需检查"}</TrafficMessage>;
 	if (
 		!Number.isFinite(stat.max) ||
 		stat.max < 0 ||
@@ -107,10 +109,14 @@ export function DoraemonTrafficRow({
 	);
 }
 
-export function DoraemonTraffic({ serverId }: { serverId: number }) {
+export function DoraemonTraffic({ serverId, scopeKey="" }: { serverId: number; scopeKey?: string }) {
 	const state = useContext(TrafficContext);
+ const stale=!!state?.data?.[String(serverId)] && (state.data[String(serverId)].scope_key??"")!==scopeKey;
+ const refetch=state?.refetch;
+ useEffect(()=>{if(stale)void refetch?.();},[scopeKey,stale,refetch]);
 	if (!state) return null;
-	if (state.pending) return <TrafficMessage>流量加载中…</TrafficMessage>;
+	if(stale)return <TrafficMessage>正在更新流量</TrafficMessage>;
+ if (state.pending) return <TrafficMessage>流量加载中…</TrafficMessage>;
 	// Do not present a stale previous-cycle percentage as current after a failed refresh.
 	if (state.failed)
 		return <TrafficMessage>流量暂不可用，稍后重试</TrafficMessage>;

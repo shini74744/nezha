@@ -38,6 +38,7 @@ type TrafficPlan struct {
 	Direction string
 }
 type PlanTrafficStat struct {
+	ScopeKey     string    `json:"scope_key,omitempty"`
 	QuotaType    string    `json:"quota_type"`
 	Name         string    `json:"name"`
 	From         time.Time `json:"from"`

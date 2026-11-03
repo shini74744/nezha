@@ -136,5 +136,8 @@ func persistSnapshotTx(tx *gorm.DB, request *snapshotWriteRequest) error {
    (SELECT MAX(recorded_at)-60000 FROM server_snapshots WHERE server_id=?)`, request.id, request.id).Error; err != nil {
 		return err
 	}
-	return recordPlanTrafficTx(tx, request.id, request.uuid, sample)
+	if err := recordPlanTrafficTx(tx, request.id, request.uuid, sample); err != nil {
+		return err
+	}
+	return recordNICTransferTx(tx, request.uuid, sample)
 }

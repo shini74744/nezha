@@ -12,6 +12,7 @@ export function networkRateParts(bytesPerSecond: number) {
 		: { value: mbps.toFixed(1), unit: "Mbps" };
 }
 export function formatNetworkRate(bytesPerSecond: number) {
+ if (Number.isNaN(bytesPerSecond)) return "—";
 	const { value, unit } = networkRateParts(bytesPerSecond);
 	return `${value} ${unit}`;
 }

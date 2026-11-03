@@ -43,7 +43,7 @@ func decodeNetworkInterfaces(rows []*pb.State_NetworkInterface) []NetworkInterfa
 			continue
 		}
 		seen[name] = true
-		out = append(out, NetworkInterfaceSpeed{Name: name, InSpeed: n.GetInSpeed(), OutSpeed: n.GetOutSpeed(), Available: n.GetAvailable()})
+		out = append(out, NetworkInterfaceSpeed{Name: name, InSpeed: n.GetInSpeed(), OutSpeed: n.GetOutSpeed(), Available: n.GetAvailable(), InTransfer: n.GetInTransfer(), OutTransfer: n.GetOutTransfer(), CountersAvailable: n.GetCountersAvailable() && n.GetCounterEpoch() != "" && len(n.GetCounterEpoch()) <= 64 && n.GetInTransfer() <= 1<<63-1 && n.GetOutTransfer() <= 1<<63-1, CounterEpoch: n.GetCounterEpoch()})
 		if len(out) >= MaxNetworkInterfaceRates {
 			break
 		}

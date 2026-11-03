@@ -1,3 +1,4 @@
+import { homeNetworkServer } from "@/lib/home-network";
 import {NativeSpeed,NativeTraffic} from "@/appearance/widgets";
 import {useFeature} from "@/appearance/context";
 import { memo, useCallback, useLayoutEffect, useRef } from "react";
@@ -44,7 +45,7 @@ const brand=useFeature("branding");
 		net_out_transfer,
 		public_note,
 		platform,
-	} = formatNezhaInfo(now, serverInfo);
+	} = formatNezhaInfo(now, homeNetworkServer(serverInfo));
 
 	const cardClick = () => {
 		onOpen(serverInfo.id);
@@ -148,7 +149,7 @@ const brand=useFeature("branding");
 							{t("serverCard.upload")}
 						</p>
 						<div className="flex items-center text-xs font-semibold">
-							<NativeSpeed bytes={serverInfo.state.net_out_speed} direction="up" fallback={up >= 1024
+							<NativeSpeed bytes={homeNetworkServer(serverInfo).state.net_out_speed} direction="up" fallback={!Number.isFinite(up) ? "—" : up >= 1024
 								? `${(up / 1024).toFixed(2)}G/s`
 								: up >= 1
 									? `${up.toFixed(2)}M/s`
@@ -160,7 +161,7 @@ const brand=useFeature("branding");
 							{t("serverCard.download")}
 						</p>
 						<div className="flex items-center text-xs font-semibold">
-							<NativeSpeed bytes={serverInfo.state.net_in_speed} direction="down" fallback={down >= 1024
+							<NativeSpeed bytes={homeNetworkServer(serverInfo).state.net_in_speed} direction="down" fallback={!Number.isFinite(down) ? "—" : down >= 1024
 								? `${(down / 1024).toFixed(2)}G/s`
 								: down >= 1
 									? `${down.toFixed(2)}M/s`
@@ -168,7 +169,7 @@ const brand=useFeature("branding");
 						</div>
 					</div>
 				</section>
-				<NativeTraffic serverId={serverInfo.id}/>
+				<NativeTraffic scopeKey={serverInfo.home_network?.scope_key} serverId={serverInfo.id}/>
 				{showNetTransfer && (
 					<section className={"flex items-center w-full justify-between gap-1"}>
 						<Badge

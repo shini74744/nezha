@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest"
 const mocks = vi.hoisted(() => ({
     get: vi.fn(), set: vi.fn(), t: (key: string) => key,
 }))
-vi.mock("@/api/server", () => ({ getServerConfig: mocks.get, setServerConfig: mocks.set }))
+vi.mock("@/api/server", () => ({ getHomeNetwork: vi.fn().mockResolvedValue({interfaces: []}), setHomeNetwork: vi.fn(), getServerConfig: mocks.get, setServerConfig: mocks.set }))
 vi.mock("react-i18next", async (importOriginal) => ({
     ...await importOriginal<typeof import("react-i18next")>(),
     useTranslation: () => ({ t: mocks.t }),

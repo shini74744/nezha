@@ -1,4 +1,5 @@
 import { getServerConfig, setServerConfig } from "@/api/server"
+import { HomeNetworkPicker } from "@/components/home-network-picker"
 import { NetworkInterfacePicker } from "@/components/network-interface-picker"
 import { NICChangeReminder, useNICChangeReminder } from "@/components/nic-change-reminder"
 import { Button, ButtonProps } from "@/components/ui/button"
@@ -366,6 +367,7 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
                                             </FormItem>
                                         )}
                                     />
+                                    <HomeNetworkPicker sid={sid} inventory={parseNetworkInventory(inventory)} />
                                     {openedNotice && (
                                         <NICChangeReminder sid={sid} eventID={openedNotice} />
                                     )}

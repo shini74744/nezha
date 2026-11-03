@@ -134,6 +134,7 @@ export function NativeSpeed({
 	overview?: boolean;
 }) {
 	const shared = useFeature("speed");
+ if (Number.isNaN(bytes)) return <span>—</span>;
  const f = overview ? {enabled:shared.enabled && shared.overviewEnabled,bits:shared.overviewBits,color:shared.overviewColor,animation:shared.overviewAnimation}
   : {...shared,enabled:shared.enabled && shared.cardEnabled};
 	if (!f.enabled || (!f.bits && !f.color && !f.animation)) {

@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
     read: vi.fn(),
     t: (key: string) => key,
 }))
-vi.mock("@/api/server", () => ({
+vi.mock("@/api/server", () => ({ getHomeNetwork: vi.fn().mockResolvedValue({interfaces: []}), setHomeNetwork: vi.fn(),
     getServerConfig: mocks.get,
     setServerConfig: mocks.set,
     getNICChangeReminders: mocks.notices,

@@ -1,5 +1,5 @@
 import NetworkInterfaceSelect from "./NetworkInterfaceSelect";
-import {networkInterfaceMetric, networkRate, networkRateHistory, networkHistoricalPoints} from "@/lib/network-interface-rates";
+import {HOME_NETWORK_SELECTION, networkInterfaceMetric, networkRate, networkRateHistory, networkHistoricalPoints} from "@/lib/network-interface-rates";
 import OnlineHistoryPanel from "./OnlineHistoryPanel";
 import { metricTimeAxis, metricTimeWindow } from "@/lib/metric-time-window";
 import RealtimeViewMenu from "./RealtimeViewMenu";
@@ -1203,20 +1203,24 @@ function NetworkChart({
 	const speed = useFeature("speed");
 	const rateFormatter = themeRateFormatter ?? (speed.enabled && speed.cardEnabled && speed.bits ? formatCardBits : null);
  const {isAdmin}=useLoginUser();
- const [chosen,setChosen]=useState("");
- const selected=isAdmin?chosen:"";
- useEffect(()=>setChosen(""),[data.id,isAdmin]);
+ const [chosen,setChosen]=useState<string|null>(null);
+ const defaults=data.home_network?.interfaces??[];
+ const defaultKey=JSON.stringify(defaults);
+ const selected=isAdmin?(chosen??(defaults.length===1?defaults[0]:defaults.length?HOME_NETWORK_SELECTION:"")):"";
+ useEffect(()=>setChosen(null),[data.id,isAdmin,defaultKey]);
+ const selectedNames=selected===HOME_NETWORK_SELECTION?defaults:selected?[selected]:[];
+ const scope=selectedNames.length?selectedNames:"";
  const names=(data.state.network_interfaces??[]).map(n=>n.name);
- const metrics=[networkInterfaceMetric(selected,"out"),networkInterfaceMetric(selected,"in")];
+ const metrics=(selectedNames.length?selectedNames:[""]).flatMap(name=>[networkInterfaceMetric(name,"out"),networkInterfaceMetric(name,"in")]);
  const history=useMetricHistory(data.id,metrics,period);
- const rates=networkRate(data,selected);
+ const rates=networkRate(data,scope);
  const {up,down}=formatNezhaInfo(now,data);
  const displayData=period==="realtime"
-  ?networkRateHistory(messageHistory,data,now,selected)
+  ?networkRateHistory(messageHistory,data,now,scope)
   :networkHistoricalPoints(history.series,period==="7d"?1800000:period==="30d"?7200000:30000);
  const isNetworkLoading=history.isLoading;
  const selection=isAdmin&&(names.length>0||!!selected)?{
-  value:selected,names,pending:history.isLoading,
+  value:selected,names,homeNames:defaults,pending:history.isLoading,
   message:history.error?"记录读取失败，请重新选择网卡重试。":undefined,
   onChange:(name:string)=>{if(name===selected)history.retry();else setChosen(name);}
  }:undefined;
@@ -1247,7 +1251,7 @@ function NetworkChart({
 		>
 			<CardContent className="relative flex h-full flex-col px-6 py-3">
 				<section className="flex flex-1 flex-col gap-1">
-					<div className="flex min-w-0 items-center gap-1">
+					<div className="-mr-3 flex min-w-0 items-center gap-1">
 						<section className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-4">
 							<div className="flex min-w-[4.25rem] flex-col sm:min-w-20">
 								<p className="text-xs text-muted-foreground">
@@ -1363,7 +1367,7 @@ function NetworkChart({
 							</LineChart>
 						)}
 					</ChartContainer>
-					<ChartDetailButton selection={selection} history={{serverId:data.id,metrics:[{metric:metrics[0],key:"upload",scale:1/1024**2},{metric:metrics[1],key:"download",scale:1/1024**2}]}} timeWindow={metricTimeWindow(period,now)} scopeKey={data.id+":"+period+":network:"+isAdmin} title="网络速率" data={displayData} period={period}
+					<ChartDetailButton selection={selection} history={{serverId:data.id,metrics:metrics.map((metric,i)=>({metric,key:i%2===0?"upload":"download",scale:1/1024**2}))}} timeWindow={metricTimeWindow(period,now)} scopeKey={data.id+":"+period+":network:"+isAdmin} title="网络速率" data={displayData} period={period}
 						series={[{key:"upload",label:"上传",color:"hsl(var(--chart-1))"},{key:"download",label:"下载",color:"hsl(var(--chart-4))"}]} formatValue={value => rateFormatter ? rateFormatter(value * 1024 ** 2) : value.toFixed(2)+" MB/s"} disabled={isNetworkLoading || !!history.error}/>
 				</section>
 			</CardContent>

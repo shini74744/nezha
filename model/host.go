@@ -13,10 +13,14 @@ const (
 )
 
 type NetworkInterfaceSpeed struct {
-	Name      string `json:"name"`
-	InSpeed   uint64 `json:"in_speed"`
-	OutSpeed  uint64 `json:"out_speed"`
-	Available bool   `json:"available"`
+	InTransfer        uint64 `json:"in_transfer"`
+	OutTransfer       uint64 `json:"out_transfer"`
+	CountersAvailable bool   `json:"counters_available"`
+	CounterEpoch      string `json:"counter_epoch,omitempty"`
+	Name              string `json:"name"`
+	InSpeed           uint64 `json:"in_speed"`
+	OutSpeed          uint64 `json:"out_speed"`
+	Available         bool   `json:"available"`
 }
 
 type SensorTemperature struct {
@@ -89,7 +93,7 @@ func (s *HostState) PB() *pb.State {
 
 	nics := make([]*pb.State_NetworkInterface, 0, len(s.NetworkInterfaces))
 	for _, n := range s.NetworkInterfaces {
-		nics = append(nics, &pb.State_NetworkInterface{Name: n.Name, InSpeed: n.InSpeed, OutSpeed: n.OutSpeed, Available: n.Available})
+		nics = append(nics, &pb.State_NetworkInterface{Name: n.Name, InSpeed: n.InSpeed, OutSpeed: n.OutSpeed, Available: n.Available, InTransfer: n.InTransfer, OutTransfer: n.OutTransfer, CountersAvailable: n.CountersAvailable, CounterEpoch: n.CounterEpoch})
 	}
 	return &pb.State{
 		NetworkInterfaces:   nics,

@@ -27,6 +27,7 @@ func TrackNetworkSpeed(config *model.AgentConfig) {
 		metricLock.Lock()
 		for i := range networkInterfaceSpeeds {
 			networkInterfaceSpeeds[i].Available = false
+			networkInterfaceSpeeds[i].CountersAvailable = false
 		}
 		metricLock.Unlock()
 		return
@@ -54,13 +55,23 @@ func TrackNetworkSpeed(config *model.AgentConfig) {
 	if len(names) > 256 {
 		names = names[:256]
 	}
+	previous := make(map[string]model.NetworkInterfaceSpeed, len(networkInterfaceSpeeds))
+	for _, row := range networkInterfaceSpeeds {
+		previous[row.Name] = row
+	}
 	rates := make([]model.NetworkInterfaceSpeed, 0, len(names))
 	diff := util.SubUintChecked(now, lastUpdateNetStats)
 	for _, name := range names {
 		row := model.NetworkInterfaceSpeed{Name: name}
 		cur := current.Interfaces[name]
 		old, ok := networkSample.Interfaces[name]
-		if !changed && diff > 0 && ok && cur.Index == old.Index && cur.In >= old.In && cur.Out >= old.Out {
+		continuous := ok && cur.Index == old.Index && cur.In >= old.In && cur.Out >= old.Out
+		row.InTransfer, row.OutTransfer, row.CountersAvailable = cur.In, cur.Out, true
+		row.CounterEpoch = previous[name].CounterEpoch
+		if !continuous || row.CounterEpoch == "" {
+			row.CounterEpoch, _ = uuid.GenerateUUID()
+		}
+		if !changed && diff > 0 && continuous {
 			row.Available = true
 			row.InSpeed = (cur.In - old.In) / diff
 			row.OutSpeed = (cur.Out - old.Out) / diff

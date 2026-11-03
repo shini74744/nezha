@@ -49,6 +49,13 @@ func TestInterfaceRatesMatchSelectedTotalsAndHandleChanges(t *testing.T) {
 	rows["eth1"] = nic.Counter{Index: 2, In: 360, Out: 480}
 	step(nil)
 	want := []model.NetworkInterfaceSpeed{{Name: "eth0", InSpeed: 10, OutSpeed: 20, Available: true}, {Name: "eth1", InSpeed: 30, OutSpeed: 40, Available: true}}
+	for i := range want {
+		want[i].InTransfer = rows[want[i].Name].In
+		want[i].OutTransfer = rows[want[i].Name].Out
+		want[i].CountersAvailable = true
+		want[i].CounterEpoch = networkInterfaceSpeeds[i].CounterEpoch
+		check(want[i].CounterEpoch != "", "missing per-NIC epoch")
+	}
 	check(reflect.DeepEqual(want, networkInterfaceSpeeds), "interface rates mixed")
 	check(netInSpeed == 40 && netOutSpeed == 60, "totals differ from selected interfaces")
 	failed = true

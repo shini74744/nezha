@@ -15,6 +15,7 @@ import ServerFlag from "@/components/ServerFlag";
 import ServerLinkTags from "@/components/ServerLinkTags";
 import { formatBytes } from "@/lib/format";
 import { saveMainPageScrollPosition } from "@/lib/navigation";
+import { homeNetworkServer } from "@/lib/home-network";
 import { formatNezhaInfo, parsePublicNote } from "@/lib/utils";
 import type { NezhaServer } from "@/types/nezha-api";
 import { art } from "./assets";
@@ -85,7 +86,7 @@ function Card({ now, serverInfo: s }: Props) {
 	const motion = useDoraMotion<HTMLElement>();
 	const info = formatNezhaInfo(now, s),
 		note = parsePublicNote(info.public_note);
-	const st = s.state,
+	const st = homeNetworkServer(s).state,
 		host = s.host;
 	return (
 		<article
@@ -185,7 +186,7 @@ function Card({ now, serverInfo: s }: Props) {
 							/>
 						</div>
 						<div className="dora-network">
-							<DoraemonTraffic serverId={s.id} />
+							<DoraemonTraffic scopeKey={s.home_network?.scope_key} serverId={s.id} />
 							<div className="dora-transfer">
 								<div>
 									<div className="dora-transfer-heading">
@@ -196,7 +197,7 @@ function Card({ now, serverInfo: s }: Props) {
 										<b {...rateColor(st.net_out_speed, "up")} {...rateEffect(st.net_out_speed, "up")}>{formatNetworkRate(st.net_out_speed)}</b>
 									</div>
 									<small>
-										累计 {formatBytes(positive(st.net_out_transfer), 1)}
+										累计 {Number.isFinite(st.net_out_transfer) ? formatBytes(st.net_out_transfer, 1) : "—"}
 									</small>
 								</div>
 								<div>
@@ -208,7 +209,7 @@ function Card({ now, serverInfo: s }: Props) {
 										<b {...rateColor(st.net_in_speed, "down")} {...rateEffect(st.net_in_speed, "down")}>{formatNetworkRate(st.net_in_speed)}</b>
 									</div>
 									<small>
-										累计 {formatBytes(positive(st.net_in_transfer), 1)}
+										累计 {Number.isFinite(st.net_in_transfer) ? formatBytes(st.net_in_transfer, 1) : "—"}
 									</small>
 								</div>
 							</div>
@@ -222,7 +223,7 @@ function Card({ now, serverInfo: s }: Props) {
 					</>
 				) : (
 					<div className="dora-offline">
-						<DoraemonTraffic serverId={s.id} />
+						<DoraemonTraffic scopeKey={s.home_network?.scope_key} serverId={s.id} />
 						<img src={art.doraemon} alt="" />
 						<strong>道具暂时休息中</strong>
 						<span>点击查看离线详情与历史记录</span>

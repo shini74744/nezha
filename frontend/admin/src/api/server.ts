@@ -81,6 +81,9 @@ export const reassignServerIDs = async (serverIds: number[]): Promise<ServerIDRe
     })
 }
 
+export const getHomeNetwork = (id: number): Promise<{interfaces: string[]}> => fetcher(FetcherMethod.GET, "/api/v1/server/" + id + "/home-network", null)
+export const setHomeNetwork = (id: number, interfaces: string[]): Promise<{interfaces: string[]}> => fetcher(FetcherMethod.PUT, "/api/v1/server/" + id + "/home-network", {interfaces})
+
 export const getServerConfig = async (id: number): Promise<string> => {
     return fetcher<string>(FetcherMethod.GET, `/api/v1/server/config/${id}`, null)
 }
