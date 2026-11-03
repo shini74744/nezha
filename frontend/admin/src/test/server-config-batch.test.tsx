@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, beforeEach, expect, test, vi } from "vitest"
 
 const setServerConfig = vi.fn()
-vi.mock("@/api/server", () => ({
+vi.mock("@/api/server", () => ({ getHomeNetwork: vi.fn().mockResolvedValue({interfaces: []}), setHomeNetwork: vi.fn(),
     setServerConfig: (...args: unknown[]) => setServerConfig(...args),
 }))
 vi.mock("sonner", () => ({ toast: vi.fn() }))

@@ -1,4 +1,5 @@
 export function formatBytes(bytes: number, decimals: number = 2) {
+ if (!Number.isFinite(bytes)) return "—";
 	if (!+bytes) return "0 KiB";
 
 	const k = 1024;

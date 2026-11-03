@@ -3,7 +3,7 @@ import {useQuery} from "@tanstack/react-query";
 import {useFeature} from "./context";
 import "./traffic.css";
 
-type Traffic = {quota_type?:"limited"|"unlimited"|"unset"; name:string; max:number; from:string; to:string; used:number;
+type Traffic = {scope_key?:string;quota_type?:"limited"|"unlimited"|"unset"; name:string; max:number; from:string; to:string; used:number;
  direction:string; partial?:boolean; estimated?:boolean; recorded_from?:number; error?:string};
 // The legacy script used binary divisors with GB/TB labels, not decimal SI.
 export function formatTraffic(bytes:number) {
@@ -59,21 +59,24 @@ export function TrafficRow({serverId,stat,interval}:{serverId:number;stat:Traffi
   </div>
  </div>;
 }
-export function NativeTraffic({serverId}:{serverId:number}) {
+export function NativeTraffic({serverId,scopeKey=""}:{serverId:number;scopeKey?:string}) {
  const f=useFeature("traffic");
- const {data}=useQuery({
+ const {data,refetch}=useQuery({
   queryKey:["plan-traffic"],enabled:f.enabled,
   queryFn:async()=>{
-   const r=await fetch("/api/v1/server-traffic");
+   const r=await fetch("/api/v1/server-traffic?scope=home");
    if(!r.ok)throw Error("Traffic unavailable");
    const body=await r.json();
    if(!body.success)throw Error("Traffic unavailable");
    return (body.data??{}) as Record<string,Traffic>;
   },refetchInterval:30000,retry:1
  });
+ const stale=!!data?.[String(serverId)] && (data[String(serverId)].scope_key??"")!==scopeKey;
+ useEffect(()=>{if(stale)void refetch();},[scopeKey,stale,refetch]);
  if(!f.enabled||!data)return null;
+ if(stale)return <div className="text-xs opacity-70">正在更新流量</div>;
  const stat=data[String(serverId)];
- if(stat?.error)return <div className="text-xs opacity-70" title={stat.error}>套餐流量设置需检查</div>;
+ if(stat?.error)return <div className="text-xs opacity-70" title={stat.error}>{stat.error.startsWith("所选网卡") ? stat.error : "套餐流量设置需检查"}</div>;
  if(!stat||stat.max<0||!Number.isFinite(stat.max)||!Number.isFinite(stat.used))return null;
  return <TrafficRow key={serverId+":"+stat.from} serverId={serverId} stat={stat} interval={f.toggleInterval}/>;
 }

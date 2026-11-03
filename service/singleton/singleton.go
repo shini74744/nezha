@@ -111,7 +111,7 @@ func InitDBFromPath(path string) error {
 		model.NAT{}, model.DDNSProfile{}, model.NotificationGroupNotification{},
 		model.WAF{}, model.Oauth2Bind{}, model.ServerTransfer{}, model.JWTSession{},
 		model.BackendAccessAttempt{}, model.APIToken{}, model.MCPAuditLog{}, model.ServerOperationLog{}, model.ServerInventoryBaseline{}, model.ServerReplacement{}, model.UnknownAgentReport{}, model.AgentIdentityRejection{}, model.AgentUUIDConflict{}, model.ServerDeletionTombstone{}, model.AgentCredential{}, model.AgentCredentialRejection{}, model.ServerSnapshot{},
-		model.PlanTrafficCheckpoint{}, model.PlanTrafficDay{}, model.LogoLibraryEntry{}, model.LogoLibraryGroup{}, model.TerminalCommand{}, model.TerminalSession{}, model.TerminalSessionEvent{})
+		model.NICTransferCheckpoint{}, model.NICTransferDay{}, model.PlanTrafficCheckpoint{}, model.PlanTrafficDay{}, model.LogoLibraryEntry{}, model.LogoLibraryGroup{}, model.TerminalCommand{}, model.TerminalSession{}, model.TerminalSessionEvent{})
 	if err != nil {
 		return err
 	}

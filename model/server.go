@@ -19,8 +19,9 @@ import (
 var runtimeHolderInitMu sync.Mutex
 
 type Server struct {
-	NetworkDefaultView string `json:"network_default_view" gorm:"default:connectivity"`
-	NetworkDisplayMode string `json:"network_display_mode"`
+	HomeNetworkInterfacesRaw string `gorm:"not null;default:'[]'" json:"-"`
+	NetworkDefaultView       string `json:"network_default_view" gorm:"default:connectivity"`
+	NetworkDisplayMode       string `json:"network_display_mode"`
 	Common
 
 	Name                   string `json:"name"`
@@ -762,32 +763,33 @@ func (s *Server) RuntimeCopy(runtime RuntimeSnapshot) *Server {
 			UpdatedAt: s.UpdatedAt,
 			UserID:    s.GetUserID(),
 		},
-		Name:                    s.Name,
-		UUID:                    s.UUID,
-		Note:                    s.Note,
-		PublicNote:              s.PublicNote,
-		DisplayIndex:            s.DisplayIndex,
-		HideForGuest:            s.HideForGuest,
-		HideForDisplay:          s.HideForDisplay,
-		BGPDisabled:             s.BGPDisabled,
-		ReturnRouteDisabled:     s.ReturnRouteDisabled,
-		StreamingDisabled:       s.StreamingDisabled,
-		ConnectivityDisabled:    s.ConnectivityDisabled,
-		ConnectivityLocalOnly:   s.ConnectivityLocalOnly,
-		NetworkDefaultView:      s.NetworkDefaultView,
-		NetworkDisplayMode:      s.NetworkDisplayMode,
-		EnableDDNS:              s.EnableDDNS,
-		DDNSProfilesRaw:         s.DDNSProfilesRaw,
-		OverrideDDNSDomainsRaw:  s.OverrideDDNSDomainsRaw,
-		DDNSProfiles:            slices.Clone(s.DDNSProfiles),
-		OverrideDDNSDomains:     s.OverrideDDNSDomains,
-		Host:                    runtime.Host,
-		State:                   runtime.State,
-		GeoIP:                   s.GeoIP,
-		LastActive:              runtime.LastActive,
-		ConfigCache:             s.ConfigCache,
-		PrevTransferInSnapshot:  runtime.PrevTransferInSnapshot,
-		PrevTransferOutSnapshot: runtime.PrevTransferOutSnapshot,
+		Name:                     s.Name,
+		UUID:                     s.UUID,
+		Note:                     s.Note,
+		PublicNote:               s.PublicNote,
+		DisplayIndex:             s.DisplayIndex,
+		HideForGuest:             s.HideForGuest,
+		HideForDisplay:           s.HideForDisplay,
+		BGPDisabled:              s.BGPDisabled,
+		ReturnRouteDisabled:      s.ReturnRouteDisabled,
+		StreamingDisabled:        s.StreamingDisabled,
+		ConnectivityDisabled:     s.ConnectivityDisabled,
+		ConnectivityLocalOnly:    s.ConnectivityLocalOnly,
+		NetworkDefaultView:       s.NetworkDefaultView,
+		NetworkDisplayMode:       s.NetworkDisplayMode,
+		HomeNetworkInterfacesRaw: s.HomeNetworkInterfacesRaw,
+		EnableDDNS:               s.EnableDDNS,
+		DDNSProfilesRaw:          s.DDNSProfilesRaw,
+		OverrideDDNSDomainsRaw:   s.OverrideDDNSDomainsRaw,
+		DDNSProfiles:             slices.Clone(s.DDNSProfiles),
+		OverrideDDNSDomains:      s.OverrideDDNSDomains,
+		Host:                     runtime.Host,
+		State:                    runtime.State,
+		GeoIP:                    s.GeoIP,
+		LastActive:               runtime.LastActive,
+		ConfigCache:              s.ConfigCache,
+		PrevTransferInSnapshot:   runtime.PrevTransferInSnapshot,
+		PrevTransferOutSnapshot:  runtime.PrevTransferOutSnapshot,
 	}
 }
 

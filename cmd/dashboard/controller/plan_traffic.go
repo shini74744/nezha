@@ -16,7 +16,11 @@ func showPlanTraffic(c *gin.Context) (map[uint64]*model.PlanTrafficStat, error) 
 		if !userCanViewServer(c, server) {
 			continue
 		}
-		stat, err := singleton.QueryPlanTraffic(server, now)
+		query := singleton.QueryPlanTraffic
+		if c.Query("scope") == "home" {
+			query = singleton.QueryHomePlanTraffic
+		}
+		stat, err := query(server, now)
 		if err != nil {
 			return nil, err
 		}

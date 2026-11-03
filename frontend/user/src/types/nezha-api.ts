@@ -4,7 +4,10 @@ export interface NezhaWebsocketResponse {
 	servers: NezhaServer[];
 }
 
+export interface NezhaHomeNetwork { scope_key?: string; interfaces?: string[]; in_speed:number; out_speed:number; in_transfer:number; out_transfer:number; rates_available:boolean; counters_available:boolean; }
+
 export interface NezhaServer {
+ home_network?: NezhaHomeNetwork;
 	connectivity_disabled?: boolean;
  network_default_view?: "connectivity" | "latency";
  network_display_mode?: "both" | "connectivity" | "latency" | "hidden";

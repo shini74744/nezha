@@ -72,6 +72,10 @@ message State_NetworkInterface {
   uint64 in_speed = 2;
   uint64 out_speed = 3;
   bool available = 4;
+  uint64 in_transfer = 5;
+  uint64 out_transfer = 6;
+  bool counters_available = 7;
+  string counter_epoch = 8;
 }
 
 message State_GPU {

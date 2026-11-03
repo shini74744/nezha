@@ -21,8 +21,8 @@ export function formatNezhaInfo(now: number, serverInfo: NezhaServer) {
 		cpu: serverInfo.state.cpu || 0,
 		gpu: serverInfo.state.gpu || [],
 		process: serverInfo.state.process_count || 0,
-		up: serverInfo.state.net_out_speed / 1024 / 1024 || 0,
-		down: serverInfo.state.net_in_speed / 1024 / 1024 || 0,
+		up: (serverInfo.state.net_out_speed ?? 0) / 1024 / 1024,
+		down: (serverInfo.state.net_in_speed ?? 0) / 1024 / 1024,
 		last_active_time_string: lastActiveTime
 			? dayjs(lastActiveTime).format("YYYY-MM-DD HH:mm:ss")
 			: "",
@@ -37,8 +37,8 @@ export function formatNezhaInfo(now: number, serverInfo: NezhaServer) {
 		stg: (serverInfo.state.disk_used / serverInfo.host.disk_total) * 100 || 0,
 		country_code: serverInfo.country_code,
 		platform: serverInfo.host.platform || "",
-		net_out_transfer: serverInfo.state.net_out_transfer || 0,
-		net_in_transfer: serverInfo.state.net_in_transfer || 0,
+		net_out_transfer: serverInfo.state.net_out_transfer ?? 0,
+		net_in_transfer: serverInfo.state.net_in_transfer ?? 0,
 		arch: serverInfo.host.arch || "",
 		mem_total: serverInfo.host.mem_total || 0,
 		swap_total: serverInfo.host.swap_total || 0,

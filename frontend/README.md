@@ -139,3 +139,9 @@ zoom and native touch gestures are preserved. Regression checks are in
 ## Per-interface network rate view (v0.0.19 / Agent v1.0.8)
 
 The network card and detail dialog share an administrator-only interface menu. Aggregate view follows the current monitoring selection; viewing one interface does not submit configuration or alter traffic accounting. REST, WebSocket, offline snapshots, and metric queries enforce the same access boundary. Both themes retain mobile and desktop layouts. Missing history remains a gap, idle measurements remain zero, and switching cancels stale history requests. The configuration dialog refreshes inventory every 10 seconds while visible without replacing unsaved edits. Ordinary offline/reconnect/restart preserves saved monitoring configuration. See [network interface selection](../docs/network-interface-selection.md).
+
+## Homepage NIC aggregation (v0.0.20 / Agent v1.0.9)
+
+The independent admin homepage selection supports multiple monitored interfaces. Both themes project card rates and totals without mutating the original state. The detail chart defaults to the saved selection while temporary choices remain local. Guests receive the homepage projection without interface names or a selector. Period responses include a selection key to prevent stale cached totals from appearing after a change.
+
+Regression coverage includes default/single/multiple selections, unavailable data, sum-by-timestamp history, separate configuration saves, permission checks, and both themes at mobile and desktop widths. See [usage and accounting limits](../docs/home-network.md).

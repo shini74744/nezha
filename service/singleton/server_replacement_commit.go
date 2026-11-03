@@ -96,6 +96,13 @@ func CompleteServerReplacement(secret, uuid string, host *model.Host, state *mod
 				return e
 			}
 		}
+		for _, target := range []any{&model.NICTransferCheckpoint{}, &model.NICTransferDay{}} {
+			if tx.Migrator().HasTable(target) {
+				if e := tx.Where("uuid = ?", uuid).Delete(target).Error; e != nil {
+					return e
+				}
+			}
+		}
 		if e := tx.Where("uuid = ?", uuid).Delete(&model.PlanTrafficDay{}).Error; e != nil {
 			return e
 		}
