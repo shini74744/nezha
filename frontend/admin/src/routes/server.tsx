@@ -40,8 +40,9 @@ export default function ServerPage() {
     const { t } = useTranslation()
     const { profile } = useAuth()
     const { data, mutate, error, isLoading } = useSWR<Server[]>("/api/v1/server", swrFetcher, {
-        revalidateOnFocus: false,
-        revalidateOnReconnect: false,
+        refreshInterval: 5000,
+        revalidateOnFocus: true,
+        revalidateOnReconnect: true,
     })
     const { serverGroups } = useServer()
 
@@ -53,7 +54,8 @@ export default function ServerPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [error])
 
-    const columns: ColumnDef<typeof selectableTableFeatures, Server>[] = [
+    // Stable cell components keep open editors mounted while the list refreshes.
+    const columns = useMemo<ColumnDef<typeof selectableTableFeatures, Server>[]>(() => [
         {
             id: "select",
             header: ({ table }) => (
@@ -200,7 +202,7 @@ export default function ServerPage() {
                 )
             },
         },
-    ]
+    ], [mutate, profile?.role, serverGroups, t])
 
     const dataCache = useMemo(() => {
         return data ?? []
@@ -210,7 +212,18 @@ export default function ServerPage() {
         features: selectableTableFeatures,
         data: dataCache,
         columns,
+        getRowId: (row) => String(row.id),
     })
+
+    // New rows may be inserted anywhere. Keep selections tied to machine IDs,
+    // and discard deleted IDs so a later replacement is never selected for a batch action.
+    useEffect(() => {
+        const currentIDs = new Set(dataCache.map(server => String(server.id)))
+        table.setRowSelection(previous => {
+            const entries = Object.entries(previous).filter(([id]) => currentIDs.has(id))
+            return entries.length === Object.keys(previous).length ? previous : Object.fromEntries(entries)
+        })
+    }, [dataCache, table])
 
     const selectedRows = table.getSelectedRowModel().rows
 

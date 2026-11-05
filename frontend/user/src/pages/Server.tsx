@@ -129,6 +129,8 @@ export default function Servers({
 	const { data: groupData, error: groupError } = useQuery({
 		queryKey: ["server-group"],
 		queryFn: () => fetchServerGroup(),
+		refetchInterval: 10000,
+		refetchOnWindowFocus: true,
 		retry: false,
 	});
 	const { data: serviceData, error: serviceError } = useQuery({

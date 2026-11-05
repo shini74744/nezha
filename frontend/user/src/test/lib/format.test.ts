@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import { formatBytes } from "@/lib/format";
 
 describe("formatBytes", () => {
-	it("formats empty byte values as zero KiB", () => {
+	it("distinguishes zero bytes from an unavailable counter", () => {
 		expect(formatBytes(0)).toBe("0 KiB");
-		expect(formatBytes(Number.NaN)).toBe("0 KiB");
+		expect(formatBytes(Number.NaN)).toBe("—");
 	});
 
 	it("keeps byte values in binary units", () => {

@@ -37,6 +37,36 @@ The independently selectable `doraemon-dist` theme shares the default frontend's
 - Standalone frontend output is `frontend/user/dist-doraemon`; it and embedded `cmd/dashboard/doraemon-dist` are generated and ignored by Git.
 
 
+## Live inventory synchronization (v0.0.21)
+
+Both public themes update server metadata from the authorized WebSocket snapshot.
+A complete-note marker distinguishes a cleared note from an unchanged omitted
+note. Deleted IDs are pruned and old session-storage notes are ignored. Group
+lists revalidate every 10 seconds while visible and on focus. A foreground
+connection that receives no valid frame for 15 seconds is retried using the
+existing reconnect delay; a retained frame is not evidence of a live connection.
+
+The admin server table revalidates every 5 seconds while visible, on focus and
+on reconnect. Rows and selections use server IDs. Refreshing the list keeps open
+editors and unsaved input mounted; deleting a row clears its batch selection.
+After upgrading, reload each already-open page once to load the new client.
+No Agent upgrade, database migration or history-retention change is required.
+
+The portable browser checks use mock APIs and WebSockets, never production
+credentials. Serve the final admin build with SPA fallback and the two distinct
+public builds, then run from `frontend/admin`:
+
+```sh
+E2E_SKIP_WEBSERVER=1 E2E_BASE_URL=http://127.0.0.1:18476 \
+NIC_USER_URL=http://127.0.0.1:18477 NIC_DORAEMON_URL=http://127.0.0.1:18478 \
+npx playwright test tests/e2e/admin-server-live-sync.spec.ts tests/e2e/frontend-live-sync.spec.ts tests/e2e/server-sort-search.spec.ts --workers=1
+```
+
+Coverage includes add/edit/clear/delete/reused IDs, selection and unsaved editor
+preservation, group changes, a silent open socket, network recovery, both public
+themes, light/dark modes and phone/desktop layouts. Real timers are used for the
+admin polling test so its scheduling and request deduplication behave naturally.
+
 ## Recovery and preload regressions
 
 The default and Doraemon themes share history, session and connection recovery:

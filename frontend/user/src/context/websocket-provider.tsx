@@ -68,10 +68,14 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
  const isConnecting = useRef(false);
  const active = useRef(false);
  const lastRecovery = useRef(-Infinity);
+ const lastMessageAt = useRef(0);
+ const paused = useRef(false);
+ const disconnectStalled = useRef<(() => void) | null>(null);
 
  const cleanup = useCallback(() => {
   const socket = ws.current;
   ws.current = null;
+  disconnectStalled.current = null;
   isConnecting.current = false;
   if (socket) {
    socket.onopen = socket.onclose = socket.onmessage = socket.onerror = null;
@@ -100,9 +104,11 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
    const publicNotes = new Map<number, string>();
    const socket = new WebSocket(wsUrl.toString());
    ws.current = socket;
+   lastMessageAt.current = Date.now();
    const isCurrent = () => active.current && ws.current === socket;
    socket.onopen = () => {
     if (!isCurrent()) return;
+    lastMessageAt.current = Date.now();
     setConnected(true);
     reconnectAttempts.current = 0;
     isConnecting.current = false;
@@ -112,6 +118,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
     cleanup();
     scheduleRetry();
    };
+   disconnectStalled.current = disconnected;
    socket.onclose = disconnected;
    socket.onerror = disconnected;
    socket.onmessage = event => {
@@ -119,6 +126,10 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
     try {
      if (typeof event.data !== "string") throw new Error("WebSocket message data must be a string");
      const newData = normalizeWebSocketResponse(JSON.parse(event.data));
+     lastMessageAt.current = Date.now();
+     if (newData.public_note_complete === true) publicNotes.clear();
+     const visibleIds = new Set(newData.servers.map(server => server.id));
+     for (const id of publicNotes.keys()) if (!visibleIds.has(id)) publicNotes.delete(id);
      newData.servers = newData.servers.map(server => {
       if (server.public_note !== undefined) publicNotes.set(server.id, server.public_note);
       return { ...server, public_note: publicNotes.get(server.id) ?? "" };
@@ -146,30 +157,44 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
 
  useEffect(() => {
   active.current = true;
+  paused.current = false;
   reconnectAttempts.current = 0;
   lastRecovery.current = -Infinity;
   setLastData(null);
   setMessageHistory([]);
   connect();
   const recover = () => {
-   if (!active.current || isConnecting.current || ws.current?.readyState === WebSocket.OPEN || reconnectTimeout.current !== null) return;
+   if (!active.current || paused.current || document.visibilityState === "hidden") return;
+   const socket = ws.current;
+   if (socket?.readyState === WebSocket.OPEN || socket?.readyState === WebSocket.CONNECTING) {
+    if (Date.now() - lastMessageAt.current >= 15000) disconnectStalled.current?.();
+    return;
+   }
+   if (isConnecting.current || reconnectTimeout.current !== null) return;
    if (Date.now() - lastRecovery.current < 3000) return;
    lastRecovery.current = Date.now();
    reconnectAttempts.current = 0;
    connect();
   };
   // pagehide/pageshow covers bfcache; beforeunload can be cancelled by the user.
-  const pause = () => cleanup();
+  const pause = () => { paused.current = true; cleanup(); };
+  const resume = () => { paused.current = false; recover(); };
+  // Check the receipt of valid snapshots, not just the browser's OPEN flag.
+  // Do not restart an exhausted retry sequence without a user/network event.
+  const watchdog = window.setInterval(() => { if (ws.current) recover(); }, 5000);
   window.addEventListener("online", recover);
   window.addEventListener("focus", recover);
-  window.addEventListener("pageshow", recover);
+  window.addEventListener("pageshow", resume);
+  document.addEventListener("visibilitychange", recover);
   window.addEventListener("pagehide", pause);
   return () => {
    active.current = false;
    cleanup();
    window.removeEventListener("online", recover);
    window.removeEventListener("focus", recover);
-   window.removeEventListener("pageshow", recover);
+   window.removeEventListener("pageshow", resume);
+   document.removeEventListener("visibilitychange", recover);
+   window.clearInterval(watchdog);
    window.removeEventListener("pagehide", pause);
   };
  }, [cleanup, connect, viewerId]);
