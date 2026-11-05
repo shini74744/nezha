@@ -14,7 +14,7 @@ type StreamServer struct {
 	HideForDisplay        bool             `json:"hide_for_display"` // 普通隐藏，不改变访问权限
 	ID                    uint64           `json:"id,omitempty"`
 	Name                  string           `json:"name,omitempty"`
-	PublicNote            string           `json:"public_note,omitempty"`   // 公开备注，只第一个数据包有值
+	PublicNote            string           `json:"public_note,omitempty"`   // 公开备注，首次连接或公开资料变化时发送
 	DisplayIndex          int              `json:"display_index,omitempty"` // 展示排序，越大越靠前
 
 	Host        *Host      `json:"host,omitempty"`
@@ -24,9 +24,11 @@ type StreamServer struct {
 }
 
 type StreamServerData struct {
-	Now     int64          `json:"now,omitempty"`
-	Online  int            `json:"online,omitempty"`
-	Servers []StreamServer `json:"servers,omitempty"`
+	// Omitted notes in a complete snapshot are empty, not unchanged.
+	PublicNoteComplete bool           `json:"public_note_complete,omitempty"`
+	Now                int64          `json:"now,omitempty"`
+	Online             int            `json:"online,omitempty"`
+	Servers            []StreamServer `json:"servers,omitempty"`
 }
 
 type ServerForm struct {

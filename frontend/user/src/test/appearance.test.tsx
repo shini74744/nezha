@@ -187,7 +187,7 @@ describe("native data widgets", () => {
 		await waitFor(() =>
 			expect(screen.getAllByRole("progressbar")).toHaveLength(2),
 		);
-        expect(fetch).toHaveBeenCalledWith("/api/v1/server-traffic");
+        expect(fetch).toHaveBeenCalledWith("/api/v1/server-traffic?scope=home");
 		expect(screen.getAllByRole("progressbar")[0]).toHaveAttribute(
 			"aria-valuenow",
 			"10",

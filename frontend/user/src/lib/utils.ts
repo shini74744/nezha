@@ -1,4 +1,3 @@
-import { safeSessionStorage } from "@/lib/storage";
 import { type ClassValue, clsx } from "clsx";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -53,7 +52,8 @@ export function formatNezhaInfo(now: number, serverInfo: NezhaServer) {
 		load_1: serverInfo.state.load_1?.toFixed(2) || 0.0,
 		load_5: serverInfo.state.load_5?.toFixed(2) || 0.0,
 		load_15: serverInfo.state.load_15?.toFixed(2) || 0.0,
-		public_note: handlePublicNote(serverInfo.id, serverInfo.public_note || ""),
+		// The provider owns per-connection notes; an empty note must stay empty.
+		public_note: serverInfo.public_note || "",
 	};
 }
 
@@ -353,21 +353,4 @@ export function parsePublicNote(publicNote: string): PublicNoteData | null {
 		console.error("Error parsing public note:", error);
 		return null;
 	}
-}
-
-// Function to handle public_note with sessionStorage
-export function handlePublicNote(serverId: number, publicNote: string): string {
-	const storageKey = `server_${serverId}_public_note`;
-	const storedNote = safeSessionStorage.getItem(storageKey);
-
-	if (!publicNote && storedNote) {
-		return storedNote;
-	}
-
-	if (publicNote) {
-		safeSessionStorage.setItem(storageKey, publicNote);
-		return publicNote;
-	}
-
-	return "";
 }

@@ -80,3 +80,73 @@ it("changing authenticated identity reconnects and clears the old snapshot witho
  act(()=>{Socket.instances[1].open();Socket.instances[1].sendFrame(2)});
  expect(screen.getByTestId("now")).toHaveTextContent("2");
 });
+
+it("updates and clears public notes and removes deleted servers without reconnecting",()=>{
+ const view=mount();const socket=Socket.instances[0];
+ const frame=(servers:unknown[],complete=false)=>act(()=>socket.onmessage?.({data:JSON.stringify({now:Date.now(),servers,public_note_complete:complete})}));
+ act(()=>socket.open());
+ frame([{id:1,name:"old",public_note:"old-price"},{id:2,name:"second",public_note:"second-note"}],true);
+ frame([{id:1,name:"renamed"},{id:2,name:"second"}]);
+ expect(view.result.current.lastData?.servers[0].public_note).toBe("old-price");
+ frame([{id:1,name:"renamed",public_note:"new-price"},{id:2,name:"second",public_note:"second-note"}],true);
+ expect(view.result.current.lastData?.servers[0].public_note).toBe("new-price");
+ frame([{id:1,name:"renamed"},{id:2,name:"second",public_note:"second-note"}],true);
+ expect(view.result.current.lastData?.servers[0].public_note).toBe("");
+ frame([{id:2,name:"second"}],true);
+ expect(view.result.current.lastData?.servers.map(s=>s.id)).toEqual([2]);
+ frame([],true);
+ expect(view.result.current.lastData?.servers).toEqual([]);
+ frame([{id:1,name:"replacement"}],true);
+ expect(view.result.current.lastData?.servers[0].public_note).toBe("");
+ expect(Socket.instances).toHaveLength(1);
+});
+it("does not retain notes for IDs removed by an older dashboard",()=>{
+ const view=mount();const socket=Socket.instances[0];
+ const frame=(servers:unknown[])=>act(()=>socket.onmessage?.({data:JSON.stringify({now:1,servers})}));
+ frame([{id:1,public_note:"deleted-note"}]);frame([]);frame([{id:1}]);
+ expect(view.result.current.lastData?.servers[0].public_note).toBe("");
+});
+it("recovers an OPEN socket that stops delivering valid snapshots",()=>{
+ const view=mount();const socket=Socket.instances[0];const stale=socket.onmessage;
+ act(()=>{socket.open();socket.sendFrame(10);vi.advanceTimersByTime(15000)});
+ expect(socket.readyState).toBe(3);expect(view.result.current.connected).toBe(false);
+ expect(view.result.current.lastData?.now).toBe(10);
+ act(()=>vi.advanceTimersByTime(3000));expect(Socket.instances).toHaveLength(2);
+ act(()=>{Socket.instances[1].open();Socket.instances[1].sendFrame(20);stale?.({data:JSON.stringify({now:999,servers:[]})})});
+ expect(view.result.current.lastData?.now).toBe(20);expect(view.result.current.connected).toBe(true);
+});
+it("times out a CONNECTING socket and invalid frames do not keep an OPEN socket alive",()=>{
+ const view=mount();
+ act(()=>vi.advanceTimersByTime(18000));expect(Socket.instances).toHaveLength(2);
+ const socket=Socket.instances[1];act(()=>socket.open());
+ for(let i=0;i<9;i++)act(()=>{socket.onmessage?.({data:"not-json"});vi.advanceTimersByTime(2000)});
+ expect(socket.readyState).toBe(3);
+ act(()=>vi.advanceTimersByTime(5000));expect(Socket.instances.length).toBeGreaterThanOrEqual(3);
+ view.unmount();const count=Socket.instances.length;
+ act(()=>vi.advanceTimersByTime(60000));expect(Socket.instances).toHaveLength(count);
+});
+it("keeps a healthy socket open while snapshots keep arriving",()=>{
+ const view=mount();const socket=Socket.instances[0];
+ act(()=>socket.open());
+ for(let i=0;i<25;i++)act(()=>{vi.advanceTimersByTime(2000);socket.sendFrame(i+1)});
+ expect(Socket.instances).toHaveLength(1);expect(view.result.current.connected).toBe(true);
+});
+it("checks stale data when a background tab becomes visible without reconnecting in the background",()=>{
+ const visibility=vi.spyOn(document,"visibilityState","get");
+ visibility.mockReturnValue("visible");
+ const view=mount();const socket=Socket.instances[0];
+ act(()=>{socket.open();socket.sendFrame(7)});
+ visibility.mockReturnValue("hidden");
+ act(()=>{document.dispatchEvent(new Event("visibilitychange"));vi.advanceTimersByTime(60000)});
+ expect(Socket.instances).toHaveLength(1);expect(socket.readyState).toBe(1);
+ visibility.mockReturnValue("visible");
+ act(()=>{document.dispatchEvent(new Event("visibilitychange"));window.dispatchEvent(new Event("focus"));vi.advanceTimersByTime(3000)});
+ expect(Socket.instances).toHaveLength(2);expect(socket.readyState).toBe(3);
+ view.unmount();
+});
+it("does not reconnect a pagehide-paused page until pageshow",()=>{
+ const view=mount();act(()=>{Socket.instances[0].open();window.dispatchEvent(new Event("pagehide"));vi.advanceTimersByTime(20000);window.dispatchEvent(new Event("focus"))});
+ expect(Socket.instances).toHaveLength(1);
+ act(()=>window.dispatchEvent(new Event("pageshow")));expect(Socket.instances).toHaveLength(2);
+ view.unmount();
+});

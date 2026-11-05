@@ -7,7 +7,6 @@ import {
 	getDaysBetweenDates,
 	getDaysBetweenDatesWithAutoRenewal,
 	getNextCycleTime,
-	handlePublicNote,
 	nezhaFetcher,
 	parsePublicNote,
 } from "@/lib/utils";
@@ -219,14 +218,15 @@ describe("public note helpers", () => {
 		});
 	});
 
-	it("falls back to cached notes when websocket payloads are empty", () => {
-		expect(handlePublicNote(1, "live note")).toBe("live note");
-		expect(handlePublicNote(1, "")).toBe("live note");
-		expect(sessionStorage.getItem("server_1_public_note")).toBe("live note");
+	it("does not restore a cleared note from a previous browser session", () => {
+		sessionStorage.setItem("server_1_public_note", "old note");
+		expect(formatNezhaInfo(Date.now(), serverFixture).public_note).toBe(serverFixture.public_note);
+		expect(formatNezhaInfo(Date.now(), {...serverFixture, public_note: ""}).public_note).toBe("");
 	});
 
-	it("returns an empty public note when no live or cached note exists", () => {
-		expect(handlePublicNote(404, "")).toBe("");
+	it("does not restore another machine's note for a reused ID with no note", () => {
+		sessionStorage.setItem("server_1_public_note", "previous machine note");
+		expect(formatNezhaInfo(Date.now(), {...serverFixture, name: "replacement", public_note: ""}).public_note).toBe("");
 	});
 });
 

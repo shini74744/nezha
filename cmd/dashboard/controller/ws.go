@@ -1,6 +1,9 @@
 package controller
 
 import (
+	"crypto/sha256"
+	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"net/http"
@@ -118,6 +121,28 @@ func serverStream(c *gin.Context) (any, error) {
 	}
 	defer conn.Close()
 
+	// Consume pong/close frames so long-lived streams detect a dead peer and
+	// do not leave control frames accumulating in the receive buffer.
+	conn.SetReadLimit(1024)
+	_ = conn.SetReadDeadline(time.Now().Add(45 * time.Second))
+	conn.SetPongHandler(func(string) error {
+		return conn.SetReadDeadline(time.Now().Add(45 * time.Second))
+	})
+	readerDone := make(chan struct{})
+	go func() {
+		defer close(readerDone)
+		defer conn.Close()
+		for {
+			if _, _, err := conn.ReadMessage(); err != nil {
+				return
+			}
+		}
+	}()
+	defer func() {
+		_ = conn.Close()
+		<-readerDone
+	}()
+
 	deregisterPAT := registerPATConnection(c, func() { _ = conn.Close() })
 	defer deregisterPAT()
 
@@ -147,14 +172,23 @@ func serverStream(c *gin.Context) (any, error) {
 	defer singleton.RemoveOnlineUser(connId)
 
 	count := 0
+	publicNoteVersion := ""
 	for {
-		stat, err := getServerStat(count == 0, userId, isAdmin, patAccessor, patCacheKey)
+		select {
+		case <-readerDone:
+			return nil, newWsError("")
+		default:
+		}
+		stat, err := getServerStat(publicNoteVersion, userId, isAdmin, patAccessor, patCacheKey)
 		if err != nil {
+			time.Sleep(2 * time.Second)
 			continue
 		}
-		if err := conn.WriteMessage(websocket.TextMessage, stat); err != nil {
+		_ = conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+		if err := conn.WriteMessage(websocket.TextMessage, stat.data); err != nil {
 			break
 		}
+		publicNoteVersion = stat.publicNoteVersion
 		count += 1
 		if count%4 == 0 {
 			err = conn.WriteMessage(websocket.PingMessage, []byte{})
@@ -169,6 +203,11 @@ func serverStream(c *gin.Context) (any, error) {
 
 var requestGroup singleflight.Group
 
+type serverStatFrame struct {
+	data              []byte
+	publicNoteVersion string
+}
+
 // getServerStat returns the websocket frame the viewer is allowed to see.
 // The cache key must include the viewer's identity because the projection
 // depends on per-server ownership: prior to GHSA-hvv7-hfrh-7gxj this function
@@ -177,21 +216,46 @@ var requestGroup singleflight.Group
 //
 // patCacheKey distinguishes PATs with disjoint server_ids whitelists so two
 // limited tokens for the same user do not share a singleflight projection.
-func getServerStat(withPublicNote bool, viewerUserID uint64, viewerIsAdmin bool, pat model.APITokenAccessor, patCacheKey string) ([]byte, error) {
-	cacheKey := fmt.Sprintf("serverStats::%t::%t::%d::%s", withPublicNote, viewerIsAdmin, viewerUserID, patCacheKey)
+func getServerStat(previousPublicNoteVersion string, viewerUserID uint64, viewerIsAdmin bool, pat model.APITokenAccessor, patCacheKey string) (serverStatFrame, error) {
+	cacheKey := fmt.Sprintf("serverStats::%s::%t::%d::%s", previousPublicNoteVersion, viewerIsAdmin, viewerUserID, patCacheKey)
 	v, err, _ := requestGroup.Do(cacheKey, func() (any, error) {
 		servers := filterServersForViewer(
 			singleton.ServerShared.GetSortedList(),
-			viewerUserID, viewerIsAdmin, withPublicNote, pat,
+			viewerUserID, viewerIsAdmin, true, pat,
 		)
-		return json.Marshal(model.StreamServerData{
-			Now:     time.Now().Unix() * 1000,
-			Online:  singleton.GetOnlineUserCount(),
-			Servers: servers,
-		})
+		return marshalServerStat(servers, previousPublicNoteVersion)
 	})
+	if err != nil {
+		return serverStatFrame{}, err
+	}
+	return v.(serverStatFrame), nil
+}
 
-	return v.([]byte), err
+// Compute the revision from the same authorized snapshot that is sent. Notes
+// are repeated only after edits, removals or visibility changes, not each tick.
+func marshalServerStat(servers []model.StreamServer, previousPublicNoteVersion string) (serverStatFrame, error) {
+	hash := sha256.New()
+	var fields [16]byte
+	for _, server := range servers {
+		binary.BigEndian.PutUint64(fields[:8], server.ID)
+		binary.BigEndian.PutUint64(fields[8:], uint64(len(server.PublicNote)))
+		_, _ = hash.Write(fields[:])
+		_, _ = hash.Write([]byte(server.PublicNote))
+	}
+	version := hex.EncodeToString(hash.Sum(nil))
+	complete := version != previousPublicNoteVersion
+	if !complete {
+		for i := range servers {
+			servers[i].PublicNote = ""
+		}
+	}
+	data, err := json.Marshal(model.StreamServerData{
+		Now:                time.Now().Unix() * 1000,
+		Online:             singleton.GetOnlineUserCount(),
+		Servers:            servers,
+		PublicNoteComplete: complete,
+	})
+	return serverStatFrame{data: data, publicNoteVersion: version}, err
 }
 
 // patStreamContext extracts the PAT accessor + a deterministic cache key

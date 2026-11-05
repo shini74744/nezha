@@ -193,7 +193,7 @@ describe("Doraemon original traffic parity", () => {
 		expect(screen.getByText("暂无本期流量数据")).toBeInTheDocument();
 		expect(fetcher).toHaveBeenCalledTimes(1);
 		expect(fetcher).toHaveBeenCalledWith(
-			"/api/v1/server-traffic",
+			"/api/v1/server-traffic?scope=home",
 			expect.objectContaining({
 				credentials: "same-origin",
 				cache: "no-store",

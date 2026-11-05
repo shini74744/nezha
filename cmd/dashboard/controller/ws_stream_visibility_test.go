@@ -146,13 +146,13 @@ func TestFilterServersForViewerAdminSeesAllWithFullHost(t *testing.T) {
 	}
 }
 
-// First-tick frame includes PublicNote, subsequent frames omit it.
+// The viewer projection includes PublicNote only when the caller requests it.
 // This must hold regardless of viewer.
 func TestFilterServersForViewerWithoutPublicNoteFlagOmitsNote(t *testing.T) {
 	out := filterServersForViewer(makeStreamTestServers(), 0, false, false, nil)
 
 	for _, s := range out {
-		assert.Empty(t, s.PublicNote, "follow-up frames must not include PublicNote")
+		assert.Empty(t, s.PublicNote, "projection must omit PublicNote when not requested")
 	}
 }
 

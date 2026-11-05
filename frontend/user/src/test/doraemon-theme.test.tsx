@@ -39,7 +39,7 @@ describe("Doraemon port", () => {
 		[Infinity, "0.0", "Mbps"],
 	])("uses SI network units at the 1000 Mbps boundary: %s", (bytes, value, unit) => {
 		expect(networkRateParts(bytes)).toEqual({ value, unit });
-		expect(formatNetworkRate(bytes)).toBe(value + " " + unit);
+		expect(formatNetworkRate(bytes)).toBe(Number.isNaN(bytes) ? "—" : value + " " + unit);
 	});
 	it("separates the overview number and unit for a stable two-line layout at all sizes", () => {
 		renderWithProviders(
