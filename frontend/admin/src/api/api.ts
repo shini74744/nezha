@@ -1,3 +1,4 @@
+import { readCookie, renewSessionIfNeeded } from "./session-renewal"
 import { isTelegramTerminal, telegramUIRequest } from "@/lib/terminal-transport"
 
 interface CommonResponse<T> {
@@ -23,19 +24,8 @@ export enum FetcherMethod {
     DELETE = "DELETE",
 }
 
-let lastestRefreshTokenAt = 0
-
 const csrfCookieName = "nz-csrf"
 const csrfHeaderName = "X-CSRF-Token"
-
-function readCookie(name: string): string {
-    const prefix = name + "="
-    for (const part of document.cookie.split(";")) {
-        const c = part.trim()
-        if (c.startsWith(prefix)) return c.slice(prefix.length)
-    }
-    return ""
-}
 
 function isUnsafeMethod(method: FetcherMethod): boolean {
     return method !== FetcherMethod.GET
@@ -98,29 +88,11 @@ export async function fetcher<T>(method: FetcherMethod, path: string, data?: any
         if (!responseData.success) {
             throw new Error(responseData.error)
         }
-        triggerAutoRefresh()
+        if (isSameOrigin(path)) void renewSessionIfNeeded()
         return responseData.data
     }
-    triggerAutoRefresh()
+    if (isSameOrigin(path)) void renewSessionIfNeeded()
     return undefined as T
-}
-
-// Refresh route is POST behind the CSRF gate. Defer until an nz-csrf cookie is
-// available: firing without the header would only 403 and burn the 1h throttle,
-// stranding sessions that predate the cookie until the backend seeds one on a
-// safe GET.
-function triggerAutoRefresh() {
-    if (!readCookie(csrfCookieName)) return
-    if (
-        document.cookie &&
-        (!lastestRefreshTokenAt || Date.now() - lastestRefreshTokenAt > 1000 * 60 * 60)
-    ) {
-        lastestRefreshTokenAt = Date.now()
-        fetch("/api/v1/refresh-token", {
-            method: "POST",
-            headers: csrfHeaders(FetcherMethod.POST, "/api/v1/refresh-token"),
-        })
-    }
 }
 
 export async function swrFetcher<T>(input: string | URL | globalThis.Request, init?: RequestInit) {
