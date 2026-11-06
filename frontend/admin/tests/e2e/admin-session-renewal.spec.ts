@@ -8,6 +8,23 @@ const jwt = (issued: number) => "header." + Buffer.from(JSON.stringify({
 async function setup(page: Page, width = 1440) {
     await page.setViewportSize({ width, height: 900 })
     await page.clock.install({ time: originTime })
+    // Observe response consumption before jumping the clock again. A server-side
+    // request counter alone can advance while the browser is still reading JSON.
+    await page.addInitScript(() => {
+        ;(window as any).__renewalResponsesRead = 0
+        const nativeFetch = window.fetch.bind(window)
+        window.fetch = async (...args) => {
+            const response = await nativeFetch(...args)
+            if (String(args[0]).includes("/api/v1/refresh-token")) {
+                const json = response.json.bind(response)
+                response.json = async () => {
+                    try { return await json() }
+                    finally { (window as any).__renewalResponsesRead++ }
+                }
+            }
+            return response
+        }
+    })
     const baseURL = test.info().project.use.baseURL as string
     await page.context().addCookies([
         { name: "nz-jwt", value: jwt(originTime.getTime() / 1000), url: baseURL },
@@ -50,6 +67,7 @@ async function setup(page: Page, width = 1440) {
     await page.goto("/dashboard")
     await expect(page.locator(".server-list-table tbody")).toContainText("续期测试机器")
     await expect.poll(() => state.renewed).toBe(1)
+    await expect.poll(() => page.evaluate(() => (window as any).__renewalResponsesRead)).toBe(1)
     return state
 }
 
@@ -61,8 +79,10 @@ for (const width of [390, 1440]) test("visible admin survives three hours and pr
     await name.fill("尚未提交的名称")
     for (let i = 0; i < 36; i++) {
         const count = state.renewed
-        await page.clock.fastForward(300_100)
+        // The heartbeat checks every 30s; include one tick beyond the 5m cooldown.
+        await page.clock.fastForward(330_100)
         await expect.poll(() => state.renewed).toBe(count + 1)
+        await expect.poll(() => page.evaluate(() => (window as any).__renewalResponsesRead)).toBe(count + 1)
     }
     await expect(name).toHaveValue("尚未提交的名称")
     expect(state.rejected).toBe(0)
@@ -74,7 +94,7 @@ for (const width of [390, 1440]) test("visible admin survives three hours and pr
 test("temporary renewal failure retries after 30 seconds without losing the page", async ({ page }) => {
     const state = await setup(page)
     state.fail = true
-    await page.clock.fastForward(300_100)
+    await page.clock.fastForward(330_100)
     await expect.poll(() => state.attempts).toBe(2)
     expect(state.renewed).toBe(1)
     state.fail = false
@@ -111,7 +131,7 @@ test("return before expiry renews immediately, return after expiry cannot revive
 test("logging out stops renewal and removes the browser cookie", async ({ page }) => {
     const state = await setup(page)
     await page.getByRole("button", { name: "账户菜单" }).click()
-    await page.getByRole("menuitem", { name: /退出|Log out|Logout/ }).click()
+    await page.getByRole("menuitem", { name: /登出|退出|Log out|Logout/ }).click()
     await expect(page).toHaveURL(/login/)
     const before = state.attempts
     await page.clock.fastForward(70 * 60_000)
