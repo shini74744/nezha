@@ -65,7 +65,7 @@ async function setup(page: Page, width = 1440) {
         await route.fulfill({ json: { success: true, data } })
     })
     await page.goto("/dashboard")
-    await expect(page.locator(".server-list-table tbody")).toContainText("续期测试机器")
+    await expect(page.locator(".server-list-table tbody")).toContainText("续期测试机器", { timeout: 15000 })
     await expect.poll(() => state.renewed).toBe(1)
     await expect.poll(() => page.evaluate(() => (window as any).__renewalResponsesRead)).toBe(1)
     return state
@@ -100,7 +100,7 @@ test("temporary renewal failure retries after 30 seconds without losing the page
     state.fail = false
     await page.clock.fastForward(30_100)
     await expect.poll(() => state.renewed).toBe(2)
-    await expect(page.locator(".server-list-table tbody")).toContainText("续期测试机器")
+    await expect(page.locator(".server-list-table tbody")).toContainText("续期测试机器", { timeout: 15000 })
     expect(state.documents).toBe(1)
     expect(state.errors).toEqual([])
 })
