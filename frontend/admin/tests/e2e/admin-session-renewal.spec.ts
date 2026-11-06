@@ -115,6 +115,7 @@ test("return before expiry renews immediately, return after expiry cannot revive
         document.dispatchEvent(new Event("visibilitychange"))
     })
     await expect.poll(() => state.renewed).toBe(2)
+    await expect.poll(() => page.evaluate(() => (window as any).__renewalResponsesRead)).toBe(2)
     await page.evaluate(() => Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" }))
     await page.clock.fastForward(61 * 60_000)
     await page.evaluate(() => {

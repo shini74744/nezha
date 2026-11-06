@@ -73,8 +73,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     (message === "ApiErrorUnauthorized" || message === "Unauthorized")) {
                     authEpoch.current++
                     cancelSessionRenewal()
+                    // Commit the login route before the auth guard observes the cleared profile.
+                    navigate("/dashboard/login?reason=expired", { replace: true, flushSync: true })
                     setProfile(undefined)
-                    navigate("/dashboard/login?reason=expired", { replace: true })
                 }
             } finally { checking = false }
         }
