@@ -1,13 +1,6 @@
+import { renewSessionIfNeeded } from "../../../shared/session-renewal";
 import type { LoginUserResponse, MetricPeriod, MetricType, MonitorResponse, ServerGroupResponse, ServerMetricsResponse, ServiceResponse, SettingResponse } from "@/types/nezha-api";
 import { ApiError, requestJson } from "./request-json";
-
-let lastestRefreshTokenAt = 0;
-const getCsrfToken = (): string => {
- try {
-  const cookie = document.cookie.split("; ").find(item => item.startsWith("nz-csrf="));
-  return cookie ? decodeURIComponent(cookie.split("=").slice(1).join("=")) : "";
- } catch { return ""; }
-};
 
 export const fetchServerGroup = (): Promise<ServerGroupResponse> => requestJson("/api/v1/server-group");
 
@@ -21,12 +14,7 @@ export const fetchLoginUser = async ({ signal }: { signal?: AbortSignal } = {}):
   if (error instanceof ApiError && (error.status === 401 || (error.status === 200 && error.message === "ApiErrorUnauthorized"))) return null;
   throw error;
  }
- if (data.data?.id && (!lastestRefreshTokenAt || Date.now() - lastestRefreshTokenAt > 3600000)) {
-  lastestRefreshTokenAt = Date.now();
-  void fetch("/api/v1/refresh-token", { method: "POST", headers: { "X-CSRF-Token": getCsrfToken() } }).catch(() => {
-   lastestRefreshTokenAt = 0;
-  });
- }
+ if (data.data?.id) void renewSessionIfNeeded(data.data.id);
  return data;
 };
 

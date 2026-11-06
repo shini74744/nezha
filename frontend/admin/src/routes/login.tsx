@@ -20,6 +20,7 @@ import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
+import { useSearchParams } from "react-router-dom"
 import { z } from "zod"
 
 const formSchema = z.object({
@@ -34,6 +35,7 @@ const formSchema = z.object({
 
 function Login() {
     const { login, loginOauth2 } = useAuth()
+    const [searchParams] = useSearchParams()
     const { data: settingData } = useSetting()
     const [needsTOTP, setNeedsTOTP] = useState(false)
     const [recovery, setRecovery] = useState(false)
@@ -105,6 +107,9 @@ function Login() {
 
     return (
         <div className="mt-28 sm:max-w-sm m-auto max-w-xs">
+            {searchParams.get("reason") === "expired" && (
+                <p role="status" className="mb-6 text-sm text-muted-foreground">登录已过期，请重新登录。</p>
+            )}
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                     <FormField
