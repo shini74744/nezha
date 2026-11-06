@@ -122,6 +122,8 @@ test("return before expiry renews immediately, return after expiry cannot revive
         window.dispatchEvent(new Event("focus"))
     })
     await expect.poll(() => state.rejected).toBe(1)
+    await expect(page).toHaveURL(/login\?reason=expired/)
+    await expect(page.getByRole("status")).toContainText("登录已过期")
     await page.clock.fastForward(10 * 60_000)
     expect(state.rejected).toBe(1)
     expect(state.renewed).toBe(2)

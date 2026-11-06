@@ -107,6 +107,8 @@ describe("nezha api fetchers", () => {
 		expect(fetch).toHaveBeenNthCalledWith(1, "/api/v1/profile");
 		expect(fetch).toHaveBeenNthCalledWith(2, "/api/v1/refresh-token", {
 			method: "POST",
+			credentials: "same-origin",
+			signal: expect.any(AbortSignal),
 			headers: {
 				"X-CSRF-Token": "test-csrf-token",
 			},

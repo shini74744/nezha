@@ -1,4 +1,4 @@
-import { readCookie, renewSessionIfNeeded } from "./session-renewal"
+import { readCookie, renewSessionIfNeeded, notifySessionExpired } from "./session-renewal"
 import { isTelegramTerminal, telegramUIRequest } from "@/lib/terminal-transport"
 
 interface CommonResponse<T> {
@@ -53,6 +53,10 @@ function csrfHeaders(method: FetcherMethod, path: string): Record<string, string
 
 export async function fetcher<T>(method: FetcherMethod, path: string, data?: any): Promise<T> {
     if (isTelegramTerminal()) return telegramUIRequest<T>(method, path, data)
+    const requestToken = readCookie("nz-jwt")
+    const notifyExpired = () => {
+        if (isSameOrigin(path) && new URL(path, window.location.origin).pathname !== "/api/v1/login" && readCookie("nz-jwt") === requestToken) notifySessionExpired()
+    }
     let response
     if (method === FetcherMethod.GET || method === FetcherMethod.DELETE) {
         response = await fetch(buildUrl(path, data), {
@@ -70,12 +74,13 @@ export async function fetcher<T>(method: FetcherMethod, path: string, data?: any
         })
     }
     if (!response.ok) {
+        if (response.status === 401) notifyExpired()
         const access = response.headers.get("X-Nezha-Backend-Access")
         if ((access === "required" || access === "blocked") &&
             window.location.pathname.startsWith("/dashboard/")) {
             window.location.reload()
         }
-        throw new Error(response.statusText)
+        throw new Error(response.status === 401 ? "ApiErrorUnauthorized" : response.statusText)
     }
     const text = await response.text()
     if (text !== "") {
@@ -86,6 +91,7 @@ export async function fetcher<T>(method: FetcherMethod, path: string, data?: any
             throw new Error("invalid server response")
         }
         if (!responseData.success) {
+            if (response.status === 200 && responseData.error === "ApiErrorUnauthorized") notifyExpired()
             throw new Error(responseData.error)
         }
         if (isSameOrigin(path)) void renewSessionIfNeeded()

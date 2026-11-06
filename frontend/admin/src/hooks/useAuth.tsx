@@ -1,4 +1,4 @@
-import { cancelSessionRenewal, startSessionRenewal } from "@/api/session-renewal"
+import { cancelSessionRenewal, startSessionRenewal, readCookie, SESSION_EXPIRED_EVENT } from "@/api/session-renewal"
 import { getProfile, login as loginRequest } from "@/api/user"
 import { AuthContextProps } from "@/types"
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
@@ -57,6 +57,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }, [loading, profile?.id])
 
     const navigate = useNavigate()
+
+    useEffect(() => {
+        if (!profile || loading) return
+        let active = true
+        let checking = false
+        const checkExpired = async () => {
+            if (checking) return
+            checking = true
+            const epoch = authEpoch.current
+            const token = readCookie("nz-jwt")
+            try {
+                // Confirm the current session before reacting to an old request or another tab.
+                await getProfile()
+            } catch (error) {
+                const message = error instanceof Error ? error.message : ""
+                if (active && authEpoch.current === epoch && readCookie("nz-jwt") === token &&
+                    (message === "ApiErrorUnauthorized" || message === "Unauthorized")) {
+                    authEpoch.current++
+                    cancelSessionRenewal()
+                    setProfile(undefined)
+                    navigate("/dashboard/login?reason=expired", { replace: true })
+                }
+            } finally { checking = false }
+        }
+        const onExpired = () => { void checkExpired() }
+        window.addEventListener(SESSION_EXPIRED_EVENT, onExpired)
+        return () => { active = false; window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired) }
+    }, [profile?.id, loading, navigate, setProfile])
 
     const login = useCallback(
         async (
