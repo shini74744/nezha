@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest"
-import { cancelSessionRenewal, renewSessionIfNeeded, startSessionRenewal } from "../api/session-renewal"
+import { cancelSessionRenewal, renewSessionIfNeeded, startSessionRenewal, SESSION_EXPIRED_EVENT } from "../api/session-renewal"
 
 const fiveMinutes = 300_000
 let cookies = ""
@@ -195,4 +195,22 @@ test("clock moving backwards cannot strand an otherwise valid session", async ()
     vi.setSystemTime(new Date(Date.now() - 3_600_000))
     await renewSessionIfNeeded()
     expect(fetch).toHaveBeenCalledTimes(2)
+})
+
+
+test("a cookie removed during sleep triggers verification on return", async () => {
+    const expired = vi.fn()
+    window.addEventListener(SESSION_EXPIRED_EVENT, expired)
+    try {
+        stop = startSessionRenewal()
+        await vi.advanceTimersByTimeAsync(0)
+        visible = false
+        cookies = ""
+        await vi.advanceTimersByTimeAsync(61 * 60_000)
+        expect(expired).not.toHaveBeenCalled()
+        visible = true
+        window.dispatchEvent(new Event("focus"))
+        expect(expired).toHaveBeenCalledTimes(1)
+        expect(fetch).toHaveBeenCalledTimes(1)
+    } finally { window.removeEventListener(SESSION_EXPIRED_EVENT, expired) }
 })

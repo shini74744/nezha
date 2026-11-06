@@ -54,6 +54,8 @@ export function renewSessionIfNeeded(authenticatedUserId = 0): Promise<void> {
     if ((!token && !verifiedProfile) || !csrf || document.visibilityState === "hidden" || navigator.onLine === false) {
         return Promise.resolve()
     }
+    // A fresh successful profile can identify a new HttpOnly login for the same user.
+    if (verifiedProfile && !token && rejectedSession === identity) rejectedSession = ""
     if (rejectedSession === identity) return Promise.resolve()
     if (pending) return pending.promise
 
@@ -103,7 +105,13 @@ export function renewSessionIfNeeded(authenticatedUserId = 0): Promise<void> {
 
 // Owned by the authenticated admin provider; no background timer on the login page.
 export function startSessionRenewal(): () => void {
-    const check = () => { void renewSessionIfNeeded() }
+    const check = () => {
+        if (document.visibilityState === "hidden" || navigator.onLine === false) return
+        // Browsers can remove an expired cookie while an authenticated page is asleep.
+        // Ask the provider to verify instead of leaving its cached identity displayed.
+        if (!readCookie("nz-jwt")) { notifySessionExpired(); return }
+        void renewSessionIfNeeded()
+    }
     const timer = window.setInterval(check, RETRY_INTERVAL)
     document.addEventListener("visibilitychange", check)
     window.addEventListener("focus", check)

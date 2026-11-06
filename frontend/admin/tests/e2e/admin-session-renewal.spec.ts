@@ -140,3 +140,20 @@ test("logging out stops renewal and removes the browser cookie", async ({ page }
     expect(state.attempts).toBe(before)
     expect((await page.context().cookies()).some(c => c.name === "nz-jwt")).toBe(false)
 })
+
+test("returning after the browser removes the expired cookie opens login with a clear prompt", async ({ page }) => {
+    const state = await setup(page)
+    await page.evaluate(() => Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" }))
+    await page.clock.fastForward(61 * 60_000)
+    await page.context().clearCookies({ name: "nz-jwt" })
+    await page.evaluate(() => {
+        Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" })
+        document.dispatchEvent(new Event("visibilitychange"))
+    })
+    await expect(page).toHaveURL(/login\?reason=expired/)
+    await expect(page.getByRole("status")).toContainText("登录已过期，请重新登录")
+    const attempts = state.attempts
+    await page.clock.fastForward(60_100)
+    expect(state.attempts).toBe(attempts)
+    expect(state.errors).toEqual([])
+})

@@ -1,4 +1,4 @@
-import { cancelSessionRenewal, startSessionRenewal, readCookie, SESSION_EXPIRED_EVENT } from "@/api/session-renewal"
+import { cancelSessionRenewal, startSessionRenewal, renewSessionIfNeeded, readCookie, SESSION_EXPIRED_EVENT } from "@/api/session-renewal"
 import { getProfile, login as loginRequest } from "@/api/user"
 import { AuthContextProps } from "@/types"
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
@@ -52,10 +52,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         })()
     }, [setProfile])
 
-    useEffect(() => {
-        if (!loading && profile) return startSessionRenewal()
-    }, [loading, profile?.id])
-
     const navigate = useNavigate()
 
     useEffect(() => {
@@ -69,7 +65,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const token = readCookie("nz-jwt")
             try {
                 // Confirm the current session before reacting to an old request or another tab.
-                await getProfile()
+                const current = await getProfile()
+                if (active && authEpoch.current === epoch && readCookie("nz-jwt") === token) void renewSessionIfNeeded(current.id)
             } catch (error) {
                 const message = error instanceof Error ? error.message : ""
                 if (active && authEpoch.current === epoch && readCookie("nz-jwt") === token &&
@@ -85,6 +82,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         window.addEventListener(SESSION_EXPIRED_EVENT, onExpired)
         return () => { active = false; window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired) }
     }, [profile?.id, loading, navigate, setProfile])
+
+    useEffect(() => {
+        if (!loading && profile) return startSessionRenewal()
+    }, [loading, profile?.id])
 
     const login = useCallback(
         async (

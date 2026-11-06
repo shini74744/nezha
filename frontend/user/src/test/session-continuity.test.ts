@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { fetchLoginUser } from "@/lib/nezha-api";
-import { cancelSessionRenewal, SESSION_EXPIRED_EVENT } from "../../../shared/session-renewal";
+import { cancelSessionRenewal, renewSessionIfNeeded, SESSION_EXPIRED_EVENT } from "../../../shared/session-renewal";
 
 let cookie = "";
 let visible = true;
@@ -71,4 +71,16 @@ test("hidden pages do not extend expiry and a later profile returns logged out",
  visible = true;
  expect(await fetchLoginUser()).toBeNull();
  expect(renewals).toBe(0);
+});
+
+
+test("a new authenticated HttpOnly login for the same user resumes renewal", async () => {
+ cookie = "nz-csrf=csrf";
+ expires = 0;
+ await renewSessionIfNeeded(1);
+ expect(renewals).toBe(1);
+ expires = Date.now() + 3_600_000;
+ await vi.advanceTimersByTimeAsync(30_000);
+ await fetchLoginUser(); await vi.advanceTimersByTimeAsync(0);
+ expect(renewals).toBe(2);
 });
