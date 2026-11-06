@@ -15,7 +15,7 @@ function Capture() { auth = useAuth(); return <span>{auth.loading ? "loading" : 
 let cookies = ""
 beforeEach(() => {
  cookies = "nz-jwt=fixture" // No CSRF: no renewal fetch is needed by these provider tests.
- Object.defineProperty(document, "cookie", { configurable: true, get: () => cookies })
+ Object.defineProperty(document, "cookie", { configurable: true, get: () => cookies, set: value => { if (String(value).startsWith("nz-jwt=;")) cookies = "" } })
  useMainStore.setState({ profile: undefined })
  vi.mocked(getProfile).mockReset().mockResolvedValue({ id: 1, role: 0 } as any)
  navigate.mockClear()
@@ -31,6 +31,7 @@ test.each(["ApiErrorUnauthorized", "Unauthorized"])("confirmed %s clears identit
  await act(async () => { notifySessionExpired(); notifySessionExpired() })
  expect(getProfile).toHaveBeenCalledTimes(2)
  expect(useMainStore.getState().profile).toBeUndefined()
+ expect(cookies).toBe("")
  expect(navigate).toHaveBeenCalledExactlyOnceWith("/dashboard/login?reason=expired", { replace: true, flushSync: true })
 })
 test.each(["network", "Service Unavailable", "Forbidden"])("transient %s profile error does not log out", async error => {
