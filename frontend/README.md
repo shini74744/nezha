@@ -37,6 +37,20 @@ The independently selectable `doraemon-dist` theme shares the default frontend's
 - Standalone frontend output is `frontend/user/dist-doraemon`; it and embedded `cmd/dashboard/doraemon-dist` are generated and ignored by Git.
 
 
+<a id="admin-session-renewal"></a>
+
+## 后台登录续期（v0.0.22）
+
+后台账号登录的有效期由原有配置决定，默认 1 小时。后台页面可见、登录仍有效且网络正常时，每 5 分钟自动续期；持续查看静态页面也会检查，不依赖服务器列表的自动刷新。
+
+- 临时网络错误、服务错误或续期失败后，最早 30 秒再试；单次请求最多等待 10 秒，同时触发的检查共用一次请求。
+- 切回页面、恢复联网及从页面缓存返回时立即检查是否需要续期。隐藏或离线时暂停，关闭页面后停止；超过剩余有效期再返回时，需要重新登录。
+- 主动退出会清理计时器和正在进行的续期请求。服务端已过期、撤销或拒绝的登录不能通过续期重新激活，重新登录后才恢复自动续期。
+- 不延长后台访问密码或 TG 临时凭证的有效期，不改变 CSRF、账号权限或服务器登录校验，也不保存账号密码。
+- 本次调整仅作用于后台登录续期；默认与哆啦 A 梦前台主题、Agent、已有配置和历史数据保持原样。
+
+回归用例：`admin/src/test/session-renewal.test.ts` 覆盖提前续期、三小时连续查看、短暂失败、并发、超时、切回、断网、过期、退出、多标签页及系统时钟回拨；`admin/tests/e2e/admin-session-renewal.spec.ts` 在生产构建的手机／电脑页面使用隔离接口和虚拟时间验证续期、未保存编辑、失败重试与退出。不得把测试写入线上业务接口。
+
 ## Live inventory synchronization (v0.0.21)
 
 Both public themes update server metadata from the authorized WebSocket snapshot.

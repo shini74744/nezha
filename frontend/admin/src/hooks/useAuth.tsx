@@ -1,3 +1,4 @@
+import { cancelSessionRenewal, startSessionRenewal } from "@/api/session-renewal"
 import { getProfile, login as loginRequest } from "@/api/user"
 import { AuthContextProps } from "@/types"
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
@@ -50,6 +51,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
         })()
     }, [setProfile])
+
+    useEffect(() => {
+        if (!loading && profile) return startSessionRenewal()
+    }, [loading, profile?.id])
 
     const navigate = useNavigate()
 
@@ -107,6 +112,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }, [navigate, setProfile])
 
     const logout = useCallback(() => {
+        cancelSessionRenewal()
         authEpoch.current++
         document.cookie.split(";").forEach(function (c) {
             document.cookie = c
