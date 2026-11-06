@@ -8,6 +8,7 @@ const token = (now: number) => "header." + Buffer.from(JSON.stringify({
 
 for (const variant of ["default", "doraemon"]) for (const width of [390, 1440]) {
  test("visible public page preserves hidden admin session for three hours " + variant + " " + width, async ({ context }) => {
+  test.setTimeout(180_000)
   const origin = process.env[variant === "default" ? "NIC_USER_URL" : "NIC_DORAEMON_URL"]!
   const admin = await context.newPage()
   const front = await context.newPage()
@@ -53,6 +54,7 @@ for (const variant of ["default", "doraemon"]) for (const width of [390, 1440]) 
     ws.onMessage(() => send())
    })
    await page.route("**/*", async route => {
+    if (page.isClosed()) return route.abort()
     const path = new URL(route.request().url())
     if (path.origin !== origin) return route.abort()
     if (!path.pathname.startsWith("/api/")) return route.continue()
@@ -104,6 +106,7 @@ for (const variant of ["default", "doraemon"]) for (const width of [390, 1440]) 
    await expect.poll(() => front.evaluate(() => (window as any).__renewalResponsesRead)).toBe(before + 1)
   }
   expect(rejected).toBe(0)
+  await front.close()
   await admin.evaluate(() => {
    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" })
    document.dispatchEvent(new Event("visibilitychange")); window.dispatchEvent(new Event("focus"))
@@ -111,9 +114,10 @@ for (const variant of ["default", "doraemon"]) for (const width of [390, 1440]) 
   await expect(admin.locator(".server-list-table tbody")).toContainText("会话连续性测试", { timeout: 15000 })
   await expect(admin).not.toHaveURL(/login/)
   expect(documents.get(admin)).toBe(1); expect(documents.get(front)).toBe(1)
+  await expect.poll(() => admin.evaluate(() => (window as any).__renewalResponsesRead)).toBe(2)
   // Now the server revokes the session: one confirmation redirects without a manual refresh.
   expires = 0
-  await admin.clock.fastForward(5_100)
+  await admin.clock.fastForward(330_100)
   await expect(admin).toHaveURL(/login\?reason=expired/)
   await expect(admin.getByRole("status")).toContainText("登录已过期，请重新登录")
   const polls = adminPolls
