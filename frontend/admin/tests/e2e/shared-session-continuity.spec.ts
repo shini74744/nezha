@@ -17,6 +17,8 @@ for (const variant of ["default", "doraemon"]) for (const width of [390, 1440]) 
   let adminPolls = 0
   const errors: string[] = []
   const documents = new Map<Page, number>()
+  // Playwright clock is shared across every page in this browser context.
+  await admin.clock.install({ time: start })
   await context.addCookies([
    { name: "nz-jwt", value: token(start.getTime()), url: origin },
    { name: "nz-csrf", value: "fixture-csrf", url: origin },
@@ -41,7 +43,6 @@ for (const variant of ["default", "doraemon"]) for (const width of [390, 1440]) 
   })
   for (const page of [admin, front]) {
    await page.setViewportSize({ width, height: 900 })
-   await page.clock.install({ time: start })
    documents.set(page, 0)
    page.on("pageerror", e => errors.push(e.message))
    page.on("request", r => { if (r.resourceType() === "document") documents.set(page, documents.get(page)! + 1) })
@@ -99,7 +100,6 @@ for (const variant of ["default", "doraemon"]) for (const width of [390, 1440]) 
   for (let i = 0; i < 36; i++) {
    const before = publicRenewals
    await admin.clock.fastForward(330_100)
-   await front.clock.fastForward(330_100)
    await expect.poll(() => publicRenewals).toBe(before + 1)
    await expect.poll(() => front.evaluate(() => (window as any).__renewalResponsesRead)).toBe(before + 1)
   }

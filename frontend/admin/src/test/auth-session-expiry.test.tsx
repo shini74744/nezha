@@ -31,7 +31,7 @@ test.each(["ApiErrorUnauthorized", "Unauthorized"])("confirmed %s clears identit
  await act(async () => { notifySessionExpired(); notifySessionExpired() })
  expect(getProfile).toHaveBeenCalledTimes(2)
  expect(useMainStore.getState().profile).toBeUndefined()
- expect(navigate).toHaveBeenCalledExactlyOnceWith("/dashboard/login?reason=expired", { replace: true })
+ expect(navigate).toHaveBeenCalledExactlyOnceWith("/dashboard/login?reason=expired", { replace: true, flushSync: true })
 })
 test.each(["network", "Service Unavailable", "Forbidden"])("transient %s profile error does not log out", async error => {
  await ready()
