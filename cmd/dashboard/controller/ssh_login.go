@@ -27,7 +27,8 @@ func listSSHLogin(c *gin.Context) ([]sshLoginRow, error) {
 		return nil, err
 	}
 	rows := make([]sshLoginRow, 0, len(servers))
-	for _, s := range servers {
+	for i := range servers {
+		s := &servers[i]
 		if !patAllowsServer(c, s.ID) {
 			continue
 		}
@@ -82,7 +83,8 @@ func saveSSHLogin(c *gin.Context) (any, error) {
 				return fmt.Errorf("请选择包含通知方式的通知组")
 			}
 		}
-		for _, s := range servers {
+		for i := range servers {
+			s := &servers[i]
 			var old model.SSHLoginPolicy
 			if err := tx.Where("uuid = ?", s.UUID).Limit(1).Find(&old).Error; err != nil {
 				return err
