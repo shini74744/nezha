@@ -223,8 +223,8 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	auth.POST("/batch-delete/service", restScopeMiddleware(model.ScopeServiceDelete), commonHandler(batchDeleteService))
 
 	auth.GET("/ssh-login/:id/events", restScopeMiddleware(model.ScopeAdminAll), adminHandler(listSSHLoginEvents))
- auth.GET("/ssh-login/:id/bans", restScopeMiddleware(model.ScopeAdminAll), adminHandler(listSSHLoginBans))
- auth.POST("/ssh-login/ip-action", restScopeMiddleware(model.ScopeAdminAll), adminHandler(sshLoginIPAction))
+	auth.GET("/ssh-login/:id/bans", restScopeMiddleware(model.ScopeAdminAll), adminHandler(listSSHLoginBans))
+	auth.POST("/ssh-login/ip-action", restScopeMiddleware(model.ScopeAdminAll), adminHandler(sshLoginIPAction))
 	auth.GET("/ssh-login", restScopeMiddleware(model.ScopeAdminAll), adminHandler(listSSHLogin))
 	auth.PUT("/ssh-login", restScopeMiddleware(model.ScopeAdminAll), adminHandler(saveSSHLogin))
 	auth.POST("/ssh-login/unban", restScopeMiddleware(model.ScopeAdminAll), adminHandler(unbanSSHLogin))
