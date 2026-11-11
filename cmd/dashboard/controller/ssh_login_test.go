@@ -13,8 +13,8 @@ import (
 func TestSSHAdminGuardAndScopedPolicySave(t *testing.T) {
 	defer setupTenancyTest(t)()
 	require.NoError(t, singleton.DB.AutoMigrate(&model.SSHLoginPolicy{}, &model.SSHUnbanCommand{}, &model.Server{}, &model.Notification{}, &model.NotificationGroupNotification{}))
-	for _, s := range []model.Server{{Common: model.Common{ID: 701}, UUID: "ssh-fixture-a", Name: "A"}, {Common: model.Common{ID: 702}, UUID: "ssh-fixture-b", Name: "B"}} {
-		require.NoError(t, singleton.DB.Create(&s).Error)
+	for _, s := range []*model.Server{{Common: model.Common{ID: 701}, UUID: "ssh-fixture-a", Name: "A"}, {Common: model.Common{ID: 702}, UUID: "ssh-fixture-b", Name: "B"}} {
+		require.NoError(t, singleton.DB.Create(s).Error)
 	}
 	p := model.DefaultSSHLoginPolicy()
 	p.Ports = []uint16{2222}
@@ -91,8 +91,8 @@ func TestSSHRouteRequiresAdminScope(t *testing.T) {
 func TestSSHAdminPATRemainsRestrictedToSelectedNodes(t *testing.T) {
 	defer setupTenancyTest(t)()
 	require.NoError(t, singleton.DB.AutoMigrate(&model.SSHLoginPolicy{}, &model.SSHUnbanCommand{}, &model.Server{}))
-	for _, s := range []model.Server{{Common: model.Common{ID: 701}, UUID: "ssh-a"}, {Common: model.Common{ID: 702}, UUID: "ssh-b"}} {
-		require.NoError(t, singleton.DB.Create(&s).Error)
+	for _, s := range []*model.Server{{Common: model.Common{ID: 701}, UUID: "ssh-a"}, {Common: model.Common{ID: 702}, UUID: "ssh-b"}} {
+		require.NoError(t, singleton.DB.Create(s).Error)
 	}
 	tok := &model.APIToken{ScopesCSV: model.ScopeAdminAll}
 	tok.SetServerIDs([]uint64{701})
