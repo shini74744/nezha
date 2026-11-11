@@ -79,6 +79,9 @@ func initSystem(bus chan<- *model.Service) error {
 		return err
 	}
 
+	if _, err := singleton.CronShared.AddFunc("@every 5s", singleton.SendSSHLoginNotifications); err != nil {
+		return err
+	}
 	if _, err := singleton.CronShared.AddFunc("0 * * * * *", singleton.CheckServerExpiry); err != nil {
 		return err
 	}

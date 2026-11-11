@@ -37,6 +37,7 @@ type NotificationEventConfig struct {
 }
 
 var NotificationEventTitles = map[string]string{
+	"ssh_success": "✅ SSH 登录成功", "ssh_failure": "❌ SSH 登录失败",
 	"offline": "🔴 服务器离线", "online": "🟢 服务器上线",
 	"server_expiry": "⏰ 服务器到期通知",
 	"ip_change":     "🌐 IP 地址变更", "alert": "⚠️ 资源告警", "alert_recovery": "✅ 资源告警恢复",

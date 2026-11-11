@@ -178,3 +178,6 @@ func (k *kubeyaml) Unmarshal(b []byte) (map[string]interface{}, error) {
 func (k *kubeyaml) Marshal(o map[string]interface{}) ([]byte, error) {
 	return yaml.Marshal(o)
 }
+
+// ConfigPath identifies instance-local auxiliary state without changing configuration.
+func (c AgentConfig) ConfigPath() string { return c.filePath }

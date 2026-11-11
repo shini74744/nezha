@@ -10,7 +10,7 @@
 
 ## 安装与管理
 
-主面板与 Agent 统一在本仓库维护：当前正式安装包为主面板 **v0.0.23**、Agent **v1.0.9**，以后分别递增版本（以正式 Releases 及组件版本入口为准）。源码与安装包的对应关系见 [更新记录](CHANGELOG.md)；`main` 后续可能包含尚未打包的修改，源码推送不等于安装包更新。Agent 源码在 [`agent/`](agent/)，两者安装包均在本仓库 Releases，更新使用独立版本入口，不能用全仓库 Latest 判断 Agent 版本。旧 `shini74744/agent` 仓库仅保留历史，不再用于新安装或后续更新。详见 [统一仓库、升级与发布](docs/unified-repository.md)。
+主面板与 Agent 统一在本仓库维护：当前正式安装包为主面板 **v0.0.24**、Agent **v1.0.10**，以后分别递增版本（以正式 Releases 及组件版本入口为准）。源码与安装包的对应关系见 [更新记录](CHANGELOG.md)；`main` 后续可能包含尚未打包的修改，源码推送不等于安装包更新。Agent 源码在 [`agent/`](agent/)，两者安装包均在本仓库 Releases，更新使用独立版本入口，不能用全仓库 Latest 判断 Agent 版本。旧 `shini74744/agent` 仓库仅保留历史，不再用于新安装或后续更新。详见 [统一仓库、升级与发布](docs/unified-repository.md)。
 
 **生命周期隔离**：Agent v1.0.2 使用独立 `DDnezha` 程序／服务、`/opt/DDnezha`（Windows 为 `C:\DDnezha`）和 `DDNZ_*` 变量。只隔离安装、升级和卸载，不改变通信协议；现有旧目录节点需要受控迁移。主面板入口为 `./nezha.sh`，Agent 入口为 `cd /opt/DDnezha && ./agent.sh uninstall`；v1.0.3 起自动保存 Agent 管理脚本，不覆盖当前目录的同名官方文件。详见 [DDnezha 隔离说明](docs/ddnezha-isolation.md)。
 
@@ -53,6 +53,7 @@ Linux systemd 部署请使用[本仓库 Releases](https://github.com/shini74744/
 
 ## 调整与优化
 
+- **SSH 安全**（主面板 v0.0.24 / Agent v1.0.10）：按服务器设置登录通知、自动封禁、手动黑名单和白名单；支持封禁搜索分页、时间查看及快捷拉黑／白名单。Linux 原生防护只作用于指定 SSH 端口。见 [使用说明](docs/ssh-security.md)。
 - **首页显示网卡**（主面板 v0.0.20 / Agent v1.0.9）：支持选择一个或多个已监控网卡，首页速率、累计及套餐周期流量按所选接口合计；详情默认跟随保存选择，管理员可临时切换查看。原监控设置独立保留，断线或重启不清除选择。见 [使用说明](docs/home-network.md)。
 - **监控网卡选择**（主面板 v0.0.19 / Agent v1.0.8）：自动显示接口列表，按需勾选；管理员可在网络卡片和详细查看中切换单网卡速率，默认保持合计。普通离线重连保留配置；已选网口持续消失或改名后恢复默认，提供查看后消失的红点提醒。保留其他配置和业务网络。见 [使用说明](docs/network-interface-selection.md)。
 - **前台恢复与重试**（v0.0.14）：历史图表防止旧请求覆盖当前选择，失败提供重试；断线、页面返回和会话变化有对应恢复逻辑，浏览器存储受限不再导致白屏。默认与哆啦 A 梦主题共用实现，保留现有预加载、定制标签、剩余价值悬停和连通性／延迟切换。使用边界和复测入口见 [前端说明](frontend/README.md#recovery-and-preload-regressions)。

@@ -26,6 +26,7 @@ import AlertRulePage from "./routes/alert-rule"
 import TelegramBotPage from "./routes/telegram-bot"
 import NotificationPage from "./routes/notification"
 import ServerExpiryPage from "./routes/server-expiry"
+import SSHLoginPage from "./routes/ssh-login"
 import OnlineUserPage from "./routes/online-user"
 import ProfilePage from "./routes/profile"
 import SettingsPage from "./routes/settings"
@@ -86,6 +87,10 @@ const router = createBrowserRouter([
             {
                 path: "/dashboard/telegram-bot",
                 element: <NotificationProvider withNotifierGroup><TelegramBotPage /></NotificationProvider>,
+            },
+            {
+                path: "/dashboard/ssh-login",
+                element: <NotificationProvider withNotifierGroup><SSHLoginPage /></NotificationProvider>,
             },
             {
                 path: "/dashboard/server-expiry",

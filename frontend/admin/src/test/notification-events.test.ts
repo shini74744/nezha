@@ -10,10 +10,11 @@ import { describe, expect, it } from "vitest"
 
 describe("event notification modules", () => {
     it("groups every event exactly once with its corresponding state", () => {
-        expect(eventGroups).toHaveLength(9)
+        expect(eventGroups).toHaveLength(10)
+        expect(eventGroups.find(group=>group.id==="ssh")?.kinds).toEqual(["ssh_success","ssh_failure"])
         const kinds = eventGroups.flatMap((group) => group.kinds)
         expect(kinds.sort()).toEqual(eventKinds.map(([kind]) => kind).sort())
-        expect(new Set(kinds).size).toBe(14)
+        expect(new Set(kinds).size).toBe(16)
         expect(eventGroups.find((group) => group.id === "server")?.kinds).toEqual([
             "offline",
             "online",
@@ -29,7 +30,7 @@ describe("event notification modules", () => {
     })
     it("has independent configs and unambiguous online wording", () => {
         const cfg = defaultEventConfig()
-        expect(Object.keys(cfg.modules)).toHaveLength(14)
+        expect(Object.keys(cfg.modules)).toHaveLength(16)
         cfg.modules.online.title = "自定义上线"
         expect(cfg.modules.offline.title).toBe("🔴 服务器离线")
         const preview = eventPreview("online", defaultEventModule("online"), true)

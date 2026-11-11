@@ -241,6 +241,7 @@ func main() {
 }
 
 func run() {
+	go sshLoginDaemon(context.Background())
 	startupConfig := startupConfigViewFrom(loadRuntimeConfig())
 	// 定时检查更新
 	if _, err := semver.Parse(version); err == nil && !startupConfig.disableAutoUpdate {
@@ -267,6 +268,7 @@ func run() {
 	var conn *grpc.ClientConn
 
 	retry := func() {
+		sshRPC.Store(nil)
 		initialized = false
 		if conn != nil {
 			conn.Close()
@@ -324,6 +326,7 @@ func run() {
 			continue
 		}
 		session.startDaemon(func() { reportStateDaemon(reportSession, session.signalExit) })
+		sshRPC.Store(&sshRPCConnection{client: client, identity: sshIdentity()})
 
 		shutdownCause := error(context.Canceled)
 		select {

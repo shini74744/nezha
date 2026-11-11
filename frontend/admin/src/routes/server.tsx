@@ -1,3 +1,6 @@
+import { Shield } from "lucide-react"
+import { Link } from "react-router-dom"
+import { Button } from "@/components/ui/button"
 import { swrFetcher } from "@/api/api"
 import { forceUpdateServer } from "@/api/server"
 import { AgentCredentialSettings } from "@/components/agent-credential-settings"
@@ -247,6 +250,7 @@ export default function ServerPage() {
                         {profile?.role === 0 && (
                             <ServerSortDialog servers={dataCache} mutate={mutate} />
                         )}
+                        {profile?.role === 0 && <Button asChild size="icon" aria-label="SSH 安全" title="SSH 安全"><Link to="/dashboard/ssh-login"><Shield className="h-5 w-5" /></Link></Button>}
                         <IconButton
                             icon="update"
                             onClick={async () => {
