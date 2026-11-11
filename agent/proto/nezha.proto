@@ -10,6 +10,8 @@ service NezhaService {
   rpc IOStream(stream IOStreamData) returns (stream IOStreamData) {}
   rpc ReportGeoIP(GeoIP) returns (GeoIP) {}
   rpc ReportSystemInfo2(Host) returns (Uint64Receipt) {}
+  // Authenticated SSH event batches and per-server protection policy.
+  rpc ReportSSHLogin(TaskResult) returns (Task) {}
 }
 
 message Host {

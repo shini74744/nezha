@@ -25,6 +25,7 @@ const (
 	NezhaService_IOStream_FullMethodName          = "/proto.NezhaService/IOStream"
 	NezhaService_ReportGeoIP_FullMethodName       = "/proto.NezhaService/ReportGeoIP"
 	NezhaService_ReportSystemInfo2_FullMethodName = "/proto.NezhaService/ReportSystemInfo2"
+	NezhaService_ReportSSHLogin_FullMethodName    = "/proto.NezhaService/ReportSSHLogin"
 )
 
 // NezhaServiceClient is the client API for NezhaService service.
@@ -37,6 +38,8 @@ type NezhaServiceClient interface {
 	IOStream(ctx context.Context, opts ...grpc.CallOption) (NezhaService_IOStreamClient, error)
 	ReportGeoIP(ctx context.Context, in *GeoIP, opts ...grpc.CallOption) (*GeoIP, error)
 	ReportSystemInfo2(ctx context.Context, in *Host, opts ...grpc.CallOption) (*Uint64Receipt, error)
+	// Authenticated SSH event batches and per-server protection policy.
+	ReportSSHLogin(ctx context.Context, in *TaskResult, opts ...grpc.CallOption) (*Task, error)
 }
 
 type nezhaServiceClient struct {
@@ -167,6 +170,15 @@ func (c *nezhaServiceClient) ReportSystemInfo2(ctx context.Context, in *Host, op
 	return out, nil
 }
 
+func (c *nezhaServiceClient) ReportSSHLogin(ctx context.Context, in *TaskResult, opts ...grpc.CallOption) (*Task, error) {
+	out := new(Task)
+	err := c.cc.Invoke(ctx, NezhaService_ReportSSHLogin_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // NezhaServiceServer is the server API for NezhaService service.
 // All implementations should embed UnimplementedNezhaServiceServer
 // for forward compatibility
@@ -177,6 +189,8 @@ type NezhaServiceServer interface {
 	IOStream(NezhaService_IOStreamServer) error
 	ReportGeoIP(context.Context, *GeoIP) (*GeoIP, error)
 	ReportSystemInfo2(context.Context, *Host) (*Uint64Receipt, error)
+	// Authenticated SSH event batches and per-server protection policy.
+	ReportSSHLogin(context.Context, *TaskResult) (*Task, error)
 }
 
 // UnimplementedNezhaServiceServer should be embedded to have forward compatible implementations.
@@ -200,6 +214,9 @@ func (UnimplementedNezhaServiceServer) ReportGeoIP(context.Context, *GeoIP) (*Ge
 }
 func (UnimplementedNezhaServiceServer) ReportSystemInfo2(context.Context, *Host) (*Uint64Receipt, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReportSystemInfo2 not implemented")
+}
+func (UnimplementedNezhaServiceServer) ReportSSHLogin(context.Context, *TaskResult) (*Task, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReportSSHLogin not implemented")
 }
 
 // UnsafeNezhaServiceServer may be embedded to opt out of forward compatibility for this service.
@@ -345,6 +362,24 @@ func _NezhaService_ReportSystemInfo2_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NezhaService_ReportSSHLogin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TaskResult)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NezhaServiceServer).ReportSSHLogin(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NezhaService_ReportSSHLogin_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NezhaServiceServer).ReportSSHLogin(ctx, req.(*TaskResult))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // NezhaService_ServiceDesc is the grpc.ServiceDesc for NezhaService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -363,6 +398,10 @@ var NezhaService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ReportSystemInfo2",
 			Handler:    _NezhaService_ReportSystemInfo2_Handler,
+		},
+		{
+			MethodName: "ReportSSHLogin",
+			Handler:    _NezhaService_ReportSSHLogin_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

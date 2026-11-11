@@ -11,16 +11,19 @@ require (
 	github.com/dean2021/goss v0.0.0-20230129073947-df90431348f1
 	github.com/ebitengine/purego v0.11.0
 	github.com/fsnotify/fsnotify v1.10.1
+	github.com/google/nftables v0.3.0
 	github.com/hashicorp/go-uuid v1.0.3
 	github.com/jaypipes/ghw v0.25.0
 	github.com/knadh/koanf/providers/env v1.1.0
 	github.com/knadh/koanf/providers/file v1.2.1
 	github.com/knadh/koanf/v2 v2.3.6
+	github.com/mdlayher/netlink v1.7.3-0.20250113171957-fbb4dce95f42
 	github.com/nezhahq/go-github-selfupdate v0.0.0-20260216052712-d6b71f5180c1
 	github.com/nezhahq/service v0.0.0-20250122132143-5f38afb105e9
 	github.com/prometheus-community/pro-bing v0.9.1
 	github.com/refraction-networking/utls v1.8.2
 	github.com/shirou/gopsutil/v4 v4.26.8
+	github.com/stretchr/testify v1.11.1
 	github.com/tidwall/gjson v1.19.0
 	github.com/urfave/cli/v2 v2.27.7
 	golang.org/x/net v0.58.0
@@ -28,6 +31,11 @@ require (
 	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.12
 	sigs.k8s.io/yaml v1.6.0
+)
+
+require (
+	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/mdlayher/socket v0.5.0 // indirect
 )
 
 require (

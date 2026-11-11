@@ -5,6 +5,8 @@ export type EventModule = {
 }
 export type EventConfig = { enabled: boolean; modules: Record<string, EventModule> }
 export const eventKinds = [
+    ["ssh_success", "SSH 登录成功", "✅ SSH 登录成功"],
+    ["ssh_failure", "SSH 登录失败", "❌ SSH 登录失败"],
     ["offline", "服务器离线", "🔴 服务器离线"],
     ["online", "服务器上线", "🟢 服务器上线"],
     ["ip_change", "IP 变更", "🌐 IP 地址变更"],
@@ -21,6 +23,7 @@ export const eventKinds = [
     ["other", "其他通知", "🔔 其他通知"],
 ] as const
 export const eventGroups = [
+    { id: "ssh", label: "SSH 登录（成功 / 失败）", kinds: ["ssh_success", "ssh_failure"] },
     { id: "server", label: "服务器状态（离线 / 上线）", kinds: ["offline", "online"] },
     { id: "resource", label: "资源告警（告警 / 恢复）", kinds: ["alert", "alert_recovery"] },
     {
@@ -36,6 +39,8 @@ export const eventGroups = [
     { id: "other", label: "其他通知", kinds: ["other"] },
 ]
 export const eventStateLabels: Record<string, string> = {
+    ssh_success: "成功",
+    ssh_failure: "失败",
     offline: "离线",
     online: "上线",
     alert: "告警",
@@ -112,6 +117,8 @@ export function defaultEventConfig(): EventConfig {
 }
 export function eventPreview(kind: string, module: EventModule, formatUnits: boolean) {
     const details: Record<string, string> = {
+        ssh_success: "账号：root，来源：192.0.2.10，SSH 端口：22，公钥认证成功",
+        ssh_failure: "尝试账号：admin，来源：192.0.2.10，SSH 端口：22，密码认证失败，次数：5",
         offline: "[离线] 示例服务器(192.0.2.**) 服务器已离线",
         online: "[上线] 示例服务器(192.0.2.**) 服务器已恢复在线",
         ip_change: "[IP 变更] 示例服务器, 192.0.2.** => 198.51.100.**",
@@ -168,7 +175,7 @@ export function eventPreview(kind: string, module: EventModule, formatUnits: boo
                 ? "结果：更新失败，已用尽重试次数；请检查 DNS 服务商配置和网络"
                 : "结果：更新请求执行成功（DNS 缓存生效可能延迟）",
     }
-    if (kind === "server_expiry") delete values.rule
+    if (kind === "server_expiry" || kind.startsWith("ssh_")) delete values.rule
     if (kind.startsWith("ddns_")) values.rule = "规则：示例 DDNS 配置"
     // These producers do not carry host metrics; mirror the backend's omitted fields.
     if (kind === "tls" || kind === "other") delete values.server

@@ -222,6 +222,12 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	auth.PATCH("/service/:id", restScopeMiddleware(model.ScopeServiceWrite), commonHandler(updateService))
 	auth.POST("/batch-delete/service", restScopeMiddleware(model.ScopeServiceDelete), commonHandler(batchDeleteService))
 
+	auth.GET("/ssh-login/:id/events", restScopeMiddleware(model.ScopeAdminAll), adminHandler(listSSHLoginEvents))
+ auth.GET("/ssh-login/:id/bans", restScopeMiddleware(model.ScopeAdminAll), adminHandler(listSSHLoginBans))
+ auth.POST("/ssh-login/ip-action", restScopeMiddleware(model.ScopeAdminAll), adminHandler(sshLoginIPAction))
+	auth.GET("/ssh-login", restScopeMiddleware(model.ScopeAdminAll), adminHandler(listSSHLogin))
+	auth.PUT("/ssh-login", restScopeMiddleware(model.ScopeAdminAll), adminHandler(saveSSHLogin))
+	auth.POST("/ssh-login/unban", restScopeMiddleware(model.ScopeAdminAll), adminHandler(unbanSSHLogin))
 	auth.GET("/server-expiry", restScopeMiddleware(model.ScopeAdminAll), adminHandler(listServerExpiry))
 	auth.PUT("/server-expiry", restScopeMiddleware(model.ScopeAdminAll), adminHandler(saveServerExpiry))
 	auth.GET("/notification-group", restScopeMiddleware(model.ScopeNotificationGroupRead), commonHandler(listNotificationGroup))
@@ -528,6 +534,7 @@ func fallbackToFrontend(frontendDist fs.FS) func(*gin.Context) {
 		regexp.MustCompile(`^/dashboard/notification$`),
 		regexp.MustCompile(`^/dashboard/alert-rule$`),
 		regexp.MustCompile(`^/dashboard/server-expiry$`),
+		regexp.MustCompile(`^/dashboard/ssh-login$`),
 		regexp.MustCompile(`^/dashboard/telegram-bot$`),
 		regexp.MustCompile(`^/dashboard/ddns$`),
 		regexp.MustCompile(`^/dashboard/nat$`),
