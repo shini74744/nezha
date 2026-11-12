@@ -22,12 +22,12 @@ type sshLoginRow struct {
 }
 
 func listSSHLogin(c *gin.Context) ([]sshLoginRow, error) {
-	var servers []model.Server
+	var servers []*model.Server
 	if err := singleton.DB.Select("id", "uuid", "name").Order("display_index DESC, id").Find(&servers).Error; err != nil {
 		return nil, err
 	}
 
-	permitted := make([]model.Server, 0, len(servers))
+	permitted := make([]*model.Server, 0, len(servers))
 	uuids := make([]string, 0, len(servers))
 	for _, server := range servers {
 		if patAllowsServer(c, server.ID) {
