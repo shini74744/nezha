@@ -27,10 +27,14 @@ type cursor struct {
 	Journal  string
 	Started  bool
 	SkipLine bool
+	Shared   bool
 }
 type collector struct{ Cursor cursor }
 
 var trustedFileLine = regexp.MustCompile(`^(.*?)\s(?:sshd(?:-session|-auth)?|dropbear)\[([0-9]+)\]: (.*)$`)
+
+// Shared syslog must have an SSH daemon in the header, not inside another app message.
+var trustedSharedFileLine = regexp.MustCompile("^((?:[A-Za-z]{3}\\s+[0-9]{1,2}\\s+[0-9]{2}:[0-9]{2}:[0-9]{2}|[0-9]{4}-[0-9]{2}-[0-9]{2}T[^\\s]+)\\s+\\S+(?:\\s+[a-z][a-z0-9]*\\.[a-z]+)?)\\s+(?:sshd(?:-session|-auth)?|dropbear)\\[([0-9]+)\\]: (.*)$")
 
 func run(ctx context.Context, name string, args ...string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, 4*time.Second)
@@ -61,21 +65,37 @@ func inode(f os.FileInfo) uint64 {
 	}
 	return 0
 }
+func (c *collector) initializeFile(path string, shared bool) bool {
+	f, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+	st, err := f.Stat()
+	if err != nil || !st.Mode().IsRegular() {
+		return false
+	}
+	// Start at the current end: enabling monitoring must not replay old failures.
+	c.Cursor = cursor{Source: path, Offset: st.Size(), Inode: inode(st), Started: true, Shared: shared}
+	return true
+}
 func (c *collector) initialize(ctx context.Context) error {
-	for _, p := range []string{"/var/log/auth.log", "/var/log/secure"} {
-		f, err := os.Open(p)
-		if err != nil {
-			continue
-		}
-		st, err := f.Stat()
-		f.Close()
-		if err == nil && st.Mode().IsRegular() {
-			c.Cursor = cursor{Source: p, Offset: st.Size(), Inode: inode(st), Started: true}
+	return c.initializeSources(ctx, []string{"/var/log/auth.log", "/var/log/secure"}, []string{"/var/log/messages"}, run)
+}
+func (c *collector) initializeSources(ctx context.Context, dedicated, shared []string, journal func(context.Context, string, ...string) ([]byte, error)) error {
+	for _, path := range dedicated {
+		if c.initializeFile(path, false) {
 			return nil
 		}
 	}
-	out, err := run(ctx, "journalctl", "--no-pager", "-o", "json", "-n", "1", "_COMM=sshd", "+", "_COMM=sshd-session", "+", "_COMM=sshd-auth", "+", "_COMM=dropbear")
+	out, err := journal(ctx, "journalctl", "--no-pager", "-o", "json", "-n", "1", "_COMM=sshd", "+", "_COMM=sshd-session", "+", "_COMM=sshd-auth", "+", "_COMM=dropbear")
 	if err != nil {
+		// Alpine's BusyBox syslog writes SSH events here without journald.
+		for _, path := range shared {
+			if c.initializeFile(path, true) {
+				return nil
+			}
+		}
 		return fmt.Errorf("无法读取 SSH 日志")
 	}
 	c.Cursor = cursor{Source: "journal", Started: true}
@@ -183,7 +203,11 @@ func (c *collector) file(limit int) ([]Event, error) {
 			continue
 		}
 		line := string(chunk)
-		m := trustedFileLine.FindStringSubmatch(strings.TrimSuffix(line, "\n"))
+		pattern := trustedFileLine
+		if c.Cursor.Shared {
+			pattern = trustedSharedFileLine
+		}
+		m := pattern.FindStringSubmatch(strings.TrimSuffix(line, "\n"))
 		if m == nil {
 			continue
 		}
