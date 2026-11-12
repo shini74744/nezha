@@ -21,6 +21,7 @@ type sshLocalRequest struct {
 	done    chan struct{}
 	events  []model.SSHLoginEvent
 	expires time.Time
+	waiters int
 }
 
 var sshQuerySequence atomic.Uint64
@@ -62,6 +63,9 @@ func observeSSHLocal(uuid string, r model.SSHLoginReport, now time.Time) uint64 
 	return 0
 }
 func ReadSSHLocalEvents(ctx context.Context, uuid string) ([]model.SSHLoginEvent, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	sshLocal.Lock()
 	st := sshLocal.states[uuid]
 	if st.UpdatedAt == 0 || time.Now().Unix()-st.UpdatedAt > 45 {
@@ -76,7 +80,18 @@ func ReadSSHLocalEvents(ctx context.Context, uuid string) ([]model.SSHLoginEvent
 		q = &sshLocalRequest{id: sshQuerySequence.Add(1), done: make(chan struct{}), expires: time.Now().Add(25 * time.Second)}
 		sshLocal.requests[uuid] = q
 	}
+	q.waiters++
 	sshLocal.Unlock()
+	signalSSHRead(uuid)
+	defer func() {
+		sshLocal.Lock()
+		q.waiters--
+		if q.waiters == 0 && sshLocal.requests[uuid] == q {
+			delete(sshLocal.requests, uuid)
+		}
+		sshLocal.Unlock()
+	}()
+
 	timer := time.NewTimer(25 * time.Second)
 	defer timer.Stop()
 	select {

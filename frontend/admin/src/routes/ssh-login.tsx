@@ -4,6 +4,7 @@ import useSWR from "swr"
 import { Shield, ArrowLeft, RefreshCw, Search } from "lucide-react"
 import { toast } from "sonner"
 import { fetcher, FetcherMethod, swrFetcher } from "@/api/api"
+import { useSSHRead } from "@/hooks/use-ssh-read"
 import { SSHListPager } from "@/components/ssh-list-pager"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -63,12 +64,14 @@ export default function SSHLoginPage() {
 
  const row = data?.find(r => r.id === selected)
  const rows = useMemo(() => (data || []).filter(r => (r.name + " " + r.id).toLowerCase().includes(search.toLowerCase())), [data, search])
- const { data: events, error: eventsError, isLoading: eventsLoading, mutate: refreshEvents } = useSWR<Event[]>(admin && selected && activeTab==="records" ? `/api/v1/ssh-login/${selected}/events` : null, swrFetcher, { refreshInterval: 10000 })
- const {data:bans,error:bansError,isLoading:bansLoading,isValidating:bansValidating,mutate:refreshBans}=useSWR<BanPage>(admin&&selected&&activeTab==="bans"?"/api/v1/ssh-login/"+selected+"/bans?page="+banPage+"&page_size="+banSize+"&search="+encodeURIComponent(debouncedBanSearch):null,swrFetcher,{refreshInterval:10000})
+ const eventsKey=admin&&selected&&activeTab==="records"?`/api/v1/ssh-login/${selected}/events`:null
+ const {data:events,error:eventsError,loading:eventsLoading,refresh:refreshEvents}=useSSHRead<Event[]>(eventsKey,String(selected))
+ const bansKey=admin&&selected&&activeTab==="bans"?"/api/v1/ssh-login/"+selected+"/bans?page="+banPage+"&page_size="+banSize+"&search="+encodeURIComponent(debouncedBanSearch):null
+ const {data:bans,error:bansError,loading:bansLoading,current:bansCurrent,refresh:refreshBans}=useSSHRead<BanPage>(bansKey,selected+"|"+debouncedBanSearch)
  const manualFiltered=(row?.policy.block_ips||[]).filter(ip=>ip.toLowerCase().includes(manualSearch.trim().toLowerCase()))
  const actualManualPage=Math.min(manualPage,Math.max(1,Math.ceil(manualFiltered.length/manualSize)))
  const manualItems=manualFiltered.slice((actualManualPage-1)*manualSize,actualManualPage*manualSize)
- useEffect(()=>{if(bans&&bans.page!==banPage)setBanPage(bans.page)},[bans,banPage])
+ useEffect(()=>{if(bansCurrent&&!bansLoading&&bans&&bans.page!==banPage)setBanPage(bans.page)},[bans,bansCurrent,bansLoading,banPage])
  useEffect(() => {
   if (row && !dirty) {
    const e=row.status.existing
@@ -131,7 +134,7 @@ export default function SSHLoginPage() {
   <div data-testid="ssh-page-toolbar" className="my-4 flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
    <Button variant="outline" size="sm" asChild><Link to="/dashboard" aria-label="返回服务器列表"><ArrowLeft className="h-4 w-4 sm:mr-1"/><span className="hidden sm:inline">服务器列表</span></Link></Button>
    <h1 className="flex items-center gap-2 text-lg font-semibold"><Shield className="h-5 w-5"/>SSH 安全</h1>
-   <Button variant="outline" size="sm" className="ml-auto shrink-0" onClick={() => {void mutate();void refreshEvents();void refreshBans()}}><RefreshCw className="mr-1 h-4 w-4"/>刷新</Button>
+   <Button variant="outline" size="sm" className="ml-auto shrink-0" onClick={() => {void mutate().catch(()=>{});void refreshEvents();void refreshBans()}}><RefreshCw className="mr-1 h-4 w-4"/>刷新</Button>
   </div>
   {error && <p role="alert" className="mb-4 text-sm text-red-500">加载失败，请重试。</p>}
   <div className="grid min-w-0 gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
@@ -211,15 +214,15 @@ export default function SSHLoginPage() {
      <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">自动封禁 <span className="text-sm font-normal text-muted-foreground">({bans?.total??row.status.ban_total??row.status.banned?.length??0})</span></h2>{bans?.observed_at&&<span className="text-xs text-muted-foreground">更新：{when(bans.observed_at)}</span>}</div>
      <div className="relative"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground"/><Input aria-label="搜索自动封禁 IP" className="pl-9" placeholder="搜索 IP 地址" value={banSearch} onChange={e=>setBanSearch(e.target.value)}/></div>
      {dirty&&<p className="text-xs text-amber-600">请先保存设置中的修改，再操作名单。</p>}
-     {bansLoading&&<p role="status" className="text-sm text-muted-foreground">正在读取封禁列表…</p>}
+     <p role="status" className="min-h-5 text-sm text-muted-foreground">{bansLoading?(bansCurrent&&bans?"正在更新…":"正在读取第 "+banPage+" 页…"):""}</p>
      {bansError&&<p role="alert" className="text-sm text-red-500">{bansError instanceof Error?bansError.message:"读取失败，请重试"}</p>}
      {bans&&!bans.complete&&<p className="text-xs text-amber-600">升级 Agent 后可查看完整列表和封禁时间。</p>}
      {(!bansError?bans?.items||[]:[]).map(b=><article key={b.ip} data-testid="automatic-ban-row" className="flex min-w-0 flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0 space-y-1"><code className="block break-all text-sm">{b.ip}</code><div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground"><span>封禁：{b.banned_at?when(b.banned_at):"未记录"}</span><span>到期：{b.expires_at===-1?"永久":b.expires_at?when(b.expires_at):"未记录"}</span></div></div>
-      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2"><Button size="sm" variant="outline" disabled={saving||dirty||!!unbanning} onClick={()=>ipAction(b.ip,"whitelist")}>白名单</Button><Button size="sm" variant="outline" disabled={saving||!!unbanning||Date.now()/1000-row.status.updated_at>45} onClick={()=>unban(b.ip)}>{unbanning===b.ip?"提交中…":"解封"}</Button></div>
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2"><Button size="sm" variant="outline" disabled={!bansCurrent||saving||dirty||!!unbanning} onClick={()=>ipAction(b.ip,"whitelist")}>白名单</Button><Button size="sm" variant="outline" disabled={!bansCurrent||saving||!!unbanning||Date.now()/1000-row.status.updated_at>45} onClick={()=>unban(b.ip)}>{unbanning===b.ip?"提交中…":"解封"}</Button></div>
      </article>)}
      {!bansLoading&&!bansError&&bans&&!bans.items.length&&<p className="py-3 text-center text-sm text-muted-foreground">{debouncedBanSearch?"没有符合条件的封禁":"暂无封禁记录"}</p>}
-     <SSHListPager label="自动封禁" total={bans?.total||0} page={bans?.page||banPage} pageSize={banSize} busy={bansLoading||bansValidating} onPage={setBanPage} onSize={n=>{setBanSize(n);setBanPage(1)}}/>
+     <SSHListPager label="自动封禁" total={bans?.total||0} page={banPage} pageSize={banSize} busy={saving} onPage={setBanPage} onSize={n=>{setBanSize(n);setBanPage(1)}}/>
     </section>
     <section className="min-w-0 space-y-3 rounded-lg border bg-card/80 p-4 shadow-sm">
      <h2 className="font-semibold">手动黑名单 <span className="text-sm font-normal text-muted-foreground">({manualFiltered.length})</span></h2>
@@ -233,7 +236,7 @@ export default function SSHLoginPage() {
     <section className="min-w-0 space-y-3 rounded-lg border bg-card/80 p-4 shadow-sm">
      <h2 className="font-semibold">本机登录记录</h2>
      <p className="text-xs text-muted-foreground">最近 24 小时 · 最新 50 条</p>
-     {eventsLoading&&<p role="status" className="text-sm text-muted-foreground">正在读取本机记录…</p>}
+     {eventsLoading&&<p role="status" className="text-sm text-muted-foreground">{events?"正在更新…":"正在读取本机记录…"}</p>}
      {eventsError&&<p role="alert" className="text-sm text-red-500">{eventsError instanceof Error?eventsError.message:"读取失败，请重试"}</p>}
      {!!row.status.dropped&&<p className="text-xs text-amber-600">有 {row.status.dropped} 条提醒因离线过久或队列已满未能投递，可在本机日志中查看。</p>}
      {(!eventsError ? events || [] : []).map(e=><article key={e.id} className="rounded-md border p-3 text-sm"><div className="flex flex-wrap justify-between gap-2"><strong className={e.success?"text-emerald-600":"text-red-500"}>{e.success?"登录成功":"登录失败"}</strong><span className="text-xs text-muted-foreground">{when(e.time)}</span></div><p className="mt-2 break-all">账号：{e.username} · 来源：{e.source_ip}</p><div className="mt-2 flex flex-wrap items-center justify-between gap-3"><p className="text-xs text-muted-foreground">SSH 端口：{e.port || "未能确认"} · {({password:"密码",publickey:"公钥","keyboard-interactive/pam":"交互认证"} as Record<string,string>)[e.method]||e.method} {e.reason}</p><div className="ml-auto flex shrink-0 gap-2"><Button size="sm" variant="outline" disabled={saving||dirty} onClick={()=>ipAction(e.source_ip,"blacklist")}>拉黑</Button><Button size="sm" variant="outline" disabled={saving||dirty} onClick={()=>ipAction(e.source_ip,"whitelist")}>白名单</Button></div></div></article>)}

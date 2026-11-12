@@ -51,7 +51,7 @@ function csrfHeaders(method: FetcherMethod, path: string): Record<string, string
     return token ? { [csrfHeaderName]: token } : {}
 }
 
-export async function fetcher<T>(method: FetcherMethod, path: string, data?: any): Promise<T> {
+export async function fetcher<T>(method: FetcherMethod, path: string, data?: any, signal?: AbortSignal): Promise<T> {
     if (isTelegramTerminal()) return telegramUIRequest<T>(method, path, data)
     const requestToken = readCookie("nz-jwt")
     const notifyExpired = () => {
@@ -61,11 +61,13 @@ export async function fetcher<T>(method: FetcherMethod, path: string, data?: any
     if (method === FetcherMethod.GET || method === FetcherMethod.DELETE) {
         response = await fetch(buildUrl(path, data), {
             method: method,
+            signal,
             headers: csrfHeaders(method, path),
         })
     } else {
         response = await fetch(path, {
             method: method,
+            signal,
             headers: {
                 "Content-Type": "application/json",
                 ...csrfHeaders(method, path),

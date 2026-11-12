@@ -17,6 +17,7 @@ type sshBanRequest struct {
 	done    chan struct{}
 	result  model.SSHBanPage
 	expires time.Time
+	waiters int
 }
 
 var sshBanLocal = struct {
@@ -72,6 +73,9 @@ func observeSSHBans(uuid string, page *model.SSHBanPage, now time.Time) *model.S
 }
 func ReadSSHLocalBans(ctx context.Context, uuid, search string, page, size int) (model.SSHBanPage, error) {
 	var empty model.SSHBanPage
+	if err := ctx.Err(); err != nil {
+		return empty, err
+	}
 	search = strings.TrimSpace(search)
 	if len(search) > 64 || strings.IndexFunc(search, unicode.IsControl) >= 0 || page < 1 || page > 10000 || !slices.Contains([]int{10, 20, 50, 100}, size) {
 		return empty, fmt.Errorf("查询条件无效")
@@ -116,7 +120,29 @@ func ReadSSHLocalBans(ctx context.Context, uuid, search string, page, size int) 
 		kept = append(kept, q)
 	}
 	sshBanLocal.requests[uuid] = kept
+	q.waiters++
 	sshBanLocal.Unlock()
+	signalSSHRead(uuid)
+	defer func() {
+		sshBanLocal.Lock()
+		q.waiters--
+		if q.waiters == 0 {
+			list := sshBanLocal.requests[uuid]
+			for i, item := range list {
+				if item == q {
+					list = append(list[:i], list[i+1:]...)
+					break
+				}
+			}
+			if len(list) == 0 {
+				delete(sshBanLocal.requests, uuid)
+			} else {
+				sshBanLocal.requests[uuid] = list
+			}
+		}
+		sshBanLocal.Unlock()
+	}()
+
 	timer := time.NewTimer(25 * time.Second)
 	defer timer.Stop()
 	select {

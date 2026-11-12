@@ -45,6 +45,13 @@ func (s *NezhaHandler) ReportSSHLogin(ctx context.Context, r *pb.TaskResult) (*p
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "SSH report rejected")
 	}
+	// Pending policy/unban changes must be delivered immediately. Query results have
+	// already reached HTTP readers above; keep this reply open for their next read.
+	// Older Agents without ban paging retain the original short response.
+	if report.Status.BanPaging &&
+		reply.Policy.Revision == report.Status.Revision && len(reply.Unban) == 0 {
+		singleton.WaitSSHLocalReads(ctx, server.UUID, &reply)
+	}
 	data, err := json.Marshal(reply)
 	if err != nil {
 		return nil, err
