@@ -44,6 +44,13 @@ func ReceiveSSHLogin(uuid string, r model.SSHLoginReport, now time.Time) (model.
 	if len(r.Status.ImportedAllowlist) > 100 || len(r.Recent) > 50 || len(r.Events) > 100 || len(r.Completed) > 32 || len(r.Status.Banned) > 1000 || len(r.Status.Ports) > 128 || len(r.Status.Message) > 512 || len(r.Status.Source) > 100 {
 		return reply, fmt.Errorf("SSH report too large")
 	}
+	if r.Status.Backend != "" && r.Status.Backend != "native" && r.Status.Backend != "fail2ban" {
+		return reply, fmt.Errorf("invalid SSH backend")
+	}
+	if p.Engine() == "fail2ban" && !r.Status.BackendSelection {
+		// Old Agents ignore unknown JSON fields: never let them apply a Fail2ban policy as native.
+		return model.SSHLoginReply{}, fmt.Errorf("Fail2ban policy requires an upgraded Linux Agent")
+	}
 	if strings.IndexFunc(r.Status.Message+r.Status.Source, unicode.IsControl) >= 0 {
 		return reply, fmt.Errorf("invalid status")
 	}

@@ -14,13 +14,14 @@ import { useAuth } from "@/hooks/useAuth"
 import { useNotification } from "@/hooks/useNotfication"
 
 type Policy = {
+ backend?: "native" | "fail2ban"
  enabled: boolean; success: boolean; failure: boolean; notification_group_id: number
  ports: number[]; auto_ban: boolean; whitelist_only: boolean; max_retry: number; find_time: number; ban_time: number
  block_times?:Record<string,number>; allowlist: string[]; revision: number; block_ips: string[]; block_updated_at: number
 }
 type BanEntry = {ip:string;banned_at:number;expires_at:number}
 type BanPage = {items:BanEntry[];total:number;page:number;page_size:number;observed_at:number;complete:boolean}
-type Status = { ban_paging?:boolean;ban_total?:number; imported_allowlist?: string[]; updated_at: number; revision: number; source: string; message: string; ports: number[]; banned: string[]; ban_ready: boolean; block_ready: boolean; dropped: number; reused: boolean; migrated: boolean; existing?: {active: boolean; ports: number[]; max_retry: number; find_time: number; ban_time: number; allowlist: string[]} }
+type Status = { backend?: string; backend_selection?: boolean; ban_paging?:boolean;ban_total?:number; imported_allowlist?: string[]; updated_at: number; revision: number; source: string; message: string; ports: number[]; banned: string[]; ban_ready: boolean; block_ready: boolean; dropped: number; reused: boolean; migrated: boolean; existing?: {active: boolean; ports: number[]; max_retry: number; find_time: number; ban_time: number; allowlist: string[]} }
 type Row = { id: number; name: string; policy: Policy; status: Status }
 type Event = { id: string; time: number; username: string; source_ip: string; port: number; method: string; success: boolean; reason: string }
 export function parseSSHPorts(value: string) {
@@ -34,6 +35,7 @@ const when = (n: number) => n ? new Date(n).toLocaleString("zh-CN", { hour12: fa
 const stateText = (row: Row) => {
  if (!row.status.updated_at) return "等待连接"
  if (Date.now()/1000 - row.status.updated_at > 45) return "暂未连接"
+ if (row.status.message) return row.status.message
  if (row.policy.revision !== row.status.revision) return "等待设置生效"
  return row.status.message || (row.policy.enabled ? "监测中" : "未启用")
 }
@@ -42,7 +44,7 @@ export default function SSHLoginPage() {
  const { profile } = useAuth()
  const admin = profile?.role === 0
  const { notifierGroup } = useNotification()
- const { data, error, isLoading, mutate } = useSWR<Row[]>(admin ? "/api/v1/ssh-login" : null, swrFetcher, { refreshInterval: 10000 })
+ const { data, error, isLoading, mutate } = useSWR<Row[]>(admin ? "/api/v1/ssh-login?summary=1" : null, swrFetcher, { refreshInterval: 10000 })
  const [activeTab,setActiveTab]=useState("settings")
  const [selected, setSelected] = useState<number | null>(null)
  const [search, setSearch] = useState("")
@@ -68,7 +70,7 @@ export default function SSHLoginPage() {
  const {data:events,error:eventsError,loading:eventsLoading,refresh:refreshEvents}=useSSHRead<Event[]>(eventsKey,String(selected))
  const bansKey=admin&&selected&&activeTab==="bans"?"/api/v1/ssh-login/"+selected+"/bans?page="+banPage+"&page_size="+banSize+"&search="+encodeURIComponent(debouncedBanSearch):null
  const {data:bans,error:bansError,loading:bansLoading,current:bansCurrent,refresh:refreshBans}=useSSHRead<BanPage>(bansKey,selected+"|"+debouncedBanSearch)
- const manualFiltered=(row?.policy.block_ips||[]).filter(ip=>ip.toLowerCase().includes(manualSearch.trim().toLowerCase()))
+ const manualFiltered=useMemo(()=>(row?.policy.block_ips||[]).filter(ip=>ip.toLowerCase().includes(manualSearch.trim().toLowerCase())),[row?.policy.block_ips,manualSearch])
  const actualManualPage=Math.min(manualPage,Math.max(1,Math.ceil(manualFiltered.length/manualSize)))
  const manualItems=manualFiltered.slice((actualManualPage-1)*manualSize,actualManualPage*manualSize)
  useEffect(()=>{if(bansCurrent&&!bansLoading&&bans&&bans.page!==banPage)setBanPage(bans.page)},[bans,bansCurrent,bansLoading,banPage])
@@ -88,6 +90,7 @@ export default function SSHLoginPage() {
   if (!row || !draft) return
   try {
    const policy = {...draft,ports:parseSSHPorts(ports),allowlist:allowlist.split(/[,，\s]+/).filter(Boolean),block_ips:blockIPs.split(/[,，\s]+/).filter(Boolean)}
+   if (policy.backend === "fail2ban" && row.policy.backend !== "fail2ban" && !row.status.backend_selection) throw Error("请先升级支持 Fail2ban 的 Linux Agent")
    if (policy.enabled && policy.whitelist_only && !policy.allowlist.length) throw Error("仅白名单模式需要至少一个有效 IP 或网段")
    if (policy.enabled && (policy.success || policy.failure) && !policy.notification_group_id) throw Error("请选择通知组")
    if (!Number.isInteger(policy.max_retry) || policy.max_retry < 1 || policy.max_retry > 1000 || !Number.isInteger(policy.find_time) || policy.find_time < 10 || policy.find_time > 604800 || !Number.isInteger(policy.ban_time) || (policy.ban_time !== -1 && (policy.ban_time < 60 || policy.ban_time > 31536000))) throw Error("请检查失败次数、统计时间和封禁时长")
@@ -103,7 +106,7 @@ export default function SSHLoginPage() {
    setUnbanning(ip)
    await fetcher(FetcherMethod.POST,"/api/v1/ssh-login/unban",{server_id:row.id,ip})
    toast.success("解封请求已提交，请等待服务器确认")
-   await mutate();void refreshBans().catch(()=>{})
+   await mutate();void refreshBans(true).catch(()=>{})
   } catch(e) {toast.error(e instanceof Error ? e.message : "解封失败")}
   finally {setUnbanning("")}
  }
@@ -115,7 +118,7 @@ export default function SSHLoginPage() {
    await fetcher(FetcherMethod.POST,"/api/v1/ssh-login/ip-action",{server_id:row.id,ip,action,revision:row.policy.revision})
    await mutate()
    toast.success(action==="whitelist"?"白名单已保存，等待解封确认":"已加入黑名单，等待生效")
-   void refreshBans().catch(()=>{})
+   void refreshBans(true).catch(()=>{})
   }catch(e){toast.error(e instanceof Error?e.message:"操作失败");void mutate()}
   finally{setSaving(false)}
  }
@@ -150,7 +153,12 @@ export default function SSHLoginPage() {
    </aside>
    {!row || !draft ? <section className="rounded-lg border p-6 text-sm text-muted-foreground">选择一台服务器，查看设置和封禁列表。</section> :
    <main className="min-w-0 space-y-4">
-    <h2 className="break-words font-semibold">{row.name}</h2>
+    <div className="flex min-w-0 flex-wrap items-center justify-between gap-3" data-testid="ssh-backend-header">
+     <h2 className="min-w-0 break-words font-semibold">{row.name}</h2>
+     <label className="flex shrink-0 items-center gap-2 text-sm"><span>防护方式</span><select aria-label="防护方式" className="h-9 max-w-full rounded-md border bg-background px-3" value={draft.backend || "native"} disabled={saving} onChange={e=>patch({backend:e.target.value as "native"|"fail2ban"})}><option value="native">DDnezha 原生</option><option value="fail2ban" disabled={!row.status.backend_selection && row.policy.backend!=="fail2ban"}>Fail2ban</option></select></label>
+     </div>
+     {draft.backend==="fail2ban" && dirty && <p className="text-xs text-muted-foreground">保存启用后，自动安装所需组件。</p>}
+     {!row.status.backend_selection && row.policy.backend!=="fail2ban" && <p className="text-xs text-muted-foreground">升级 Linux Agent 后可选择 Fail2ban。</p>}
     <Tabs value={activeTab} onValueChange={setActiveTab}>
     <TabsList className="grid w-full grid-cols-3 sm:w-auto sm:min-w-80">
      <TabsTrigger value="settings">设置</TabsTrigger>

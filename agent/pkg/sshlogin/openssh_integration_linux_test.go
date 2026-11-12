@@ -122,5 +122,75 @@ func TestSSHKernelRealOpenSSHAuthentication(t *testing.T) {
 	if e = g.apply(context.Background(), p, nil, nil); e != nil {
 		t.Fatal(e)
 	}
+
+	// Repeat the full collector -> Fail2ban -> firewall path with these real
+	// authentication records, retaining the native port-resolution rules.
+	fg, source := privateFB5Fixture(t, "nftables")
+	p.Enabled = true
+	p.Backend = "fail2ban"
+	if e = fg.configureFB5(context.Background(), p, nil, source); e != nil {
+		t.Fatal(e)
+	}
+	// sshd -E writes bare messages, whereas auth.log/syslog includes an SSH
+	// process header. Add that transport envelope to actual daemon messages;
+	// do not loosen the production collector's trusted-header requirement.
+	authPath := filepath.Join(dir, "auth.log")
+	var authLog strings.Builder
+	for _, line := range strings.Split(string(raw), "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			fmt.Fprintf(&authLog, "%s fixture sshd[%d]: %s\n", time.Now().Format(time.RFC3339Nano), daemon.Process.Pid, line)
+		}
+	}
+	if e = os.WriteFile(authPath, []byte(authLog.String()), 0600); e != nil {
+		t.Fatal(e)
+	}
+	input := collector{Cursor: cursor{Source: authPath, Started: true}}
+	actual, e := input.poll(context.Background(), 100)
+	if e != nil {
+		t.Fatal(e)
+	}
+	resolvePorts(actual, ports, peers, time.Now().Add(-time.Minute))
+	protected := 0
+	for _, event := range actual {
+		if p.Protected(event) {
+			protected++
+		}
+	}
+	if protected != 2 {
+		t.Fatalf("collector lost actual failed authentications: %d", protected)
+	}
+	if e = fg.publishFB5Events(p, actual, time.Now()); e != nil {
+		t.Fatal(e)
+	}
+	deadline := time.Now().Add(6 * time.Second)
+	var entries []BanEntry
+	for time.Now().Before(deadline) {
+		entries, e = fg.readFB5RawBans(context.Background(), time.Now())
+		if e != nil {
+			t.Fatal(e)
+		}
+		if len(entries) > 0 {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if len(entries) != 1 || entries[0].IP != "192.0.2.11" {
+		t.Fatalf("real Fail2ban event path failed: %+v", entries)
+	}
+	if e = fg.verifyFB5Bans(context.Background(), p, entries); e != nil {
+		t.Fatal(e)
+	}
+	expectFrom(t, "tcp4", fmt.Sprintf("192.0.2.10:%d", port), "192.0.2.11", false)
+	if e = fg.unban(context.Background(), "192.0.2.11"); e != nil {
+		t.Fatal(e)
+	}
+	time.Sleep(500 * time.Millisecond)
+	if e = invoke("good"); e != nil {
+		t.Fatal("Fail2ban unban did not restore successful authentication", e)
+	}
+	if e = fg.disableFB5(context.Background()); e != nil {
+		t.Fatal(e)
+	}
+	t.Log("PASS: real OpenSSH records through collector and Fail2ban, scoped block, unban and successful login")
 	t.Log("PASS: real OpenSSH success/failure logs, destination port detection, failure threshold, kernel block, manual unban and successful login")
 }

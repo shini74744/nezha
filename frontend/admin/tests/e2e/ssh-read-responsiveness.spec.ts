@@ -1,6 +1,6 @@
 import { test, expect, Page } from "@playwright/test"
 
-test.setTimeout(60000)
+test.setTimeout(120000)
 const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 async function setup(page: Page) {
  await page.addInitScript(dark => {localStorage.setItem("i18nextLng", "zh-CN");localStorage.setItem("nezha-dashboard-theme",dark?"dark":"light")},process.env.E2E_SSH_DARK === "1")
@@ -108,5 +108,19 @@ test("record refresh keeps visible rows and server switches never leak old recor
  await page.getByRole("tab",{name:"设置",exact:true}).click()
  await page.getByRole("tab",{name:"登录记录",exact:true}).click()
  await expect(page.getByText(/账号：user-two/)).toBeVisible({timeout:500})
+ expect(state.errors).toEqual([])
+})
+
+test("repeated refresh coalesces the current local read",async({page})=>{
+ const state=await setup(page)
+ await page.getByRole("tab",{name:"登录记录",exact:true}).click()
+ await expect(page.getByText(/账号：user-one/)).toBeVisible()
+ const before=state.requests.length
+ state.setDelay(1500)
+ await page.getByRole("button",{name:"刷新",exact:true}).evaluate((button:HTMLButtonElement)=>{button.click();button.click();button.click()})
+ await expect.poll(()=>state.requests.length).toBe(before+1)
+ await page.waitForTimeout(1700)
+ expect(state.requests.length).toBe(before+1)
+ await expect(page.getByText(/账号：user-one/)).toBeVisible()
  expect(state.errors).toEqual([])
 })

@@ -14,17 +14,20 @@ import (
 )
 
 type savedState struct {
-	Policy    Policy
-	Prefixes  []string
-	Cursor    cursor
-	Pending   []Event
-	Recent    []Event
-	Completed []uint64
-	Active    bool
-	HadRules  bool
-	Dropped   uint64
-	Native    nativeState
-	Migration *migrationSnapshot
+	AppliedPolicy   *Policy
+	AppliedPrefixes []string
+	Policy          Policy
+	Prefixes        []string
+	Cursor          cursor
+	Pending         []Event
+	FB5Pending      []Event
+	Recent          []Event
+	Completed       []uint64
+	Active          bool
+	HadRules        bool
+	Dropped         uint64
+	Native          nativeState
+	Migration       *migrationSnapshot
 }
 
 func initialPolicy() Policy {
@@ -108,7 +111,7 @@ func Run(ctx context.Context, identity string, exchange Exchange) {
 	if st, e := os.Lstat(path); e == nil && st.Mode().IsRegular() && st.Size() < 64<<20 {
 		if b, e := os.ReadFile(path); e == nil {
 			var saved savedState
-			if json.Unmarshal(b, &saved) == nil && saved.Policy.Validate() == nil && len(saved.Pending) <= 10000 && len(saved.Recent) <= 1000 && len(saved.Completed) <= 64 && len(saved.Native.Bans) <= 10000 && len(saved.Native.Failures) <= 5000 {
+			if json.Unmarshal(b, &saved) == nil && saved.Policy.Validate() == nil && len(saved.FB5Pending) <= 1000 && len(saved.Pending) <= 10000 && len(saved.Recent) <= 1000 && len(saved.Completed) <= 64 && len(saved.Native.Bans) <= 10000 && len(saved.Native.Failures) <= 5000 {
 				if saved.Policy.BlockHash == "" || verifyPrefixes(saved.Prefixes, saved.Policy.BlockHash) == nil {
 					state = saved
 				}
@@ -116,8 +119,17 @@ func Run(ctx context.Context, identity string, exchange Exchange) {
 		}
 	}
 	state.Native.initialize()
+	if state.AppliedPolicy == nil {
+		old := state.Policy
+		if old.Engine() == "fail2ban" {
+			old = initialPolicy()
+		}
+		state.AppliedPolicy = &old
+		state.AppliedPrefixes = append([]string{}, state.Prefixes...)
+	}
+	installer := &fail2banInstaller{}
 	collector := collector{Cursor: state.Cursor}
-	guard := banGuard{Name: "ddnezha-ssh-" + key, Dir: dir, Root: "/etc/fail2ban", Exec: run}
+	guard := banGuard{Name: "ddnezha-ssh-" + key, Dir: dir, Root: "/etc/fail2ban", Exec: run, fb5Cache: &fb5BanCache{}}
 	black := blacklistGuard{Name: "ddnz_ssh_" + key, HadRules: state.HadRules}
 	if m, e := guard.prepareMigrationRecovery(ctx); e == nil && m != nil {
 		state.Migration = m
@@ -192,6 +204,18 @@ func Run(ctx context.Context, identity string, exchange Exchange) {
 							break
 						}
 						var commandErr error
+						if state.applied().Engine() == "fail2ban" {
+							commandErr = guard.unban(ctx, cmd.IP)
+							if commandErr == nil {
+								_ = state.Native.unban(cmd.IP)
+								state.Completed = append(state.Completed, cmd.ID)
+								dirty = true
+								nextApply = time.Time{}
+							} else {
+								status.Message = "解封尚未完成，请检查 Fail2ban 状态"
+							}
+							continue
+						}
 						if status.Existing != nil && (state.Migration == nil || !state.Migration.Complete) {
 							target := guard
 							target.Reused = true
@@ -200,17 +224,17 @@ func Run(ctx context.Context, identity string, exchange Exchange) {
 						if commandErr == nil {
 							previous := state.Native.clone()
 							commandErr = state.Native.unban(cmd.IP)
-							effective := effectivePolicy(state.Policy, state.Migration)
+							effective := effectivePolicy(state.applied(), state.Migration)
 							if commandErr == nil {
 								commandErr = save()
 							}
 							if commandErr == nil {
-								commandErr = black.apply(ctx, effective, state.Prefixes, state.Native.active(effective))
+								commandErr = black.apply(ctx, effective, state.AppliedPrefixes, state.Native.active(effective))
 							}
 							if commandErr != nil {
 								state.Native = previous
 								_ = save()
-								_ = black.apply(ctx, effective, state.Prefixes, state.Native.active(effective))
+								_ = black.apply(ctx, effective, state.AppliedPrefixes, state.Native.active(effective))
 							}
 						}
 						if commandErr == nil {
@@ -231,7 +255,8 @@ func Run(ctx context.Context, identity string, exchange Exchange) {
 			}
 		default:
 		}
-		p := effectivePolicy(state.Policy, state.Migration)
+		desired := effectivePolicy(state.Policy, state.Migration)
+		p := effectivePolicy(state.applied(), state.Migration)
 		oldBans := len(state.Native.Bans)
 		state.Native.prune(p, now)
 		if len(state.Native.Bans) != oldBans {
@@ -253,76 +278,82 @@ func Run(ctx context.Context, identity string, exchange Exchange) {
 		}
 		if state.Active && now.After(nextApply) {
 			status.Message = ""
-			if e := privateDir(dir); e != nil {
-				status.Message = "无法保存监测状态"
-			} else {
-				var applyErr error
-				if p.Enabled && p.AutoBan && (status.Existing != nil || state.Migration != nil) {
-					migration, e := guard.prepareMigration(ctx)
-					if e != nil {
-						applyErr = e
-					} else if migration != nil {
-						state.Migration = migration
-						if migration.PolicyRevision == 0 {
-							migration.PolicyRevision = p.Revision
-						}
-						applyErr = guard.cutover(ctx, migration, func(m *migrationSnapshot) error {
-							for ip, until := range m.Bans {
-								old, exists := state.Native.Bans[ip]
-								if !exists || until == -1 || (old != -1 && until > old) {
-									state.Native.Bans[ip] = until
-									state.Native.BanStarts[ip] = m.BanStarts[ip]
-								}
-							}
-							effective := effectivePolicy(p, m)
-							state.Native.prune(effective, time.Now())
-							if e := save(); e != nil {
-								return e
-							}
-							if e := black.apply(ctx, effective, state.Prefixes, state.Native.active(effective)); e != nil {
-								return e
-							}
-							actual, e := black.banned()
-							if e != nil {
-								return e
-							}
-							for ip, until := range state.Native.Bans {
-								if until != -1 && until <= time.Now().UnixMilli() {
-									continue
-								}
-								if !slices.Contains(actual, ip) {
-									return fmt.Errorf("原有封禁迁移校验失败，旧防护继续保留")
-								}
-							}
-							return nil
-						})
-						p = effectivePolicy(p, migration)
-						dirty = true
+			var applyErr error
+			if applyErr = privateDir(dir); applyErr == nil {
+				if desired.Engine() == "fail2ban" {
+					if desired.Enabled {
+						applyErr = installer.ensure(ctx, guard, desired.Revision)
 					}
-				}
-				if applyErr == nil {
-					applyErr = black.apply(ctx, p, state.Prefixes, state.Native.active(p))
-				}
-				if applyErr != nil {
-					status.Message = applyErr.Error()
-				}
-				status.BlockReady = applyErr == nil && black.Ready
-				status.BlockHash = black.Hash
-				status.Migrated = state.Migration != nil && state.Migration.Complete
-				if status.Migrated || status.Existing == nil {
-					bans, e := black.banned()
-					status.BanReady = e == nil && applyErr == nil
-					if e == nil {
-						status.Banned = bans[:min(1000, len(bans))]
-						status.BanTotal = len(bans)
-					} else {
-						status.Message = "本机封禁状态读取失败"
+					source := collector.Cursor.Source
+					if source == "" && desired.Enabled {
+						probe := collector
+						applyErr2 := probe.initialize(ctx)
+						if applyErr == nil {
+							applyErr = applyErr2
+						}
+						if applyErr2 == nil {
+							source = probe.Cursor.Source
+						}
+					}
+					if applyErr == nil {
+						applyErr = applyFB5Backend(ctx, &state, &guard, &black, desired, source, save)
 					}
 				} else {
-					probe := banGuard{Name: guard.Name, Reused: true, Ready: true, Exec: run}
-					status.Banned = probe.banned(ctx)
-					status.BanReady = probe.Ready
+					applyErr = applyNativeBackend(ctx, &state, &guard, &black, desired, save)
 				}
+				if applyErr == nil {
+					applied := desired
+					state.AppliedPolicy = &applied
+					state.AppliedPrefixes = append([]string{}, state.Prefixes...)
+					p = applied
+					if e := save(); e != nil {
+						applyErr = fmt.Errorf("防护已应用，状态尚未保存，请检查本机磁盘")
+					}
+				}
+			}
+			if applyErr != nil {
+				if state.applied().Engine() == "native" {
+					old := effectivePolicy(state.applied(), state.Migration)
+					_ = black.apply(ctx, old, state.AppliedPrefixes, state.Native.active(old))
+				}
+				status.Message = applyErr.Error()
+			}
+			status.Backend = state.applied().Engine()
+			status.BlockReady = applyErr == nil
+			if applyErr == nil {
+				status.BlockHash = desired.BlockHash
+			}
+			status.Migrated = state.Migration != nil && state.Migration.Complete
+			if p.Engine() == "fail2ban" {
+				status.Existing = nil
+				status.Banned = []string{}
+				status.BanTotal = 0
+				status.BanReady = applyErr == nil
+				if p.Enabled && p.AutoBan {
+					entries, e := guard.readFB5Bans(ctx, time.Now())
+					if e != nil {
+						status.BanReady = false
+						status.Message = "Fail2ban 封禁列表读取失败"
+					} else {
+						status.BanTotal = len(entries)
+						for _, entry := range entries[:min(1000, len(entries))] {
+							status.Banned = append(status.Banned, entry.IP)
+						}
+					}
+				}
+			} else if status.Migrated || status.Existing == nil {
+				bans, e := black.banned()
+				status.BanReady = e == nil && applyErr == nil
+				if e == nil {
+					status.Banned = bans[:min(1000, len(bans))]
+					status.BanTotal = len(bans)
+				}
+			} else {
+				probe := guard
+				probe.Reused = true
+				probe.Ready = true
+				status.Banned = probe.banned(ctx)
+				status.BanReady = probe.Ready && applyErr == nil
 			}
 			nextApply = now.Add(10 * time.Second)
 		}
@@ -331,6 +362,23 @@ func Run(ctx context.Context, identity string, exchange Exchange) {
 			status.Banned = probe.banned(ctx)
 			status.BanReady = probe.Ready
 		}
+
+		if len(state.FB5Pending) > 0 {
+			previous := state.FB5Pending
+			var flushErr error
+			if p.Engine() == "fail2ban" && p.Enabled && p.AutoBan {
+				flushErr = guard.publishFB5Events(p, previous, now)
+			}
+			if flushErr == nil {
+				state.FB5Pending = nil
+				if e := save(); e != nil {
+					state.FB5Pending = previous
+					status.Message = "SSH 失败记录未能保存"
+				}
+			} else {
+				status.Message = "SSH 失败记录尚未交给 Fail2ban，请检查本机磁盘"
+			}
+		}
 		ports, peers := sockets(ctx)
 		slices.Sort(ports)
 		if !slices.Equal(ports, lastPorts) {
@@ -338,7 +386,7 @@ func Run(ctx context.Context, identity string, exchange Exchange) {
 			lastPorts = append([]uint16{}, ports...)
 		}
 		status.Ports = ports
-		if p.Enabled {
+		if p.Enabled && len(state.FB5Pending) <= 500 {
 			before := collector.Cursor
 			events, e := collector.poll(ctx, 500)
 			if e != nil {
@@ -352,6 +400,7 @@ func Run(ctx context.Context, identity string, exchange Exchange) {
 					}
 				}
 				oldPending := append([]Event{}, state.Pending...)
+				oldFB5Pending := append([]Event{}, state.FB5Pending...)
 				oldRecent := append([]Event{}, state.Recent...)
 				oldNative := state.Native.clone()
 				oldDropped := state.Dropped
@@ -365,8 +414,11 @@ func Run(ctx context.Context, identity string, exchange Exchange) {
 					}
 					seenEvents[event.ID] = true
 					state.Recent = append(state.Recent, event)
+					if p.Engine() == "fail2ban" && p.Protected(event) {
+						state.FB5Pending = append(state.FB5Pending, event)
+					}
 					beforeCount := len(state.Native.Bans)
-					if e := state.Native.observe(p, event, now); e != nil {
+					if e := observeNativeBackend(&state.Native, p, event, now); e != nil {
 						status.Message = e.Error()
 					}
 					if len(state.Native.Bans) != beforeCount {
@@ -387,6 +439,7 @@ func Run(ctx context.Context, identity string, exchange Exchange) {
 					if e = save(); e != nil {
 						collector.Cursor = before
 						state.Pending = oldPending
+						state.FB5Pending = oldFB5Pending
 						state.Recent = oldRecent
 						state.Native = oldNative
 						state.Dropped = oldDropped
@@ -395,7 +448,7 @@ func Run(ctx context.Context, identity string, exchange Exchange) {
 				}
 			}
 			status.Source = collector.Cursor.Source
-		} else if collector.Cursor.Started {
+		} else if !p.Enabled && collector.Cursor.Started {
 			collector.Cursor = cursor{}
 			state.Pending = nil
 			status.Source = ""
@@ -411,8 +464,11 @@ func Run(ctx context.Context, identity string, exchange Exchange) {
 			status.ImportedAllowlist = append([]string{}, state.Migration.Info.Allowlist...)
 		}
 		status.BanPaging = true
-		status.Revision = p.Revision
-		status.ReceivedHash = p.BlockHash
+		status.BackendSelection = true
+		status.AutoBanActive = state.applied().Enabled && state.applied().AutoBan
+		status.Backend = state.applied().Engine()
+		status.Revision = state.applied().Revision
+		status.ReceivedHash = state.Policy.BlockHash
 		status.Dropped = state.Dropped
 		if !inFlight && !now.Before(nextReport) {
 			report := Report{Events: append([]Event{}, state.Pending[:min(100, len(state.Pending))]...), Status: status, Completed: append([]uint64{}, state.Completed[:min(32, len(state.Completed))]...), QueryID: queryID}
@@ -443,4 +499,11 @@ func Run(ctx context.Context, identity string, exchange Exchange) {
 		case <-ticker.C:
 		}
 	}
+}
+
+func observeNativeBackend(n *nativeState, p Policy, e Event, now time.Time) error {
+	if p.Engine() == "fail2ban" {
+		return nil
+	}
+	return n.observe(p, e, now)
 }

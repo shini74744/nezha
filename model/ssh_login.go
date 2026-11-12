@@ -11,6 +11,7 @@ import (
 
 // UUID keeps policies attached to the server when display IDs are reassigned.
 type SSHLoginPolicy struct {
+	Backend             string           `json:"backend"`
 	BlockTimes          map[string]int64 `gorm:"serializer:json" json:"block_times,omitempty"`
 	UUID                string           `gorm:"primaryKey;size:64" json:"-"`
 	Enabled             bool             `json:"enabled"`
@@ -35,6 +36,9 @@ func DefaultSSHLoginPolicy() SSHLoginPolicy {
 	return SSHLoginPolicy{Success: true, Failure: true, Ports: []uint16{22}, MaxRetry: 5, FindTime: 600, BanTime: 3600, Allowlist: []string{}}
 }
 func (p *SSHLoginPolicy) Validate() error {
+	if p.Backend != "" && p.Backend != "native" && p.Backend != "fail2ban" {
+		return fmt.Errorf("防护方式无效")
+	}
 	if p.Enabled && (p.Success || p.Failure) && p.NotificationGroupID == 0 {
 		return fmt.Errorf("请选择通知组")
 	}
@@ -132,6 +136,9 @@ type SSHExisting struct {
 	Allowlist []string `json:"allowlist"`
 }
 type SSHLoginStatus struct {
+	Backend           string       `json:"backend"`
+	BackendSelection  bool         `json:"backend_selection"`
+	AutoBanActive     bool         `json:"auto_ban_active"`
 	BanPaging         bool         `json:"ban_paging"`
 	BanTotal          int          `json:"ban_total"`
 	ImportedAllowlist []string     `json:"imported_allowlist,omitempty"`
@@ -237,4 +244,11 @@ func (p *SSHLoginPolicy) KeepSSHBlockTimes(old SSHLoginPolicy, now int64) {
 		}
 	}
 	p.BlockTimes = next
+}
+
+func (p SSHLoginPolicy) Engine() string {
+	if p.Backend == "fail2ban" {
+		return "fail2ban"
+	}
+	return "native"
 }

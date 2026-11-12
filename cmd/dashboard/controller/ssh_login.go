@@ -26,19 +26,43 @@ func listSSHLogin(c *gin.Context) ([]sshLoginRow, error) {
 	if err := singleton.DB.Select("id", "uuid", "name").Order("display_index DESC, id").Find(&servers).Error; err != nil {
 		return nil, err
 	}
-	rows := make([]sshLoginRow, 0, len(servers))
-	for i := range servers {
-		s := &servers[i]
-		if !patAllowsServer(c, s.ID) {
-			continue
+
+	permitted := make([]model.Server, 0, len(servers))
+	uuids := make([]string, 0, len(servers))
+	for _, server := range servers {
+		if patAllowsServer(c, server.ID) {
+			permitted = append(permitted, server)
+			uuids = append(uuids, server.UUID)
 		}
-		p, err := singleton.SSHLoginPolicyFor(s.UUID)
-		if err != nil {
+	}
+	policies := make(map[string]model.SSHLoginPolicy, len(uuids))
+	for start := 0; start < len(uuids); start += 500 {
+		var batch []model.SSHLoginPolicy
+		if err := singleton.DB.Omit("block_data").Where("uuid IN ?", uuids[start:min(start+500, len(uuids))]).Find(&batch).Error; err != nil {
 			return nil, err
 		}
-		st := singleton.SSHLoginStatusFor(s.UUID)
-		rows = append(rows, sshLoginRow{ID: s.ID, Name: s.Name, Policy: p, Status: st})
+		for _, policy := range batch {
+			policies[policy.UUID] = policy
+		}
 	}
+	rows := make([]sshLoginRow, 0, len(permitted))
+	summary := c.Query("summary") == "1"
+	for _, server := range permitted {
+		policy, ok := policies[server.UUID]
+		if !ok {
+			policy = model.DefaultSSHLoginPolicy()
+			policy.UUID = server.UUID
+		}
+		st := singleton.SSHLoginStatusFor(server.UUID)
+		if summary {
+			// The paged endpoint reads the full Agent state separately. Keep the
+			// legacy response unchanged unless this client explicitly opts in.
+			st.BanTotal = max(st.BanTotal, len(st.Banned))
+			st.Banned = []string{}
+		}
+		rows = append(rows, sshLoginRow{ID: server.ID, Name: server.Name, Policy: policy, Status: st})
+	}
+
 	return rows, nil
 }
 func saveSSHLogin(c *gin.Context) (any, error) {
@@ -90,6 +114,12 @@ func saveSSHLogin(c *gin.Context) (any, error) {
 				return err
 			}
 			p := f.Policy
+			if p.Engine() == "fail2ban" && old.Engine() != "fail2ban" {
+				st := singleton.SSHLoginStatusFor(s.UUID)
+				if !st.BackendSelection || time.Now().Unix()-st.UpdatedAt > 45 {
+					return fmt.Errorf("请先升级并连接支持 Fail2ban 的 Linux Agent")
+				}
+			}
 			p.UUID = s.UUID
 			p.KeepSSHBlockTimes(old, time.Now().UnixMilli())
 			p.Revision = old.Revision + 1

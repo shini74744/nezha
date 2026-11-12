@@ -9,6 +9,7 @@ import (
 )
 
 type Policy struct {
+	Backend             string   `json:"backend"`
 	Enabled             bool     `json:"enabled"`
 	Success             bool     `json:"success"`
 	Failure             bool     `json:"failure"`
@@ -27,6 +28,9 @@ type Policy struct {
 }
 
 func (p Policy) Validate() error {
+	if p.Backend != "" && p.Backend != "native" && p.Backend != "fail2ban" {
+		return fmt.Errorf("防护方式无效")
+	}
 	if p.Enabled && p.WhitelistOnly && len(p.Allowlist) == 0 {
 		return fmt.Errorf("仅白名单模式需要至少一个有效 IP 或网段")
 	}
@@ -89,6 +93,9 @@ type ExistingSSH struct {
 	Allowlist []string `json:"allowlist"`
 }
 type Status struct {
+	Backend           string       `json:"backend"`
+	BackendSelection  bool         `json:"backend_selection"`
+	AutoBanActive     bool         `json:"auto_ban_active"`
 	BanPaging         bool         `json:"ban_paging"`
 	BanTotal          int          `json:"ban_total"`
 	ImportedAllowlist []string     `json:"imported_allowlist,omitempty"`
@@ -150,4 +157,11 @@ type BanPage struct {
 	ObservedAt int64      `json:"observed_at"`
 	Complete   bool       `json:"complete"`
 	Error      string     `json:"error,omitempty"`
+}
+
+func (p Policy) Engine() string {
+	if p.Backend == "fail2ban" {
+		return "fail2ban"
+	}
+	return "native"
 }
