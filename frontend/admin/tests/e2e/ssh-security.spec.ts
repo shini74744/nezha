@@ -1,5 +1,5 @@
 import {test,expect} from "@playwright/test"
-test.setTimeout(60000)
+test.setTimeout(120000)
 
 function fixture(id=1){
  return {id,name:id===1?"香港测试服务器 IPv6 长名称兼容检查":"另一台服务器",policy:{

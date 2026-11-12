@@ -11,8 +11,8 @@ export function useSSHRead<T>(key: string | null, scope: string) {
  const [snapshot, setSnapshot] = useState<Snapshot<T>>({ scope: "", key: "", pending: false })
  const cache = useRef(new Map<string, Cached<T>>())
  const owner = useRef(scope)
- const refreshRef = useRef<() => Promise<void>>(async () => {})
- const refresh = useCallback(() => refreshRef.current(), [])
+ const refreshRef = useRef<(force?:boolean) => Promise<void>>(async () => {})
+ const refresh = useCallback((force=false) => refreshRef.current(force), [])
 
  useEffect(() => {
   if (owner.current !== scope) {
@@ -34,7 +34,8 @@ export function useSSHRead<T>(key: string | null, scope: string) {
    data: usable?.data ?? (old.scope === scope ? old.data : undefined),
    dataKey: usable ? key : old.scope === scope ? old.dataKey : undefined,
   }))
-  const read = async () => {
+  let pendingRead: Promise<void> | undefined
+  const performRead = async () => {
    if (disposed) return
    clearTimeout(timer)
    controller?.abort()
@@ -59,6 +60,14 @@ export function useSSHRead<T>(key: string | null, scope: string) {
      }, 10000)
     }
    }
+  }
+  const read = (force=false) => {
+   if (disposed) return Promise.resolve()
+   if (pendingRead && !force) return pendingRead
+   const task = performRead()
+   pendingRead = task
+   void task.finally(() => { if (pendingRead === task) pendingRead = undefined })
+   return task
   }
   const scheduleVisibleCheck = () => {
    timer = setTimeout(() => {

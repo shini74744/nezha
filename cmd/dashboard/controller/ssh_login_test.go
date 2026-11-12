@@ -1,13 +1,16 @@
 package controller
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/nezhahq/nezha/model"
 	"github.com/nezhahq/nezha/service/singleton"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestSSHAdminGuardAndScopedPolicySave(t *testing.T) {
@@ -127,4 +130,83 @@ func TestSSHUnbanRetriesAreIdempotentAndBounded(t *testing.T) {
 	var count int64
 	require.NoError(t, singleton.DB.Model(&model.SSHUnbanCommand{}).Count(&count).Error)
 	require.EqualValues(t, 1, count)
+}
+
+func TestSSHBackendSaveRequiresCapabilityAndPreservesPolicy(t *testing.T) {
+	defer setupTenancyTest(t)()
+	require.NoError(t, singleton.DB.AutoMigrate(&model.SSHLoginPolicy{}, &model.SSHUnbanCommand{}, &model.Server{}, &model.SSHLoginEvent{}, &model.SSHLoginReceipt{}))
+	server := &model.Server{Common: model.Common{ID: 703}, UUID: "ssh-backend-fixture", Name: "fixture"}
+	require.NoError(t, singleton.DB.Create(server).Error)
+	p := model.DefaultSSHLoginPolicy()
+	p.Backend = "fail2ban"
+	p.Success = false
+	p.Failure = false
+	p.Ports = []uint16{2222}
+	p.Allowlist = []string{"192.0.2.1"}
+	p.WhitelistOnly = true
+	f := map[string]any{"server_ids": []uint64{703}, "policy": p}
+	_, e := saveSSHLogin(ctxAsMemberWithBody(1, f))
+	require.Error(t, e)
+	stored, e := singleton.SSHLoginPolicyFor(server.UUID)
+	require.NoError(t, e)
+	require.EqualValues(t, 0, stored.Revision)
+	_, e = singleton.ReceiveSSHLogin(server.UUID, model.SSHLoginReport{Status: model.SSHLoginStatus{BackendSelection: true, Backend: "native"}}, time.Now())
+	require.NoError(t, e)
+	_, e = saveSSHLogin(ctxAsMemberWithBody(1, f))
+	require.NoError(t, e)
+	stored, e = singleton.SSHLoginPolicyFor(server.UUID)
+	require.NoError(t, e)
+	require.Equal(t, "fail2ban", stored.Backend)
+	require.Equal(t, p.Ports, stored.Ports)
+	require.Equal(t, p.Allowlist, stored.Allowlist)
+	require.True(t, stored.WhitelistOnly)
+
+	_, e = singleton.ReceiveSSHLogin(server.UUID, model.SSHLoginReport{Status: model.SSHLoginStatus{BackendSelection: true, Backend: "fail2ban"}}, time.Now().Add(-time.Minute))
+	require.NoError(t, e)
+	_, e = saveSSHLogin(ctxAsMemberWithBody(1, f))
+	require.NoError(t, e, "existing Fail2ban configuration remains editable offline")
+	p.Backend = "native"
+	f["policy"] = p
+	_, e = saveSSHLogin(ctxAsMemberWithBody(1, f))
+	require.NoError(t, e)
+	stored, e = singleton.SSHLoginPolicyFor(server.UUID)
+	require.NoError(t, e)
+	require.Equal(t, "native", stored.Backend)
+	require.Equal(t, p.Allowlist, stored.Allowlist)
+}
+
+func TestSSHListUsesBoundedBatchAndOptionalSummary(t *testing.T) {
+	defer setupTenancyTest(t)()
+	require.NoError(t, singleton.DB.AutoMigrate(&model.SSHLoginPolicy{}, &model.Server{}))
+	for i := 1; i <= 120; i++ {
+		server := model.Server{Common: model.Common{ID: uint64(i)}, UUID: fmt.Sprintf("ssh-speed-%d", i), Name: fmt.Sprint(i)}
+		require.NoError(t, singleton.DB.Create(&server).Error)
+		if i%2 == 0 {
+			p := model.DefaultSSHLoginPolicy()
+			p.UUID = server.UUID
+			p.Backend = "fail2ban"
+			require.NoError(t, singleton.DB.Create(&p).Error)
+		}
+	}
+	queries := 0
+	name := "test:ssh-list-query-count"
+	require.NoError(t, singleton.DB.Callback().Query().Before("gorm:query").Register(name, func(*gorm.DB) { queries++ }))
+	defer singleton.DB.Callback().Query().Remove(name)
+	tok := &model.APIToken{ScopesCSV: model.ScopeAdminAll}
+	c, _ := patRequestCtx(t, tok, 1, "GET", "/ssh-login?summary=1", nil)
+	rows, e := listSSHLogin(c)
+	require.NoError(t, e)
+	require.Len(t, rows, 120)
+	require.LessOrEqual(t, queries, 2)
+	for _, row := range rows {
+		require.Equal(t, []uint16{22}, row.Policy.Ports)
+		require.Empty(t, row.Status.Banned)
+	}
+	tok.SetServerIDs([]uint64{2})
+	c, _ = patRequestCtx(t, tok, 1, "GET", "/ssh-login?summary=1", nil)
+	rows, e = listSSHLogin(c)
+	require.NoError(t, e)
+	require.Len(t, rows, 1)
+	require.EqualValues(t, 2, rows[0].ID)
+	require.Equal(t, "fail2ban", rows[0].Policy.Backend)
 }

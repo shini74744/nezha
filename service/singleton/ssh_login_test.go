@@ -198,3 +198,17 @@ func TestSSHPolicyAndBlacklistValidation(t *testing.T) {
 	p.BlockIPs = []string{"192.0.2.1; reboot"}
 	require.Error(t, p.Validate())
 }
+
+func TestSSHFail2banPolicyRequiresCapableAgent(t *testing.T) {
+	now := sshTestDB(t)
+	require.NoError(t, DB.Model(&model.SSHLoginPolicy{}).Where("uuid = ?", "node-a").Update("backend", "fail2ban").Error)
+	reply, e := ReceiveSSHLogin("node-a", model.SSHLoginReport{}, now)
+	require.Error(t, e)
+	require.Empty(t, reply.Policy.Backend)
+	reply, e = ReceiveSSHLogin("node-a", model.SSHLoginReport{Status: model.SSHLoginStatus{BackendSelection: true, Backend: "native"}}, now)
+	require.NoError(t, e)
+	require.Equal(t, "fail2ban", reply.Policy.Backend)
+	require.True(t, SSHLoginStatusFor("node-a").BackendSelection)
+	_, e = ReceiveSSHLogin("node-a", model.SSHLoginReport{Status: model.SSHLoginStatus{BackendSelection: true, Backend: "unknown"}}, now)
+	require.Error(t, e)
+}

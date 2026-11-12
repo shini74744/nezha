@@ -40,6 +40,10 @@ func paginateBans(entries []BanEntry, query BanQuery, now time.Time) BanPage {
 			filtered = append(filtered, entry)
 		}
 	}
+	parsed := make(map[string]netip.Addr, len(filtered))
+	for _, entry := range filtered {
+		parsed[entry.IP], _ = netip.ParseAddr(entry.IP)
+	}
 	slices.SortFunc(filtered, func(a, b BanEntry) int {
 		if a.BannedAt > b.BannedAt {
 			return -1
@@ -47,9 +51,7 @@ func paginateBans(entries []BanEntry, query BanQuery, now time.Time) BanPage {
 		if a.BannedAt < b.BannedAt {
 			return 1
 		}
-		x, _ := netip.ParseAddr(a.IP)
-		y, _ := netip.ParseAddr(b.IP)
-		return x.Compare(y)
+		return parsed[a.IP].Compare(parsed[b.IP])
 	})
 	page.Total = len(filtered)
 	last := max(1, (len(filtered)+query.PageSize-1)/query.PageSize)
@@ -61,7 +63,11 @@ func paginateBans(entries []BanEntry, query BanQuery, now time.Time) BanPage {
 func readBanPage(ctx context.Context, q BanQuery, st Status, g banGuard, b blacklistGuard, n nativeState, now time.Time) BanPage {
 	entries := []BanEntry{}
 	var err error
-	if st.Existing != nil && !st.Migrated {
+	if st.Backend == "fail2ban" {
+		if st.AutoBanActive {
+			entries, err = g.readFB5Bans(ctx, now)
+		}
+	} else if st.Existing != nil && !st.Migrated {
 		var raw []byte
 		raw, err = g.Exec(ctx, "fail2ban-client", "get", "sshd", "banip", "--with-time")
 		if err == nil {

@@ -13,6 +13,7 @@ const ownedHeader = "# Managed by DDnezha SSH protection.\n"
 
 type banGuard struct {
 	Name, Dir, Root string
+	fb5Cache        *fb5BanCache
 	Ready           bool
 	Reused          bool
 	Exec            func(context.Context, string, ...string) ([]byte, error)
@@ -75,10 +76,14 @@ func (g *banGuard) banned(ctx context.Context) []string {
 	return result
 }
 func (g *banGuard) unban(ctx context.Context, ip string) error {
+	g.invalidateFB5Cache()
 	a, err := netip.ParseAddr(ip)
 	if err != nil || a.Zone() != "" {
 		return fmt.Errorf("无效 IP")
 	}
 	_, err = g.Exec(ctx, "fail2ban-client", "set", g.target(), "unbanip", a.Unmap().String())
+	if err == nil && !g.Reused {
+		err = g.forgetFB5Start(a.Unmap().String())
+	}
 	return err
 }
