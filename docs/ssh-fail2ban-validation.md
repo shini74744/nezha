@@ -79,3 +79,19 @@ go test -p 1 ./... -count=1
 - 阿里面板服务 active、异常重启计数为 0，原 Agent 进程、程序和配置保持不变；源站 API 与首页正常，首页引用的 29 个 JS/CSS 文件与发布输入一致。后台访问密码保护保持生效。公网自动请求遇到 Cloudflare 验证页，源站核验与公网浏览器访问分别记录。
 
 [Go HTTP/2 超时修复记录](https://github.com/golang/go/issues/80927)。正式版本与上文开发验证产物区分保存，不使用开发包替代正式安装包。
+
+
+## v0.0.26 正式发布复核（2026-11-13 北京时间）
+
+v0.0.25 发布后的完整静态检查发现 SSH 设置列表按值复制了包含锁的服务器对象。v0.0.26 改为指针列表，保留原权限筛选、排序和接口行为；Agent 源码及协议没有变化，继续使用已验证的 v1.0.11。
+
+- 面板源码与标签：`0c05d8439f5a0e54c63831e1e683cce100115802`，正式版本 [v0.0.26](https://github.com/shini74744/nezha/releases/tag/v0.0.26)。当前版本入口、README、统一仓库说明与更新记录已同步。
+- 完整 `go vet ./...` 与 SSH 控制器回归通过。Linux 完整单元测试、竞态和随机顺序测试、格式检查、Gosec、Agent 兼容压力测试、CodeQL，以及 Windows 原生完整单元测试、构建和生命周期测试通过。
+- Linux 与 Windows 正式安装包均使用 Go 1.26.8，实际二进制通过部署生命周期验收；面板 18 个附件逐项核验 GitHub 服务端摘要。Agent 48 个附件保持已发布内容，18 个平台包及原生 Linux、Windows、macOS 发布检查通过。
+- macOS 面板额外检查的首次运行未分配到 GitHub 托管运行器，未执行测试步骤；GitHub 注明 macOS arm64 运行器容量不足。已发起失败任务重跑，验收记录更新时仍在排队，不能将此项记为通过。此次面板发行附件仅提供 Linux amd64、Windows amd64；上述 Agent macOS 验证为独立的成功运行。
+- 阿里已更新到 v0.0.26。运行文件 SHA-256：`c2c0853fcde2fd23647e87aefb2d92db5ed5734a0a0aafc02a5819b2cc535b3f`，与正式包一致。新备份包含更新前程序、配置和 SQLite 一致性副本，压缩前后摘要一致。
+- 2026-11-13 00:35 北京时间复核：服务 active、异常重启计数 0；首页和设置 API 返回 200，29 个引用的 JS/CSS 文件摘要一致，后台访问密码保护保持生效。服务器身份、SSH 设置、数据库结构和历史记录保留，原 Agent 进程、程序及配置未改变。
+- 本轮发布 Agent 安装包，没有批量替换服务器上的 Agent，也没有自动切换防护方式或修改业务网络。临时安装包传输服务已关闭并删除临时私钥。
+- 公网自动请求仍受到 Cloudflare 验证页拦截；以上线上功能核验在阿里源站完成，不将其表述为公网浏览器验收。
+
+对应验证记录：[面板测试](https://github.com/shini74744/nezha/actions/runs/43255649282)、[Windows 正式包](https://github.com/shini74744/nezha/actions/runs/43255839786)、[CodeQL](https://github.com/shini74744/nezha/actions/runs/43255651344)、[Agent 发布测试及构建](https://github.com/shini74744/nezha/actions/runs/43246991500)。后续文档补记不改写已发布标签、安装包或其摘要。
