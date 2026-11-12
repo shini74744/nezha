@@ -9,9 +9,9 @@
 | 项目 | 主面板 | Agent |
 | --- | --- | --- |
 | 合仓首版 | v0.0.3 | v1.0.1 |
-| 当前正式版本 | v0.0.24 | v1.0.10 |
-| 当前 Git Release 标签 | `v0.0.24` | `agent-v1.0.10` |
-| 当前程序版本 | `v0.0.24` | `1.0.10` |
+| 当前正式版本 | v0.0.25 | v1.0.11 |
+| 当前 Git Release 标签 | `v0.0.25` | `agent-v1.0.11` |
+| 当前程序版本 | `v0.0.25` | `1.0.11` |
 | 最新版本入口 | `release/dashboard-version.txt` | `release/agent-version.txt` |
 | 源码 | 仓库根目录 Go module | `agent/` 独立 Go module |
 | 合仓首版安装包名称 | `dashboard-系统-架构.zip` | `nezha-agent_系统_架构.zip` |
