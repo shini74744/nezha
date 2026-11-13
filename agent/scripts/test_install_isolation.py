@@ -62,7 +62,7 @@ else:shutil.copyfile(Path(os.environ['FIXTURE'])/('checksum' if url.endswith('.s
     def snapshot(self,path):
         return {str(p.relative_to(path)):p.read_bytes() for p in path.rglob("*") if p.is_file()}
     def run_script(self,action,success=True):
-        result=subprocess.run(["sh",str(self.script),action],env=self.env,capture_output=True,text=True,timeout=30)
+        result=subprocess.run(["sh",str(self.script),action],env=self.env,capture_output=True,text=True,errors="backslashreplace",timeout=30)
         self.assertEqual(result.returncode==0,success,result.stdout+result.stderr)
         return result
     def test_install_repeat_and_uninstall_leave_official_untouched(self):

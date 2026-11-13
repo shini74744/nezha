@@ -45,7 +45,7 @@ class InstallerTest(unittest.TestCase):
             env = dict(os.environ, PATH=str(mockbin)+":"+os.environ["PATH"], FIXTURE=str(base/"fixture"),
                        CALL_LOG=str(log), FAIL_INSTALL=str(int(fail_install)), FAIL_DOWNLOAD=str(int(fail_download)),
                        DDNZ_SERVER="fixture.invalid:443", DDNZ_CLIENT_SECRET="fixture-secret", POINTER=pointer, FIXTURE_VERSION=binary_version)
-            result = subprocess.run(["sh", str(script), *args], env=env, capture_output=True, text=True)
+            result = subprocess.run(["sh", str(script), *args], env=env, capture_output=True, text=True, errors="backslashreplace")
             invalid_pointer = pointer != "v1.0.1"
             wrong_version = binary_version != "1.0.1"
             bad_record = checksum_format not in ("standard", "legacy", "binary", "crlf")
