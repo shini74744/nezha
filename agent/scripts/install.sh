@@ -133,9 +133,17 @@ curl --fail --location --proto '=https' --tlsv1.2 --retry 3 --connect-timeout 20
 printf '\033[0;32m%s\033[0m\n' "校验文件下载成功"
 curl --fail --location --proto '=https' --tlsv1.2 --retry 3 --connect-timeout 20 --max-time 600 "$base/$asset" -o "$tmp/agent.zip"
 printf '\033[0;32m%s\033[0m\n' "Agent 程序下载成功"
-expected=$(tr -d '\r\n' < "$tmp/checksum")
-[ "${#expected}" -eq 64 ] || { echo "Invalid checksum" >&2; exit 1; }
-case "$expected" in *[!0-9a-fA-F]*) echo "Invalid checksum" >&2; exit 1 ;; esac
+# Accept legacy bare hashes and standard sha256sum records for this exact asset.
+# Reject extra records, malformed digests and another platform's filename.
+expected=$(LC_ALL=C awk -v asset="$asset" '
+ {
+  sub(/\r$/, "")
+  if (NR != 1 || (NF != 1 && NF != 2) || length($1) != 64 || $1 ~ /[^0-9a-fA-F]/) { invalid=1; next }
+  if (NF == 2) { name=$2; sub(/^\*/, "", name); if (name != asset) { invalid=1; next } }
+  digest=tolower($1)
+ }
+ END { if (invalid || NR != 1 || digest == "") exit 1; print digest }
+' "$tmp/checksum") || { echo "Invalid checksum; existing agent unchanged" >&2; exit 1; }
 case "$hash_tool" in
  sha256sum) actual=$(sha256sum "$tmp/agent.zip" | awk '{print $1}') ;;
  shasum) actual=$(shasum -a 256 "$tmp/agent.zip" | awk '{print $1}') ;;

@@ -22,7 +22,7 @@ build_target() {
  mkdir -p "$work"
  echo "Building $target"
  go build -p 2 -mod=readonly -trimpath -buildvcs=false -ldflags "-s -w -X github.com/nezhahq/agent/pkg/monitor.Version=$version -X main.arch=$GOARCH" -o "$work/$binary" ./cmd/agent
- python3 -c 'import sys,zipfile,pathlib,hashlib; p=pathlib.Path(sys.argv[1]); a=pathlib.Path(sys.argv[2]); z=zipfile.ZipFile(a,"w",zipfile.ZIP_DEFLATED); z.write(p,p.name); z.close(); a.with_suffix(a.suffix+".sha256").write_text(hashlib.sha256(a.read_bytes()).hexdigest()+"\n")' "$work/$binary" "$out/DDnezha_${GOOS}_${GOARCH}.zip"
+ python3 -c 'import sys,zipfile,pathlib,hashlib; p=pathlib.Path(sys.argv[1]); a=pathlib.Path(sys.argv[2]); z=zipfile.ZipFile(a,"w",zipfile.ZIP_DEFLATED); z.write(p,p.name); z.close(); a.with_suffix(a.suffix+".sha256").write_text(hashlib.sha256(a.read_bytes()).hexdigest()+"  "+a.name+"\n")' "$work/$binary" "$out/DDnezha_${GOOS}_${GOARCH}.zip"
  echo "Done $target"
 }
 export -f build_target

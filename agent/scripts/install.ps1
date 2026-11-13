@@ -82,8 +82,13 @@ try {
     Write-Host '校验文件下载成功' -ForegroundColor Green
     Invoke-WebRequest -UseBasicParsing "$base/$asset" -OutFile $archive
     Write-Host 'Agent 程序下载成功' -ForegroundColor Green
-    $expected = (Get-Content -LiteralPath $checksum -Raw).Trim()
-    if ($expected -notmatch '^[a-fA-F0-9]{64}$' -or (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne $expected) {
+    # One legacy digest or one sha256sum record for this exact platform asset.
+    $record = Get-Content -LiteralPath $checksum -Raw
+    $pattern = '\A[ \t]*(?<digest>[a-fA-F0-9]{64})(?:[ \t]+\*?' + [regex]::Escape($asset) + ')?[ \t]*(?:\r?\n)?\z'
+    $match = [regex]::Match($record, $pattern)
+    if (-not $match.Success) { throw 'Invalid checksum; existing agent unchanged.' }
+    $expected = $match.Groups['digest'].Value
+    if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne $expected) {
         throw 'SHA256 mismatch; existing agent unchanged.'
     }
     Write-Host 'Agent 文件 SHA-256 校验成功' -ForegroundColor Green

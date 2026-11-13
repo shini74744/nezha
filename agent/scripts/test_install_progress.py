@@ -13,7 +13,7 @@ RESET = "\033[0m"
 MESSAGES = ["校验文件下载成功", "Agent 程序下载成功", "Agent 文件 SHA-256 校验成功"]
 
 class ProgressTests(unittest.TestCase):
-    def run_downloads(self, failure="", checksum=None, shell=("sh",), system="Linux", cpu="x86_64", hash_tool="sha256sum"):
+    def run_downloads(self, failure="", checksum=None, shell=("sh",), system="Linux", cpu="x86_64", hash_tool="sha256sum", record="legacy"):
         source = SCRIPT.read_text()
         platform = source[source.index('case "$(uname -s)" in'):source.index('for tool in curl unzip; do')]
         block = platform + source[source.index('asset='):source.index('unzip -p')]
@@ -31,7 +31,12 @@ curl() {
  case "$*" in
   *agent-version.txt*) printf 'v1.0.1\\n' > "$tmp/version" ;;
   *.sha256*) [ "$TEST_FAIL" != checksum ] || return 22
-             printf '%s\\n' "$TEST_DIGEST" > "$tmp/checksum" ;;
+             case "$TEST_RECORD" in
+              standard) printf '%s  %s\\n' "$TEST_DIGEST" "$asset" ;;
+              binary) printf '%s *%s\\n' "$TEST_DIGEST" "$asset" ;;
+              crlf) printf '%s  %s\\r\\n' "$TEST_DIGEST" "$asset" ;;
+              *) printf '%s\\n' "$TEST_DIGEST" ;;
+             esac > "$tmp/checksum" ;;
   *) [ "$TEST_FAIL" != archive ] || return 22
      cp "$TEST_FIXTURE" "$tmp/agent.zip" ;;
  esac
@@ -40,7 +45,7 @@ curl() {
             return subprocess.run([*shell, "-c", prefix + block], capture_output=True, text=True,
                 env={**os.environ, "TEST_TMP": td, "TEST_FIXTURE": str(fixture),
                      "TEST_DIGEST": digest, "TEST_FAIL": failure, "TEST_SYSTEM": system,
-                     "TEST_CPU": cpu, "TEST_HASH_TOOL": hash_tool})
+                     "TEST_CPU": cpu, "TEST_HASH_TOOL": hash_tool, "TEST_RECORD": record})
 
     def test_script_ready_is_green(self):
         source = SCRIPT.read_text().split('case "$(uname -s)" in')[0]
@@ -69,6 +74,16 @@ curl() {
                 self.assertEqual(result.stdout, "".join(GREEN + m + RESET + "\n" for m in MESSAGES[:2]))
                 self.assertNotIn(MESSAGES[2], result.stdout)
 
+    def test_standard_records_across_platforms_and_shells(self):
+        for shell in [("sh",), ("dash",), ("bash",), ("busybox", "sh")]:
+            for system, cpu, utility in [("Linux", "x86_64", "sha256sum"),
+                                        ("Darwin", "arm64", "shasum"),
+                                        ("FreeBSD", "amd64", "sha256")]:
+                for record in ("standard", "binary", "crlf"):
+                    with self.subTest(shell=shell, system=system, record=record):
+                        result = self.run_downloads(shell=shell, system=system, cpu=cpu,
+                                                    hash_tool=utility, record=record)
+                        self.assertEqual(result.returncode, 0, result.stderr)
     def test_cross_platform_shell_matrix(self):
         cases = [("Linux", "x86_64", "sha256sum"), ("Linux", "aarch64", "sha256sum"),
                  ("Darwin", "x86_64", "shasum"), ("Darwin", "arm64", "shasum"),
