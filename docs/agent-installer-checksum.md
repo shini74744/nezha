@@ -4,7 +4,7 @@
 
 支持单行纯 SHA-256，以及 SHA-256 后接当前安装包文件名的标准记录，兼容二进制标记、十六进制大小写与 CRLF。文件名必须精确匹配当前系统和架构，不能包含路径。空内容、错误长度、非十六进制、多条记录、额外空行或字段均拒绝；下载内容仍须通过完整 SHA-256 校验和 Agent 版本验证。
 
-POSIX 使用现有 SHA-256 工具，适用于 Linux、macOS、FreeBSD。Windows 保留 UTF-8 BOM，兼容 Windows PowerShell 5.1 和 PowerShell 7。新安装、重复安装、配置保留、卸载隔离及安装失败回滚均由临时目录中的模拟程序验证，不在业务机器试装。
+POSIX 使用现有 SHA-256 工具，适用于 Linux、macOS、FreeBSD。同时为路径变量添加明确边界，修复 macOS 自带 shell 误读相邻中文标点而中断安装收尾提示的问题。Windows 保留 UTF-8 BOM，兼容 Windows PowerShell 5.1 和 PowerShell 7。新安装、重复安装、配置保留、卸载隔离及安装失败回滚均由临时目录中的模拟程序验证，不在业务机器试装。
 
 版本入口仍为 Agent v1.0.11，面板仍为 v0.0.26。此次仅更新仓库安装脚本及发行版的安装附件和文档；已有 ZIP 程序包及其校验值保持原样。SOURCE_COMMIT.txt 继续指向程序包的源提交，新增 INSTALLER_SOURCE_COMMIT.txt 单独记录修正后的安装脚本源提交。
 
