@@ -189,7 +189,7 @@ install -m 755 "$tmp/DDnezha" "$binary" || rollback
 # service install also starts the service; loading it twice fails on launchd.
 "$binary" service install || rollback
 mv -f "$backup/agent.sh.new" "$installer" || rollback
-printf '%s\n' "管理脚本：$installer；卸载：cd $dir && ./agent.sh uninstall"
+printf '%s\n' "管理脚本：${installer}；卸载：cd $dir && ./agent.sh uninstall"
 printf '\033[0;32m%s\033[0m\n' "DDnezha successfully installed and started（安装成功，服务已启动）"
 if [ -f "$backup/DDnezha" ] || [ -f "$backup/config.yml" ]; then
  printf '%s\n' "已有配置或旧程序备份：$backup"

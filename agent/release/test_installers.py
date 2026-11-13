@@ -53,6 +53,8 @@ class InstallerTest(unittest.TestCase):
             self.assertEqual(result.returncode != 0, failed, result.stdout+result.stderr)
             self.assertNotIn("下载来源", result.stdout)
             if not failed:
+                self.assertIn("DDnezha successfully installed and started", result.stdout, repr((result.stdout, result.stderr)))
+                self.assertNotIn("unbound variable", result.stderr)
                 self.assertEqual("已有配置或旧程序备份：" in result.stdout, existing, repr((result.stdout, result.stderr)))
             if corrupt or fail_download or invalid_pointer or wrong_version or bad_record:
                 if not wrong_version: self.assertFalse(log.exists())
