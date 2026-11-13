@@ -50,11 +50,13 @@ func main() {
         $expected = "https://github.com/shini74744/nezha/releases/download/agent-$env:INSTALLER_POINTER/DDnezha_windows_amd64.zip"
         Assert ($Uri -ceq $expected -or $Uri -ceq "$expected.sha256") 'Installer requested a wrong repository/component'
         if ($env:INSTALLER_CASE -eq 'download') { throw 'fixture HTTP failure' }
-        if ($Uri.EndsWith('.sha256')) { $env:INSTALLER_CHECKSUM | Set-Content -LiteralPath $OutFile -Encoding ascii }
+        if ($Uri.EndsWith('.sha256')) { [IO.File]::WriteAllText($OutFile, $env:INSTALLER_CHECKSUM, [Text.Encoding]::ASCII) }
         else { Copy-Item -LiteralPath $env:INSTALLER_ZIP -Destination $OutFile }
     }
     function icacls.exe { $global:LASTEXITCODE = 0 }
-    foreach ($env:INSTALLER_CASE in @('new','existing','checksum','version','download','rollback','foreign-script','script-directory')) {
+    $validChecksumCases = @('new','existing','legacy','binary-record','crlf')
+    $invalidChecksumCases = @('wrong-name','checksum-path','multiple-records','blank-line','extra-field','short-digest','nonhex','empty')
+    foreach ($env:INSTALLER_CASE in ($validChecksumCases + $invalidChecksumCases + @('checksum','version','download','rollback','foreign-script','script-directory'))) {
         $dir = Join-Path $workspace $env:INSTALLER_CASE
         New-Item -ItemType Directory -Path $dir | Out-Null
         $env:INSTALLER_TEST_DIR = $dir
@@ -65,7 +67,21 @@ func main() {
         $env:DDNZ_SERVER='fixture.invalid:443'; $env:DDNZ_CLIENT_SECRET='fixture-only-secret'
         $env:DDNZ_UUID='11111111-1111-4111-8111-111111111111'
         $env:INSTALLER_POINTER = if ($env:INSTALLER_CASE -eq 'version') {'v1.0.2'} else {'v1.0.1'}
-        $env:INSTALLER_CHECKSUM = if ($env:INSTALLER_CASE -eq 'checksum') {'0'*64} else {$zipHash}
+        $env:INSTALLER_CHECKSUM = switch ($env:INSTALLER_CASE) {
+            'legacy' { $zipHash }
+            'binary-record' { "$zipHash *DDnezha_windows_amd64.zip`n" }
+            'crlf' { "$zipHash  DDnezha_windows_amd64.zip`r`n" }
+            'wrong-name' { "$zipHash  DDnezha_windows_arm64.zip`n" }
+            'checksum-path' { "$zipHash  ../DDnezha_windows_amd64.zip`n" }
+            'multiple-records' { "$zipHash`n$zipHash`n" }
+            'blank-line' { "$zipHash`n`n" }
+            'extra-field' { "$zipHash  DDnezha_windows_amd64.zip ignored`n" }
+            'short-digest' { $zipHash.Substring(1) }
+            'nonhex' { 'g'*64 }
+            'empty' { '' }
+            'checksum' { '0'*64 }
+            default { "$($zipHash.ToLowerInvariant())  DDnezha_windows_amd64.zip`n" }
+        }
         $existing = $env:INSTALLER_CASE -ne 'new'
         $config = Join-Path $dir 'config.yml'
         $target = Join-Path $dir 'DDnezha.exe'
@@ -87,7 +103,7 @@ func main() {
         $savedBefore = if ($existing -and $env:INSTALLER_CASE -ne 'script-directory') { (Get-FileHash -LiteralPath $savedInstaller).Hash } else { $null }
         $failed = $false
         try { & $scriptUnderTest } catch { $failed = $true; Write-Host ("Fixture caught: " + $_.Exception.Message + " at " + $_.InvocationInfo.PositionMessage) }
-        $expectFailure = $env:INSTALLER_CASE -notin @('new','existing')
+        $expectFailure = $env:INSTALLER_CASE -notin $validChecksumCases
         Assert ($failed -eq $expectFailure) "Unexpected installer result: $env:INSTALLER_CASE"
         $wanted = if ($expectFailure) {$oldHash} else {$newHash}
         Assert ((Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash -eq $wanted) "Wrong final binary: $env:INSTALLER_CASE"
@@ -101,7 +117,7 @@ func main() {
         } else {
             Assert (Test-Path -LiteralPath $savedInstaller -PathType Container) 'Foreign directory changed'
         }
-        if ($env:INSTALLER_CASE -in @('checksum','version','download','foreign-script','script-directory')) {
+        if ($env:INSTALLER_CASE -in ($invalidChecksumCases + @('checksum','version','download','foreign-script','script-directory'))) {
             Assert (-not (Test-Path -LiteralPath $env:INSTALLER_CALL_LOG)) 'Service called before download/version verification'
         }
         Write-Host "PASS Windows installer $env:INSTALLER_CASE"

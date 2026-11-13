@@ -1,9 +1,9 @@
 """Installer safety tests. All downloads/services are stubbed in a temp directory."""
-import hashlib, os, pathlib, shutil, subprocess, tempfile, unittest, zipfile
+import hashlib, os, pathlib, platform, shutil, subprocess, tempfile, unittest, zipfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 class InstallerTest(unittest.TestCase):
-    def run_case(self, existing=False, corrupt=False, fail_download=False, fail_install=False, args=(), pointer="v1.0.1", binary_version="1.0.1"):
+    def run_case(self, existing=False, corrupt=False, fail_download=False, fail_install=False, args=(), pointer="v1.0.1", binary_version="1.0.1", checksum_format="standard"):
         with tempfile.TemporaryDirectory(prefix="owned-installer-test-") as base:
             base = pathlib.Path(base)
             installed = base / "installed"
@@ -21,7 +21,18 @@ class InstallerTest(unittest.TestCase):
             with zipfile.ZipFile(archive, "w") as z:
                 z.write(binary, "DDnezha")
             digest = "0"*64 if corrupt else hashlib.sha256(archive.read_bytes()).hexdigest()
-            (base / "fixture.sha256").write_text(digest+"\n")
+            system = {"Linux": "linux", "Darwin": "darwin", "FreeBSD": "freebsd"}[platform.system()]
+            cpu = {"x86_64": "amd64", "amd64": "amd64", "aarch64": "arm64", "arm64": "arm64"}[platform.machine()]
+            asset = f"DDnezha_{system}_{cpu}.zip"
+            formats = {
+                "standard": digest+"  "+asset+"\n", "legacy": digest+"\n",
+                "binary": digest+" *"+asset+"\n", "crlf": digest.upper()+"  "+asset+"\r\n",
+                "wrong-name": digest+"  DDnezha_other_platform.zip\n",
+                "path": digest+"  ../"+asset+"\n", "multiple": digest+"\n"+digest+"\n",
+                "blank-line": digest+"\n\n", "extra-field": digest+"  "+asset+" ignored\n",
+                "short": digest[:-1]+"\n", "nonhex": "g"*64+"\n", "empty": "",
+            }
+            (base / "fixture.sha256").write_bytes(formats[checksum_format].encode())
             mockbin = base / "bin"
             mockbin.mkdir()
             curl = mockbin / "curl"
@@ -37,12 +48,13 @@ class InstallerTest(unittest.TestCase):
             result = subprocess.run(["sh", str(script), *args], env=env, capture_output=True, text=True)
             invalid_pointer = pointer != "v1.0.1"
             wrong_version = binary_version != "1.0.1"
-            failed = corrupt or fail_download or fail_install or invalid_pointer or wrong_version
+            bad_record = checksum_format not in ("standard", "legacy", "binary", "crlf")
+            failed = corrupt or fail_download or fail_install or invalid_pointer or wrong_version or bad_record
             self.assertEqual(result.returncode != 0, failed, result.stdout+result.stderr)
             self.assertNotIn("下载来源", result.stdout)
             if not failed:
                 self.assertEqual("已有配置或旧程序备份：" in result.stdout, existing)
-            if corrupt or fail_download or invalid_pointer or wrong_version:
+            if corrupt or fail_download or invalid_pointer or wrong_version or bad_record:
                 if not wrong_version: self.assertFalse(log.exists())
                 elif log.exists(): self.assertNotIn("service", log.read_text())
                 if existing: self.assertEqual((installed/"DDnezha").read_text(), old)
@@ -58,6 +70,11 @@ class InstallerTest(unittest.TestCase):
         for value in ("", "agent-v1.0.1", "v1.0.1-rc.1", "../v1.0.1", "v01.0.1", "v1.0.1;false"):
             with self.subTest(pointer=value): self.run_case(existing=True, pointer=value)
     def test_binary_version_mismatch_preserves_existing(self): self.run_case(existing=True, binary_version="0.0.3")
+    def test_checksum_records(self):
+        for form in ("standard", "legacy", "binary", "crlf", "wrong-name", "path",
+                     "multiple", "blank-line", "extra-field", "short", "nonhex", "empty"):
+            with self.subTest(checksum_format=form):
+                self.run_case(existing=True, checksum_format=form)
     def test_new_install(self): self.run_case()
     def test_explicit_install(self): self.run_case(args=("install",))
     def test_existing_config_and_uuid_preserved(self): self.run_case(existing=True)
