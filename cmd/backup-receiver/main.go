@@ -13,7 +13,7 @@ import (
 	"syscall"
 )
 
-var version = "v0.1.1"
+var version = "v0.1.2"
 
 func main() {
 	var config, key, user, directory, public string
