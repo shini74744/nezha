@@ -77,19 +77,26 @@ const receiverInstallerSHA256 = "a0a5ecc6ea5500483fb2b6fbf3c1276af869e49dd4b6d26
 func receiverInstallCommand(user, directory, publicKey string, port int) string {
 	return fmt.Sprintf(`sh <<'DDNEZHA_BACKUP_INSTALL'
 set -eu
+exec 2>&1
 umask 077
 command -v sha256sum >/dev/null 2>&1 || { echo '缺少 sha256sum，无法校验安装脚本'; exit 1; }
 task_script=$(mktemp /tmp/ddnezha-backup-setup.XXXXXX)
 trap 'rm -f -- "$task_script"' EXIT
 trap 'exit 130' INT TERM HUP
-if command -v curl >/dev/null 2>&1; then
- curl -fL --proto '=https' --tlsv1.2 --connect-timeout 15 --max-time 60 %s -o "$task_script"
-elif command -v wget >/dev/null 2>&1; then
- wget -T 60 -O "$task_script" %s
-else
- echo '缺少 curl 或 wget，无法下载安装脚本'; exit 1
+download_installer() {
+ if command -v curl >/dev/null 2>&1; then
+  curl -fL --retry 2 --retry-delay 2 --retry-max-time 45 --proto '=https' --tlsv1.2 --connect-timeout 15 --max-time 60 "$1" -o "$task_script"
+ elif command -v wget >/dev/null 2>&1; then
+  wget -T 60 -O "$task_script" "$1"
+ else
+  echo '缺少 curl 或 wget，无法下载安装脚本'; return 1
+ fi
+}
+if ! download_installer %s; then
+ echo '安装脚本下载失败，正在尝试备用地址'
+ download_installer %s || { echo '无法从 DDnezha 仓库下载安装脚本，请检查网络或稍后重试'; exit 1; }
 fi
 printf '%%s  %%s\n' %s "$task_script" | sha256sum -c -
 env DDNZ_BACKUP_USER=%s DDNZ_BACKUP_DIRECTORY=%s DDNZ_BACKUP_PUBLIC_KEY=%s DDNZ_BACKUP_PORT=%s sh "$task_script"
-DDNEZHA_BACKUP_INSTALL`, shellQuote("https://raw.githubusercontent.com/shini74744/nezha/backup-"+ReceiverVersion+"/backup/scripts/install.sh"), shellQuote("https://raw.githubusercontent.com/shini74744/nezha/backup-"+ReceiverVersion+"/backup/scripts/install.sh"), shellQuote(receiverInstallerSHA256), shellQuote(user), shellQuote(directory), shellQuote(publicKey), shellQuote(fmt.Sprint(port)))
+DDNEZHA_BACKUP_INSTALL`, shellQuote("https://github.com/shini74744/nezha/releases/download/backup-"+ReceiverVersion+"/install.sh"), shellQuote("https://raw.githubusercontent.com/shini74744/nezha/backup-"+ReceiverVersion+"/backup/scripts/install.sh"), shellQuote(receiverInstallerSHA256), shellQuote(user), shellQuote(directory), shellQuote(publicKey), shellQuote(fmt.Sprint(port)))
 }
