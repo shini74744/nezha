@@ -1,3 +1,5 @@
+//go:build !windows
+
 package backupreceiver
 
 import (
@@ -23,7 +25,8 @@ func publicKey(t *testing.T) string {
 	return strings.TrimSpace(string(ssh.MarshalAuthorizedKey(key)))
 }
 func TestConfigureIdentityPreservedAndBusinessDataUntouched(t *testing.T) {
-	dir := t.TempDir()
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	require.NoError(t, err)
 	config := filepath.Join(dir, "config", "receiver.json")
 	host := filepath.Join(dir, "config", "host-key")
 	data := filepath.Join(dir, "backups")
@@ -97,7 +100,8 @@ func TestRootBoundariesSymlinksAndOldBackups(t *testing.T) {
 	require.Equal(t, "keep", string(buf))
 }
 func TestConfigureRejectsEscapingPaths(t *testing.T) {
-	dir := t.TempDir()
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	require.NoError(t, err)
 	pub := publicKey(t)
 	for _, root := range []string{"/", "/etc", "/etc/backup", "relative", "/tmp/../etc", "/var/backups\nExecStart=evil"} {
 		_, e := Configure(filepath.Join(dir, "config"), filepath.Join(dir, "key"), "ddnb_123456789abc_11223344", root, pub, 2022)

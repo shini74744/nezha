@@ -176,13 +176,13 @@ func NextTime(p Plan, now time.Time) *time.Time {
 	return &next
 }
 func LoadCipher(file string, existing bool) (cipher.AEAD, error) {
-	key, err := os.ReadFile(file)
+	key, err := os.ReadFile(file) // #nosec G304 -- fixed credential-key filename in the configured panel data directory.
 	if os.IsNotExist(err) && !existing {
 		key = make([]byte, 32)
 		if _, err = rand.Read(key); err != nil {
 			return nil, err
 		}
-		f, e := os.OpenFile(file, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+		f, e := os.OpenFile(file, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600) // #nosec G304 -- exclusive creation of the panel backup credential key.
 		if e != nil {
 			return nil, e
 		}

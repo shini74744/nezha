@@ -46,7 +46,7 @@ SQLite 使用在线备份接口并检查快照完整性；历史监控使用存�
 4. 正式替换前停止面板，保留现有数据副本。按原部署方式恢复 data 目录中的数据库、配置、密钥、上传文件和 tsdb 历史数据，恢复适当的目录属主。
 5. 如原来使用自定义配置、数据库或 TSDB 路径，将包内 data/config.yaml、data/sqlite.db、data/tsdb 放回对应路径。先在隔离环境验证登录、服务器配置及历史曲线，再正式启动。
 
-安装文件位于 backup/scripts/install.sh；独立接收端源码位于 cmd/backup-receiver 和 pkg/backupreceiver。发布版本使用 backup-v0.1.0 标签及同名 Release，包含各架构二进制和 SHA256SUMS。面板生成的命令绑定该版本与安装脚本校验值，避免运行漂移的安装脚本。
+安装文件位于 backup/scripts/install.sh；独立接收端源码位于 cmd/backup-receiver 和 pkg/backupreceiver。发布版本使用 backup-v0.1.1 标签及同名 Release，包含各架构二进制和 SHA256SUMS。面板生成的命令绑定该版本与安装脚本校验值，避免运行漂移的安装脚本。
 
 ## 接口权限
 

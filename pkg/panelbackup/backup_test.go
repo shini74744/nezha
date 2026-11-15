@@ -17,6 +17,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -61,6 +62,9 @@ func testIdentity(t *testing.T) (ssh.Signer, string) {
 	return signer, string(pem.EncodeToMemory(block))
 }
 func testReceiver(t *testing.T, installation string) (Target, string, func()) {
+	if runtime.GOOS == "windows" {
+		t.Skip("in-process POSIX receiver fixture; released receivers target Linux")
+	}
 	t.Helper()
 	host, _ := testIdentity(t)
 	client, secret := testIdentity(t)
@@ -404,4 +408,49 @@ func TestReceiverRejectsNonBackupCapabilities(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSQLiteSnapshotRestoresIndependently(t *testing.T) {
+	source, _ := testSource(t)
+	dest := filepath.Join(t.TempDir(), "snapshot.db")
+	require.NoError(t, SQLiteSnapshot(context.Background(), source.Database, dest))
+	db, e := gorm.Open(sqlite.Open(dest), &gorm.Config{})
+	require.NoError(t, e)
+	sql, e := db.DB()
+	require.NoError(t, e)
+	defer sql.Close()
+	var value string
+	require.NoError(t, db.Raw("SELECT value FROM application_data WHERE id=1").Scan(&value).Error)
+	require.Equal(t, "完整历史测试数据", value)
+}
+
+func TestSnapshotResolvesConfiguredRootAliasWithoutEscaping(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX root alias fixture")
+	}
+	source, _ := testSource(t)
+	original := source.DataDir
+	history := filepath.Join(original, "history")
+	require.NoError(t, os.Mkdir(history, 0700))
+	require.NoError(t, os.WriteFile(filepath.Join(history, "series"), []byte("history fixture"), 0600))
+	alias := filepath.Join(t.TempDir(), "alias")
+	require.NoError(t, os.Symlink(original, alias))
+	source.DataDir = alias
+	source.Database = filepath.Join(alias, "sqlite.db")
+	source.Config = filepath.Join(alias, "config.yaml")
+	source.TSDBDir = filepath.Join(alias, "history")
+	source.TSDBSnapshot = func() (string, func() error, error) { return history, func() error { return nil }, nil }
+	snap, e := Prepare(context.Background(), source, func(string) {})
+	require.NoError(t, e)
+	defer snap.Close()
+	names := []string{}
+	for _, entry := range snap.Entries {
+		names = append(names, entry.Name)
+	}
+	require.Contains(t, names, "data/tsdb/series")
+	require.NotContains(t, names, "data/history/series")
+	outside := t.TempDir()
+	source.TSDBSnapshot = func() (string, func() error, error) { return outside, func() error { return nil }, nil }
+	_, e = Prepare(context.Background(), source, func(string) {})
+	require.ErrorContains(t, e, "超出数据目录")
 }

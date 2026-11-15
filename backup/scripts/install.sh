@@ -9,7 +9,7 @@ fail() { printf 'DDNEZHA_BACKUP_ERROR: %s\n' "$*" >&2; exit 1; }
 : "${DDNZ_BACKUP_PUBLIC_KEY:?缺少面板公钥}"
 : "${DDNZ_BACKUP_DIRECTORY:=/var/lib/ddnezha-backup/backups}"
 : "${DDNZ_BACKUP_PORT:=2022}"
-version=v0.1.0
+version=v0.1.1
 case "$(uname -m)" in
  x86_64|amd64) arch=amd64 ;;
  aarch64|arm64) arch=arm64 ;;

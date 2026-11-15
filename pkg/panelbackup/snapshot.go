@@ -70,7 +70,11 @@ func within(root, p string) bool {
 	return e == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 func SQLiteSnapshot(ctx context.Context, source, destination string) error {
-	u := url.URL{Scheme: "file", Path: abs(source)}
+	uriPath := filepath.ToSlash(abs(source))
+	if filepath.VolumeName(source) != "" && !strings.HasPrefix(uriPath, "/") {
+		uriPath = "/" + uriPath
+	}
+	u := url.URL{Scheme: "file", Path: uriPath}
 	q := u.Query()
 	q.Set("mode", "ro")
 	q.Set("_busy_timeout", "1000")
@@ -137,6 +141,18 @@ func SQLiteSnapshot(ctx context.Context, source, destination string) error {
 	return nil
 }
 func Prepare(ctx context.Context, src Source, phase func(string)) (snap *Snapshot, err error) {
+	// Resolve administrator-configured roots once, including macOS /var aliases.
+	// Individual links inside ordinary data files remain rejected below.
+	for _, p := range []*string{&src.Database, &src.Config, &src.DataDir, &src.TSDBDir} {
+		if *p == "" {
+			continue
+		}
+		resolved, e := filepath.EvalSymlinks(abs(*p))
+		if e != nil {
+			return nil, fmt.Errorf("备份来源路径不可用: %w", e)
+		}
+		*p = resolved
+	}
 	info, statErr := os.Stat(src.Database)
 	if statErr != nil {
 		return nil, statErr
@@ -162,7 +178,7 @@ func Prepare(ctx context.Context, src Source, phase func(string)) (snap *Snapsho
 	snap.Entries = append(snap.Entries, Entry{Name: "data/sqlite.db", file: filepath.Join(work, "sqlite.db")})
 	// Copy ordinary files once, so every destination receives the same generation.
 	seen := map[string]bool{"data/sqlite.db": true}
-	copyFile := func(srcFile, name string) error {
+	copyFile := func(srcFile, name, allowedRoot string) error {
 		if seen[name] {
 			return nil
 		}
@@ -181,12 +197,21 @@ func Prepare(ctx context.Context, src Source, phase func(string)) (snap *Snapsho
 			return fmt.Errorf("准备文件 %s 失败: %w", name, err)
 		}
 		dest := filepath.Join(work, fmt.Sprintf("file-%d", len(snap.Entries)))
-		in, err := os.Open(srcFile)
+		root, err := os.OpenRoot(allowedRoot)
+		if err != nil {
+			return err
+		}
+		defer root.Close()
+		relative, err := filepath.Rel(allowedRoot, srcFile)
+		if err != nil {
+			return err
+		}
+		in, err := root.Open(relative)
 		if err != nil {
 			return err
 		}
 		defer in.Close()
-		out, err := os.OpenFile(dest, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+		out, err := os.OpenFile(dest, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600) // #nosec G304 -- generated filename inside private snapshot staging directory.
 		if err != nil {
 			return err
 		}
@@ -204,7 +229,7 @@ func Prepare(ctx context.Context, src Source, phase func(string)) (snap *Snapsho
 		snap.Entries = append(snap.Entries, Entry{Name: name, file: dest})
 		return nil
 	}
-	if err = copyFile(src.Config, "data/config.yaml"); err != nil {
+	if err = copyFile(src.Config, "data/config.yaml", filepath.Dir(src.Config)); err != nil {
 		return nil, fmt.Errorf("备份配置失败: %w", err)
 	}
 	roots := []string{abs(filepath.Dir(src.Database)), abs(src.DataDir)}
@@ -244,7 +269,7 @@ func Prepare(ctx context.Context, src Source, phase func(string)) (snap *Snapsho
 			if e != nil {
 				return e
 			}
-			return copyFile(p, "data/"+filepath.ToSlash(rel))
+			return copyFile(p, "data/"+filepath.ToSlash(rel), root)
 		})
 		if err != nil {
 			return nil, fmt.Errorf("备份上传文件失败: %w", err)
