@@ -5,10 +5,12 @@ package backupreceiver
 import (
 	"crypto/ed25519"
 	"crypto/rand"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/pkg/sftp"
@@ -111,4 +113,57 @@ func TestConfigureRejectsEscapingPaths(t *testing.T) {
 	require.NoError(t, os.Symlink(t.TempDir(), link))
 	_, e := Configure(filepath.Join(dir, "config"), filepath.Join(dir, "key"), "ddnb_123456789abc_11223344", filepath.Join(link, "backups"), pub, 2022)
 	require.ErrorContains(t, e, "符号链接")
+}
+
+func TestConcurrentPublicationNeverReplacesAnotherBackup(t *testing.T) {
+	dir := t.TempDir()
+	user := "ddnb_123456789abc_11223344"
+	first, err := NewFilesystem(dir, user)
+	require.NoError(t, err)
+	defer first.Close()
+	second, err := NewFilesystem(dir, user)
+	require.NoError(t, err)
+	defer second.Close()
+	folder := filepath.Join(dir, "ddnezha-123456789abc")
+	require.NoError(t, os.Mkdir(folder, 0700))
+	for i := 0; i < 100; i++ {
+		final := filepath.Join(folder, fmt.Sprintf("backup-%d.tar.gz", i))
+		partial := final + ".partial"
+		file, err := first.Filewrite(&sftp.Request{Method: "Put", Filepath: partial, Flags: 2 | 8 | 32})
+		require.NoError(t, err)
+		_, err = file.WriteAt([]byte("snapshot"), 0)
+		require.NoError(t, err)
+		require.NoError(t, file.(io.Closer).Close())
+		start := make(chan struct{})
+		var wg sync.WaitGroup
+		var publishErr, competingErr error
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			<-start
+			publishErr = first.Filecmd(&sftp.Request{Method: "Rename", Filepath: partial, Target: final})
+		}()
+		go func() {
+			defer wg.Done()
+			<-start
+			f, e := second.Filewrite(&sftp.Request{Method: "Put", Filepath: final, Flags: 2 | 8 | 32})
+			competingErr = e
+			if e == nil {
+				_, competingErr = f.WriteAt([]byte("other"), 0)
+				if ce := f.(io.Closer).Close(); competingErr == nil {
+					competingErr = ce
+				}
+			}
+		}()
+		close(start)
+		wg.Wait()
+		require.NotEqual(t, publishErr == nil, competingErr == nil, "exactly one competing publication may succeed")
+		data, err := os.ReadFile(final)
+		require.NoError(t, err)
+		if publishErr == nil {
+			require.Equal(t, "snapshot", string(data))
+		} else {
+			require.Equal(t, "other", string(data))
+		}
+	}
 }

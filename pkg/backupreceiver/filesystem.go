@@ -1,7 +1,6 @@
 package backupreceiver
 
 import (
-	"errors"
 	"io"
 	"os"
 	"path"
@@ -159,16 +158,16 @@ func (f *Filesystem) Filecmd(r *sftp.Request) error {
 		if !strings.HasSuffix(name, ".partial") || strings.TrimSuffix(name, ".partial") != target {
 			return os.ErrPermission
 		}
-		if _, err = f.root.Lstat(target); !errors.Is(err, os.ErrNotExist) {
-			if err == nil {
-				return os.ErrExist
-			}
-			return err
-		}
 		if !f.created[name] {
 			return os.ErrPermission
 		}
-		if err := f.root.Rename(name, target); err != nil {
+		// Publish without replacement atomically, even across separate SFTP
+		// sessions. A prior existence check followed by Rename can overwrite
+		// a backup created by another connection between those operations.
+		if err := f.root.Link(name, target); err != nil {
+			return err
+		}
+		if err := f.root.Remove(name); err != nil {
 			return err
 		}
 		delete(f.created, name)
