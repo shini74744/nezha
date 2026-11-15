@@ -2,6 +2,7 @@ import { swrFetcher } from "@/api/api"
 import { deleteService } from "@/api/service"
 import { ActionButtonGroup } from "@/components/action-button-group"
 import { HeaderButtonGroup } from "@/components/header-button-group"
+import { ServiceSortDialog } from "@/components/service-sort-dialog"
 import { ServiceCard } from "@/components/service"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -60,7 +61,6 @@ export default function ServicePage() {
         {
             header: "ID",
             accessorKey: "id",
-            accessorFn: (row) => `${row.id}(${row.display_index ?? 0})`,
         },
         {
             header: t("Name"),
@@ -185,6 +185,7 @@ export default function ServicePage() {
                         mutate: mutate,
                     }}
                 >
+                    <ServiceSortDialog services={dataCache} mutate={mutate} />
                     <ServiceCard mutate={mutate} />
                 </HeaderButtonGroup>
             </div>

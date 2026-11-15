@@ -160,6 +160,11 @@ func main() {
 		log.Fatal(err)
 	}
 
+	singleton.InitBackups(dashboardCliParam.ConfigFile, dashboardCliParam.DatabaseLocation)
+	if singleton.BackupManager != nil {
+		defer singleton.BackupManager.Close()
+	}
+
 	l, err := openDashboardListener("tcp", dashboardListenerAddress(singleton.Conf.ListenHost, singleton.Conf.ListenPort), dashboardHTTPListener)
 	if err != nil {
 		log.Fatal(err)

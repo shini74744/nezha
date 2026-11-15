@@ -41,6 +41,7 @@ export const SettingsTab = ({ className }: { className?: string }) => {
                 </TabsTrigger>}
                 {isAdmin && <TabsTrigger value="/dashboard/settings/icons" asChild><Link to="/dashboard/settings/icons">图标设置</Link></TabsTrigger>}
                 {isAdmin && <TabsTrigger value="/dashboard/settings/cards" asChild><Link to="/dashboard/settings/cards">卡片设置</Link></TabsTrigger>}
+                {isAdmin && <TabsTrigger value="/dashboard/settings/backup" asChild><Link to="/dashboard/settings/backup">数据备份</Link></TabsTrigger>}
             </TabsList>
         </Tabs>
     )

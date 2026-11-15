@@ -219,6 +219,7 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	// service monitor
 	auth.GET("/service/list", restScopeMiddleware(model.ScopeServiceRead), listHandler(listService))
 	auth.POST("/service", restScopeMiddleware(model.ScopeServiceWrite), commonHandler(createService))
+	auth.POST("/service/order", restScopeMiddleware(model.ScopeServiceWrite), commonHandler(updateServiceOrder))
 	auth.PATCH("/service/:id", restScopeMiddleware(model.ScopeServiceWrite), commonHandler(updateService))
 	auth.POST("/batch-delete/service", restScopeMiddleware(model.ScopeServiceDelete), commonHandler(batchDeleteService))
 
@@ -305,6 +306,18 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	auth.PUT("/setting/connectivity", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateConnectivitySettings))
 	auth.GET("/setting/appearance", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getAppearance))
 	auth.PATCH("/setting/appearance", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateAppearance))
+	auth.GET("/backup", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getBackupOverview))
+	auth.GET("/backup/history", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getBackupHistory))
+	auth.PUT("/backup/plan", restScopeMiddleware(model.ScopeAdminAll), adminHandler(saveBackupPlan))
+	auth.POST("/backup/targets", restScopeMiddleware(model.ScopeAdminAll), adminHandler(saveBackupTarget))
+	auth.DELETE("/backup/targets/:id", restScopeMiddleware(model.ScopeAdminAll), adminHandler(deleteBackupTarget))
+	auth.POST("/backup/probe", restScopeMiddleware(model.ScopeAdminAll), adminHandler(probeBackupTarget))
+	auth.POST("/backup/prepare", restScopeMiddleware(model.ScopeAdminAll), adminHandler(prepareBackupTarget))
+	auth.POST("/backup/setup", restScopeAllOf(model.ScopeAdminAll, model.ScopeServerExec), adminHandler(setupBackupTarget))
+	auth.GET("/backup/targets/:id/status", restScopeMiddleware(model.ScopeAdminAll), adminHandler(backupTargetStatus))
+	auth.GET("/backup/targets/:id/command", restScopeMiddleware(model.ScopeAdminAll), adminHandler(backupCommand))
+	auth.POST("/backup/run", restScopeMiddleware(model.ScopeAdminAll), adminHandler(startBackup))
+	auth.POST("/backup/runs/:id/cancel", restScopeMiddleware(model.ScopeAdminAll), adminHandler(cancelBackup))
 	auth.POST("/maintenance", restScopeMiddleware(model.ScopeAdminAll), adminHandler(runMaintenance))
 
 	r.NoRoute(fallbackToFrontend(frontendDist))
@@ -550,6 +563,7 @@ func fallbackToFrontend(frontendDist fs.FS) func(*gin.Context) {
 		regexp.MustCompile(`^/dashboard/settings/online-user$`),
 		regexp.MustCompile(`^/dashboard/settings/waf$`),
 		regexp.MustCompile(`^/dashboard/settings/api-tokens$`),
+		regexp.MustCompile(`^/dashboard/settings/backup$`),
 		// 注意：这里的白名单决定哪些 URL 走 index.html fallback；漏一条就会把
 		// 直接刷新该页面变成 404（HTTP 状态码层面，body 仍是 index.html，所以
 		// 浏览器内 SPA 看起来正常，但 monitoring / 链接预览会以为站点挂了）。

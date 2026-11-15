@@ -1,3 +1,4 @@
+import BackupPage from "@/routes/backup"
 // NOTE: Do not modify the import order unless absolutely necessary.
 import { createRoot } from "react-dom/client"
 import { RouterProvider, createBrowserRouter } from "react-router-dom"
@@ -168,6 +169,7 @@ const router = createBrowserRouter([
                     { path: "waf", element: <WAFPage /> },
                     { path: "online-user", element: <OnlineUserPage /> },
                     { path: "api-tokens", element: <ApiTokensPage /> },
+                    { path: "backup", element: <BackupPage /> },
                 ],
             },
             {

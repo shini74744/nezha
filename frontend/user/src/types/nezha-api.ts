@@ -147,6 +147,7 @@ export interface ServiceResponse {
 }
 
 export interface ServiceData {
+	display_index?: number;
 	service_name: string;
 	current_up: number;
 	current_down: number;

@@ -13,3 +13,7 @@ export const updateService = async (id: number, data: ModelServiceForm): Promise
 export const deleteService = async (id: number[]): Promise<void> => {
     return fetcher<void>(FetcherMethod.POST, "/api/v1/batch-delete/service", id)
 }
+
+export const updateServiceOrder = async (serviceIDs: number[], originalIDs: number[]): Promise<void> => {
+    return fetcher<void>(FetcherMethod.POST, "/api/v1/service/order", { service_ids: serviceIDs, original_ids: originalIDs })
+}

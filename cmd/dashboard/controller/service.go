@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"math"
 	"slices"
 	"strconv"
 	"strings"
@@ -492,6 +493,9 @@ func createService(c *gin.Context) (uint64, error) {
 		return 0, singleton.Localizer.ErrorT("permission denied")
 	}
 
+	singleton.ServiceMutationMu.Lock()
+	defer singleton.ServiceMutationMu.Unlock()
+
 	uid := getUid(c)
 
 	var m model.Service
@@ -501,7 +505,14 @@ func createService(c *gin.Context) (uint64, error) {
 	m.Type = mf.Type
 	m.SkipServers = mf.SkipServers
 	m.Cover = mf.Cover
-	m.DisplayIndex = mf.DisplayIndex
+	var minimumIndex int
+	if err := singleton.DB.Model(&model.Service{}).Select("COALESCE(MIN(display_index), 1)").Scan(&minimumIndex).Error; err != nil {
+		return 0, err
+	}
+	if minimumIndex == math.MinInt {
+		return 0, fmt.Errorf("请先保存服务排序后再新增服务")
+	}
+	m.DisplayIndex = minimumIndex - 1
 	m.Notify = mf.Notify
 	m.NotificationGroupID = mf.NotificationGroupID
 	m.Duration = mf.Duration
@@ -559,6 +570,9 @@ func updateService(c *gin.Context) (any, error) {
 		return nil, singleton.Localizer.ErrorT("permission denied")
 	}
 
+	singleton.ServiceMutationMu.Lock()
+	defer singleton.ServiceMutationMu.Unlock()
+
 	var m model.Service
 	if err := singleton.DB.First(&m, id).Error; err != nil {
 		return nil, singleton.Localizer.ErrorT("service id %d does not exist", id)
@@ -573,7 +587,6 @@ func updateService(c *gin.Context) (any, error) {
 	m.Type = mf.Type
 	m.SkipServers = mf.SkipServers
 	m.Cover = mf.Cover
-	m.DisplayIndex = mf.DisplayIndex
 	m.Notify = mf.Notify
 	m.NotificationGroupID = mf.NotificationGroupID
 	m.Duration = mf.Duration
@@ -617,6 +630,9 @@ func batchDeleteService(c *gin.Context) (any, error) {
 	if err := c.ShouldBindJSON(&ids); err != nil {
 		return nil, err
 	}
+
+	singleton.ServiceMutationMu.Lock()
+	defer singleton.ServiceMutationMu.Unlock()
 
 	if !singleton.ServiceSentinelShared.CheckPermission(c, slices.Values(ids)) {
 		return nil, singleton.Localizer.ErrorT("permission denied")

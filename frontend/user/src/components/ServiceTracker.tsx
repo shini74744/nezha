@@ -44,7 +44,8 @@ export function ServiceTracker({ serverList, view = "uptime", onClose }: {
 		refetchOnMount: true, refetchOnWindowFocus: true, refetchInterval: 10000, retry: false,
 	});
 	const serviceSummaries = useMemo(() =>
-		Object.entries(serviceData?.data?.services ?? {}).map(([name, data]) => ({
+		Object.entries(serviceData?.data?.services ?? {})
+			.sort(([aID, a], [bID, b]) => (b.display_index ?? 0) - (a.display_index ?? 0) || Number(aID) - Number(bID)).map(([name, data]) => ({
 			...processServiceData(data), name, title: data.service_name,
 		})), [serviceData?.data?.services]);
 	const cycleStats = serviceData?.data?.cycle_transfer_stats ?? {};

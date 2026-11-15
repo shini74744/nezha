@@ -54,7 +54,6 @@ interface ServiceCardProps {
 
 const serviceFormSchema = z.object({
     cover: z.coerce.number().int().min(0),
-    display_index: z.coerce.number().int(),
     duration: z.coerce.number().int().min(30),
     enable_trigger_task: asOptionalField(z.boolean()),
     hide_for_guest: asOptionalField(z.boolean()),
@@ -88,7 +87,6 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ data, mutate }) => {
             : {
                   type: 1,
                   cover: 0,
-                  display_index: 0,
                   name: "",
                   target: "",
                   max_latency: 0.0,
@@ -172,19 +170,6 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ data, mutate }) => {
                                                     placeholder="My Service Monitor"
                                                     {...field}
                                                 />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="display_index"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>{t("Weight")}</FormLabel>
-                                            <FormControl>
-                                                <Input type="number" placeholder="0" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
