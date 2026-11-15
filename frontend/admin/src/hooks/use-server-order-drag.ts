@@ -25,6 +25,7 @@ export interface ServerOrderDragPreview {
 export function useServerOrderDrag(
     enabled: boolean,
     onDrop: (id: number, target: number, after: boolean) => void,
+    rowAttribute: "data-sort-server" | "data-sort-service" = "data-sort-server",
 ) {
     const listRef = useRef<HTMLDivElement>(null)
     const session = useRef<Session | null>(null)
@@ -46,19 +47,19 @@ export function useServerOrderDrag(
             current.y > bounds.bottom
         )
             return null
-        const rows = Array.from(list.querySelectorAll<HTMLElement>("[data-sort-server]"))
+        const rows = Array.from(list.querySelectorAll<HTMLElement>(`[${rowAttribute}]`))
         for (const row of rows) {
             const rect = row.getBoundingClientRect()
             if (current.y <= rect.bottom) {
                 return {
-                    id: Number(row.dataset.sortServer),
+                    id: Number(row.getAttribute(rowAttribute)),
                     after: current.y > rect.top + rect.height / 2,
                 }
             }
         }
         const last = rows[rows.length - 1]
-        return last ? { id: Number(last.dataset.sortServer), after: true } : null
-    }, [])
+        return last ? { id: Number(last.getAttribute(rowAttribute)), after: true } : null
+    }, [rowAttribute])
 
     const updatePreview = useCallback(() => {
         const current = session.current

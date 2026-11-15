@@ -271,5 +271,21 @@
     "Copied": "已複製到剪貼簿",
     "Scopes": "範圍",
     "InvalidUsernameOrPassword": "使用者名稱或密碼無效",
-    "NetworkError": "網路錯誤"
+    "NetworkError": "網路錯誤",
+    "ServiceManualList": "Manual service order",
+    "ServiceMoveDown": "Move {{name}} down",
+    "ServiceMoveTo": "移到",
+    "ServiceMoveUp": "Move {{name}} up",
+    "ServiceOrderRefreshFailed": "Order saved. List refresh failed; please refresh manually",
+    "ServiceOrderSaved": "Service order saved",
+    "ServicePositionApply": "移動 {{name}} 到指定位置",
+    "ServicePositionInput": "將 {{name}} 移到第幾位",
+    "ServicePositionInvalid": "請輸入 1～{{total}} 的整數位置",
+    "ServicePositionPlaceholder": "位置",
+    "ServiceSort": "Service order",
+    "ServiceSortHint": "拖曳調整順序，完成後點擊儲存。",
+    "ServiceSortSearch": "搜尋服務名稱或ID",
+    "ServiceSortSearchClear": "清除搜尋",
+    "ServiceSortSearchEmpty": "找不到符合的服務",
+    "ServiceSortSearchHint": "顯示 {{count}} / {{total}} 项"
 }

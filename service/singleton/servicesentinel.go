@@ -476,6 +476,7 @@ func (ss *ServiceSentinel) CopyStats() map[uint64]model.ServiceResponseItem {
 	sri := make(map[uint64]model.ServiceResponseItem)
 	for k, service := range stats {
 		service.ServiceName = service.service.Name
+		service.DisplayIndex = service.service.DisplayIndex
 		sri[k] = service.ServiceResponseItem
 	}
 

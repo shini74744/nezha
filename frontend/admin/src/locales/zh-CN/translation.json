@@ -359,5 +359,21 @@
     "NameRequired": "名称必填。",
     "Revoke": "吊销",
     "Copied": "已复制到剪贴板",
-    "Scopes": "权限"
+    "Scopes": "权限",
+    "ServiceManualList": "手动排序列表",
+    "ServiceMoveDown": "下移 {{name}}",
+    "ServiceMoveTo": "移到",
+    "ServiceMoveUp": "上移 {{name}}",
+    "ServiceOrderRefreshFailed": "顺序已保存，列表刷新失败，请手动刷新",
+    "ServiceOrderSaved": "服务顺序已保存",
+    "ServicePositionApply": "移动 {{name}} 到指定位置",
+    "ServicePositionInput": "将 {{name}} 移到第几位",
+    "ServicePositionInvalid": "请输入 1～{{total}} 的整数位置",
+    "ServicePositionPlaceholder": "位置",
+    "ServiceSort": "服务排序",
+    "ServiceSortHint": "拖动调整顺序，完成后点击保存。",
+    "ServiceSortSearch": "搜索服务名称或ID",
+    "ServiceSortSearchClear": "清除搜索",
+    "ServiceSortSearchEmpty": "未找到匹配的服务",
+    "ServiceSortSearchHint": "显示 {{count}} / {{total}} 项"
 }

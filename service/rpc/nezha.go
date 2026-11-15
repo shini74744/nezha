@@ -161,6 +161,9 @@ func (s *NezhaHandler) RequestTask(stream pb.NezhaService_RequestTaskServer) err
 		if deliverCredentialMigrationResult(result, clientID, stream) {
 			continue
 		}
+		if deliverBackupSetupResult(result, clientID, stream) {
+			continue
+		}
 		if deliverMediaResult(result, clientID, stream) {
 			continue
 		}

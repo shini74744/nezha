@@ -22,14 +22,15 @@ type ServiceForm struct {
 }
 
 type ServiceResponseItem struct {
-	ServiceName string       `json:"service_name,omitempty"`
-	CurrentUp   uint64       `json:"current_up"`
-	CurrentDown uint64       `json:"current_down"`
-	TotalUp     uint64       `json:"total_up"`
-	TotalDown   uint64       `json:"total_down"`
-	Delay       *[30]float64 `json:"delay,omitempty"`
-	Up          *[30]uint64  `json:"up,omitempty"`
-	Down        *[30]uint64  `json:"down,omitempty"`
+	DisplayIndex int          `json:"display_index"`
+	ServiceName  string       `json:"service_name,omitempty"`
+	CurrentUp    uint64       `json:"current_up"`
+	CurrentDown  uint64       `json:"current_down"`
+	TotalUp      uint64       `json:"total_up"`
+	TotalDown    uint64       `json:"total_down"`
+	Delay        *[30]float64 `json:"delay,omitempty"`
+	Up           *[30]uint64  `json:"up,omitempty"`
+	Down         *[30]uint64  `json:"down,omitempty"`
 }
 
 func (r ServiceResponseItem) TotalUptime() float32 {

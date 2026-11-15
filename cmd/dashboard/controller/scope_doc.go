@@ -132,3 +132,21 @@
 //	POST   /api/v1/api-tokens
 //	DELETE /api/v1/api-tokens/{id}
 package controller
+
+// Data backup and manual service ordering. Backup rejects server-restricted PATs.
+// POST /api/v1/service/order nezha:service:write
+// GET /api/v1/backup nezha:admin:*
+// GET /api/v1/backup/history nezha:admin:*
+// PUT /api/v1/backup/plan nezha:admin:*
+// POST /api/v1/backup/targets nezha:admin:*
+// DELETE /api/v1/backup/targets/{id} nezha:admin:*
+// POST /api/v1/backup/probe nezha:admin:*
+// POST /api/v1/backup/prepare nezha:admin:*
+// POST /api/v1/backup/setup nezha:admin:*
+// GET /api/v1/backup/targets/{id}/command nezha:admin:*
+// POST /api/v1/backup/run nezha:admin:*
+// POST /api/v1/backup/runs/{id}/cancel nezha:admin:*
+
+// GET /api/v1/backup/targets/{id}/status nezha:admin:*
+
+// 自动安装备份接收端还须同时具备 nezha:server:exec，管理员数据管理权限不能单独下发远程命令。
