@@ -43,12 +43,6 @@
     flex-shrink: 0;
     gap: 6px;
 }
-.dashboard-header-home {
-    min-height: 40px;
-    padding-inline: 12px;
-    border: 1px solid hsl(var(--border));
-    border-radius: 10px;
-}
 .dashboard-header-mobile {
     min-height: 64px;
     padding: 10px 12px;
@@ -62,11 +56,6 @@
 }
 .dashboard-header-mobile .dashboard-header-actions {
     gap: 2px;
-}
-.dashboard-header-mobile .dashboard-header-home {
-    min-height: 44px;
-    padding-inline: 8px;
-    font-size: 12px;
 }
 .dashboard-header-mobile .dashboard-header-actions > button {
     min-width: 44px;
