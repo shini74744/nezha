@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"mime"
 	"net/http"
 	"strconv"
 	"strings"
@@ -268,4 +269,38 @@ func cancelBackup(c *gin.Context) (any, error) {
 		return nil, e
 	}
 	return nil, m.Cancel(id)
+}
+
+// downloadBackup uses cookie authentication like the admin UI. Streaming avoids
+// buffering multi-gigabyte archives in browser memory or on the panel's disk.
+func downloadBackup(c *gin.Context) (any, error) {
+	m, err := backupManager(c)
+	if err != nil {
+		return nil, err
+	}
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil || id == 0 {
+		return nil, errors.New("备份记录无效")
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 12*time.Hour)
+	defer cancel()
+	download, err := m.OpenDownload(ctx, id)
+	if err != nil {
+		c.Header("Cache-Control", "private, no-store")
+		c.String(http.StatusBadRequest, "无法下载备份\n\n%s\n\n请返回备份页面，检查目标机器连接后重试。", err.Error())
+		return nil, errNoop
+	}
+	defer download.Close()
+	c.Header("Content-Type", "application/octet-stream")
+	c.Header("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": download.Name}))
+	c.Header("Content-Length", strconv.FormatInt(download.Size, 10))
+	c.Header("Cache-Control", "private, no-store")
+	c.Header("X-Content-Type-Options", "nosniff")
+	c.Header("X-Accel-Buffering", "no")
+	c.Status(http.StatusOK)
+	if err = download.Write(ctx, c.Writer); err != nil {
+		// Abort the response instead of appending JSON to a partial backup file.
+		panic(http.ErrAbortHandler)
+	}
+	return nil, errNoop
 }

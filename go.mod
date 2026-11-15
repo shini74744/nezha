@@ -56,6 +56,7 @@ require (
 	filippo.io/hpke v0.4.0 // indirect
 	github.com/kr/fs v0.1.0 // indirect
 	github.com/pkg/sftp v1.13.12 // indirect
+	golang.org/x/term v0.45.0
 )
 
 require (

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test"
 
-const baseTarget={id:1,name:"构建机备份",server_id:9,host:"192.0.2.10",port:2022,user:"ddnb_123456789abc_12345678",directory:"/var/lib/ddnezha-backup/backups",fingerprint:"SHA256:fixture",auth_type:"key",receiver:true,transport:"sftp",has_secret:true}
+const baseTarget={retain_count:15,id:1,name:"构建机备份",server_id:9,host:"192.0.2.10",port:2022,user:"ddnb_123456789abc_12345678",directory:"/var/lib/ddnezha-backup/backups",fingerprint:"SHA256:fixture",auth_type:"key",receiver:true,transport:"sftp",has_secret:true}
 const good={id:1,target_id:1,name:"构建机备份",state:"success",phase:"completed",started_at:"2026-11-15T10:00:00+08:00",finished_at:"2026-11-15T10:02:00+08:00",processed_bytes:10000,total_bytes:10000,sent_bytes:8000,verified_bytes:8000,archive:"/var/lib/ddnezha-backup/backups/ddnezha-123456789abc/backup.tar.gz.age",sha256:"a".repeat(64)}
 const failed={...good,id:2,target_id:2,name:"外部备份机器",state:"failed",phase:"failed",error:"目标磁盘空间不足，备份未完成",archive:"",sha256:"",sent_bytes:2000,processed_bytes:3000,verified_bytes:0}
 const run={id:12,state:"partial",phase:"completed",trigger:"manual",started_at:"2026-11-15T10:00:00+08:00",finished_at:"2026-11-15T10:02:00+08:00",encrypted:true,total_bytes:10000,deliveries:[good,failed]}
@@ -8,7 +8,7 @@ for(const width of [320,390,768,1440]) for(const theme of ["light","dark"])
 test(`backup multi-target details ${width} ${theme}`,async({page},info)=>{
  await page.setViewportSize({width,height:900})
  await page.addInitScript(theme=>localStorage.setItem("nezha-dashboard-theme",theme),theme)
- let plan:any={mode:"interval",interval_minutes:60,daily_time:"03:00",target_ids:[1,2],encrypt:true,has_password:true,next_at:"2026-11-15T11:02:00+08:00"}
+ let plan:any={backup_type:"full",mode:"interval",interval_minutes:60,daily_time:"03:00",target_ids:[1,2],encrypt:true,has_password:true,next_at:"2026-11-15T11:02:00+08:00"}
  const writes:any[]=[];const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message))
  await page.route("**/api/v1/**",async r=>{
   const p=new URL(r.request().url()).pathname;let data:any=[]
@@ -26,6 +26,10 @@ test(`backup multi-target details ${width} ${theme}`,async({page},info)=>{
  await page.goto("/dashboard/settings/backup")
  await expect(page.getByRole("heading",{name:"数据备份",exact:true})).toBeVisible()
  await expect(page.getByText("下次备份时间",{exact:true})).toBeVisible()
+ await expect(page.getByLabel("备份类型",{exact:true})).toHaveValue("full")
+ await expect(page.getByLabel("备份方式",{exact:true}).locator("option[value=realtime]")).toHaveCount(0)
+ await page.getByLabel("备份类型",{exact:true}).selectOption("incremental")
+ await expect(page.getByRole("link",{name:"下载 构建机备份 第 12 轮备份",exact:true})).toHaveAttribute("href","/api/v1/backup/deliveries/1/download")
  await page.getByRole("button",{name:"查看详情",exact:true}).click()
  await expect(page.getByText("目标磁盘空间不足，备份未完成",{exact:true})).toBeVisible()
  await expect(page.getByRole("progressbar")).toHaveCount(2)
@@ -42,7 +46,7 @@ test(`backup multi-target details ${width} ${theme}`,async({page},info)=>{
  await page.getByLabel("选择备份目标 外部备份机器").uncheck()
  await page.getByRole("button",{name:"保存设置",exact:true}).click()
  await expect.poll(()=>writes.length).toBe(2)
- expect(writes[1].body.encrypt).toBe(false);expect(writes[1].body.target_ids).toEqual([1])
+ expect(writes[1].body.backup_type).toBe("incremental");expect(writes[1].body.encrypt).toBe(false);expect(writes[1].body.target_ids).toEqual([1])
  expect(JSON.stringify(writes)).not.toContain("PRIVATE KEY")
  expect(errors).toEqual([])
 })
@@ -61,6 +65,7 @@ test("backup receiver setup handles Agent disabled and keeps unique manual comma
  })
  await page.goto("/dashboard/settings/backup")
  await page.getByRole("button",{name:"添加目标",exact:true}).click()
+ await expect(page.getByLabel("保留份数",{exact:true})).toHaveValue("15")
  await page.getByLabel("服务器",{exact:true}).selectOption("9")
  await expect(page.getByLabel("服务器地址",{exact:true})).toHaveValue("192.0.2.10")
  await expect(page.getByLabel("备份端口",{exact:true})).toHaveValue("2022")
@@ -103,6 +108,7 @@ for(const background of [false,true]) test("receiver setup polls and survives di
  })
  await page.goto("/dashboard/settings/backup")
  await page.getByRole("button",{name:"添加目标",exact:true}).click()
+ await expect(page.getByLabel("保留份数",{exact:true})).toHaveValue("15")
  await page.getByLabel("服务器",{exact:true}).selectOption("9")
  await page.getByRole("button",{name:"自动对接",exact:true}).click()
  await expect(page.getByText("正在安装备份接收端，可关闭窗口并稍后查看结果。",{exact:true})).toBeVisible()

@@ -21,6 +21,7 @@ import (
 
 	"filippo.io/age"
 	"github.com/mattn/go-sqlite3"
+	"github.com/nezhahq/nezha/pkg/backupformat"
 	"github.com/nezhahq/nezha/pkg/backupspace"
 )
 
@@ -42,6 +43,13 @@ type Entry struct {
 	file   string
 }
 type Snapshot struct {
+	Kind     string
+	Index    []backupformat.File
+	Parent   *backupformat.Archive
+	Deleted  []string
+	ParentID uint64
+	Depth    int
+
 	At       time.Time
 	Entries  []Entry
 	Total    int64
@@ -439,15 +447,24 @@ func (s *Snapshot) Write(ctx context.Context, dest io.Writer, progress func(int6
 		if e != nil {
 			return e
 		}
-		entry.SHA256 = hex.EncodeToString(sum.Sum(nil))
+		actual := hex.EncodeToString(sum.Sum(nil))
+		if entry.SHA256 != "" && actual != entry.SHA256 {
+			return errors.New("快照文件在传输时发生变化，请重试")
+		}
+		entry.SHA256 = actual
 		entries = append(entries, entry)
 	}
-	manifest := struct {
-		Format     int       `json:"format"`
-		Version    string    `json:"version"`
-		SnapshotAt time.Time `json:"snapshot_at"`
-		Files      []Entry   `json:"files"`
-	}{1, s.Version, s.At, entries}
+	manifest := backupformat.Manifest{Format: 1, Version: s.Version, SnapshotAt: s.At}
+	for _, entry := range entries {
+		manifest.Files = append(manifest.Files, backupformat.File{Name: entry.Name, Size: entry.Size, SHA256: entry.SHA256})
+	}
+	if s.Kind == "incremental" {
+		manifest.Format = 2
+		manifest.Type = "incremental"
+		manifest.Parent = s.Parent
+		manifest.Deleted = s.Deleted
+		manifest.Files = s.Index
+	}
 	body, err := json.MarshalIndent(manifest, "", "  ")
 	if err != nil {
 		return err

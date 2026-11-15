@@ -1,21 +1,21 @@
 import { fetcher, FetcherMethod } from "./api"
 
 export interface BackupTarget {
- setup_state?:string; setup_error?:string; receiver?: boolean; id: number; name: string; server_id: number; host: string; port: number; user: string
+ retain_count?:number; setup_state?:string; setup_error?:string; receiver?: boolean; id: number; name: string; server_id: number; host: string; port: number; user: string
  directory: string; fingerprint: string; auth_type: "password" | "key"; transport: "sftp"; has_secret?: boolean
 }
 export interface BackupTargetInput extends BackupTarget { password?: string; private_key?: string }
 export interface BackupPlan {
- mode: "manual" | "interval" | "daily" | "realtime"; interval_minutes: number; daily_time: string
+ backup_type?: "full" | "incremental"; mode: "manual" | "interval" | "daily"; interval_minutes: number; daily_time: string
  target_ids: number[]; next_at: string | null; encrypt: boolean; has_password?: boolean
 }
 export interface BackupDelivery {
  id: number; target_id: number; name: string; state: string; phase: string; started_at?: string; finished_at?: string
  processed_bytes: number; total_bytes: number; sent_bytes: number; verified_bytes: number; bytes_per_second: number
- archive: string; sha256: string; error: string
+ backup_type?: string; parent_id?:number; pruned_at?:string|null; retention_error?:string; archive: string; sha256: string; error: string
 }
 export interface BackupRun {
- id: number; trigger: string; retry_of: number; state: string; phase: string; started_at: string; finished_at?: string
+ backup_type?:string; id: number; trigger: string; retry_of: number; state: string; phase: string; started_at: string; finished_at?: string
  snapshot_at?: string; total_bytes: number; encrypted: boolean; error: string; deliveries: BackupDelivery[]
 }
 export interface BackupOverview { time_zone?:string; plan: BackupPlan; targets: BackupTarget[]; active: BackupRun | null; server_time: string }

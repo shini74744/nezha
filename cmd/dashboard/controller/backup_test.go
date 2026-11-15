@@ -39,3 +39,18 @@ func TestBackupPayloadLimitAndSecretRedaction(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, bytes.Contains(raw, []byte("private-")))
 }
+
+func TestBackupDownloadRejectsRestrictedToken(t *testing.T) {
+	prior := singleton.BackupManager
+	singleton.BackupManager = &panelbackup.Manager{}
+	defer func() { singleton.BackupManager = prior }()
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest("GET", "/api/v1/backup/deliveries/1/download", nil)
+	c.Params = gin.Params{{Key: "id", Value: "1"}}
+	token := &model.APIToken{}
+	token.SetScopes([]string{model.ScopeAdminAll})
+	token.SetServerIDs([]uint64{19})
+	c.Set(model.CtxKeyAPIToken, token)
+	_, err := downloadBackup(c)
+	require.ErrorContains(t, err, "完整的管理员权限")
+}

@@ -186,7 +186,12 @@ func TestFullSnapshotTransferEncryptedRestoreAndIsolation(t *testing.T) {
 	require.Error(t, err)
 	_, err = connection.client.OpenFile(result.Archive, os.O_WRONLY|os.O_TRUNC)
 	require.Error(t, err)
-	require.Error(t, connection.client.Remove(result.Archive))
+	// Recorded generated archives can now be removed for retention. Unrelated
+	// historical files remain protected, and existing backups cannot be overwritten.
+	unrelated := filepath.Join(filepath.Dir(result.Archive), "unrelated.txt")
+	require.NoError(t, os.WriteFile(unrelated, []byte("preserve"), 0600))
+	require.Error(t, connection.client.Remove(unrelated))
+	require.NoError(t, connection.client.Remove(result.Archive))
 	session, err := connection.ssh.NewSession()
 	if err == nil {
 		_, err = session.CombinedOutput("id")

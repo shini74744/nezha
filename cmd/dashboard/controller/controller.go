@@ -308,6 +308,7 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	auth.PATCH("/setting/appearance", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateAppearance))
 	auth.GET("/backup", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getBackupOverview))
 	auth.GET("/backup/history", restScopeMiddleware(model.ScopeAdminAll), adminHandler(getBackupHistory))
+	auth.GET("/backup/deliveries/:id/download", restScopeMiddleware(model.ScopeAdminAll), adminHandler(downloadBackup))
 	auth.PUT("/backup/plan", restScopeMiddleware(model.ScopeAdminAll), adminHandler(saveBackupPlan))
 	auth.POST("/backup/targets", restScopeMiddleware(model.ScopeAdminAll), adminHandler(saveBackupTarget))
 	auth.DELETE("/backup/targets/:id", restScopeMiddleware(model.ScopeAdminAll), adminHandler(deleteBackupTarget))
