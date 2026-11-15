@@ -230,9 +230,13 @@ func TestPlainBackupHostIdentityAndInterruptedTransfer(t *testing.T) {
 		require.NotContains(t, f.Name(), "000003.tar.gz")
 	}
 }
-func waitBackup(t *testing.T, m *Manager) History {
+func waitBackup(t *testing.T, m *Manager, timeout ...time.Duration) History {
 	t.Helper()
-	require.Eventually(t, func() bool { view, e := m.Overview(); return e == nil && view.Active == nil }, 20*time.Second, 10*time.Millisecond)
+	limit := 20 * time.Second
+	if len(timeout) > 0 {
+		limit = timeout[0]
+	}
+	require.Eventually(t, func() bool { view, e := m.Overview(); return e == nil && view.Active == nil }, limit, 10*time.Millisecond)
 	history, err := m.History(1, 10)
 	require.NoError(t, err)
 	return history

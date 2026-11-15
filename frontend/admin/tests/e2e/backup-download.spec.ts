@@ -15,7 +15,7 @@ for(const width of [320,390,1440])test(`backup download machine choice and exter
   if(p==="/api/v1/backup/targets"&&route.request().method()==="POST"){saved.push(route.request().postDataJSON());data=saved.at(-1)}
   return route.fulfill({json:{success:true,data}})
  })
- await page.goto("/dashboard/settings/backup")
+ await page.goto("/dashboard/settings/backup",{waitUntil:"domcontentloaded"})
  const select=page.getByRole("combobox",{name:"第 20 轮下载机器",exact:true})
  await expect(select.locator("option")).toHaveCount(2)
  await select.selectOption("11")
