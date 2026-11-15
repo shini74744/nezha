@@ -27,6 +27,7 @@ import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 
+import "./header.css"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import { Button } from "./ui/button"
 import {
@@ -74,7 +75,10 @@ export default function Header() {
         : (window as Window & { DisableAnimatedMan?: boolean }).DisableAnimatedMan
 
     return isDesktop ? (
-        <header className="flex pt-8 dark:bg-black/40 bg-muted border-b-[1px] overflow-visible">
+        <header
+            className="dashboard-header dashboard-header-desktop flex dark:bg-black/40 bg-muted border-b overflow-visible"
+            data-authenticated={!!profile}
+        >
             <NavigationMenu className="dashboard-shell flex flex-none flex-col items-start relative max-w-none">
                 {!disableAnimatedMan && (
                     <img
@@ -89,12 +93,12 @@ export default function Header() {
                     />
                 )}
                 <section className="w-full flex items-center  justify-between">
-                    <div className="flex justify-between items-center w-full">
+                    <div className="dashboard-header-top flex items-center w-full">
                         <NavigationMenuLink
                             asChild
                             className={
                                 navigationMenuTriggerStyle() +
-                                " !text-foreground hover:opacity-60 transition-opacity"
+                                " dashboard-header-brand !text-foreground hover:opacity-60 transition-opacity"
                             }
                         >
                             <Link to={profile ? "/dashboard" : "#"}>
@@ -116,15 +120,17 @@ export default function Header() {
                                     }
                                     alt=""
                                 />
-                                {brand.enabled && brand.title ? brand.title : t("nezha")}
+                                <span className="dashboard-header-title">
+                                    {brand.enabled && brand.title ? brand.title : t("nezha")}
+                                </span>
                             </Link>
                         </NavigationMenuLink>
-
-                        <div className="flex items-center gap-1">
+                        <Overview />
+                        <div className="dashboard-header-actions flex items-center gap-1">
                             <a
                                 href={"/"}
                                 rel="noopener noreferrer"
-                                className="flex items-center text-nowrap gap-1 text-sm font-medium opacity-50 transition-opacity hover:opacity-100"
+                                className="dashboard-header-home inline-flex items-center justify-center text-nowrap text-sm font-medium transition-colors hover:bg-accent"
                             >
                                 {t("BackToHome")}
                             </a>
@@ -216,10 +222,7 @@ export default function Header() {
                         </div>
                     </div>
                 </section>
-                <div className="flex mt-4 ml-4">
-                    <Overview />
-                </div>
-                <div className="flex mt-4 list-none">
+                <div className={cn("flex mt-2 list-none", !profile && "hidden")}>
                     {profile && (
                         <>
                             <NavigationMenuItem>
@@ -308,8 +311,8 @@ export default function Header() {
             </NavigationMenu>
         </header>
     ) : (
-        <header className="flex dark:bg-black/40 bg-muted border-b-[1px] px-4 h-16">
-            <div className="flex max-w-max flex-1 items-center justify-center gap-2">
+        <header className="dashboard-header dashboard-header-mobile flex items-center gap-2 dark:bg-black/40 bg-muted border-b">
+            <div className={cn("shrink-0", !profile && "hidden")}>
                 {profile && (
                     <Drawer open={open} onOpenChange={setOpen}>
                         <DrawerTrigger aria-label="Toggle Menu" asChild>
@@ -346,7 +349,7 @@ export default function Header() {
                 )}
             </div>
             <Link
-                className="mx-2 my-2 inline-flex w-full items-center"
+                className="dashboard-header-brand inline-flex min-w-0 flex-1 items-center"
                 to={profile ? "/dashboard" : "#"}
             >
                 <img
@@ -359,13 +362,15 @@ export default function Header() {
                     src={brand.enabled && brand.logo ? brand.logo : "/dashboard/logo.svg"}
                     alt=""
                 />{" "}
-                {brand.enabled && brand.title ? brand.title : t("nezha")}
+                <span className="dashboard-header-title">
+                    {brand.enabled && brand.title ? brand.title : t("nezha")}
+                </span>
             </Link>
-            <div className="ml-auto flex items-center gap-1">
+            <div className="dashboard-header-actions ml-auto flex items-center gap-1">
                 <a
                     href={"/"}
                     rel="noopener noreferrer"
-                    className="flex items-center text-nowrap gap-1 text-sm font-medium opacity-50 transition-opacity hover:opacity-100"
+                    className="dashboard-header-home inline-flex items-center justify-center text-nowrap text-sm font-medium transition-colors hover:bg-accent"
                 >
                     {t("BackToHome")}
                 </a>
@@ -475,21 +480,28 @@ function Overview() {
         setTimeString(DateTime.now().toFormat("HH:mm:ss"))
     }, 1000)
     return (
-        <section className={"flex flex-col"}>
+        <section className="dashboard-header-overview flex min-w-0 flex-1 flex-col gap-0.5">
             {profile && (
                 <div className="flex items-center gap-1.5">
-                    <div className="flex gap-1.5 text-sm font-semibold">
-                        👋 Hi, {profile?.username}
+                    <div className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
+                        <span className="truncate" title={profile.username}>
+                            👋 Hi, {profile.username}
+                        </span>
                         {profile?.login_ip && (
-                            <p className="font-medium opacity-45">from {profile?.login_ip}</p>
+                            <p
+                                className="dashboard-header-ip truncate font-medium text-muted-foreground"
+                                title={profile.login_ip}
+                            >
+                                from {profile.login_ip}
+                            </p>
                         )}
                     </div>
                 </div>
             )}
             {!profile && <p className="text-sm font-semibold">{t("LoginFirst")}</p>}
             <div className="flex items-center gap-1.5">
-                <p className="text-[13px] font-medium opacity-50">{t("CurrentTime")}</p>
-                <p className="opacity-100 text-[13px] font-medium">{timeString}</p>
+                <p className="text-xs font-medium text-muted-foreground">{t("CurrentTime")}</p>
+                <p className="text-xs font-medium tabular-nums">{timeString}</p>
             </div>
         </section>
     )
