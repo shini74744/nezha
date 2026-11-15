@@ -5,11 +5,11 @@ import (
 	"crypto/cipher"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -24,6 +24,9 @@ type Manager struct {
 	cipher       cipher.AEAD
 	installation string
 	mu           sync.Mutex
+	archiveMu    sync.Mutex
+	leases       map[uint64]int
+	downloads    int
 	active       *Run
 	closed       bool
 	pendingFinal *Run
@@ -96,7 +99,16 @@ func New(db *gorm.DB, source Source) (*Manager, error) {
 	if err = db.Model(&Target{}).Where("setup_state = ?", "installing").Updates(map[string]any{"setup_state": "interrupted", "setup_error": "面板已重启，安装结果尚未确认，请重新测试连接或重试对接", "setup_finished_at": time.Now()}).Error; err != nil {
 		return nil, err
 	}
-	m.NotifyChange()
+	if err = db.Model(&Plan{}).Where("mode = ?", "realtime").Update("mode", "interval").Error; err != nil {
+		return nil, err
+	}
+	if err = db.Model(&Plan{}).Where("backup_type = ? OR backup_type IS NULL", "").Update("backup_type", "full").Error; err != nil {
+		return nil, err
+	}
+	if err = db.Model(&Target{}).Where("retain_count = 0 OR retain_count IS NULL").Update("retain_count", 15).Error; err != nil {
+		return nil, err
+	}
+	m.leases = make(map[uint64]int)
 	return m, nil
 }
 func (m *Manager) NotifyChange() { m.dirty.Add(1) }
@@ -108,17 +120,11 @@ func (m *Manager) RunScheduler() {
 		defer m.wg.Done()
 		tick := time.NewTicker(15 * time.Second)
 		defer tick.Stop()
-		lastFiles := ""
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-tick.C:
-				signature := m.fileSignature()
-				if signature != lastFiles {
-					m.NotifyChange()
-					lastFiles = signature
-				}
 				m.tick(time.Now())
 			}
 		}
@@ -135,33 +141,6 @@ func (m *Manager) Close() {
 	}
 	m.mu.Unlock()
 	m.wg.Wait()
-}
-func (m *Manager) fileSignature() string {
-	h := sha256.New()
-	for _, root := range []string{m.source.DataDir, m.source.TSDBDir} {
-		if root == "" {
-			continue
-		}
-		_ = filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
-			if err != nil {
-				return nil
-			}
-			if d.IsDir() {
-				if strings.HasPrefix(d.Name(), ".ddnz-backup-") || d.Name() == "snapshots" {
-					return filepath.SkipDir
-				}
-				return nil
-			}
-			if abs(p) == abs(m.source.Database) || strings.HasPrefix(abs(p), abs(m.source.Database)+"-") {
-				return nil
-			}
-			if info, e := d.Info(); e == nil {
-				fmt.Fprintf(h, "%s:%d:%d;", p, info.Size(), info.ModTime().UnixNano())
-			}
-			return nil
-		})
-	}
-	return hex.EncodeToString(h.Sum(nil))
 }
 func (m *Manager) tick(now time.Time) {
 	m.mu.Lock()
@@ -182,12 +161,7 @@ func (m *Manager) tick(now time.Time) {
 		m.mu.Unlock()
 		return
 	}
-	if p.Mode == "realtime" && m.backed.Load() == m.dirty.Load() {
-		next := m.nextTime(p, now)
-		_ = m.db.Model(&Plan{}).Where("id = 1").Update("next_at", next).Error
-		m.mu.Unlock()
-		return
-	}
+
 	m.mu.Unlock()
 	_, _ = m.Start("scheduled", nil, 0)
 }
@@ -213,6 +187,9 @@ func (m *Manager) Overview() (Overview, error) {
 	return view, nil
 }
 func (m *Manager) SavePlan(p Plan, password string) error {
+	if p.BackupType == "" {
+		p.BackupType = "full"
+	}
 	if err := ValidatePlan(p); err != nil {
 		return err
 	}
@@ -269,6 +246,9 @@ func (m *Manager) SavePlan(p Plan, password string) error {
 }
 func (m *Manager) ResolveInput(input TargetInput) (Target, string, error) {
 	t := input.Target
+	if t.RetainCount == 0 {
+		t.RetainCount = 15
+	}
 	if t.Transport == "" {
 		t.Transport = "sftp"
 	}
@@ -400,7 +380,7 @@ func (m *Manager) History(page, size int) (History, error) {
 	if err := m.db.Model(&Run{}).Count(&h.Total).Error; err != nil {
 		return h, err
 	}
-	err := m.db.Preload("Deliveries", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).Order("id DESC").Offset((page - 1) * size).Limit(size).Find(&h.Items).Error
+	err := m.db.Preload("Deliveries", func(db *gorm.DB) *gorm.DB { return db.Omit("FileIndex", "Compatibility", "Sink").Order("id ASC") }).Order("id DESC").Offset((page - 1) * size).Limit(size).Find(&h.Items).Error
 	return h, err
 }
 func (m *Manager) Cancel(id uint64) error {
@@ -491,7 +471,7 @@ func (m *Manager) Start(trigger string, ids []uint64, retryOf uint64) (uint64, e
 			return 0, errors.New("尚未设置备份密码")
 		}
 	}
-	run := Run{Trigger: trigger, RetryOf: retryOf, State: "running", Phase: "preparing", StartedAt: time.Now(), Encrypted: p.Encrypt}
+	run := Run{BackupType: p.BackupType, Trigger: trigger, RetryOf: retryOf, State: "running", Phase: "preparing", StartedAt: time.Now(), Encrypted: p.Encrypt}
 	for _, t := range targets {
 		run.Deliveries = append(run.Deliveries, Delivery{TargetID: t.ID, Name: t.Name, State: "queued", Phase: "waiting"})
 	}
@@ -519,10 +499,10 @@ func (m *Manager) Start(trigger string, ids []uint64, retryOf uint64) (uint64, e
 	m.cancel = cancel
 	m.active = &run
 	m.wg.Add(1)
-	go m.execute(ctx, targets, password, m.dirty.Load())
+	go m.execute(ctx, targets, password, m.dirty.Load(), p)
 	return run.ID, nil
 }
-func (m *Manager) execute(ctx context.Context, targets []Target, password string, generation uint64) {
+func (m *Manager) execute(ctx context.Context, targets []Target, password string, generation uint64, plan Plan) {
 	defer m.wg.Done()
 	var snap *Snapshot
 	var err error
@@ -554,6 +534,9 @@ func (m *Manager) execute(ctx context.Context, targets []Target, password string
 		return
 	}
 	snap.Password = password
+	if err = snap.HashFiles(ctx); err != nil {
+		return
+	}
 	m.mu.Lock()
 	m.active.SnapshotAt = &snap.At
 	m.active.TotalBytes = snap.Total
@@ -568,12 +551,23 @@ func (m *Manager) execute(ctx context.Context, targets []Target, password string
 		}
 		secret, secretErr := unseal(m.cipher, t.Secret)
 		lastSave := time.Time{}
+		selected := snap
+		if secretErr == nil {
+			selected, secretErr = m.selectSnapshot(ctx, t, secret, snap, plan)
+		}
+		index, _ := json.Marshal(snap.Index)
 		report := func(value Delivery) {
 			m.mu.Lock()
 			defer m.mu.Unlock()
 			original := m.active.Deliveries[i]
 			value.ID = original.ID
 			value.RunID = runID
+			value.BackupType = selected.Kind
+			value.ParentID = selected.ParentID
+			value.Depth = selected.Depth
+			value.FileIndex = string(index)
+			value.Sink = sinkKey(t, m.installation)
+			value.Compatibility = compatibility(plan)
 			m.active.Deliveries[i] = value
 			if time.Since(lastSave) > 5*time.Second || value.State != "running" {
 				lastSave = time.Now()
@@ -583,7 +577,7 @@ func (m *Manager) execute(ctx context.Context, targets []Target, password string
 		var result Delivery
 		var transferErr error
 		if secretErr == nil {
-			result, transferErr = m.transfer(ctx, t, secret, m.installation, snap, runID, report)
+			result, transferErr = m.transfer(ctx, t, secret, m.installation, selected, runID, report)
 		} else {
 			transferErr = secretErr
 			result = Delivery{TargetID: t.ID, Name: t.Name}
@@ -597,6 +591,23 @@ func (m *Manager) execute(ctx context.Context, targets []Target, password string
 			result.BytesPerSecond = 0
 		}
 		report(result)
+		if transferErr == nil && result.State == "success" && ctx.Err() == nil {
+			// A durable successful delivery is required before deleting any older data.
+			m.mu.Lock()
+			saved := m.active.Deliveries[i]
+			saveErr := m.db.Save(&saved).Error
+			m.mu.Unlock()
+			if saveErr == nil {
+				cleanupCtx, cleanupCancel := context.WithTimeout(ctx, 2*time.Minute)
+				cleanupErr := m.prune(cleanupCtx, t, secret, saved.ID)
+				cleanupCancel()
+				if cleanupErr != nil {
+					m.mu.Lock()
+					m.active.Deliveries[i].RetentionError = safeError(cleanupErr, secret)
+					m.mu.Unlock()
+				}
+			}
+		}
 	}
 }
 func (m *Manager) persistFinalLocked(run *Run) error {
@@ -658,6 +669,12 @@ func (m *Manager) finish(fatal error, generation uint64) {
 		m.active.State = "failed"
 	} else if success < len(m.active.Deliveries) {
 		m.active.State = "partial"
+	}
+	for _, delivery := range m.active.Deliveries {
+		if delivery.RetentionError != "" && success == len(m.active.Deliveries) {
+			m.active.State = "warning"
+			m.active.Error = "备份已完成，部分旧备份未能清理，请查看对应机器的详情。"
+		}
 	}
 	if fatal != nil {
 		m.active.Error = fatal.Error()

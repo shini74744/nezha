@@ -14,6 +14,7 @@ import (
 )
 
 type Target struct {
+	RetainCount     int        `json:"retain_count" gorm:"default:15"`
 	SetupState      string     `json:"setup_state"`
 	SetupError      string     `json:"setup_error"`
 	SetupStartedAt  *time.Time `json:"setup_started_at"`
@@ -37,6 +38,7 @@ type Target struct {
 func (Target) TableName() string { return "panel_backup_targets" }
 
 type Plan struct {
+	BackupType      string     `json:"backup_type" gorm:"default:full"`
 	ID              uint64     `json:"-" gorm:"primaryKey"`
 	Encrypt         bool       `json:"encrypt"`
 	Password        string     `json:"-"`
@@ -52,6 +54,7 @@ type Plan struct {
 func (Plan) TableName() string { return "panel_backup_plan" }
 
 type Run struct {
+	BackupType string     `json:"backup_type"`
 	ID         uint64     `json:"id" gorm:"primaryKey"`
 	Trigger    string     `json:"trigger"`
 	RetryOf    uint64     `json:"retry_of"`
@@ -69,6 +72,15 @@ type Run struct {
 func (Run) TableName() string { return "panel_backup_runs" }
 
 type Delivery struct {
+	BackupType     string     `json:"backup_type"`
+	ParentID       uint64     `json:"parent_id"`
+	Depth          int        `json:"-"`
+	Sink           string     `json:"-" gorm:"index"`
+	Compatibility  string     `json:"-"`
+	FileIndex      string     `json:"-"`
+	PrunedAt       *time.Time `json:"pruned_at"`
+	RetentionError string     `json:"retention_error"`
+
 	ID             uint64     `json:"id" gorm:"primaryKey"`
 	RunID          uint64     `json:"run_id" gorm:"index"`
 	TargetID       uint64     `json:"target_id"`
@@ -96,6 +108,10 @@ type TargetInput struct {
 }
 
 func ValidateTarget(t Target) error {
+	if t.RetainCount < 0 || t.RetainCount > 1000 {
+		return errors.New("保留份数须为 1 至 1000")
+	}
+
 	if strings.TrimSpace(t.Name) == "" || len(t.Name) > 120 {
 		return errors.New("请输入备份目标名称（最多 120 字）")
 	}
@@ -128,9 +144,13 @@ func ValidateTarget(t Target) error {
 	return nil
 }
 func ValidatePlan(p Plan) error {
+	if p.BackupType != "" && p.BackupType != "full" && p.BackupType != "incremental" {
+		return errors.New("请选择全量或增量备份")
+	}
+
 	switch p.Mode {
 	case "manual":
-	case "interval", "realtime":
+	case "interval":
 		if p.IntervalMinutes < 1 || p.IntervalMinutes > 43200 {
 			return errors.New("备份间隔须为 1 至 43200 分钟")
 		}
@@ -159,7 +179,7 @@ func ValidatePlan(p Plan) error {
 func NextTime(p Plan, now time.Time) *time.Time {
 	var next time.Time
 	switch p.Mode {
-	case "interval", "realtime":
+	case "interval":
 		next = now.Add(time.Duration(p.IntervalMinutes) * time.Minute)
 	case "daily":
 		parsed, err := time.Parse("15:04", p.DailyTime)

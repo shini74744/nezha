@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/nezhahq/nezha/pkg/backupformat"
 	"github.com/nezhahq/nezha/pkg/backupspace"
 	"github.com/pkg/sftp"
 )
@@ -179,7 +180,10 @@ func (f *Filesystem) Filecmd(r *sftp.Request) error {
 		defer dir.Close()
 		return dir.Sync()
 	case "Remove":
-		if !f.created[name] && !strings.HasSuffix(name, ".partial") {
+		// Retention may remove only generated backup archives and their checksums
+		// inside this account's panel namespace; other historical files stay immutable.
+		managed := backupformat.ValidArchive(strings.TrimSuffix(path.Base(name), ".sha256"))
+		if !f.created[name] && !strings.HasSuffix(name, ".partial") && !managed {
 			return os.ErrPermission
 		}
 		if name == "." || name == f.folder {

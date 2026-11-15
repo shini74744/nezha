@@ -55,12 +55,19 @@ function Progress({delivery:d}:{delivery:BackupDelivery}) {
 }
 function RunCard({run,action,busy,zone}:{zone?:string;run:BackupRun;action:(kind:string,run:BackupRun,target?:number)=>void;busy:boolean}) {
  const [open,setOpen]=useState(run.state==="running")
+ const available=run.deliveries.filter(d=>d.state==="success"&&d.archive&&!d.pruned_at)
+ const [selected,setSelected]=useState<number>(0)
+ const download=available.find(d=>d.id===selected)||available[0]
  return <article className={box} data-backup-round={run.id}>
   <div className="flex flex-wrap items-center justify-between gap-3">
    <button type="button" className="flex min-w-0 flex-wrap items-center gap-2 text-left font-semibold" onClick={()=>setOpen(!open)} aria-expanded={open}>
     第 {run.id} 轮 <State state={run.state}/><span className="text-xs font-normal text-muted-foreground">{run.trigger==="scheduled"?"自动备份":run.retry_of?`重试第 ${run.retry_of} 轮`:"手动备份"}</span>
    </button>
-   <div className="flex gap-2">
+   <div className="flex min-w-0 flex-wrap items-center gap-2">
+    {available.length>0&&<div className="flex min-w-0 max-w-full flex-wrap items-center gap-2 sm:flex-nowrap">
+     {available.length>1&&<select aria-label={`第 ${run.id} 轮下载机器`} className={selectClass+" w-auto max-w-full sm:max-w-56"} value={download?.id} onChange={e=>setSelected(Number(e.target.value))}>{available.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select>}
+     {download&&<Button asChild variant="outline" size="sm"><a href={`/api/v1/backup/deliveries/${download.id}/download`} target="_blank" rel="noopener noreferrer" aria-label={`下载 ${download.name} 第 ${run.id} 轮备份`}><Download className="mr-1 size-4 shrink-0"/>{download.parent_id?"下载恢复包":"下载备份"}</a></Button>}
+    </div>}
     {run.state==="running"?<Button variant="outline" size="sm" disabled={busy} onClick={()=>action("cancel",run)}>取消</Button>
      :run.deliveries.some(d=>d.state!=="success")&&<Button variant="outline" size="sm" disabled={busy} onClick={()=>action("retry",run)}>重试未完成目标</Button>}
     <Button variant="ghost" size="sm" onClick={()=>setOpen(!open)}>{open?"收起":"查看详情"}</Button>
@@ -74,19 +81,22 @@ function RunCard({run,action,busy,zone}:{zone?:string;run:BackupRun;action:(kind
   {run.state==="running"&&!run.snapshot_at&&<p role="status" className="mt-3 flex items-center gap-2 text-sm"><Loader2 className="size-4 animate-spin"/>{labels[run.phase]||run.phase}</p>}
   {run.error&&<p role="alert" className="mt-3 break-words text-sm text-red-600 dark:text-red-400">{run.error}</p>}
   {(open||run.state==="running")&&<div className="mt-4 space-y-3">{run.deliveries.map(d=><div key={d.id||d.target_id} className="min-w-0 rounded-lg border bg-background/40 p-3">
-   <div className="flex flex-wrap justify-between gap-2"><span className="font-medium">{d.name}</span><State state={d.state}/></div>
+   <div className="flex flex-wrap justify-between gap-2"><span className="font-medium">{d.name}</span><div className="flex flex-wrap gap-2"><span className="text-xs text-muted-foreground">{d.backup_type==="incremental"?"增量备份":"全量备份"}</span><State state={d.state}/></div></div>
    <Progress delivery={d}/>
    <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground"><span>开始：{time(d.started_at,zone)}</span><span>完成：{time(d.finished_at,zone)}</span></div>
    {d.error&&<p role="alert" className="mt-2 break-words text-sm text-red-600 dark:text-red-400">{d.error}</p>}
+   {d.retention_error&&<p role="alert" className="mt-2 break-words text-sm text-amber-600 dark:text-amber-400">{d.retention_error}</p>}
+   {d.pruned_at&&<p className="mt-2 text-xs text-muted-foreground">已按保留设置清理 · {time(d.pruned_at,zone)}</p>}
+   {d.state==="success"&&d.archive&&!d.pruned_at&&<div className="mt-3 flex flex-wrap items-center gap-2"><Button asChild variant="outline" size="sm"><a href={`/api/v1/backup/deliveries/${d.id}/download`} target="_blank" rel="noopener noreferrer"><Download className="mr-1 size-4"/>{d.parent_id?"下载完整恢复包":"下载到电脑"}</a></Button>{!!d.parent_id&&<span className="text-xs text-muted-foreground">包含基础包及所需增量</span>}</div>}
    {d.archive&&<p className="mt-2 break-all text-xs text-muted-foreground">文件：{d.archive}</p>}
    {d.sha256&&d.state==="success"&&<details className="mt-2 text-xs text-muted-foreground"><summary className="cursor-pointer">校验值 SHA-256</summary><code className="mt-1 block break-all">{d.sha256}</code></details>}
    {d.state!=="success"&&run.state!=="running"&&<Button className="mt-2" variant="outline" size="sm" disabled={busy} onClick={()=>action("retry",run,d.target_id)}>重试此目标</Button>}
   </div>)}</div>}
  </article>
 }
-const defaultTarget:BackupTargetInput={id:0,name:"",server_id:0,host:"",port:2022,user:"",directory:"/var/lib/ddnezha-backup/backups",fingerprint:"",auth_type:"password",transport:"sftp"}
+const defaultTarget:BackupTargetInput={retain_count:15,id:0,name:"",server_id:0,host:"",port:2022,user:"",directory:"/var/lib/ddnezha-backup/backups",fingerprint:"",auth_type:"password",transport:"sftp"}
 function TargetDialog({initial,onClose,onSaved}:{initial:BackupTarget|null;onClose:()=>void;onSaved:()=>void}) {
- const [form,setForm]=useState<BackupTargetInput>(initial?{...initial}:{...defaultTarget})
+ const [form,setForm]=useState<BackupTargetInput>(initial?{...initial,retain_count:initial.retain_count||15}:{...defaultTarget})
  const [source,setSource]=useState(initial?.server_id?"server":initial?"manual":"server")
  const [account,setAccount]=useState(initial?.receiver?"dedicated":initial?"existing":"dedicated")
  const [prepared,setPrepared]=useState(!!initial?.receiver)
@@ -98,7 +108,7 @@ function TargetDialog({initial,onClose,onSaved}:{initial:BackupTarget|null;onClo
  useEffect(()=>{if(initial?.receiver)void backupCommand(initial.id).then(result=>setCommand(result.command)).catch((e:Error)=>setError(e.message))},[initial])
  const alive=useRef(true)
  useEffect(()=>{alive.current=true;return()=>{alive.current=false}},[])
- const update=(key:keyof BackupTargetInput,value:any)=>{setForm(f=>({...f,[key]:value,...(["host","port","user","auth_type"].includes(key)?{fingerprint:""}:{})}));setTested("")}
+ const update=(key:keyof BackupTargetInput,value:any)=>{setForm(f=>({...f,[key]:value,...(["host","port","user","auth_type"].includes(key)?{fingerprint:""}:{})}));if(key!=="retain_count")setTested("")}
  const selectServer=(id:number)=>{
   const s=servers?.find(s=>s.id===id)
   const ip=s?.geoip?.ip
@@ -107,6 +117,7 @@ function TargetDialog({initial,onClose,onSaved}:{initial:BackupTarget|null;onClo
  const perform=async(kind:string)=>{
   setBusy(kind);setError("")
   try{
+   if(!Number.isInteger(form.retain_count)||Number(form.retain_count)<1||Number(form.retain_count)>1000)throw new Error("保留份数须为 1 至 1000")
    if(kind==="prepare"||kind==="auto"){
     let current=form
     if(!prepared){const result=await prepareBackupTarget(form);current=result.target;setForm(current);setCommand(result.command);setPrepared(true)}
@@ -142,6 +153,7 @@ function TargetDialog({initial,onClose,onSaved}:{initial:BackupTarget|null;onClo
     <div><Label htmlFor="backup-port">{account==="dedicated"||form.receiver?"备份端口":"SSH 端口"}</Label><Input id="backup-port" type="number" min={1} max={65535} disabled={locked} value={form.port} onChange={e=>update("port",Number(e.target.value))}/></div>
     <div><Label htmlFor="backup-directory">备份位置</Label><Input id="backup-directory" disabled={locked} value={form.directory} onChange={e=>update("directory",e.target.value)}/></div>
     {!initial&&<div className="sm:col-span-2"><Label htmlFor="backup-account-mode">连接方式</Label><select id="backup-account-mode" className={selectClass} disabled={locked} value={account} onChange={e=>{setAccount(e.target.value);setForm(f=>({...f,port:e.target.value==="existing"?22:2022}))}}><option value="dedicated">安装 DDnezha 备份接收端</option><option value="existing">使用已有 SSH／SFTP 账号</option></select></div>}
+    <div><Label htmlFor="backup-retain">保留份数</Label><Input id="backup-retain" type="number" min={1} max={1000} value={form.retain_count??15} onChange={e=>update("retain_count",Number(e.target.value))}/><p className="mt-1 text-xs text-muted-foreground">新备份成功后清理旧备份；增量所需的基础包一并保留。</p></div>
     {account==="existing"&&<>
      <div><Label htmlFor="backup-user">账号</Label><Input id="backup-user" autoComplete="off" disabled={!!busy} value={form.user} onChange={e=>update("user",e.target.value)}/></div>
      <div><Label htmlFor="backup-auth">登录方式</Label><select id="backup-auth" className={selectClass} disabled={!!busy} value={form.auth_type} onChange={e=>update("auth_type",e.target.value)}><option value="password">密码</option><option value="key">私钥</option></select></div>
@@ -164,7 +176,7 @@ function TargetDialog({initial,onClose,onSaved}:{initial:BackupTarget|null;onClo
   </DialogContent>
  </Dialog>
 }
-const initialPlan:BackupPlan={mode:"manual",interval_minutes:60,daily_time:"03:00",target_ids:[],next_at:null,encrypt:false}
+const initialPlan:BackupPlan={backup_type:"full",mode:"manual",interval_minutes:60,daily_time:"03:00",target_ids:[],next_at:null,encrypt:false}
 export default function BackupPage(){
  const {profile}=useAuth();const admin=profile?.role===0
  const [page,setPage]=useState(1)
@@ -200,7 +212,7 @@ export default function BackupPage(){
   {!data&&!error&&<p role="status" className="flex items-center gap-2"><Loader2 className="size-4 animate-spin"/>正在读取备份设置…</p>}
   {data&&<>
    <div className="grid gap-3 sm:grid-cols-3">
-    <div className={box}><div className="flex items-center gap-2 text-sm text-muted-foreground"><Clock className="size-4"/>{data.plan.mode==="realtime"?"下次备份检查":"下次备份时间"}</div><p className="mt-2 break-words font-semibold">{data.active?"当前备份完成后安排下一轮":data.plan.mode==="manual"?"手动备份":time(data.plan.next_at,data.time_zone)}</p></div>
+    <div className={box}><div className="flex items-center gap-2 text-sm text-muted-foreground"><Clock className="size-4"/>下次备份时间</div><p className="mt-2 break-words font-semibold">{data.active?"当前备份完成后安排下一轮":data.plan.mode==="manual"?"手动备份":time(data.plan.next_at,data.time_zone)}</p></div>
     <div className={box}><div className="text-sm text-muted-foreground">最近一轮</div><div className="mt-2 flex flex-wrap items-center gap-2">{history?.items[0]?<>第 {history.items[0].id} 轮 <State state={history.items[0].state}/></>:"尚无备份记录"}</div></div>
     <div className={box}><div className="text-sm text-muted-foreground">备份目标</div><p className="mt-2 font-semibold">{data.plan.target_ids.length} 台已选择 / {data.targets.length} 台已添加</p></div>
    </div>
@@ -212,7 +224,7 @@ export default function BackupPage(){
      {!data.targets.length&&<p className="py-4 text-sm text-muted-foreground">添加备份机器后，即可安排备份。</p>}
      {data.targets.map(target=><div key={target.id} className="min-w-0 rounded-lg border bg-background/40 p-3">
       <div className="flex items-start gap-3"><input type="checkbox" className="mt-1 size-4 shrink-0 accent-primary" aria-label={`选择备份目标 ${target.name}`} checked={plan.target_ids.includes(target.id)} onChange={e=>change("target_ids",e.target.checked?[...plan.target_ids,target.id]:plan.target_ids.filter(id=>id!==target.id))}/>
-       <div className="min-w-0 flex-1"><div className="break-words font-medium">{target.name}</div><p className="mt-1 break-all text-xs text-muted-foreground">{target.host}:{target.port} · {target.user}</p><p className="mt-1 break-all text-xs text-muted-foreground">{target.directory}</p>{target.setup_state==="installing"&&<p className="mt-1 text-sm text-primary" role="status">正在安装接收端…</p>}{target.setup_error&&<p className="mt-1 break-words text-sm text-red-600 dark:text-red-400">{target.setup_error}</p>}{target.fingerprint==="SHA256:pending"&&target.setup_state!=="installing"&&<p className="mt-1 text-xs text-amber-600">尚未完成对接</p>}</div>
+       <div className="min-w-0 flex-1"><div className="break-words font-medium">{target.name}</div><p className="mt-1 break-all text-xs text-muted-foreground">{target.host}:{target.port} · {target.user}</p><p className="mt-1 break-all text-xs text-muted-foreground">{target.directory}</p><p className="mt-1 text-xs text-muted-foreground">保留 {target.retain_count||15} 份</p>{target.setup_state==="installing"&&<p className="mt-1 text-sm text-primary" role="status">正在安装接收端…</p>}{target.setup_error&&<p className="mt-1 break-words text-sm text-red-600 dark:text-red-400">{target.setup_error}</p>}{target.fingerprint==="SHA256:pending"&&target.setup_state!=="installing"&&<p className="mt-1 text-xs text-amber-600">尚未完成对接</p>}</div>
       </div>
       <div className="mt-2 flex justify-end gap-1"><Button variant="ghost" size="sm" disabled={!!data.active||busy||target.setup_state==="installing"} onClick={()=>setDialog(target)}>编辑</Button><Button variant="ghost" size="sm" disabled={!!data.active||busy||target.setup_state==="installing"} onClick={()=>{if(window.confirm(`删除“${target.name}”连接？服务器上的备份文件和账号会保留。`))void act(async()=>{await deleteBackupTarget(target.id);setPlan(p=>({...p,target_ids:p.target_ids.filter(id=>id!==target.id)}))},"目标已删除")}}>删除</Button></div>
      </div>)}
@@ -221,15 +233,16 @@ export default function BackupPage(){
    <section className={box}>
     <h3 className="font-semibold">备份设置</h3>
     <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-     <div><Label htmlFor="backup-mode">备份方式</Label><select id="backup-mode" className={selectClass} value={plan.mode} onChange={e=>change("mode",e.target.value)}><option value="manual">手动备份</option><option value="interval">定时备份 · 按间隔</option><option value="daily">定时备份 · 每天</option><option value="realtime">实时备份 · 数据变化后</option></select></div>
-     {(plan.mode==="interval"||plan.mode==="realtime")&&<div><Label htmlFor="backup-interval">{plan.mode==="realtime"?"最短备份间隔（分钟）":"备份间隔（分钟）"}</Label><Input id="backup-interval" type="number" min={1} max={43200} value={plan.interval_minutes} onChange={e=>change("interval_minutes",Number(e.target.value))}/></div>}
+     <div><Label htmlFor="backup-mode">备份方式</Label><select id="backup-mode" className={selectClass} value={plan.mode} onChange={e=>change("mode",e.target.value)}><option value="manual">手动备份</option><option value="interval">定时备份 · 按间隔</option><option value="daily">定时备份 · 每天</option></select></div>
+     <div><Label htmlFor="backup-type">备份类型</Label><select id="backup-type" className={selectClass} value={plan.backup_type||"full"} onChange={e=>change("backup_type",e.target.value)}><option value="full">全量备份</option><option value="incremental">增量备份</option></select></div>
+     {plan.mode==="interval"&&<div><Label htmlFor="backup-interval">备份间隔（分钟）</Label><Input id="backup-interval" type="number" min={1} max={43200} value={plan.interval_minutes} onChange={e=>change("interval_minutes",Number(e.target.value))}/></div>}
      {plan.mode==="daily"&&<div><Label htmlFor="backup-daily">每天备份时间（面板时区）</Label><Input id="backup-daily" type="time" value={plan.daily_time} onChange={e=>change("daily_time",e.target.value)}/></div>}
      <div className="col-span-full grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] lg:items-end">
       <div className="flex h-10 items-center gap-2 sm:col-span-2 lg:col-span-1"><input type="checkbox" id="backup-encrypt" className="size-4 shrink-0 accent-primary" checked={plan.encrypt} onChange={e=>change("encrypt",e.target.checked)}/><Label htmlFor="backup-encrypt" className="flex items-center gap-1.5 whitespace-nowrap"><ShieldCheck className="size-4 shrink-0"/>加密备份包</Label></div>
       {plan.encrypt&&<><div className="min-w-0"><Label htmlFor="backup-encryption-password">备份密码</Label><Input id="backup-encryption-password" type="password" autoComplete="new-password" value={password} onChange={e=>{setPassword(e.target.value);setDirty(true)}} placeholder={plan.has_password?"已保存，留空保持原密码":"至少 12 个字符"}/></div><div className="min-w-0"><Label htmlFor="backup-encryption-confirm">确认备份密码</Label><Input id="backup-encryption-confirm" type="password" autoComplete="new-password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)}/></div></>}
      </div>
     </div>
-    {plan.mode==="realtime"&&<p className="mt-3 text-sm text-muted-foreground">有数据变化时自动备份，按最短间隔合并变化；上一轮完成后才会开始下一轮。</p>}
+    {plan.backup_type==="incremental"&&<p className="mt-3 text-sm text-muted-foreground">首次为全量，之后备份新增及修改的文件，并记录删除。会定期生成新的全量基础包。</p>}
     {plan.encrypt&&<p className="mt-3 text-sm text-muted-foreground">恢复时需要对应的备份密码，请另行妥善保存。更换密码只影响之后的备份。</p>}
     {!plan.encrypt&&<p className="mt-3 text-sm text-muted-foreground">普通备份包包含面板密钥和配置，请仅保存在可信机器上。传输过程仍通过 SFTP 加密。</p>}
     {actionError&&<p role="alert" className="mt-3 break-words text-sm text-red-600 dark:text-red-400">{actionError}</p>}
@@ -255,6 +268,7 @@ export default function BackupPage(){
    </div></details>
    <details name="backup-help-sections" className="min-w-0 rounded-lg border bg-background/30"><summary className="cursor-pointer rounded-lg px-3 py-3 font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">解密与恢复</summary><div className="space-y-3 px-3 pb-3 text-muted-foreground">
    <p>每个备份包旁都有 .sha256 校验文件。恢复前先核对校验值，再解压到独立目录；包内 data 包含数据库、配置、密钥、上传文件和历史监控数据，manifest.json 列出各文件校验值。</p>
+   <p>增量备份请点击“下载完整恢复包”，解开外层 .tar 后使用 <a href="https://github.com/shini74744/nezha/releases" target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">DDnezha 恢复工具</a>：<code className="mt-2 block break-words rounded border bg-background/60 p-3 text-foreground">ddnezha-backup-restore -bundle ./bundle.json -output ./restored</code>输出目录须不存在；工具会校验整条备份链并恢复新增、修改和删除。</p>
    <p>加密备份以 .tar.gz.age 结尾，需要恢复时先解密；未加密的 .tar.gz 文件可直接解压。</p>
    <p>在备份文件所在目录执行。下面的文件名只是示例：将“实际备份文件名.tar.gz.age”替换为你的备份文件名，也可以填写完整路径；-o 后的“解密后的备份.tar.gz”是输出文件名，可自行指定，请使用尚不存在的文件名。</p>
    <code className="block min-w-0 whitespace-pre-wrap break-words rounded border bg-background/60 p-3 text-foreground">age --decrypt -o "解密后的备份.tar.gz" "实际备份文件名.tar.gz.age"</code>

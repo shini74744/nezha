@@ -3,10 +3,8 @@ package singleton
 import (
 	"log"
 	"path/filepath"
-	"strings"
 
 	"github.com/nezhahq/nezha/pkg/panelbackup"
-	"gorm.io/gorm"
 )
 
 var BackupManager *panelbackup.Manager
@@ -22,13 +20,5 @@ func InitBackups(configPath, dbPath string) {
 		log.Printf("NEZHA>> Backup unavailable: %v", BackupInitError)
 		return
 	}
-	mark := func(tx *gorm.DB) {
-		if tx.Error == nil && tx.Statement != nil && !strings.HasPrefix(tx.Statement.Table, "panel_backup_") {
-			BackupManager.NotifyChange()
-		}
-	}
-	_ = DB.Callback().Create().After("gorm:create").Register("ddnezha:backup_change", mark)
-	_ = DB.Callback().Update().After("gorm:update").Register("ddnezha:backup_change", mark)
-	_ = DB.Callback().Delete().After("gorm:delete").Register("ddnezha:backup_change", mark)
 	BackupManager.RunScheduler()
 }
