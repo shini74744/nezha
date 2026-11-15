@@ -25,7 +25,9 @@ func runNow(t *testing.T, m *Manager) Run {
 	t.Helper()
 	_, err := m.Start("manual", nil, 0)
 	require.NoError(t, err)
-	return waitBackup(t, m).Items[0]
+	// Two targets each perform age's full-strength scrypt; race instrumentation
+	// can exceed the legacy 20-second fixture budget even with tiny input files.
+	return waitBackup(t, m, 90*time.Second).Items[0]
 }
 func unpackDownload(t *testing.T, m *Manager, d Delivery) string {
 	t.Helper()

@@ -23,7 +23,7 @@ test(`backup multi-target details ${width} ${theme}`,async({page},info)=>{
   }
   return r.fulfill({json:{success:true,data}})
  })
- await page.goto("/dashboard/settings/backup")
+ await page.goto("/dashboard/settings/backup",{waitUntil:"domcontentloaded"})
  await expect(page.getByRole("heading",{name:"数据备份",exact:true})).toBeVisible()
  await expect(page.getByText("下次备份时间",{exact:true})).toBeVisible()
  await expect(page.getByLabel("备份类型",{exact:true})).toHaveValue("full")
@@ -63,7 +63,7 @@ test("backup receiver setup handles Agent disabled and keeps unique manual comma
   if(p==="/api/v1/backup/setup")return r.fulfill({json:{success:false,error:"Agent 已关闭远程命令，无法自动安装，请手动安装"}})
   return r.fulfill({json:{success:true,data}})
  })
- await page.goto("/dashboard/settings/backup")
+ await page.goto("/dashboard/settings/backup",{waitUntil:"domcontentloaded"})
  await page.getByRole("button",{name:"添加目标",exact:true}).click()
  await expect(page.getByLabel("保留份数",{exact:true})).toHaveValue("15")
  await page.getByLabel("服务器",{exact:true}).selectOption("9")
@@ -85,7 +85,7 @@ test("non-admin has no backup API access or entry",async({page})=>{
   if(p==="/api/v1/setting")data={config:{language:"zh-CN"},version:"test"}
   return r.fulfill({json:{success:true,data}})
  })
- await page.goto("/dashboard/settings/backup")
+ await page.goto("/dashboard/settings/backup",{waitUntil:"domcontentloaded"})
  await expect(page.getByText("仅管理员可以管理数据备份。")).toBeVisible()
  expect(requested.filter(p=>p.startsWith("/api/v1/backup"))).toEqual([])
  await expect(page.getByRole("tab",{name:"数据备份",exact:true})).toHaveCount(0)
@@ -106,7 +106,7 @@ for(const background of [false,true]) test("receiver setup polls and survives di
   if(p==="/api/v1/backup/targets/1/status"){polls++;if(!background)complete=true;data={...target,setup_state:complete?"success":"installing"}}
   return r.fulfill({json:{success:true,data}})
  })
- await page.goto("/dashboard/settings/backup")
+ await page.goto("/dashboard/settings/backup",{waitUntil:"domcontentloaded"})
  await page.getByRole("button",{name:"添加目标",exact:true}).click()
  await expect(page.getByLabel("保留份数",{exact:true})).toHaveValue("15")
  await page.getByLabel("服务器",{exact:true}).selectOption("9")
