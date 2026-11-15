@@ -130,7 +130,7 @@ export default function Header() {
                             <a
                                 href={"/"}
                                 rel="noopener noreferrer"
-                                className="dashboard-header-home inline-flex items-center justify-center text-nowrap text-sm font-medium transition-colors hover:bg-accent"
+                                className="flex items-center text-nowrap gap-1 text-sm font-medium opacity-50 transition-opacity hover:opacity-100"
                             >
                                 {t("BackToHome")}
                             </a>
@@ -370,7 +370,7 @@ export default function Header() {
                 <a
                     href={"/"}
                     rel="noopener noreferrer"
-                    className="dashboard-header-home inline-flex items-center justify-center text-nowrap text-sm font-medium transition-colors hover:bg-accent"
+                    className="flex items-center text-nowrap gap-1 text-sm font-medium opacity-50 transition-opacity hover:opacity-100"
                 >
                     {t("BackToHome")}
                 </a>
