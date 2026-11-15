@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"time"
@@ -400,7 +401,15 @@ func (s *Snapshot) Write(ctx context.Context, dest io.Writer, progress func(int6
 		if e != nil {
 			return e
 		}
+		// Password derivation temporarily allocates 256 MiB. Reclaim previous
+		// garbage before it, then return its workspace to the OS before streaming.
+		// Keep age's default work factor and encrypted format unchanged.
+		debug.FreeOSMemory()
+		if e = checkBackupMemory(320 << 20); e != nil {
+			return e
+		}
 		encrypted, e = age.Encrypt(dest, recipient)
+		debug.FreeOSMemory()
 		if e != nil {
 			return e
 		}
