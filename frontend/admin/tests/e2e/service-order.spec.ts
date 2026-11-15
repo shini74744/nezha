@@ -56,3 +56,67 @@ test("service drag preserves draft after stale save rejection",async({page})=>{
  await expect(dialog.locator("[data-sort-service]").first()).toHaveAttribute("data-sort-service","3")
  expect(attempts).toBe(1)
 })
+
+test.describe("touch service order", () => {
+    test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } })
+    test("row swipe scrolls while grip touch reorders", async ({ page }) => {
+        await page.route("**/api/v1/**", (r) => {
+            const path = new URL(r.request().url()).pathname
+            let data: any = []
+            if (path === "/api/v1/profile") data = { id: 1, username: "admin", role: 0 }
+            if (path === "/api/v1/setting")
+                data = { config: { language: "zh-CN" }, version: "test" }
+            if (path === "/api/v1/service/list")
+                data = Array.from({ length: 30 }, (_, i) => ({
+                    id: i + 1,
+                    name: "触摸服务" + (i + 1),
+                    type:3,target:"example.org:443",duration:30,skip_servers:{},fail_trigger_tasks:[],recover_trigger_tasks:[],notification_group_id:0,
+                    display_index: 30 - i,
+                    host: {},
+                }))
+            return r.fulfill({ json: { success: true, data } })
+        })
+        await page.goto("/dashboard/service")
+        await page.getByRole("button", { name: "服务排序", exact: true }).click()
+        const dialog = page.getByRole("dialog"),
+            list = dialog.getByLabel("手动排序列表", { exact: true })
+        const before = await list
+            .locator("[data-sort-service]")
+            .evaluateAll((rows) => rows.map((r) => r.getAttribute("data-sort-service")))
+        const box = await list.boundingBox()
+        const client = await page.context().newCDPSession(page)
+        const swipe = async (x: number, from: number, to: number) => {
+            await client.send("Input.dispatchTouchEvent", {
+                type: "touchStart",
+                touchPoints: [{ x, y: from }],
+            })
+            for (let i = 1; i <= 8; i++) {
+                await client.send("Input.dispatchTouchEvent", {
+                    type: "touchMove",
+                    touchPoints: [{ x, y: from + ((to - from) * i) / 8 }],
+                })
+                await page.waitForTimeout(20)
+            }
+            await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] })
+        }
+        await swipe(box!.x + 110, box!.y + box!.height - 70, box!.y + 70)
+        await expect.poll(() => list.evaluate((el) => el.scrollTop)).toBeGreaterThan(100)
+        expect(
+            await list
+                .locator("[data-sort-service]")
+                .evaluateAll((rows) => rows.map((r) => r.getAttribute("data-sort-service"))),
+        ).toEqual(before)
+        await expect(dialog.getByRole("button", { name: "保存", exact: true })).toBeDisabled()
+        await page.waitForTimeout(500)
+        await list.evaluate((el) => (el.scrollTop = 0))
+        const grip = await list.locator('[data-sort-service="3"] [data-sort-handle]').boundingBox()
+        const target = await list.locator('[data-sort-service="1"]').boundingBox()
+        await swipe(grip!.x + grip!.width / 2, grip!.y + grip!.height / 2, target!.y + 10)
+        await expect(list.locator("[data-sort-service]").first()).toHaveAttribute(
+            "data-sort-service",
+            "3",
+        )
+        await expect(dialog.getByRole("button", { name: "保存", exact: true })).toBeEnabled()
+        await expect(list.locator("[data-dragging]")).toHaveCount(0)
+    })
+})

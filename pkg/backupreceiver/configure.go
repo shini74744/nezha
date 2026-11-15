@@ -87,7 +87,7 @@ func Configure(configFile, keyFile, user, directory, publicKey string, port int)
 	if err = os.MkdirAll(filepath.Dir(configFile), 0700); err != nil {
 		return "", err
 	}
-	lock, err := os.OpenFile(configFile+".lock", os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	lock, err := os.OpenFile(configFile+".lock", os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600) // #nosec G304 -- local installer config lock, not a remote request path.
 	if err != nil {
 		return "", errors.New("已有接收端配置任务正在执行，请稍后重试")
 	}
@@ -134,10 +134,10 @@ func Configure(configFile, keyFile, user, directory, publicKey string, port int)
 		return "", err
 	}
 	// No recursive chmod/chown: only the selected empty/new backup directory.
-	if err = os.Chmod(directory, 0700); err != nil {
+	if err = os.Chmod(directory, 0700); err != nil { // #nosec G302 -- directory requires owner traversal; files use 0600.
 		return "", err
 	}
-	hostPEM, err := os.ReadFile(keyFile)
+	hostPEM, err := os.ReadFile(keyFile) // #nosec G304 -- local installer identity-key path, not exposed to clients.
 	if os.IsNotExist(err) {
 		if len(config.Users) > 0 {
 			return "", errors.New("已有接收端缺少身份密钥，已停止，不能静默替换身份")

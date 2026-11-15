@@ -71,8 +71,8 @@ func (m *Manager) SetupCommand(id uint64) (string, error) {
 	return receiverInstallCommand(t.User, t.Directory, publicKey, t.Port), nil
 }
 
-const ReceiverVersion = "v0.1.0"
-const receiverInstallerSHA256 = "d0c35a90dcb5f24021e74eba631e3e1fef8847d1b9bbc8dcdb3f046148f46997"
+const ReceiverVersion = "v0.1.1"
+const receiverInstallerSHA256 = "6833898f70931089ba9152038080f41a6486ce977af87e517df060b0b7c34229"
 
 func receiverInstallCommand(user, directory, publicKey string, port int) string {
 	return fmt.Sprintf(`sh <<'DDNEZHA_BACKUP_INSTALL'

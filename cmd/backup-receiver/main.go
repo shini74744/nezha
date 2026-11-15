@@ -13,7 +13,7 @@ import (
 	"syscall"
 )
 
-var version = "v0.1.0"
+var version = "v0.1.1"
 
 func main() {
 	var config, key, user, directory, public string
@@ -45,7 +45,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	data, err := os.ReadFile(key)
+	data, err := os.ReadFile(key) // #nosec G304 -- administrator-supplied local host-key flag, never a client path.
 	if err != nil {
 		log.Fatal(err)
 	}

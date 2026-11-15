@@ -67,7 +67,7 @@ func New(db *gorm.DB, source Source) (*Manager, error) {
 	if err != nil {
 		return nil, err
 	}
-	key, err := os.ReadFile(keyFile)
+	key, err := os.ReadFile(keyFile) // #nosec G304 -- fixed credential-key filename alongside the configured database.
 	if err != nil {
 		return nil, err
 	}

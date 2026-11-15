@@ -26,7 +26,7 @@ type Config struct {
 
 func ReadConfig(file string) (Config, error) {
 	var config Config
-	data, err := os.ReadFile(file)
+	data, err := os.ReadFile(file) // #nosec G304 -- local administrator-selected receiver config, never supplied by SFTP requests.
 	if err != nil {
 		return config, err
 	}
@@ -79,8 +79,6 @@ func Serve(ctx context.Context, listener net.Listener, hostKey ssh.Signer, load 
 			cancelConnection := context.AfterFunc(ctx, func() { _ = conn.Close() })
 			defer cancelConnection()
 			_ = conn.SetDeadline(time.Now().Add(15 * time.Second))
-			var selected User
-			var userName string
 			config := &ssh.ServerConfig{MaxAuthTries: 3, ServerVersion: "SSH-2.0-DDnezhaBackup",
 				PublicKeyCallback: func(meta ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
 					current, e := load()
@@ -95,9 +93,7 @@ func Serve(ctx context.Context, listener net.Listener, hostKey ssh.Signer, load 
 					if e != nil || !bytes.Equal(key.Marshal(), expected.Marshal()) {
 						return nil, errors.New("backup authentication failed")
 					}
-					selected = candidate
-					userName = meta.User()
-					return &ssh.Permissions{}, nil
+					return &ssh.Permissions{Extensions: map[string]string{"backup-directory": candidate.Directory}}, nil
 				}}
 			config.AddHostKey(hostKey)
 			handshakeTimer := time.AfterFunc(15*time.Second, func() { _ = conn.Close() })
@@ -136,7 +132,7 @@ func Serve(ctx context.Context, listener net.Listener, hostKey ssh.Signer, load 
 							_ = req.Reply(false, nil)
 							continue
 						}
-						filesystem, err := NewFilesystem(selected.Directory, userName)
+						filesystem, err := NewFilesystem(connection.Permissions.Extensions["backup-directory"], connection.User())
 						if err != nil {
 							_ = req.Reply(false, nil)
 							return
