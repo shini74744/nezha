@@ -77,7 +77,7 @@ func SQLiteSnapshot(ctx context.Context, source, destination string) error {
 	u := url.URL{Scheme: "file", Path: uriPath}
 	q := u.Query()
 	q.Set("mode", "ro")
-	q.Set("_busy_timeout", "1000")
+	q.Set("_busy_timeout", "5000")
 	u.RawQuery = q.Encode()
 	src, err := sql.Open("sqlite3", u.String())
 	if err != nil {
@@ -91,7 +91,7 @@ func SQLiteSnapshot(ctx context.Context, source, destination string) error {
 	defer dst.Close()
 	sc, err := src.Conn(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("连接源数据库失败: %w", err)
 	}
 	defer sc.Close()
 	dc, err := dst.Conn(ctx)
@@ -99,32 +99,66 @@ func SQLiteSnapshot(ctx context.Context, source, destination string) error {
 		return err
 	}
 	defer dc.Close()
-	err = dc.Raw(func(d any) error {
-		return sc.Raw(func(s any) error {
-			backup, e := d.(*sqlite3.SQLiteConn).Backup("main", s.(*sqlite3.SQLiteConn), "main")
-			if e != nil {
-				return e
-			}
-			defer backup.Close()
-			for {
-				if e = ctx.Err(); e != nil {
-					return e
-				}
-				done, e := backup.Step(256)
+	// This is a private, disposable destination. Durability is verified when the
+	// completed archive is committed at the receiver, so no source lock needs
+	// to be held while syncing a temporary database journal.
+	if _, err = dc.ExecContext(ctx, "PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF"); err != nil {
+		return err
+	}
+	err = func() error {
+		// Pin a read view across all backup steps. Without it, continuous writes
+		// from other connections restart SQLite's incremental backup forever.
+		if _, e := sc.ExecContext(ctx, "BEGIN"); e != nil {
+			return fmt.Errorf("开始数据库快照失败: %w", e)
+		}
+		defer func() { _, _ = sc.ExecContext(context.Background(), "ROLLBACK") }()
+		var tables int
+		if e := sc.QueryRowContext(ctx, "SELECT count(*) FROM sqlite_schema").Scan(&tables); e != nil {
+			return fmt.Errorf("固定数据库快照失败: %w", e)
+		}
+		// Rollback-journal sources briefly retain a read lock; bound that window
+		// below the panel's writer retry budget. Never hold it during compression,
+		// history snapshots, transfer, or verification, and never change source mode.
+		copyCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+		return dc.Raw(func(d any) error {
+			return sc.Raw(func(s any) error {
+				backup, e := d.(*sqlite3.SQLiteConn).Backup("main", s.(*sqlite3.SQLiteConn), "main")
 				if e != nil {
 					return e
 				}
-				if done {
-					return nil
+				closed := false
+				defer func() {
+					if !closed {
+						_ = backup.Close()
+					}
+				}()
+				remaining := -1
+				for {
+					if e = copyCtx.Err(); e != nil {
+						return fmt.Errorf("数据库快照未能在安全窗口内完成，请稍后重试: %w", e)
+					}
+					done, e := backup.Step(256)
+					if e != nil {
+						return e
+					}
+					if done {
+						closed = true
+						return backup.Close()
+					}
+					next := backup.Remaining()
+					if next == remaining {
+						select {
+						case <-copyCtx.Done():
+							return copyCtx.Err()
+						case <-time.After(2 * time.Millisecond):
+						}
+					}
+					remaining = next
 				}
-				select {
-				case <-ctx.Done():
-					return ctx.Err()
-				case <-time.After(2 * time.Millisecond):
-				}
-			}
+			})
 		})
-	})
+	}()
 	if err != nil {
 		return err
 	}
