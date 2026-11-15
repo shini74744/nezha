@@ -44,8 +44,32 @@ SQLite 使用固定读取视图生成一致快照，持续写入不会让备份�
 
 ## 校验与恢复
 
+### 安装 age
+
+加密备份以 `.tar.gz.age` 结尾，需要恢复时先解密；未加密的 `.tar.gz` 文件可直接解压。在准备解密备份的机器上安装 age，已安装可跳过。Linux 命令以 root 身份执行。
+
+| 系统 | 安装命令 |
+| --- | --- |
+| Debian 12+ / Ubuntu 22.04+ | `apt update && apt install -y age` |
+| Fedora 33+ | `dnf install -y age` |
+| Alpine Linux 3.15+ | `apk add age` |
+| macOS（已安装 Homebrew） | `brew install age` |
+| Windows（PowerShell） | `winget install --id FiloSottile.age --exact` |
+
+其他系统或提示找不到软件包时，请参考 [age 官方安装说明](https://github.com/FiloSottile/age#installation)。
+
+### 解密与恢复
+
+在备份文件所在目录执行下方命令。文件名只是示例：末尾的 `实际备份文件名.tar.gz.age` 要替换成实际备份文件名或完整路径；`-o` 后的 `解密后的备份.tar.gz` 是输出文件名，可自行指定，请使用尚不存在的文件名。
+
+```sh
+age --decrypt -o "解密后的备份.tar.gz" "实际备份文件名.tar.gz.age"
+```
+
+按提示输入生成这份备份时设置的密码，不把密码写进命令历史。解密成功后再解压输出的 `.tar.gz` 文件。
+
 1. 在可信机器上执行 sha256sum -c 对应的 .sha256 文件，确认备份包完整。
-2. 加密包先解密：age --decrypt -o backup.tar.gz backup.tar.gz.age。按提示输入备份时的密码，不把密码写进命令历史。
+2. 加密包按上面的步骤安装 age 并解密；未加密包跳过此步。
 3. 将压缩包解压到独立目录，检查 manifest.json 中每个文件的大小和 SHA-256；SQLite 可执行 PRAGMA integrity_check。
 4. 正式替换前停止面板，保留现有数据副本。按原部署方式恢复 data 目录中的数据库、配置、密钥、上传文件和 tsdb 历史数据，恢复适当的目录属主。
 5. 如原来使用自定义配置、数据库或 TSDB 路径，将包内 data/config.yaml、data/sqlite.db、data/tsdb 放回对应路径。先在隔离环境验证登录、服务器配置及历史曲线，再正式启动。

@@ -16,6 +16,13 @@ import {
 
 const box = "min-w-0 rounded-xl border bg-card/70 p-4 sm:p-5"
 const selectClass = "flex h-10 w-full min-w-0 rounded-md border border-input bg-background px-3 py-2 text-sm"
+const ageInstallCommands = [
+ {system:"Debian 12+ / Ubuntu 22.04+",command:"apt update && apt install -y age"},
+ {system:"Fedora 33+",command:"dnf install -y age"},
+ {system:"Alpine Linux 3.15+",command:"apk add age"},
+ {system:"macOS（已安装 Homebrew）",command:"brew install age"},
+ {system:"Windows（PowerShell）",command:"winget install --id FiloSottile.age --exact"},
+]
 const labels: Record<string,string> = {
  running:"进行中",queued:"等待中",success:"已完成",partial:"部分完成",warning:"完成但有异常",failed:"失败",interrupted:"已中断",cancelled:"已取消",
  preparing:"准备备份",snapshot:"生成快照",waiting:"等待传输",connecting:"连接目标",transferring:"打包并传输",verifying:"校验备份",completed:"已完成",recording:"正在补写记录",
@@ -238,8 +245,17 @@ export default function BackupPage(){
    <p>外部备份机器：点击“添加目标”，选择“手动添加外部机器”，填写地址和备份位置。可以使用已有 SSH／SFTP 账号，也可以生成 DDnezha 备份接收端的专属安装命令，在目标机器执行后测试并保存。</p>
    <p>从服务器列表选择：填写备份端口和存放位置，点击“自动对接”。Agent 从 DDnezha 仓库安装接收端，之后由面板通过 SFTP 传输。目标需允许 Agent 执行命令，并允许面板连接指定备份端口；无需开放业务 SSH。</p>
    <p>每个备份包旁都有 .sha256 校验文件。恢复前先核对校验值，再解压到独立目录；包内 data 包含数据库、配置、密钥、上传文件和历史监控数据，manifest.json 列出各文件校验值。</p>
-   <p>加密文件以 .tar.gz.age 结尾。安装 age 后执行以下命令，按提示输入备份时的密码：</p>
-   <code className="block overflow-x-auto rounded border bg-background/60 p-3">age --decrypt -o backup.tar.gz backup.tar.gz.age</code>
+   <p>加密备份以 .tar.gz.age 结尾，需要恢复时先解密；未加密的 .tar.gz 文件可直接解压。</p>
+   <p className="font-medium text-foreground">1. 安装 age</p>
+   <p>在准备解密备份的机器上，选择对应系统的命令执行一次。Linux 命令以 root 身份执行；已安装 age 可跳过。</p>
+   <div className="grid min-w-0 gap-3 lg:grid-cols-2">
+    {ageInstallCommands.map(item=><div key={item.system} className="min-w-0 space-y-1"><p>{item.system}</p><code className="block min-w-0 whitespace-pre-wrap break-words rounded border bg-background/60 p-3 text-foreground">{item.command}</code></div>)}
+   </div>
+   <p>其他系统或提示找不到软件包时，可查看 <a href="https://github.com/FiloSottile/age#installation" target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">age 官方安装说明</a>。</p>
+   <p className="font-medium text-foreground">2. 解密备份</p>
+   <p>在备份文件所在目录执行。下面的文件名只是示例：将“实际备份文件名.tar.gz.age”替换为你的备份文件名，也可以填写完整路径；-o 后的“解密后的备份.tar.gz”是输出文件名，可自行指定，请使用尚不存在的文件名。</p>
+   <code className="block min-w-0 whitespace-pre-wrap break-words rounded border bg-background/60 p-3 text-foreground">age --decrypt -o "解密后的备份.tar.gz" "实际备份文件名.tar.gz.age"</code>
+   <p>按提示输入生成这份备份时设置的密码。解密成功后，再解压输出的 .tar.gz 文件。</p>
    <p>正式恢复前停止面板并保留当前数据副本，再按原部署方式替换数据目录。使用自定义配置、数据库或历史数据路径时，将对应文件放回原位置。</p>
   </div></details>
   {dialog!==undefined&&<TargetDialog initial={dialog} onClose={()=>{setDialog(undefined);void mutate()}} onSaved={()=>{setDialog(undefined);void mutate()}}/>}
