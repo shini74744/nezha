@@ -1,6 +1,9 @@
 // Shared by the admin and both public themes; the server still enforces authentication.
 export const SESSION_EXPIRED_EVENT = "nezha:session-expired"
-export function notifySessionExpired() { window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT)) }
+export type SessionExpiry = { token: string; backendAccess?: "required" | "blocked" }
+export function notifySessionExpired(detail?: SessionExpiry) {
+    window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT, { detail }))
+}
 const RENEW_INTERVAL = 5 * 60_000
 const RETRY_INTERVAL = 30_000
 const REQUEST_TIMEOUT = 10_000
@@ -91,7 +94,7 @@ export function renewSessionIfNeeded(authenticatedUserId = 0): Promise<void> {
                 lastSuccess = Date.now()
             } else if (response.status === 401 || (response.status === 200 && body?.error === "ApiErrorUnauthorized")) {
                 rejectedSession = identity
-                notifySessionExpired()
+                notifySessionExpired({ token: currentToken })
             }
         } catch {
             // Network/timeout errors retain the session and retry after the short cooldown.
@@ -105,11 +108,27 @@ export function renewSessionIfNeeded(authenticatedUserId = 0): Promise<void> {
 
 // Owned by the authenticated admin provider; no background timer on the login page.
 export function startSessionRenewal(): () => void {
+    let readableCookieSeen = !!readCookie("nz-jwt")
+    let expiryTimer: number | undefined
     const check = () => {
-        if (document.visibilityState === "hidden" || navigator.onLine === false) return
+        if (document.visibilityState === "hidden") return
         // Browsers can remove an expired cookie while an authenticated page is asleep.
         // Ask the provider to verify instead of leaving its cached identity displayed.
-        if (!readCookie("nz-jwt")) { notifySessionExpired(); return }
+        const token = readCookie("nz-jwt")
+        window.clearTimeout(expiryTimer)
+        if (!token) {
+            notifySessionExpired(readableCookieSeen ? { token: "" } : undefined)
+            return
+        }
+        readableCookieSeen = true
+        try {
+            const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")))
+            if (typeof payload.exp === "number" && Number.isFinite(payload.exp)) {
+                const remaining = payload.exp * 1000 - Date.now()
+                if (remaining <= 0) { notifySessionExpired({ token }); return }
+                expiryTimer = window.setTimeout(check, Math.min(remaining + 1, 2_147_483_647))
+            }
+        } catch { /* Opaque legacy cookies are checked by the server. */ }
         void renewSessionIfNeeded()
     }
     const timer = window.setInterval(check, RETRY_INTERVAL)
@@ -120,6 +139,7 @@ export function startSessionRenewal(): () => void {
     check()
     return () => {
         window.clearInterval(timer)
+        window.clearTimeout(expiryTimer)
         document.removeEventListener("visibilitychange", check)
         window.removeEventListener("focus", check)
         window.removeEventListener("online", check)

@@ -388,3 +388,14 @@ func TestBackendLockedPublicProfileRedactsInstallationCredentials(t *testing.T) 
 	require.NoError(t, err)
 	require.Empty(t, blocked.AgentSecret)
 }
+
+func TestBackendPasswordExpiredLoginExplanation(t *testing.T) {
+	installBackendTest(t)
+	c, w := backendTestContext("192.0.2.88", "GET", "/dashboard/login?reason=expired", "")
+	require.False(t, checkBackendAccess(c, currentBackendAccessConfig(), "/dashboard/login?reason=expired"))
+	require.Equal(t, http.StatusForbidden, w.Code)
+	require.Equal(t, "required", w.Header().Get(backendAccessHeader))
+	require.Contains(t, w.Body.String(), "登录已过期，请重新登录。")
+	require.NotContains(t, w.Body.String(), "server-list-table")
+	require.Empty(t, w.Result().Cookies())
+}

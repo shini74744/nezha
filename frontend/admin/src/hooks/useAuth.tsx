@@ -1,10 +1,12 @@
-import { cancelSessionRenewal, startSessionRenewal, renewSessionIfNeeded, readCookie, SESSION_EXPIRED_EVENT } from "@/api/session-renewal"
+import { cancelSessionRenewal, startSessionRenewal, renewSessionIfNeeded, readCookie, SESSION_EXPIRED_EVENT, type SessionExpiry } from "@/api/session-renewal"
 import { getProfile, login as loginRequest } from "@/api/user"
 import { AuthContextProps } from "@/types"
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
+import { flushSync } from "react-dom"
+import { SWRConfig } from "swr"
 
 import { useMainStore } from "./useMainStore"
 
@@ -58,6 +60,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (!profile || loading) return
         let active = true
         let checking = false
+        const endSession = (backendAccess?: "required" | "blocked") => {
+            if (!active) return
+            active = false
+            authEpoch.current++
+            cancelSessionRenewal()
+            if (!backendAccess) document.cookie = "nz-jwt=; Max-Age=0; Path=/; SameSite=Lax"
+            const destination = "/dashboard/login" + (backendAccess === "blocked" ? "" : "?reason=expired")
+            // Unmount protected views before the rejected request can render a stale-data toast.
+            flushSync(() => {
+                navigate(destination, { replace: true, flushSync: true })
+                setProfile(undefined)
+                setLoading(false)
+            })
+            toast.dismiss()
+            // The access-password gate must be re-entered through the server, not the SPA.
+            if (backendAccess) window.location.replace(destination)
+        }
         const checkExpired = async () => {
             if (checking) return
             checking = true
@@ -71,17 +90,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 const message = error instanceof Error ? error.message : ""
                 if (active && authEpoch.current === epoch && readCookie("nz-jwt") === token &&
                     (message === "ApiErrorUnauthorized" || message === "Unauthorized")) {
-                    authEpoch.current++
-                    cancelSessionRenewal()
-                    // Remove only the confirmed-invalid login cookie; keep access protection and preferences.
-                    document.cookie = "nz-jwt=; Max-Age=0; Path=/; SameSite=Lax"
-                    // Commit the login route before the auth guard observes the cleared profile.
-                    navigate("/dashboard/login?reason=expired", { replace: true, flushSync: true })
-                    setProfile(undefined)
+                    endSession()
                 }
             } finally { checking = false }
         }
-        const onExpired = () => { void checkExpired() }
+        const onExpired = (event: Event) => {
+            const detail = (event as CustomEvent<SessionExpiry | undefined>).detail
+            if (detail && detail.token === readCookie("nz-jwt")) {
+                // A current request already confirmed expiry. A second profile probe
+                // can hang, or succeed when only the separate backend gate expired.
+                queueMicrotask(() => {
+                    if (active && detail.token === readCookie("nz-jwt")) endSession(detail.backendAccess)
+                })
+            } else if (!detail) void checkExpired()
+        }
         window.addEventListener(SESSION_EXPIRED_EVENT, onExpired)
         return () => { active = false; window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired) }
     }, [profile?.id, loading, navigate, setProfile])
@@ -166,7 +188,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }),
         [profile, loading, login, loginOauth2, logout],
     )
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+    // Isolate each login's SWR cache. Late responses from an expired login can
+    // only update its abandoned cache, never the next user's session.
+    const cache = useMemo(() => new Map(), [profile?.id])
+    const swr = useMemo(() => ({ provider: () => cache }), [cache])
+    return <AuthContext.Provider value={value}><SWRConfig key={profile?.id ?? "guest"} value={swr}>{children}</SWRConfig></AuthContext.Provider>
 }
 
 export const useAuth = () => {
