@@ -164,7 +164,11 @@ func checkBackendAccess(c *gin.Context, cfg backendAccessConfig, next string) bo
 	if !backendPasswordRequiredAt(cfg, time.Now()) || validBackendCookie(c, cfg) {
 		return true
 	}
-	backendFailure(c, cfg, next, "", http.StatusForbidden, 0)
+	message := ""
+	if c.Request.Method == http.MethodGet && c.Request.URL.Path == "/dashboard/login" && c.Query("reason") == "expired" {
+		message = "登录已过期，请重新登录。"
+	}
+	backendFailure(c, cfg, next, message, http.StatusForbidden, 0)
 	return false
 }
 func backendPasswordGate() gin.HandlerFunc {

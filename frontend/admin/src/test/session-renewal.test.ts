@@ -214,3 +214,21 @@ test("a cookie removed during sleep triggers verification on return", async () =
         expect(fetch).toHaveBeenCalledTimes(1)
     } finally { window.removeEventListener(SESSION_EXPIRED_EVENT, expired) }
 })
+
+
+test("the visible page expires at its JWT deadline even offline without waiting for the poll", async () => {
+ const token = "header." + btoa(JSON.stringify({ exp: Date.now() / 1000 + 7 })) + ".sig"
+ cookies = "nz-jwt=" + token
+ const expired = vi.fn()
+ window.addEventListener(SESSION_EXPIRED_EVENT, expired)
+ try {
+  stop = startSessionRenewal()
+  await vi.advanceTimersByTimeAsync(6999)
+  expect(expired).not.toHaveBeenCalled()
+  online = false
+  await vi.advanceTimersByTimeAsync(2)
+  expect(expired).toHaveBeenCalledTimes(1)
+  expect(expired.mock.calls[0][0].detail).toEqual({ token })
+  expect(fetch).not.toHaveBeenCalled()
+ } finally { window.removeEventListener(SESSION_EXPIRED_EVENT, expired) }
+})

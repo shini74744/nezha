@@ -54,8 +54,8 @@ function csrfHeaders(method: FetcherMethod, path: string): Record<string, string
 export async function fetcher<T>(method: FetcherMethod, path: string, data?: any, signal?: AbortSignal): Promise<T> {
     if (isTelegramTerminal()) return telegramUIRequest<T>(method, path, data)
     const requestToken = readCookie("nz-jwt")
-    const notifyExpired = () => {
-        if (isSameOrigin(path) && new URL(path, window.location.origin).pathname !== "/api/v1/login" && readCookie("nz-jwt") === requestToken) notifySessionExpired()
+    const notifyExpired = (backendAccess?: "required" | "blocked") => {
+        if (isSameOrigin(path) && new URL(path, window.location.origin).pathname !== "/api/v1/login" && readCookie("nz-jwt") === requestToken) notifySessionExpired({ token: requestToken, backendAccess })
     }
     let response
     if (method === FetcherMethod.GET || method === FetcherMethod.DELETE) {
@@ -76,13 +76,16 @@ export async function fetcher<T>(method: FetcherMethod, path: string, data?: any
         })
     }
     if (!response.ok) {
-        if (response.status === 401) notifyExpired()
         const access = response.headers.get("X-Nezha-Backend-Access")
-        if ((access === "required" || access === "blocked") &&
-            window.location.pathname.startsWith("/dashboard/")) {
-            window.location.reload()
+        const inDashboard = window.location.pathname === "/dashboard" || window.location.pathname.startsWith("/dashboard/")
+        if ((access === "required" || access === "blocked") && inDashboard) {
+            notifyExpired(access)
+            throw new Error(access === "blocked" ? "后台访问暂时受限，请重新验证。" : "登录已过期，请重新登录。")
         }
-        throw new Error(response.status === 401 ? "ApiErrorUnauthorized" : response.statusText)
+        if (response.status === 401) notifyExpired()
+        // HTTP/2 responses may have no statusText. Never display an empty error.
+        throw new Error(response.status === 401 ? "ApiErrorUnauthorized" :
+            response.status === 403 ? "没有访问权限，请检查账号权限。" : response.statusText || "请求失败（HTTP " + response.status + "），请稍后重试。")
     }
     const text = await response.text()
     if (text !== "") {

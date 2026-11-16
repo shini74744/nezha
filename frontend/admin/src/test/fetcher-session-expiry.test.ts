@@ -37,3 +37,17 @@ test("ignores unauthorized replies for a replaced cookie", async () => {
  await expect(fetcher(FetcherMethod.GET, "/api/v1/server")).rejects.toThrow()
  expect(expired).not.toHaveBeenCalled()
 })
+
+
+test.each(["/dashboard", "/dashboard/", "/dashboard/service"])("backend gate expiry is handled on %s", async path => {
+ window.history.replaceState({}, "", path)
+ vi.mocked(fetch).mockResolvedValue(new Response("", { status: 403, headers: { "X-Nezha-Backend-Access": "required" } }))
+ await expect(fetcher(FetcherMethod.GET, "/api/v1/server")).rejects.toThrow("登录已过期，请重新登录")
+ expect(expired).toHaveBeenCalledTimes(1)
+ expect(expired.mock.calls[0][0].detail).toEqual({ token: "fixture", backendAccess: "required" })
+})
+test("HTTP/2 forbidden responses have a useful message without logging out", async () => {
+ vi.mocked(fetch).mockResolvedValue(new Response("", { status: 403 }))
+ await expect(fetcher(FetcherMethod.GET, "/api/v1/server")).rejects.toThrow("没有访问权限")
+ expect(expired).not.toHaveBeenCalled()
+})
