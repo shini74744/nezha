@@ -40,24 +40,23 @@ for(const width of [320,390,768,1440])for(const color of ["light","dark"]) {
   await page.setViewportSize({width,height:950});
   const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
   const {state,tick}=await setup(page,color);
-  const nav=page.locator(".global-map-regions");
-  await nav.getByRole("button",{name:/香港/}).click();
-  const panel=page.locator(".global-map-panel");
-  await expect(panel.locator(".global-map-region-stats")).toContainText("在线 1");
-  await expect(panel.locator(".global-map-region-stats")).toContainText("离线 1");
-  await expect(nav.getByRole("button",{name:/香港/})).toHaveAttribute("aria-pressed","true");
+  await expect(page.locator(".global-map-regions,.global-map-panel")).toHaveCount(0);
+  await page.locator('[data-region="HK"]').focus();await page.keyboard.press("Enter");
+  const panel=page.getByTestId("map-tooltip");
+  await expect(panel).toContainText("在线 1");await expect(panel).toContainText("离线 1");
   state.servers[1]={...state.servers[1],name:"香港恢复",last_active:new Date().toISOString()};tick();
-  await expect(panel.locator(".global-map-region-stats")).toContainText("在线 2");
-  await expect(panel).toContainText("香港恢复");
-  await panel.getByRole("button",{name:"全部区域"}).click();
+  await expect(panel).toContainText("在线 2");await expect(panel).toContainText("香港恢复");
+  await panel.getByRole("button",{name:"关闭"}).click();
+  await expect(panel).toHaveCount(0);
   const marker=page.locator('[data-region="SG"]');
   await marker.focus();await page.keyboard.press("Enter");
   await expect(panel).toContainText("新加坡节点");
-  await expect(nav.getByRole("button",{name:/新加坡/})).toHaveAttribute("aria-pressed","true");
+
   const layout=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth}));
   expect(layout.scroll).toBeLessThanOrEqual(layout.width+1);
   state.servers=state.servers.filter(s=>s.country_code!=="SG");tick();
-  await expect(panel).toContainText("区域概览");
+  await expect(panel).toHaveCount(0);
+  if(color==="light" && [390,1440].includes(width))await page.locator(".global-map-shell").screenshot({path:`test-results/map-simplified-${width}.png`});
   expect(errors).toEqual([]);
  });
 }
@@ -110,11 +109,11 @@ test("touch selection works without a stuck reflection",async({browser})=>{
  const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,ignoreHTTPSErrors:true});
  try{
   const page=await context.newPage();await setup(page);
-  await page.locator(".global-map-regions").getByRole("button",{name:/香港/}).tap();
-  await expect(page.locator(".global-map-panel")).toContainText("香港主机");
+  await page.locator('[data-region="HK"]').tap();
+  await expect(page.getByTestId("map-tooltip")).toContainText("香港主机");
   await expect(page.locator("[data-glass-hover]")).toHaveCount(0);
   await expect(page.locator(".server-glass-sheen").first()).toBeHidden();
-  await page.locator(".global-map-server-list").getByRole("button",{name:/香港主机/}).tap();
+  await page.getByTestId("map-tooltip").getByRole("button",{name:/香港主机/}).tap();
   await expect(page).toHaveURL(/\/server\/7$/);
  }finally{await context.close()}
 });
