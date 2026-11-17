@@ -26,7 +26,16 @@
 	"map": {
 		"Distributions": "服务器分布在",
 		"Regions": "个区域",
-		"Servers": "个服务器"
+		"Servers": "个服务器",
+		"Title": "服务器分布",
+		"TotalNodes": "总节点",
+		"Online": "在线",
+		"Offline": "离线",
+		"Deployed": "已部署区域",
+		"SelectHint": "点击区域，查看服务器",
+		"RegionOverview": "区域概览",
+		"AllRegions": "全部区域",
+		"NoRegions": "暂无区域信息"
 	},
 	"serverCard": {
 		"mem": "内存",

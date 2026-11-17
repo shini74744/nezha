@@ -1,3 +1,4 @@
+import { GlassShine, useGlassShine } from "./GlassShine";
 import { homeNetworkServer } from "@/lib/home-network";
 import {NativeSpeed,NativeTraffic} from "@/appearance/widgets";
 import { memo, useCallback, useLayoutEffect, useRef } from "react";
@@ -28,6 +29,7 @@ function ServerCardInline({
 	serverInfo: NezhaServer;
 }) {
 	const { t } = useTranslation();
+	const glassShine = useGlassShine();
 	const {
 		name,
 		country_code,
@@ -58,7 +60,7 @@ function ServerCardInline({
 
 	return online ? (
 		<section>
-			<Card data-server-card
+			<Card data-server-card {...glassShine}
 				className={cn(
 					"flex w-full min-w-[900px] cursor-pointer items-center justify-start gap-3 p-3 transition-all hover:shadow-sm hover:ring-stone-300 md:px-5 lg:flex-row dark:hover:ring-stone-700",
 					{
@@ -67,6 +69,7 @@ function ServerCardInline({
 				)}
 				onClick={cardClick}
 			>
+				<GlassShine />
 				<ServerIdentity online={online} name={name} country={country_code} parsedData={parsedData} inline />
 				<Separator orientation="vertical" className="h-8 mx-0 ml-2" />
 				<div className="flex flex-col gap-1">
@@ -174,7 +177,7 @@ function ServerCardInline({
 			</Card>
 		</section>
 	) : (
-		<Card data-server-card
+		<Card data-server-card {...glassShine}
 			className={cn(
 				"flex  min-h-[61px] min-w-[900px] items-center justify-start p-3 md:px-5 flex-row cursor-pointer hover:bg-accent/50 transition-colors",
 				{
@@ -183,6 +186,7 @@ function ServerCardInline({
 			)}
 			onClick={cardClick}
 		>
+			<GlassShine />
 			<ServerIdentity online={online} name={name} country={country_code} parsedData={parsedData} inline />
 			<Separator orientation="vertical" className="h-8 ml-3 lg:ml-1 mr-3" />
 			{/* Legacy traffic enhancement applies to online cards only. */}

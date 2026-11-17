@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { describe, expect, it } from "vitest";
@@ -65,10 +65,136 @@ describe("GlobalMap", () => {
 			/>,
 		);
 
+		expect(container.querySelector(".global-map-heading p")).toHaveTextContent(
+			"map.Distributions 2 map.Regions",
+		);
+		expect(container.querySelector("section")).toHaveClass("global-map-shell");
+	});
+	it("selects regions by keyboard and chips, updates live status, and opens a server", async () => {
+		const user = userEvent.setup();
+		const servers = [
+			createServer({ id: 21, name: "Hong Kong primary", country_code: "HK" }),
+			createServer({
+				id: 22,
+				name: "Hong Kong standby",
+				country_code: "HK",
+				last_active: "2024-12-31T00:00:00Z",
+			}),
+			createServer({ id: 23, country_code: "SG" }),
+		];
+		const view = (list: typeof servers) => (
+			<MemoryRouter>
+				<TooltipProvider>
+					<GlobalMap now={now} serverList={list} />
+					<LocationProbe />
+				</TooltipProvider>
+			</MemoryRouter>
+		);
+		const { container, rerender } = render(view(servers));
+		fireEvent.keyDown(
+			container.querySelector('[data-region="HK"]') as SVGElement,
+			{
+				key: "Enter",
+			},
+		);
+		const panel = screen.getByRole("complementary", {
+			name: "Hong Kong SAR China",
+		});
+		expect(within(panel).getByText(/map.Online 1/)).toBeInTheDocument();
+		expect(within(panel).getByText(/map.Offline 1/)).toBeInTheDocument();
 		expect(
-			screen.getByText(/map\.Distributions 2 map\.Regions/),
+			within(panel).getByRole("button", { name: /Hong Kong standby/ }),
 		).toBeInTheDocument();
-		expect(container.querySelector("section")).toHaveClass("bg-card/70");
+		rerender(
+			view(
+				servers.map((server) =>
+					server.id === 22
+						? {
+								...server,
+								name: "Hong Kong restored",
+								last_active: "2025-01-01T00:00:20.000Z",
+							}
+						: server,
+				),
+			),
+		);
+		expect(within(panel).getByText(/map.Online 2/)).toBeInTheDocument();
+		expect(
+			within(panel).queryByText("Hong Kong standby"),
+		).not.toBeInTheDocument();
+		await user.click(
+			within(panel).getByRole("button", { name: /Hong Kong restored/ }),
+		);
+		expect(await screen.findByText("/server/22")).toBeInTheDocument();
+		await user.click(
+			within(screen.getByRole("navigation")).getByRole("button", {
+				name: "map.AllRegions",
+			}),
+		);
+		expect(
+			screen.getByRole("complementary", { name: "map.RegionOverview" }),
+		).toBeInTheDocument();
+		await user.click(
+			within(screen.getByRole("navigation")).getByRole("button", {
+				name: /Singapore/,
+			}),
+		);
+		expect(
+			screen.getByRole("complementary", { name: "Singapore" }),
+		).toBeInTheDocument();
+	});
+
+	it("keeps tooltips current and resets a removed selection without losing other regions", () => {
+		const servers = [
+			createServer({ id: 1, name: "before", country_code: "SG" }),
+			createServer({ id: 2, country_code: "US" }),
+		];
+		const view = (list: typeof servers) => (
+			<MemoryRouter>
+				<TooltipProvider>
+					<GlobalMap now={now} serverList={list} />
+				</TooltipProvider>
+			</MemoryRouter>
+		);
+		const { container, rerender } = render(view(servers));
+		fireEvent.mouseEnter(
+			container.querySelector('[data-region="SG"]') as SVGElement,
+		);
+		expect(
+			within(screen.getByTestId("map-tooltip")).getByText("before"),
+		).toBeInTheDocument();
+		rerender(view([{ ...servers[0], name: "after" }, servers[1]]));
+		expect(
+			within(screen.getByTestId("map-tooltip")).getByText("after"),
+		).toBeInTheDocument();
+		fireEvent.click(
+			container.querySelector('[data-region="SG"]') as SVGElement,
+		);
+		rerender(view([servers[1]]));
+		expect(
+			screen.getByRole("complementary", { name: "map.RegionOverview" }),
+		).toBeInTheDocument();
+		expect(screen.queryByTestId("map-tooltip")).not.toBeInTheDocument();
+		expect(
+			container.querySelector('[data-region="SG"]'),
+		).not.toBeInTheDocument();
+	});
+
+	it("handles unknown regions without invalid map coordinates", () => {
+		const { container } = renderMap(
+			<GlobalMap
+				now={now}
+				serverList={[createServer({ country_code: "unknown" })]}
+			/>,
+		);
+		expect(container.querySelector("svg")?.innerHTML).not.toMatch(
+			/NaN|Infinity/,
+		);
+		expect(
+			within(screen.getByRole("navigation")).getByRole("button", {
+				name: /UNKNOWN/,
+			}),
+		).toBeInTheDocument();
 	});
 });
 
@@ -111,7 +237,9 @@ describe("InteractiveMap", () => {
 			/>,
 		);
 
-		const highlightedCountry = container.querySelector("path.fill-green-700");
+		const highlightedCountry = container.querySelector(
+			'path[data-country="US"]',
+		);
 		expect(highlightedCountry).toBeInTheDocument();
 
 		fireEvent.mouseEnter(highlightedCountry as SVGPathElement);
@@ -123,7 +251,7 @@ describe("InteractiveMap", () => {
 		expect(sessionStorage.getItem("fromMainPage")).toBe("true");
 		expect(screen.getByText("/server/12")).toBeInTheDocument();
 
-		const fallbackMarker = container.querySelector("circle.fill-sky-700");
+		const fallbackMarker = container.querySelector('g[data-region="SG"]');
 		expect(fallbackMarker).toBeInTheDocument();
 
 		fireEvent.mouseEnter(fallbackMarker as SVGCircleElement);
@@ -162,7 +290,7 @@ describe("InteractiveMap", () => {
 		);
 
 		const [highlightedCountry, neutralCountry] = Array.from(
-			container.querySelectorAll("path"),
+			container.querySelectorAll("path[data-country]"),
 		);
 		fireEvent.mouseEnter(highlightedCountry as SVGPathElement);
 		expect(screen.getByText("United States")).toBeInTheDocument();

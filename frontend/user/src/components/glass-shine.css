@@ -1,0 +1,72 @@
+[data-server-card] {
+	position: relative;
+	isolation: isolate;
+}
+.server-glass-sheen {
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	pointer-events: none;
+	border-radius: inherit;
+	overflow: hidden;
+}
+.server-glass-sheen::before,
+.server-glass-sheen::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	opacity: 0;
+	transition: opacity 0.22s ease;
+}
+@media (hover: hover) and (pointer: fine) and (
+		prefers-reduced-motion: no-preference
+	) {
+	.server-glass-sheen::before {
+		background: radial-gradient(
+			240px circle at var(--glass-x, 50%) var(--glass-y, 50%),
+			rgba(255, 255, 255, 0.26),
+			rgba(232, 255, 252, 0.09) 38%,
+			transparent 72%
+		);
+	}
+	.server-glass-sheen::after {
+		inset: auto;
+		left: var(--glass-x, 50%);
+		top: var(--glass-y, 50%);
+		width: 210px;
+		height: 100px;
+		transform: translate(-50%, -50%) rotate(-25deg);
+		background: radial-gradient(
+			ellipse at center,
+			rgba(255, 255, 255, 0.22),
+			rgba(255, 255, 255, 0.06) 40%,
+			transparent 70%
+		);
+	}
+	[data-server-card][data-glass-hover] > .server-glass-sheen::before,
+	[data-server-card][data-glass-hover] > .server-glass-sheen::after {
+		opacity: 1;
+	}
+	.dark .server-glass-sheen::before {
+		background: radial-gradient(
+			240px circle at var(--glass-x, 50%) var(--glass-y, 50%),
+			rgba(190, 239, 255, 0.11),
+			rgba(140, 227, 239, 0.035) 38%,
+			transparent 72%
+		);
+	}
+	.dark .server-glass-sheen::after {
+		background: radial-gradient(
+			ellipse at center,
+			rgba(219, 247, 255, 0.1),
+			rgba(190, 239, 255, 0.025) 40%,
+			transparent 70%
+		);
+	}
+}
+@media (prefers-reduced-motion: reduce), (hover: none), (pointer: coarse) {
+	.server-glass-sheen {
+		display: none;
+	}
+}
