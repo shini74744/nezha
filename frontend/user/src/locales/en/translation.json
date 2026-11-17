@@ -26,7 +26,16 @@
 	"map": {
 		"Distributions": "Servers are distributed in",
 		"Regions": "Regions",
-		"Servers": "servers"
+		"Servers": "servers",
+		"Title": "Server distribution",
+		"TotalNodes": "Total nodes",
+		"Online": "Online",
+		"Offline": "Offline",
+		"Deployed": "Deployed regions",
+		"SelectHint": "Select a region to explore servers",
+		"RegionOverview": "Regional overview",
+		"AllRegions": "All regions",
+		"NoRegions": "No region data yet"
 	},
 	"serverCard": {
 		"mem": "MEM",

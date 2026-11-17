@@ -4,29 +4,37 @@ import { useNavigate } from "react-router-dom";
 import useTooltip from "@/hooks/use-tooltip";
 import { saveMainPageScrollPosition } from "@/lib/navigation";
 
-const MapTooltip = memo(function MapTooltip() {
+const MapTooltip = memo(function MapTooltip({
+	width = 900,
+	height = 500,
+}: {
+	width?: number;
+	height?: number;
+}) {
 	const { t } = useTranslation();
 	const navigate = useNavigate();
 	const { tooltipData } = useTooltip();
 
 	if (!tooltipData) return null;
 
+	const horizontalPlacement =
+		tooltipData.centroid[0] > width * 0.65 ? "calc(-100% - 12px)" : "12px";
 	const verticalPlacement =
-		tooltipData.centroid[1] < 120
-			? "translate(20%, 8px)"
-			: tooltipData.centroid[1] > 380
-				? "translate(20%, calc(-100% - 8px))"
-				: "translate(20%, -50%)";
+		tooltipData.centroid[1] < height * 0.25
+			? "8px"
+			: tooltipData.centroid[1] > height * 0.75
+				? "calc(-100% - 8px)"
+				: "-50%";
 
 	return (
 		<div
-			className="tooltip-animate absolute hidden lg:block bg-white dark:bg-neutral-800 px-2 py-1 rounded shadow-lg text-sm dark:border dark:border-neutral-700 z-50"
+			className="global-map-tooltip tooltip-animate absolute hidden lg:block text-sm z-50"
 			data-testid="map-tooltip"
 			key={tooltipData.country}
 			style={{
-				left: tooltipData.centroid[0],
-				top: tooltipData.centroid[1],
-				transform: verticalPlacement,
+				left: `${(tooltipData.centroid[0] / width) * 100}%`,
+				top: `${(tooltipData.centroid[1] / height) * 100}%`,
+				transform: `translate(${horizontalPlacement}, ${verticalPlacement})`,
 			}}
 			onMouseEnter={(e) => {
 				e.stopPropagation();

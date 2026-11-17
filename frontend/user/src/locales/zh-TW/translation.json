@@ -26,7 +26,16 @@
 	"map": {
 		"Distributions": "伺服器分布在",
 		"Regions": "個區域",
-		"Servers": "個伺服器"
+		"Servers": "個伺服器",
+		"Title": "伺服器分布",
+		"TotalNodes": "總節點",
+		"Online": "線上",
+		"Offline": "離線",
+		"Deployed": "已部署區域",
+		"SelectHint": "點選區域，查看伺服器",
+		"RegionOverview": "區域概覽",
+		"AllRegions": "全部區域",
+		"NoRegions": "暫無區域資訊"
 	},
 	"serverCard": {
 		"mem": "內存",

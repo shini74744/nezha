@@ -1,3 +1,4 @@
+import { GlassShine, useGlassShine } from "./GlassShine";
 import { homeNetworkServer } from "@/lib/home-network";
 import {NativeSpeed,NativeTraffic} from "@/appearance/widgets";
 import {useFeature} from "@/appearance/context";
@@ -31,6 +32,7 @@ function ServerCard({
 	serverInfo: NezhaServer;
 }) {
 	const { t } = useTranslation();
+	const glassShine = useGlassShine();
 const brand=useFeature("branding");
 	const {
 		name,
@@ -66,7 +68,7 @@ const brand=useFeature("branding");
 	const parsedData = parsePublicNote(public_note);
 
 	return online ? (
-		<Card data-server-card
+		<Card data-server-card {...glassShine}
 			className={cn(
 				"flex cursor-pointer flex-col items-center justify-start gap-3 p-3 transition-all hover:shadow-sm hover:ring-stone-300 md:px-5 dark:hover:ring-stone-700",
 				{
@@ -79,6 +81,7 @@ const brand=useFeature("branding");
 			)}
 			onClick={cardClick}
 		>
+			<GlassShine />
 			<ServerIdentity online={online} name={name} country={country_code} parsedData={parsedData} fixed={fixedTopServerName} />
 			<div data-mobile-billing
 				className={cn("flex flex-col items-center gap-1 -mt-2 lg:hidden", {
@@ -190,7 +193,7 @@ const brand=useFeature("branding");
 			</div>
 		</Card>
 	) : (
-		<Card data-server-card
+		<Card data-server-card {...glassShine}
 			className={cn(
 				"flex flex-col items-center justify-start gap-3 sm:gap-0 p-3 md:px-5 cursor-pointer hover:bg-accent/50 transition-colors",
 				showNetTransfer
@@ -206,6 +209,7 @@ const brand=useFeature("branding");
 			)}
 			onClick={cardClick}
 		>
+			<GlassShine />
 			<ServerIdentity online={online} name={name} country={country_code} parsedData={parsedData} fixed={fixedTopServerName} />
 			<div data-mobile-billing
 				className={cn("flex flex-col items-center gap-1 lg:hidden", {
