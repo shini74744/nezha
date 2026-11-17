@@ -1,12 +1,10 @@
 import { geoGraticule10, geoNaturalEarth1, geoPath } from "d3-geo";
-import { ArrowLeft, ArrowUpRight, Globe2, LocateFixed } from "lucide-react";
+import { Globe2 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 import useTooltip from "@/hooks/use-tooltip";
 import { geoJsonString } from "@/lib/geo-json-string";
 import { countryCoordinates } from "@/lib/geo-limit";
-import { saveMainPageScrollPosition } from "@/lib/navigation";
 import { formatNezhaInfo } from "@/lib/utils";
 import type { NezhaServer } from "@/types/nezha-api";
 import MapTooltip from "./MapTooltip";
@@ -33,9 +31,6 @@ export default function GlobalMap({
 	now: number;
 }) {
 	const { t, i18n } = useTranslation();
-	const navigate = useNavigate();
-	const { setTooltipData } = useTooltip();
-	const [selected, setSelected] = useState<string | null>(null);
 	const { countries, countryServers, serverCounts, online } = useMemo(() => {
 		const countryServers: Record<string, TooltipServer[]> = {};
 		let online = 0;
@@ -83,21 +78,6 @@ export default function GlobalMap({
 			}),
 		);
 	}, [countries, i18n.language, i18n.resolvedLanguage]);
-	const active = selected && countryServers[selected] ? selected : null;
-	const selectedServers = active ? countryServers[active] : [];
-	const selectedOnline = selectedServers.filter(
-		(server) => server.status,
-	).length;
-	const selectCountry = (code: string | null) => {
-		setSelected(code);
-		setTooltipData(null);
-	};
-	const openServer = (id: number) => {
-		setTooltipData(null);
-		saveMainPageScrollPosition();
-		navigate(`/server/${id}`);
-	};
-	const maxCount = Math.max(1, ...Object.values(serverCounts));
 
 	return (
 		<section className="global-map-shell" aria-label={t("map.Title")}>
@@ -137,8 +117,6 @@ export default function GlobalMap({
 						width={960}
 						height={500}
 						filteredFeatures={filteredFeatures}
-						selectedCountry={active}
-						onSelectCountry={selectCountry}
 						regionNames={regionNames}
 					/>
 					<div className="global-map-caption">
@@ -149,114 +127,7 @@ export default function GlobalMap({
 						<span>{t("map.SelectHint")}</span>
 					</div>
 				</div>
-				<aside
-					className="global-map-panel"
-					aria-label={active ? regionNames[active] : t("map.RegionOverview")}
-				>
-					{active ? (
-						<>
-							<button
-								type="button"
-								className="global-map-back"
-								onClick={() => selectCountry(null)}
-							>
-								<ArrowLeft size={14} />
-								{t("map.AllRegions")}
-							</button>
-							<div className="global-map-region-title">
-								<span className="global-map-region-code">{active}</span>
-								<h3>{regionNames[active]}</h3>
-							</div>
-							<div className="global-map-region-stats">
-								<strong>
-									{selectedServers.length}
-									<small>{t("map.Servers")}</small>
-								</strong>
-								<span>
-									<i className="map-status-dot online" />
-									{t("map.Online")} {selectedOnline}
-									<br />
-									<i className="map-status-dot offline" />
-									{t("map.Offline")} {selectedServers.length - selectedOnline}
-								</span>
-							</div>
-							<div className="global-map-server-list">
-								{selectedServers.map((server) => (
-									<button
-										type="button"
-										key={server.id}
-										onClick={() => openServer(server.id)}
-									>
-										<i
-											role="img"
-											className={`map-status-dot ${server.status ? "online" : "offline"}`}
-											aria-label={t(
-												server.status ? "map.Online" : "map.Offline",
-											)}
-										/>
-										<span>{server.name}</span>
-										<ArrowUpRight size={14} aria-hidden="true" />
-									</button>
-								))}
-							</div>
-						</>
-					) : (
-						<>
-							<div className="global-map-panel-heading">
-								<h3>{t("map.RegionOverview")}</h3>
-								<LocateFixed size={16} aria-hidden="true" />
-							</div>
-							<p className="global-map-panel-hint">{t("map.SelectHint")}</p>
-							<div className="global-map-region-list">
-								{countries.map((code) => (
-									<button
-										type="button"
-										key={code}
-										onClick={() => selectCountry(code)}
-										aria-label={`${regionNames[code]} · ${serverCounts[code]} ${t("map.Servers")}`}
-									>
-										<span className="global-map-list-code">{code}</span>
-										<span className="global-map-list-label">
-											{regionNames[code]}
-											<i
-												style={{
-													width: `${(serverCounts[code] / maxCount) * 100}%`,
-												}}
-											/>
-										</span>
-										<strong>{serverCounts[code]}</strong>
-									</button>
-								))}
-								{countries.length === 0 && (
-									<p className="global-map-empty">{t("map.NoRegions")}</p>
-								)}
-							</div>
-						</>
-					)}
-				</aside>
 			</div>
-			{countries.length > 0 && (
-				<nav className="global-map-regions" aria-label={t("map.AllRegions")}>
-					<button
-						type="button"
-						aria-pressed={!active}
-						onClick={() => selectCountry(null)}
-					>
-						{t("map.AllRegions")}
-					</button>
-					{countries.map((code) => (
-						<button
-							type="button"
-							key={code}
-							aria-pressed={active === code}
-							onClick={() => selectCountry(code)}
-						>
-							<span>{regionNames[code]}</span>
-							<b>{serverCounts[code]}</b>
-						</button>
-					))}
-				</nav>
-			)}
 		</section>
 	);
 }
@@ -268,8 +139,6 @@ interface InteractiveMapProps {
 	height: number;
 	filteredFeatures: MapFeature[];
 	countryServers: Record<string, TooltipServer[]>;
-	selectedCountry?: string | null;
-	onSelectCountry?: (country: string) => void;
 	regionNames?: Record<string, string>;
 }
 
@@ -280,14 +149,25 @@ export function InteractiveMap({
 	height,
 	filteredFeatures,
 	countryServers,
-	selectedCountry,
-	onSelectCountry,
 	regionNames = emptyRegionNames,
 }: InteractiveMapProps) {
 	const { setTooltipData } = useTooltip();
 	const { t } = useTranslation();
 	const id = useId().replace(/[^a-zA-Z0-9_-]/g, "");
 	const [hovered, setHovered] = useState<string | null>(null);
+	const pinned = useRef(false);
+	const canvas = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		const dismissOutside = (event: PointerEvent) => {
+			if (pinned.current && !canvas.current?.contains(event.target as Node)) {
+				pinned.current = false;
+				setHovered(null);
+				setTooltipData(null);
+			}
+		};
+		document.addEventListener("pointerdown", dismissOutside);
+		return () => document.removeEventListener("pointerdown", dismissOutside);
+	}, [setTooltipData]);
 	const { path, projection } = useMemo(() => {
 		const projection = geoNaturalEarth1()
 			.rotate([-10, 0, 0])
@@ -316,6 +196,7 @@ export function InteractiveMap({
 	useEffect(() => {
 		if (!hovered || !hoverAnchor.current) return;
 		if (!countryServers[hovered]) {
+			pinned.current = false;
 			setHovered(null);
 			setTooltipData(null);
 			return;
@@ -339,6 +220,7 @@ export function InteractiveMap({
 		[filteredFeatures],
 	);
 	const show = (code: string, centroid: [number, number], name: string) => {
+		if (pinned.current) return;
 		hoverAnchor.current = { centroid, name };
 		setHovered(code);
 		setTooltipData({
@@ -349,22 +231,47 @@ export function InteractiveMap({
 		});
 	};
 	const clear = () => {
+		if (pinned.current) return;
 		setHovered(null);
 		setTooltipData(null);
 	};
-	const select = (code: string) => {
+	const dismiss = () => {
+		pinned.current = false;
 		clear();
-		onSelectCountry?.(code);
+	};
+	const select = (code: string) => {
+		const coords = countryCoordinates[code];
+		const feature = features.get(code);
+		const point = coords
+			? projection([coords.lng, coords.lat])
+			: feature
+				? path.centroid(feature)
+				: null;
+		if (!point?.every(Number.isFinite)) return;
+		pinned.current = false;
+		show(
+			code,
+			point,
+			regionNames[code] || coords?.name || feature?.properties.name || code,
+		);
+		pinned.current = true;
 	};
 	const keySelect = (event: React.KeyboardEvent<SVGElement>, code: string) => {
 		if (event.key === "Enter" || event.key === " ") {
 			event.preventDefault();
 			select(code);
 		}
-		if (event.key === "Escape") clear();
+		if (event.key === "Escape") dismiss();
 	};
 	return (
-		<div className="global-map-canvas relative" onMouseLeave={clear}>
+		<div
+			ref={canvas}
+			className="global-map-canvas relative"
+			onMouseLeave={clear}
+			onKeyDown={(event) => {
+				if (event.key === "Escape") dismiss();
+			}}
+		>
 			<svg
 				width={width}
 				height={height}
@@ -390,6 +297,7 @@ export function InteractiveMap({
 					width={width}
 					height={height}
 					fill="transparent"
+					onClick={dismiss}
 					onMouseEnter={clear}
 				/>
 				<g pointerEvents="none">
@@ -409,7 +317,6 @@ export function InteractiveMap({
 								key={code + index}
 								data-country={code}
 								data-occupied={occupied || undefined}
-								data-selected={selectedCountry === code || undefined}
 								data-hovered={hovered === code || undefined}
 								className="global-map-country"
 								d={d}
@@ -430,7 +337,7 @@ export function InteractiveMap({
 									occupied && show(code, centroid, feature.properties.name)
 								}
 								onBlur={clear}
-								onClick={() => occupied && select(code)}
+								onClick={() => (occupied ? select(code) : dismiss())}
 								onKeyDown={(event) => occupied && keySelect(event, code)}
 							/>
 						);
@@ -461,7 +368,6 @@ export function InteractiveMap({
 								key={code}
 								className="global-map-marker"
 								data-region={code}
-								data-selected={selectedCountry === code || undefined}
 								data-hovered={hovered === code || undefined}
 								data-online={online}
 								role="button"
@@ -496,7 +402,7 @@ export function InteractiveMap({
 					})}
 				</g>
 			</svg>
-			<MapTooltip width={width} height={height} />
+			<MapTooltip width={width} height={height} onClose={dismiss} />
 		</div>
 	);
 }
