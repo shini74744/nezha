@@ -1,11 +1,11 @@
 [data-server-card] { position:relative; }
-.nz-server-identity { position:relative; }
+.nz-server-identity { position:relative; min-width:0; max-width:100%; }
 .nz-server-identity > [data-provider-logo-box] { position:absolute; bottom:calc(100% + var(--nz-logo-desktop-gap,4px)); height:var(--nz-logo-desktop-height,28px)!important; left:var(--nz-logo-desktop-center,76px); transform:translateX(-50%); margin:0!important; }
 [data-provider-logo] { max-height:var(--nz-logo-desktop-height,28px)!important; transform:translate(var(--nz-logo-dx,0px),var(--nz-logo-dy,0px)) scale(var(--nz-logo-ds,1)); transform-origin:center; pointer-events:none; }
 .nz-server-identity > [data-server-status],.nz-server-identity > [data-server-flag] { align-self:start; }
 .nz-server-identity > [data-server-status] { margin-top:4px; }
 .nz-server-identity > [data-server-flag] { height:16px; line-height:16px; }
-.nz-server-identity > [data-server-name] { margin:0; line-height:16px; }
+.nz-server-identity > [data-server-name] { margin:0; line-height:16px; white-space:normal; word-break:normal; overflow-wrap:anywhere; }
 @media (min-width:1024px) {
  .nz-server-identity > [data-provider-logo-box][data-desktop-logo-placement="left"] {
   top:var(--nz-logo-desktop-fallback-top); bottom:auto;
