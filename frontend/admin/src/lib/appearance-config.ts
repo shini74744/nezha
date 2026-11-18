@@ -1,3 +1,4 @@
+import {upgradeFont, validateAppearanceOptions} from "../../../shared/appearance-options";
 import {validateMascot} from "./mascot-config";
 import {validateVisitorIP} from "./visitor-ip-config";
 import {upgradeSpeed} from "./speed-config";
@@ -11,12 +12,13 @@ export const definitions=manifestData as unknown as FeatureDefinition[];
 export const defaults=():AppearanceConfig=>({version:1,enabled:false,features:Object.fromEntries(definitions.map(d=>[d.key,JSON.parse(JSON.stringify(d.defaults))]))});
 export function normalize(raw?:string|AppearanceConfig):AppearanceConfig{
  const base=defaults();if(!raw)return base;
- try{const parsed=typeof raw==="string"?JSON.parse(raw):raw;if(parsed.version!==1||typeof parsed.enabled!=="boolean"||!parsed.features)return base;
+ try{const parsed=typeof raw==="string"?JSON.parse(raw):JSON.parse(JSON.stringify(raw));if(parsed.version!==1||typeof parsed.enabled!=="boolean"||!parsed.features)return base;
   base.enabled=parsed.enabled;
   for(const d of definitions){const value=parsed.features[d.key];if(value&&typeof value==="object"&&!Array.isArray(value)&&typeof value.enabled==="boolean")base.features[d.key]={...base.features[d.key],...value}}
   if(!parsed.features.peakCut)base.features.peakCut={...base.features.peakCut,enabled:!!base.features.background.enabled&&!!base.features.background.peakCutDesktop};
   base.features.speed=upgradeSpeed(base.features.speed,parsed.features.speed);
   base.features.background=upgradeBackground(base.features.background,parsed.features.background);
+  base.features.font=upgradeFont(base.features.font,parsed.features.font);
   return validate(base)?defaults():base;
  }catch{return defaults()}
 }
@@ -40,6 +42,7 @@ export function validate(config:AppearanceConfig):string{
   validateVisitorIP(config.features.visitorIP);
   validateBackground(config.features.background);
   validateGreetingClock(config.features);
+  validateAppearanceOptions(config.features);
   for(const tool of config.features.live2d.tools)if(!["hitokoto","asteroids","switch-model","switch-texture","photo","info","quit"].includes(tool))throw Error("未知 Live2D 工具："+tool);
   for(const key of ["videoSelector","toggleSelector"]){const selector=config.features.video[key];if(!selector.trim())throw Error("视频选择器不能为空");document.querySelector(selector)}
   return "";

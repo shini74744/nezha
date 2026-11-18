@@ -24,7 +24,9 @@
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
 		"verify": "pnpm run check && pnpm run test:coverage && pnpm run build",
-		"preview": "vite preview"
+		"preview": "vite preview",
+		"build:paper": "tsc -b && vite build --mode paper",
+		"dev:paper": "vite --mode paper"
 	},
 	"dependencies": {
 		"@fontsource/inter": "5.2.8",

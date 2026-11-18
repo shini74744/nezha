@@ -424,12 +424,30 @@
         0,
         30
       ],
-      "lightBlur": [0, 30],
-      "darkBlur": [0, 30],
-      "lightOpacity": [0, 1],
-      "darkOpacity": [0, 1],
-      "desktopLoadDuration": [0, 10],
-      "mobileLoadDuration": [0, 10],
+      "lightBlur": [
+        0,
+        30
+      ],
+      "darkBlur": [
+        0,
+        30
+      ],
+      "lightOpacity": [
+        0,
+        1
+      ],
+      "darkOpacity": [
+        0,
+        1
+      ],
+      "desktopLoadDuration": [
+        0,
+        10
+      ],
+      "mobileLoadDuration": [
+        0,
+        10
+      ],
       "opacity": [
         0,
         1
@@ -574,10 +592,22 @@
       "bottomThreshold": "底部隐藏距离（像素）"
     },
     "constraints": {
-      "queryTimeout": [100, 10000],
-      "fallbackTimeout": [100, 10000],
-      "checkTimeout": [100, 10000],
-      "switchTimeout": [100, 10000],
+      "queryTimeout": [
+        100,
+        10000
+      ],
+      "fallbackTimeout": [
+        100,
+        10000
+      ],
+      "checkTimeout": [
+        100,
+        10000
+      ],
+      "switchTimeout": [
+        100,
+        10000
+      ],
       "cacheDuration": [
         0,
         604800000
@@ -698,13 +728,90 @@
   {
     "key": "font",
     "title": "字体",
-    "description": "保留八种随机方案，也可指定一种",
+    "description": "选择、预览或添加自己的字体。",
     "defaults": {
       "enabled": true,
-      "selection": -1
+      "selection": -1,
+      "activeId": "random",
+      "items": [
+        {
+          "id": "douyin",
+          "name": "抖音 Douyin Sans",
+          "family": "Douyin Sans",
+          "source": "builtin",
+          "url": "",
+          "format": "woff2",
+          "builtin": "douyin"
+        },
+        {
+          "id": "harmony",
+          "name": "鸿蒙 HarmonyOS",
+          "family": "HarmonyOS_Regular",
+          "source": "builtin",
+          "url": "",
+          "format": "woff2",
+          "builtin": "harmony"
+        },
+        {
+          "id": "oppo",
+          "name": "OPPO Sans",
+          "family": "OPPO Sans",
+          "source": "builtin",
+          "url": "",
+          "format": "woff2",
+          "builtin": "oppo"
+        },
+        {
+          "id": "misans",
+          "name": "小米 MiSans",
+          "family": "MiSans",
+          "source": "builtin",
+          "url": "",
+          "format": "woff2",
+          "builtin": "misans"
+        },
+        {
+          "id": "bytedance",
+          "name": "字节跳动字体",
+          "family": "DFPKingGothicGB-Regular",
+          "source": "builtin",
+          "url": "",
+          "format": "woff2",
+          "builtin": "bytedance"
+        },
+        {
+          "id": "noto",
+          "name": "思源黑体 Noto Sans SC",
+          "family": "Noto Sans SC",
+          "source": "builtin",
+          "url": "",
+          "format": "woff2",
+          "builtin": "noto"
+        },
+        {
+          "id": "lxgw",
+          "name": "霞鹜文楷",
+          "family": "LXGW WenKai Screen",
+          "source": "builtin",
+          "url": "",
+          "format": "woff2",
+          "builtin": "lxgw"
+        },
+        {
+          "id": "system",
+          "name": "系统字体",
+          "family": "system-ui",
+          "source": "builtin",
+          "url": "",
+          "format": "woff2",
+          "builtin": "system"
+        }
+      ]
     },
     "labels": {
-      "selection": "字体方案（-1 随机；0 抖音，1 鸿蒙，2 OPPO，3 小米，4 字节，5 思源，6 霞鹜，7 系统）"
+      "selection": "字体方案",
+      "activeId": "使用字体",
+      "items": "字体列表"
     },
     "constraints": {
       "selection": [
@@ -776,27 +883,63 @@
   {
     "key": "links",
     "title": "顶部链接样式",
-    "description": "调整顶部链接与登录入口的悬停样式。",
+    "description": "调整顶部链接与登录入口的样式。",
     "defaults": {
-      "enabled": true
+      "enabled": true,
+      "fontSize": 14,
+      "gap": 8,
+      "opacity": 0.5,
+      "textColor": "",
+      "hoverColor": "",
+      "loginColor": "",
+      "hoverUnderline": false,
+      "hoverLift": 0
     },
-    "labels": {},
-    "constraints": {}
+    "labels": {
+      "fontSize": "文字大小（像素）",
+      "gap": "链接间距（像素）",
+      "opacity": "默认不透明度",
+      "textColor": "链接颜色（留空跟随主题）",
+      "hoverColor": "悬停颜色",
+      "loginColor": "登录入口颜色",
+      "hoverUnderline": "悬停显示下划线",
+      "hoverLift": "悬停上移（像素）"
+    },
+    "constraints": {
+      "fontSize": [
+        12,
+        24
+      ],
+      "gap": [
+        0,
+        40
+      ],
+      "opacity": [
+        0.2,
+        1
+      ],
+      "hoverLift": [
+        0,
+        6
+      ]
+    }
   },
   {
     "key": "hideControls",
     "title": "隐藏顶部按钮",
-    "description": "选择要隐藏的搜索、语言和主题按钮。",
+    "description": "选择要隐藏的搜索、语言、主题和登录入口。",
     "defaults": {
       "enabled": true,
       "search": true,
       "language": true,
-      "theme": true
+      "theme": true,
+      "login": false
     },
     "labels": {
       "search": "隐藏搜索按钮",
       "language": "隐藏语言按钮",
-      "theme": "隐藏主题按钮"
+      "theme": "隐藏主题按钮",
+      "login": "隐藏登录按钮"
     },
     "constraints": {}
   },
@@ -928,32 +1071,132 @@
   {
     "key": "heart",
     "title": "点击爱心",
-    "description": "点击时显示爱心。",
+    "description": "点击页面时浮起爱心。",
     "defaults": {
-      "enabled": true
+      "enabled": true,
+      "size": 10,
+      "duration": 1300,
+      "distance": 77,
+      "randomColor": true,
+      "fixedColor": "#e85d8a"
     },
-    "labels": {},
-    "constraints": {}
+    "labels": {
+      "size": "爱心大小（像素）",
+      "duration": "持续时间（毫秒）",
+      "distance": "上浮距离（像素）",
+      "randomColor": "随机颜色",
+      "fixedColor": "固定颜色"
+    },
+    "constraints": {
+      "size": [
+        4,
+        48
+      ],
+      "duration": [
+        300,
+        5000
+      ],
+      "distance": [
+        10,
+        300
+      ]
+    }
   },
   {
     "key": "sakura",
     "title": "页面樱花",
-    "description": "飘落的樱花动画。",
+    "description": "随风飘落的樱花。",
     "defaults": {
-      "enabled": true
+      "enabled": true,
+      "count": 50,
+      "mobileCount": 30,
+      "size": 40,
+      "speed": 1,
+      "wind": -1.7,
+      "opacity": 1
     },
-    "labels": {},
-    "constraints": {}
+    "labels": {
+      "count": "电脑端花瓣数量",
+      "mobileCount": "手机端花瓣数量",
+      "size": "最大花瓣大小（像素）",
+      "speed": "飘落速度（倍）",
+      "wind": "风向与风速（负数向左）",
+      "opacity": "不透明度"
+    },
+    "constraints": {
+      "count": [
+        0,
+        150
+      ],
+      "mobileCount": [
+        0,
+        80
+      ],
+      "size": [
+        8,
+        80
+      ],
+      "speed": [
+        0.2,
+        3
+      ],
+      "wind": [
+        -5,
+        5
+      ],
+      "opacity": [
+        0.1,
+        1
+      ]
+    }
   },
   {
     "key": "stars",
     "title": "鼠标星星",
     "description": "星星跟随鼠标移动。",
     "defaults": {
-      "enabled": true
+      "enabled": true,
+      "size": 25,
+      "duration": 2000,
+      "interval": 16,
+      "distance": 120,
+      "spread": 60,
+      "palette": [
+        "#D61C59",
+        "#E7D84B",
+        "#1B8798"
+      ]
     },
-    "labels": {},
-    "constraints": {}
+    "labels": {
+      "size": "星星大小（像素）",
+      "duration": "持续时间（毫秒）",
+      "interval": "生成间隔（毫秒）",
+      "distance": "下落距离（像素）",
+      "spread": "左右散开距离（像素）",
+      "palette": "星星颜色"
+    },
+    "constraints": {
+      "size": [
+        8,
+        64
+      ],
+      "duration": [
+        300,
+        5000
+      ],
+      "interval": [
+        16,
+        300
+      ],
+      "distance": [
+        10,
+        400
+      ],
+      "spread": [
+        0,
+        200
+      ]
+    }
   },
   {
     "key": "peakCut",
@@ -1002,7 +1245,12 @@
       "controls": "Sakana 工具栏",
       "autoMotion": "Sakana 自动摇摆"
     },
-    "constraints": {"size":[120,400]}
+    "constraints": {
+      "size": [
+        120,
+        400
+      ]
+    }
   },
   {
     "key": "analytics",

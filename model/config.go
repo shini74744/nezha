@@ -37,6 +37,7 @@ const (
 type ConfigForGuests struct {
 	StatisticsSplit           *bool  `koanf:"statistics_split" json:"statistics_split,omitempty"`
 	ShowNetworkInDetail       bool   `koanf:"show_network_in_detail" json:"show_network_in_detail"`
+	PaperAppearanceConfig     string `koanf:"paper_appearance_config" json:"paper_appearance_config,omitempty"`
 	DoraemonAppearanceConfig  string `koanf:"doraemon_appearance_config" json:"doraemon_appearance_config,omitempty"`
 	DashboardAppearanceConfig string `koanf:"dashboard_appearance_config" json:"dashboard_appearance_config,omitempty"`
 	AppearanceConfig          string `koanf:"appearance_config" json:"appearance_config,omitempty"`

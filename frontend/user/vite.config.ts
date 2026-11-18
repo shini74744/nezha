@@ -36,7 +36,7 @@ export default defineConfig(({ mode }) => ({
 	define: {
 		"import.meta.env.VITE_GIT_HASH": JSON.stringify(getGitHash()),
 		"import.meta.env.VITE_THEME_VARIANT": JSON.stringify(
-			mode === "doraemon" ? "doraemon" : "default",
+			mode === "doraemon" ? "doraemon" : mode === "paper" ? "paper" : "default",
 		),
 	},
 	plugins: [
@@ -55,7 +55,11 @@ export default defineConfig(({ mode }) => ({
 					});
 			},
 			transformIndexHtml(html) {
-				if (mode !== "doraemon") return html;
+				if (mode === "paper") return html
+ .replace('<html lang="en">','<html lang="zh-CN" data-theme-variant="paper">')
+ .replace('const storageKey = "vite-ui-theme"','const storageKey = "paper-ui-theme"')
+ .replace('<title>哪吒监控 Nezha Monitoring</title>','<title>纸间 · DDnezha</title>');
+ if (mode !== "doraemon") return html;
 				return html
 					.replace(
 						'const storageKey = "vite-ui-theme"',
@@ -139,7 +143,7 @@ export default defineConfig(({ mode }) => ({
 		},
 	},
 	build: {
-		outDir: mode === "doraemon" ? "dist-doraemon" : "dist",
+		outDir: mode === "doraemon" ? "dist-doraemon" : mode === "paper" ? "dist-paper" : "dist",
 		// Target older Safari versions (iOS 15/16) explicitly, since Vite's
 		// default "widely-available browsers" target only covers the latest
 		// two major Safari releases and would otherwise emit syntax that

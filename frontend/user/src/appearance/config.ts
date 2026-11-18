@@ -1,3 +1,4 @@
+import {upgradeFont, validateAppearanceOptions} from "../../../shared/appearance-options";
 import {validateMascot} from "./mascot-config";
 import {validateVisitorIP} from "./visitor-ip-config";
 import {upgradeSpeed} from "./speed-config";
@@ -30,7 +31,7 @@ export function normalize(raw?: string | AppearanceConfig): AppearanceConfig {
 	const base = defaults();
 	if (!raw) return base;
 	try {
-		const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+		const parsed = typeof raw === "string" ? JSON.parse(raw) : JSON.parse(JSON.stringify(raw));
 		if (
 			parsed.version !== 1 ||
 			typeof parsed.enabled !== "boolean" ||
@@ -51,6 +52,7 @@ export function normalize(raw?: string | AppearanceConfig): AppearanceConfig {
 		if(!parsed.features.peakCut)base.features.peakCut={...base.features.peakCut,enabled:!!base.features.background.enabled&&!!base.features.background.peakCutDesktop};
   base.features.speed=upgradeSpeed(base.features.speed,parsed.features.speed);
   base.features.background=upgradeBackground(base.features.background,parsed.features.background);
+  base.features.font=upgradeFont(base.features.font,parsed.features.font);
 		return validate(base) ? defaults() : base;
 	} catch {
 		return defaults();
@@ -141,6 +143,7 @@ export function validate(config: AppearanceConfig): string {
   validateVisitorIP(config.features.visitorIP);
   validateBackground(config.features.background);
 		validateGreetingClock(config.features);
+  validateAppearanceOptions(config.features);
 		for (const tool of config.features.live2d.tools)
 			if (
 				![

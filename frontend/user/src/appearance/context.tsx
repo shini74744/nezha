@@ -1,3 +1,4 @@
+import paperDefaults from "../../../shared/paper-defaults.json";
 import {
 	createContext,
 	type ReactNode,
@@ -22,7 +23,7 @@ export function AppearanceProvider({
 	raw?: string;
 	children: ReactNode;
 }) {
-	const config = useMemo(() => normalize(raw), [raw]);
+	const config = useMemo(() => normalize(raw || (import.meta.env.VITE_THEME_VARIANT === "paper" ? JSON.stringify(paperDefaults) : undefined)), [raw]);
 	const footer = useRef<HTMLDivElement>(null);
 	const layout = useMemo(() => ({ footer }), []);
 	return (
