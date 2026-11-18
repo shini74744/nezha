@@ -32,6 +32,9 @@ func validateAppearanceFields(features map[string]map[string]any) error {
 		if err := validateAppearanceValue(definition.Key, feature, definition.Defaults); err != nil {
 			return err
 		}
+		if err := validateAppearanceOptionsFields(definition.Key, feature, definition.Defaults); err != nil {
+			return err
+		}
 		if err := validateGreetingClockFields(definition.Key, feature); err != nil {
 			return err
 		}

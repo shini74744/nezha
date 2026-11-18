@@ -1,0 +1,630 @@
+{
+  "version": 1,
+  "enabled": true,
+  "features": {
+    "branding": {
+      "enabled": false,
+      "logo": "https://cdn.skyimg.net/up/2025/1/13/zera6q.webp",
+      "description": "专业服务，技术先行",
+      "illustration": "https://cdn.nodeimage.com/i/TfZilY1yV3SMHqEsPmsSF4IqERBzdGUE.gif",
+      "showNetTransfer": true,
+      "links": [
+        {
+          "name": "联系我定制",
+          "link": "https://t.me/contact/1746959833:pDG7N84llgNWazU8"
+        },
+        {
+          "name": "GitHub",
+          "link": "https://github.com/hamster1963/nezha-dash"
+        }
+      ]
+    },
+    "dark": {
+      "enabled": false,
+      "mode": "dark"
+    },
+    "runtime": {
+      "enabled": false,
+      "startDate": "2024-11-28T00:00:00Z",
+      "prefix": "专业服务， 技术先行；网站已运行"
+    },
+    "greeting": {
+      "enabled": false,
+      "rules": [
+        {
+          "name": "早晨",
+          "start": "07:00",
+          "end": "09:00",
+          "messages": [
+            "🌅 早上好，新的一天开始啦～",
+            "☀️ 早安，今天也要充满朝气哦！",
+            "🌤️ 美好的一天从阳光早餐开始～",
+            "🕖 清晨的阳光刚刚好，起床动起来！",
+            "⏰ 起床啦，别让梦想迟到～",
+            "🌸 清晨的空气最清新，吸一口元气满满！",
+            "🍞 早餐要吃好，今天才会更有力量～",
+            "🌄 新的一天，新的好运正在路上！",
+            "💪 早安，加油！今天也要全力以赴～",
+            "🌼 早起的你，就是生活的掌舵人～"
+          ]
+        },
+        {
+          "name": "上午",
+          "start": "09:00",
+          "end": "12:00",
+          "messages": [
+            "☀️ 上午好，今天也要元气满满哦～",
+            "🕘 上午好，愿你效率满满～",
+            "📈 保持状态，迎接高效的一上午！",
+            "🌞 上午时间，最适合专注冲刺！",
+            "💡 灵感就在这个清醒的时段～",
+            "🚀 上午的每一分钟都很宝贵，把握住！",
+            "📝 今天的目标完成到哪啦？继续加油！",
+            "🌻 阳光正好，干劲十足！",
+            "💼 上午的努力是下午轻松的保障～",
+            "🎯 集中注意力，完成最重要的任务！"
+          ]
+        },
+        {
+          "name": "中午",
+          "start": "12:00",
+          "end": "14:00",
+          "messages": [
+            "🍜 中午好，记得按时吃饭休息一下～",
+            "☀️ 午饭时间到啦，来点能量吧～",
+            "😌 放松一下，午休时间珍贵哦～",
+            "🥢 吃饱饱，下午更有精神！",
+            "🛏️ 小憩片刻，为下午充电～",
+            "🍱 好好享受午餐的美味吧～",
+            "☕ 午饭后别忘来杯咖啡提提神～",
+            "😴 午睡20分钟，精神一整天！",
+            "🌿 给自己一个安静的午后时光～",
+            "🍉 来点水果，清爽一下～"
+          ]
+        },
+        {
+          "name": "下午",
+          "start": "14:00",
+          "end": "18:00",
+          "messages": [
+            "🌞 下午好，继续加油，不要犯困哦～",
+            "💼 下午时光，专注而充实～",
+            "🫖 来杯茶，提提神再冲刺一波！",
+            "🚀 下午是提高效率的黄金时段～",
+            "😄 保持专注，还有几个小时就下班啦～",
+            "📚 下午适合处理需要耐心的工作～",
+            "🌤️ 阳光温暖，心情更美好～",
+            "🎯 今天的目标，下午继续推进！",
+            "🤝 下午适合沟通协作，效率翻倍～",
+            "🍪 来点小零食补充能量吧～"
+          ]
+        },
+        {
+          "name": "傍晚",
+          "start": "18:00",
+          "end": "20:00",
+          "messages": [
+            "🌇 傍晚好，辛苦啦，准备收工了吗～",
+            "🧘‍♂️ 傍晚时分，放松一下吧～",
+            "🌆 工作一天，别忘了犒劳自己～",
+            "🛍️ 下班小奖励，今天你值得～",
+            "🍽️ 傍晚时间，来点美食治愈一下～",
+            "🌅 傍晚的天空最温柔～",
+            "🚶‍♂️ 下班散步，呼吸一下新鲜空气～",
+            "🍲 热腾腾的晚餐正在等你～",
+            "🏞️ 夕阳西下，享受片刻宁静～",
+            "🌟 放下工作，生活也要精彩～"
+          ]
+        },
+        {
+          "name": "晚上",
+          "start": "20:00",
+          "end": "00:00",
+          "messages": [
+            "🌙 晚上好，放松一下，好好休息～",
+            "📺 晚上适合追剧or放空自己～",
+            "🛋️ 忙了一天，是时候享受静谧的夜晚～",
+            "🎧 播首歌，让夜晚更有氛围～",
+            "🕯️ 点个香薰，舒缓今天的疲惫～",
+            "🍵 来杯热茶，暖暖身心～",
+            "🌌 抬头看看星空，许个愿吧～",
+            "📖 晚上也适合读点喜欢的书～",
+            "🐾 陪陪家人或宠物，享受温馨时光～",
+            "✨ 夜晚是属于自己的慢时光～"
+          ]
+        },
+        {
+          "name": "深夜",
+          "start": "00:00",
+          "end": "07:00",
+          "messages": [
+            "🌌 夜深了，早点休息，晚安～",
+            "😴 别熬夜哦，身体最重要～",
+            "🌙 夜已深，梦里也要开心～",
+            "🛏️ 盖好被子，明天继续闪光～",
+            "🌠 星星都入睡了，你也该休息啦～",
+            "💤 让身体和大脑都放个假～",
+            "🍵 睡前来杯温牛奶助眠～",
+            "📵 放下手机，进入美好梦乡～",
+            "🌃 夜色温柔，梦境也会很甜～",
+            "🪷 关灯，安心入眠，明天见～"
+          ]
+        }
+      ]
+    },
+    "clock": {
+      "enabled": false,
+      "hourStartColor": "#ffffff",
+      "hourEndColor": "#ff2828",
+      "minuteStartColor": "#ffffff",
+      "minuteEndColor": "#28ff64",
+      "secondStartColor": "#ffffff",
+      "secondEndColor": "#2878ff"
+    },
+    "background": {
+      "enabled": false,
+      "regionApi": "https://ipinfo.io/json?token=769fdd3c5a44a4",
+      "nightStart": 1,
+      "nightEnd": 6,
+      "nightEnabled": true,
+      "blur": 4,
+      "opacity": 0.4,
+      "lightBlur": 4,
+      "lightOpacity": 0.4,
+      "darkBlur": 4,
+      "darkOpacity": 0.4,
+      "desktopLoadEffect": "center",
+      "desktopLoadDuration": 1.2,
+      "mobileLoadEffect": "center",
+      "mobileLoadDuration": 1.2,
+      "nightImages": [
+        "https://jkapi.com/api/yo_cup?type=&apiKey=85d2491045c79dc05e67e51574ad38da",
+        "https://image.anosu.top/pixiv/direct?r18=1&keyword=touhou",
+        "https://imgs.serv00.net/pic.php"
+      ],
+      "chinaMedia": [
+        {
+          "type": "video",
+          "src": "https://t.alcy.cc/acg"
+        },
+        {
+          "type": "image",
+          "src": "https://t.alcy.cc/fj"
+        },
+        {
+          "type": "video",
+          "src": "https://api.lolimi.cn/API/xjj/xjj.php"
+        },
+        {
+          "type": "image",
+          "src": "https://api.lolimi.cn/API/xjj/lt.php"
+        }
+      ],
+      "mobileMedia": [
+        {
+          "type": "image",
+          "src": "https://api.lolimi.cn/API/tup/xjj.php"
+        },
+        {
+          "type": "video",
+          "src": "https://tc.shni.cc/api/api.php"
+        },
+        {
+          "type": "image",
+          "src": "https://www.onexiaolaji.cn/RandomPicture/api/?key=qq249663924"
+        },
+        {
+          "type": "video",
+          "src": "http://api.mmp.cc/api/shortvideo?type=mp4"
+        },
+        {
+          "type": "video",
+          "src": "https://t.alcy.cc/acg"
+        }
+      ],
+      "desktopMedia": [
+        {
+          "type": "video",
+          "src": "https://tc.shni.cc/api/pcapi.php"
+        },
+        {
+          "type": "video",
+          "src": "http://api.mmp.cc/api/ksvideo?type=mp4&id=BianZhuang"
+        },
+        {
+          "type": "video",
+          "src": "https://tc.shni.cc/api/api.php"
+        },
+        {
+          "type": "image",
+          "src": "https://api.lolimi.cn/API/meinv/api.php?type=image"
+        },
+        {
+          "type": "video",
+          "src": "http://api.mmp.cc/api/shortvideo?type=mp4"
+        },
+        {
+          "type": "image",
+          "src": "https://imgapi.xl0408.top/index.php"
+        },
+        {
+          "type": "video",
+          "src": "https://t.alcy.cc/acg"
+        }
+      ],
+      "asns": [
+        "AS9808",
+        "AS4134",
+        "AS4837"
+      ],
+      "peakCutDesktop": true,
+      "regionEnabled": true,
+      "regionOrgPath": "org",
+      "regionCountryPath": "country",
+      "regionCountries": [
+        ""
+      ],
+      "regionMobileMedia": [
+        {
+          "type": "video",
+          "src": "https://t.alcy.cc/acg"
+        },
+        {
+          "type": "image",
+          "src": "https://t.alcy.cc/fj"
+        },
+        {
+          "type": "video",
+          "src": "https://api.lolimi.cn/API/xjj/xjj.php"
+        },
+        {
+          "type": "image",
+          "src": "https://api.lolimi.cn/API/xjj/lt.php"
+        }
+      ],
+      "timezone": "Asia/Shanghai",
+      "priority": "region-first",
+      "scheduleEnabled": true,
+      "showScheduleNotice": true,
+      "scheduleRules": [
+        {
+          "name": "凌晨背景",
+          "enabled": true,
+          "start": "01:00",
+          "end": "06:00",
+          "desktopMedia": [
+            {
+              "type": "image",
+              "src": "https://jkapi.com/api/yo_cup?type=&apiKey=85d2491045c79dc05e67e51574ad38da"
+            },
+            {
+              "type": "image",
+              "src": "https://image.anosu.top/pixiv/direct?r18=1&keyword=touhou"
+            },
+            {
+              "type": "image",
+              "src": "https://imgs.serv00.net/pic.php"
+            }
+          ],
+          "mobileMedia": [
+            {
+              "type": "image",
+              "src": "https://jkapi.com/api/yo_cup?type=&apiKey=85d2491045c79dc05e67e51574ad38da"
+            },
+            {
+              "type": "image",
+              "src": "https://image.anosu.top/pixiv/direct?r18=1&keyword=touhou"
+            },
+            {
+              "type": "image",
+              "src": "https://imgs.serv00.net/pic.php"
+            }
+          ]
+        }
+      ]
+    },
+    "video": {
+      "enabled": false,
+      "videoSelector": ".video-box video",
+      "toggleSelector": ".min-h-screen .cursor-pointer",
+      "unmuteOnVideoClick": true,
+      "toggleMuteOnControlClick": true,
+      "showControl": true
+    },
+    "sponsor": {
+      "enabled": false,
+      "desktop": true,
+      "mobile": true,
+      "desktopTop": "310px",
+      "shrinkDuration": 15000,
+      "stayDuration": 3000,
+      "fadeDuration": 500,
+      "pauseOnHover": true,
+      "mobileBottomThreshold": 10,
+      "startText": "感谢",
+      "endText": "的赞助支持！",
+      "sponsors": [
+        {
+          "name": "Sharon",
+          "url": "https://gomami.io/aff.php?aff=174",
+          "logo": "https://s2.loli.net/2025/09/15/6YUnFgXtlxbE1SW.png"
+        },
+        {
+          "name": "WEPC",
+          "url": "https://wepc.au/aff.php?aff=850",
+          "logo": "https://cdn.nodeimage.com/i/wo7zLQnxFQ78YpGcUwaZJF6cPzZOhJ98.webp"
+        },
+        {
+          "name": "狗妈咪",
+          "url": "https://gomami.io/aff.php?aff=58",
+          "logo": "https://s2.loli.net/2025/12/30/FdR7loWjbYOAurV.png"
+        }
+      ],
+      "homeOnly": true
+    },
+    "visitorIP": {
+      "enabled": false,
+      "cacheDuration": 21600000,
+      "bottomThreshold": 24,
+      "ipApiUrls": [
+        "https://ipinfo.io/json"
+      ],
+      "fallbackUrl": "",
+      "queryTimeout": 4000,
+      "fallbackTimeout": 2500,
+      "networkEnabled": true,
+      "checkTimeout": 1600,
+      "switchTimeout": 1800,
+      "checkNodes": [
+        {
+          "name": "Google",
+          "url": "https://www.gstatic.com/generate_204"
+        },
+        {
+          "name": "CF",
+          "url": "https://www.cloudflare.com/cdn-cgi/trace"
+        }
+      ],
+      "showRegion": true,
+      "showASN": true,
+      "showOrganization": true,
+      "showDownlink": true
+    },
+    "footerIP": {
+      "enabled": false,
+      "url": "https://ip.skk.moe/simple-dark",
+      "height": 125
+    },
+    "quote": {
+      "enabled": false,
+      "dayUrls": [
+        "https://jkapi.com/api/one_yan",
+        "https://jkapi.com/api/dujitang",
+        "https://jkapi.com/api/saohua"
+      ],
+      "nightUrl": "https://jkapi.com/api/wanan"
+    },
+    "counter": {
+      "enabled": false,
+      "imageUrl": "https://count.getloli.com/@tongji?name=tongji&theme=random&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto",
+      "desktopRight": 0,
+      "desktopTop": 0,
+      "desktopWidth": 240,
+      "desktopHeight": 60,
+      "mobileTop": 8,
+      "mobileWidth": 170,
+      "mobileHeight": 44,
+      "mobileOffset": 15,
+      "scrollThreshold": 5
+    },
+    "font": {
+      "enabled": false,
+      "selection": -1,
+      "activeId": "random",
+      "items": [
+        {
+          "id": "douyin",
+          "name": "抖音 Douyin Sans",
+          "family": "Douyin Sans",
+          "source": "builtin",
+          "url": "",
+          "format": "woff2",
+          "builtin": "douyin"
+        },
+        {
+          "id": "harmony",
+          "name": "鸿蒙 HarmonyOS",
+          "family": "HarmonyOS_Regular",
+          "source": "builtin",
+          "url": "",
+          "format": "woff2",
+          "builtin": "harmony"
+        },
+        {
+          "id": "oppo",
+          "name": "OPPO Sans",
+          "family": "OPPO Sans",
+          "source": "builtin",
+          "url": "",
+          "format": "woff2",
+          "builtin": "oppo"
+        },
+        {
+          "id": "misans",
+          "name": "小米 MiSans",
+          "family": "MiSans",
+          "source": "builtin",
+          "url": "",
+          "format": "woff2",
+          "builtin": "misans"
+        },
+        {
+          "id": "bytedance",
+          "name": "字节跳动字体",
+          "family": "DFPKingGothicGB-Regular",
+          "source": "builtin",
+          "url": "",
+          "format": "woff2",
+          "builtin": "bytedance"
+        },
+        {
+          "id": "noto",
+          "name": "思源黑体 Noto Sans SC",
+          "family": "Noto Sans SC",
+          "source": "builtin",
+          "url": "",
+          "format": "woff2",
+          "builtin": "noto"
+        },
+        {
+          "id": "lxgw",
+          "name": "霞鹜文楷",
+          "family": "LXGW WenKai Screen",
+          "source": "builtin",
+          "url": "",
+          "format": "woff2",
+          "builtin": "lxgw"
+        },
+        {
+          "id": "system",
+          "name": "系统字体",
+          "family": "system-ui",
+          "source": "builtin",
+          "url": "",
+          "format": "woff2",
+          "builtin": "system"
+        }
+      ]
+    },
+    "traffic": {
+      "enabled": true,
+      "toggleInterval": 5000
+    },
+    "speed": {
+      "enabled": false,
+      "bits": true,
+      "color": true,
+      "animation": true,
+      "cardEnabled": true,
+      "overviewEnabled": true,
+      "overviewBits": true,
+      "overviewColor": true,
+      "overviewAnimation": true
+    },
+    "nameColor": {
+      "enabled": false,
+      "list": true,
+      "detail": true
+    },
+    "links": {
+      "enabled": true,
+      "fontSize": 14,
+      "gap": 14,
+      "opacity": 0.8,
+      "textColor": "",
+      "hoverColor": "",
+      "loginColor": "",
+      "hoverUnderline": false,
+      "hoverLift": 0
+    },
+    "hideControls": {
+      "enabled": false,
+      "search": false,
+      "language": false,
+      "theme": false,
+      "login": false
+    },
+    "protection": {
+      "enabled": false,
+      "contextMenu": true,
+      "selection": true,
+      "drag": true,
+      "shortcuts": true
+    },
+    "footer": {
+      "enabled": false,
+      "text": "MyStatus 监控系统 ©2025",
+      "url": "https://t.me/contact/1746959833:pDG7N84llgNWazU8",
+      "poweredText": "Powered by NeZha",
+      "poweredUrl": "https://github.com/nezhahq/nezha"
+    },
+    "sideImage": {
+      "enabled": false,
+      "imageUrl": "https://t.alcy.cc/tx"
+    },
+    "network": {
+      "enabled": false,
+      "count": 200,
+      "opacity": 0.5,
+      "color": "0,0,0"
+    },
+    "snow": {
+      "enabled": false,
+      "count": 40,
+      "interval": 2000,
+      "mobileCount": 20
+    },
+    "fragments": {
+      "enabled": false,
+      "count": 20
+    },
+    "heart": {
+      "enabled": false,
+      "size": 10,
+      "duration": 1300,
+      "distance": 77,
+      "randomColor": true,
+      "fixedColor": "#e85d8a"
+    },
+    "sakura": {
+      "enabled": false,
+      "count": 50,
+      "mobileCount": 30,
+      "size": 40,
+      "speed": 1,
+      "wind": -1.7,
+      "opacity": 1
+    },
+    "stars": {
+      "enabled": false,
+      "size": 25,
+      "duration": 2000,
+      "interval": 16,
+      "distance": 120,
+      "spread": 60,
+      "palette": [
+        "#D61C59",
+        "#E7D84B",
+        "#1B8798"
+      ]
+    },
+    "peakCut": {
+      "enabled": false,
+      "desktop": true,
+      "mobile": false
+    },
+    "live2d": {
+      "enabled": false,
+      "provider": "live2d",
+      "character": "chisato",
+      "customCharacters": [],
+      "size": 200,
+      "controls": true,
+      "autoMotion": false,
+      "cdnPath": "https://fastly.jsdelivr.net/gh/fghrsh/live2d_api/",
+      "tools": [
+        "hitokoto",
+        "asteroids",
+        "switch-model",
+        "switch-texture",
+        "photo",
+        "info",
+        "quit"
+      ]
+    },
+    "analytics": {
+      "enabled": false,
+      "measurementId": "G-S5CPS1PHE4"
+    }
+  }
+}

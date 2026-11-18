@@ -22,6 +22,7 @@ import ErrorPage from "./pages/ErrorPage";
 import Server from "./pages/Server";
 import { RetainedServerList } from "./components/RetainedServerList";
 import CardPreview from "./pages/CardPreview";
+import {PaperChapter} from "./themes/paper/PaperChapter";
 
 const { View: DoraemonApp } = preloadableView(() => import("./themes/doraemon/App"));
 const { View: NotFound } = preloadableView(() => import("./pages/NotFound"));
@@ -54,7 +55,7 @@ const MainApp: React.FC = () => {
 
 
 	useEffect(() => {
-		if (!cardPreview && settingData?.data?.config?.custom_code) {
+		if (import.meta.env.VITE_THEME_VARIANT !== "paper" && !cardPreview && settingData?.data?.config?.custom_code) {
 			InjectContext(settingData?.data?.config?.custom_code);
 			setIsCustomCodeInjected(true);
 		}
@@ -77,7 +78,7 @@ const MainApp: React.FC = () => {
  }, [settingData?.data?.config?.language, i18n]);
 	const initialBackendError = !settingData ? toError(error) : null;
 
-	if (!cardPreview && settingData?.data?.config?.custom_code && !isCustomCodeInjected) {
+	if (import.meta.env.VITE_THEME_VARIANT !== "paper" && !cardPreview && settingData?.data?.config?.custom_code && !isCustomCodeInjected) {
 		return null;
 	}
 
@@ -121,6 +122,7 @@ const MainApp: React.FC = () => {
 					<RefreshToast />
 					<NativeQuote/>
 					<Header />
+                    {import.meta.env.VITE_THEME_VARIANT === "paper" && <PaperChapter/>}
 					<DashCommand />
 					<RetainedServerList active={isServerList}><Server backendError={initialBackendError} /></RetainedServerList>
 					<Routes>

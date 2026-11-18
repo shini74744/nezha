@@ -39,7 +39,7 @@ export function NativeCanvas({
 			className="nz-native-canvas"
 			style={{
 				zIndex: kind === "network" ? 10 : 0,
-				opacity: kind === "network" ? config.opacity : 1,
+				opacity: config.opacity ?? 1,
 			}}
 		/>
 	);
@@ -51,7 +51,7 @@ type Particle = {
 	style: CSSProperties;
 	expires: number;
 };
-const colors = ["#D61C59", "#E7D84B", "#1B8798"];
+
 function PointerParticles({
 	heart,
 	fragments,
@@ -65,7 +65,8 @@ function PointerParticles({
 		serial = useRef(0);
 	useEffect(() => {
 		const pending: Particle[] = [];
-		let frame = 0;
+		let frame = 0, lastStar = -Infinity;
+        setParticles([]);
 		const flush = () => {
 			frame = 0;
 			const batch = pending.splice(0);
@@ -78,6 +79,7 @@ function PointerParticles({
 		};
 		const add = (p: Omit<Particle, "id">) => {
 			pending.push({ ...p, id: serial.current++ });
+            if (pending.length > 240) pending.shift();
 			if (!frame) frame = requestAnimationFrame(flush);
 		};
 		const click = (e: MouseEvent) => {
@@ -85,15 +87,18 @@ function PointerParticles({
 			if (heart.enabled)
 				add({
 					className: "heart",
-					expires: now + 1400,
+					expires: now + heart.duration + 100,
 					style: {
-						left: e.clientX - 5,
-						top: e.clientY - 5,
-						backgroundColor:
+						left: e.clientX - heart.size / 2,
+						top: e.clientY - heart.size / 2,
+						"--heart-size": heart.size + "px",
+                        "--heart-duration": heart.duration + "ms",
+                        "--heart-distance": heart.distance + "px",
+                        backgroundColor: !heart.randomColor ? heart.fixedColor :
 							"rgb(" +
 							[0, 0, 0].map(() => Math.floor(Math.random() * 255)).join(",") +
 							")",
-					},
+					} as CSSProperties,
 				});
 			if (fragments.enabled)
 				for (let i = 0; i < fragments.count; i++) {
@@ -115,18 +120,23 @@ function PointerParticles({
 		const move = (e: MouseEvent) => {
 			if (
 				!stars.enabled ||
+                Date.now() - lastStar < stars.interval ||
 				isTouchDevice()
 			)
 				return;
-			add({
+			lastStar = Date.now();
+            add({
 				className: "nz-cursor-star",
 				text: "*",
-				expires: Date.now() + 2100,
+				expires: Date.now() + stars.duration + 100,
 				style: {
 					left: e.clientX + 10,
 					top: e.clientY + 10,
-					color: colors[Math.floor(Math.random() * colors.length)],
-					"--dx": `${(Math.random() < 0.5 ? -1 : 1) * Math.random() * 60}px`,
+					color: stars.palette[Math.floor(Math.random() * stars.palette.length)],
+                    "--star-size": stars.size + "px",
+                    "--star-duration": stars.duration + "ms",
+                    "--star-distance": stars.distance + "px",
+					"--dx": `${(Math.random() < 0.5 ? -1 : 1) * Math.random() * stars.spread}px`,
 				} as CSSProperties,
 			});
 		};
@@ -234,14 +244,15 @@ function BackToTop() {
 }
 export function NativeParticleEffects() {
 	const { features: f } = useAppearance();
+ const reduced = useMedia("(prefers-reduced-motion: reduce)");
 	return (
 		<>
-			{f.network.enabled && !isTouchDevice() && (
+			{!reduced && f.network.enabled && !isTouchDevice() && (
 				<NativeCanvas kind="network" config={f.network} />
 			)}
-			{f.sakura.enabled && <NativeCanvas kind="sakura" config={f.sakura} />}
-			{f.snow.enabled && <Snow config={f.snow} />}
-			{(f.heart.enabled || f.fragments.enabled || f.stars.enabled) && (
+			{!reduced && f.sakura.enabled && <NativeCanvas kind="sakura" config={f.sakura} />}
+			{!reduced && f.snow.enabled && <Snow config={f.snow} />}
+			{!reduced && (f.heart.enabled || f.fragments.enabled || f.stars.enabled) && (
 				<PointerParticles
 					key={[f.heart.enabled, f.fragments.enabled, f.stars.enabled].join()}
 					heart={f.heart}

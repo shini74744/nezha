@@ -36,6 +36,10 @@ for i in $(seq 0 $(("$count"-1))); do
 
   # This fork owns the Doraemon port; it is built from shared default-theme source.
   # Never download the unrelated Monitor theme archive as a Nezha frontend.
+  if [[ "$path" == "paper-dist" ]]; then
+    bash "$ROOT_DIR/script/build-paper.sh"
+    continue
+  fi
   if [[ "$path" == "doraemon-dist" ]]; then
     bash "$ROOT_DIR/script/build-doraemon.sh"
     continue

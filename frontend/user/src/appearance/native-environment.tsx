@@ -1,15 +1,11 @@
 import { useEffect, useState } from "react";
 import { useFeature } from "./context";
-import fonts from "./font-styles.json";
+import fonts from "../../../shared/font-styles.json";
+import {chooseFont, fontCSS} from "../../../shared/appearance-options";
 import { isTouchDevice } from "./native-hooks";
 export function NativeFont() {
-	const f = useFeature("font"),
-		[random] = useState(() => Math.floor(Math.random() * fonts.length));
-	return f.enabled ? (
-		<style data-native-font>
-			{fonts[f.selection < 0 ? random : f.selection] || ""}
-		</style>
-	) : null;
+ const f = useFeature("font"), [seed] = useState(() => Math.random());
+ return f.enabled ? <style data-native-font>{fontCSS(chooseFont(f, seed), fonts)}</style> : null;
 }
 export function NativeProtection() {
 	const f = useFeature("protection"),

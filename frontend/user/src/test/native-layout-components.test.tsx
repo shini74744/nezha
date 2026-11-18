@@ -270,6 +270,38 @@ describe("native layout and lifecycle", () => {
 		fireEvent.click(document);
 		expect(document.querySelector(".heart")).toBeNull();
 	});
+ it("applies particle parameters, throttles stars and clears changed effects", async()=>{
+  const c=config(["heart","stars"]);
+  Object.assign(c.features.heart,{size:24,duration:500,distance:90,randomColor:false,fixedColor:"#123456"});
+  Object.assign(c.features.stars,{size:32,interval:100,palette:["#abcdef"],duration:500,spread:0,distance:60});
+  const v=mount(c,<NativeParticleEffects/>);
+  fireEvent.click(document,{clientX:100,clientY:100});
+  for(let i=0;i<100;i++)fireEvent.mouseMove(document,{clientX:100+i,clientY:100});
+  await advance();
+  const h=v.container.querySelector(".heart") as HTMLElement;
+  expect(h.style.getPropertyValue("--heart-size")).toBe("24px");
+  expect(h.style.getPropertyValue("--heart-duration")).toBe("500ms");
+  expect(h.style.backgroundColor).toBe("rgb(18, 52, 86)");
+  expect(v.container.querySelectorAll(".nz-cursor-star")).toHaveLength(1);
+  const star=v.container.querySelector(".nz-cursor-star") as HTMLElement;
+  expect(star.style.getPropertyValue("--star-size")).toBe("32px");
+  expect(star.style.color).toBe("rgb(171, 205, 239)");
+  await advance(101);fireEvent.mouseMove(document,{clientX:120,clientY:130});await advance();
+  expect(v.container.querySelectorAll(".nz-cursor-star")).toHaveLength(2);
+  c.features.stars.size=20;v.refresh();await advance();
+  expect(v.container.querySelectorAll("[data-native-particles]>span")).toHaveLength(0);
+  v.unmount();expect(vi.getTimerCount()).toBe(0);
+ });
+ it("uses the selected custom font and retains it when the list order changes",()=>{
+  const c=config(["font"]);
+  c.features.font.items.push({id:"qa",name:"QA",family:"Example",source:"file",url:"https://example.test/font.woff2",format:"woff2",builtin:""});
+  c.features.font.activeId="qa";
+  const v=mount(c,<NativeFont/>);
+  expect(v.container.textContent).toContain('NZCustom-qa');
+  c.features.font.items.reverse();v.refresh();
+  expect(v.container.textContent).toContain('https://example.test/font.woff2');
+ });
+
 	it.each([
 		390, 1366,
 	])("snow honors count on %i and cleans up", async (viewport) => {

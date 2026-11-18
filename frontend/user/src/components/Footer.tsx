@@ -45,15 +45,15 @@ const layout=useAppearanceLayout(), sponsorFeature=useFeature("sponsor");
 						<section>
 							{t("footer.themeBy")}
 							<a
-								href={"https://github.com/hamster1963/nezha-dash"}
+								href={import.meta.env.VITE_THEME_VARIANT === "paper" ? "https://github.com/shini74744/nezha" : "https://github.com/hamster1963/nezha-dash"}
 								target="_blank"
 								rel="noopener"
 							>
-								nezha-dash
+								{import.meta.env.VITE_THEME_VARIANT === "paper" ? "纸间 · Paper" : "nezha-dash"}
 							</a>
 							{import.meta.env.VITE_GIT_HASH && (
 								<a
-									href={`https://github.com/hamster1963/nezha-dash-v1/commit/${import.meta.env.VITE_GIT_HASH}`}
+									href={`${import.meta.env.VITE_THEME_VARIANT === "paper" ? "https://github.com/shini74744/nezha" : "https://github.com/hamster1963/nezha-dash-v1"}/commit/${import.meta.env.VITE_GIT_HASH}`}
 									className="ml-1"
 								>
 									({import.meta.env.VITE_GIT_HASH})

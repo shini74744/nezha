@@ -28,7 +28,7 @@ var frontendStatisticsVersion = fmt.Sprintf("%x", sha256.Sum256(frontendStatisti
 // an isolated, read-only launcher. Never inject into admin, data, or API pages.
 func sharedStatisticsTheme(templateRoot string) bool {
 	return fs.ValidPath(templateRoot) && strings.HasSuffix(templateRoot, "-dist") &&
-		templateRoot != "admin-dist" && templateRoot != "user-dist" && templateRoot != "doraemon-dist"
+		templateRoot != "admin-dist" && templateRoot != "user-dist" && templateRoot != "doraemon-dist" && templateRoot != "paper-dist"
 }
 
 func serveStatisticsHTML(c *gin.Context, templateRoot, name string, file io.ReadSeeker, status int) bool {

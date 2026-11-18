@@ -158,6 +158,7 @@ func sanitizeFrontendNext(next string) string {
 func serveFrontendPasswordPage(c *gin.Context, next, message string, status int) {
 	settingsMutationMu.Lock()
 	site := singleton.Conf.SiteName
+	paper := singleton.Conf.UserTemplate == "paper-dist"
 	settingsMutationMu.Unlock()
-	serveAccessPasswordPage(c, accessPasswordPage{Next: sanitizeFrontendNext(next), Message: message, Site: site}, status)
+	serveAccessPasswordPage(c, accessPasswordPage{Paper: paper, Next: sanitizeFrontendNext(next), Message: message, Site: site}, status)
 }

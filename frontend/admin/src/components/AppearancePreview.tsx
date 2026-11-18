@@ -32,7 +32,7 @@ export default function AppearancePreview({
     config,
     validation,
 }: {
-    scope: "user-dist" | "doraemon-dist" | "dashboard"
+    scope: "user-dist" | "doraemon-dist" | "paper-dist" | "dashboard"
     config: AppearanceConfig | DashboardAppearance
     validation?: string
 }) {
@@ -149,7 +149,7 @@ function PreviewFrame({
     const f = config.features,
         on = (k: string) => config.enabled && f[k]?.enabled,
         admin = scope === "dashboard",
-        dora = scope === "doraemon-dist"
+        dora = scope === "doraemon-dist", paper = scope === "paper-dist"
     const brand = f[admin ? "brand" : "branding"],
         background = f.background
     const media = on("background")
@@ -203,11 +203,13 @@ function PreviewFrame({
                 createPortal(
                     <>
                         <style>{previewCSS}</style>
+                        {paper && <style>{".preview-page.paper{background:"+(mode==="dark"?"#29241e":"#faf5e9")+";color:"+(mode==="dark"?"#e1d3bb":"#3d342c")+";border:10px double "+(mode==="dark"?"#514737":"#d9ceba")+";border-radius:3px}.paper header{border-bottom:3px double #b9a889}.paper h1{font-family:serif;letter-spacing:.1em}.paper article,.paper .card{border-radius:3px;box-shadow:1px 3px 0 #80634015;background:"+(mode==="dark"?"#302a23":"#fffaf0")+"}"}</style>}
+
                         {admin && <style>{dashboardCSS(config as DashboardAppearance)}</style>}
                         <div
                             className={
                                 "preview-page " +
-                                (admin ? "dashboard-page-frame" : dora ? "dora" : "")
+                                (admin ? "dashboard-page-frame" : dora ? "dora" : paper ? "paper" : "")
                             }
                             onClickCapture={(e) => {
                                 e.preventDefault()

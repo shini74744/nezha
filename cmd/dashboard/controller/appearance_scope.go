@@ -15,7 +15,7 @@ func appearanceTheme(theme string) (string, error) {
 	switch theme {
 	case "", "user-dist":
 		return "user-dist", nil
-	case "doraemon-dist":
+	case "doraemon-dist", "paper-dist":
 		return theme, nil
 	default:
 		return "", errors.New("unsupported appearance theme")
@@ -87,6 +87,13 @@ func validateThemeAppearance(theme string, raw []byte) (string, error) {
 func saveThemeAppearance(conf *model.Config, theme string, form appearanceForm, next string, save func() error) error {
 	if _, err := appearanceTheme(theme); err != nil {
 		return err
+	}
+	if theme == "paper-dist" {
+		if form.ExpectedCustomCode != nil || form.RemainingCustomCode != nil {
+			return errors.New("Paper does not support custom code migration")
+		}
+		code, archive := "", ""
+		return saveNativeAppearance(&conf.PaperAppearanceConfig, &code, &archive, form, next, save)
 	}
 	if theme != "doraemon-dist" {
 		return saveNativeAppearance(&conf.AppearanceConfig, &conf.CustomCode, &conf.AppearanceLegacyCode, form, next, save)

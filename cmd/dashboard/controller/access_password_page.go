@@ -10,6 +10,7 @@ import (
 // Both entry gates use this exact template so responsive, error, and dark states stay aligned.
 type accessPasswordPage struct {
 	Backend                   bool
+	Paper                     bool
 	Next, Message, CSRF, Site string
 	Disabled                  bool
 	Failures, BanMinutes      int
@@ -19,6 +20,11 @@ func serveAccessPasswordPage(c *gin.Context, page accessPasswordPage, status int
 	title, description, action, button := "前台访问密码", "输入访问密码后查看监控页面。", "/api/v1/frontend-auth", "进入前台"
 	context, placeholder := "监控访问", "请输入前台访问密码"
 	nextNote, backLink := "", ""
+	pageClass := ""
+	if page.Paper && !page.Backend {
+		pageClass = "paper"
+		context = "纸间 · 监控访问"
+	}
 	if page.Backend {
 		title, description, action, button = "后台访问验证", "请输入管理员设置的后台访问密码。", "/api/v1/backend-auth", "验证并继续"
 		context, placeholder = "后台管理", "请输入后台访问密码"
@@ -105,6 +111,6 @@ input[aria-invalid=true]{border-color:#dd8b7f}.primary{background:#7edec1;color:
 @media(max-width:480px){body{padding:20px 16px}.card{padding:26px 22px;border-radius:20px}.brand{margin-bottom:24px}h1{font-size:24px}}
 @media(max-height:640px){body{align-items:start;padding-top:24px;padding-bottom:24px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
-</style></head><body><main class="card" aria-labelledby="access-title"><div class="brand"><span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 20 6v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8.5 11.5 2.5 2.5 4.5-5"/></svg></span><div class="brand-copy"><p class="site">` + escape(site) + `</p><p class="context">` + context + `</p></div></div><h1 id="access-title">` + title + `</h1>
+` + paperAccessCSS + `</style></head><body class="` + pageClass + `"><main class="card" aria-labelledby="access-title"><div class="brand"><span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 20 6v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8.5 11.5 2.5 2.5 4.5-5"/></svg></span><div class="brand-copy"><p class="site">` + escape(site) + `</p><p class="context">` + context + `</p></div></div><h1 id="access-title">` + title + `</h1>
 <p id="access-description" class="description">` + escape(description) + `</p>` + message + form + nextNote + backLink + `</main></body></html>`)
 }

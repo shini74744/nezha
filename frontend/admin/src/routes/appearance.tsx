@@ -1,3 +1,5 @@
+import { FontSettings } from "@/components/font-settings"
+import { AppearanceOptionsSettings } from "@/components/appearance-options-settings"
 import { FetcherMethod, fetcher } from "@/api/api"
 import AppearancePreview from "@/components/AppearancePreview"
 import SettingHelp from "@/components/SettingHelp"
@@ -77,6 +79,7 @@ export default function AppearancePage() {
                         }}
                     >
                         <option value="user-dist">默认主题</option>
+                        <option value="paper-dist">纸间 · Paper</option>
                         <option value="doraemon-dist">哆啦 A 梦</option>
                     </select>
                 </label>
@@ -151,7 +154,7 @@ function ThemeAppearanceEditor({
             JSON.stringify(appearancePayload(theme, config)) !==
                 JSON.stringify(appearancePayload(theme, savedConfig)))
     const validation = validateThemeConfig(theme, config)
-    const activeDefinitions = isDefault ? definitions : doraDefinitions
+    const activeDefinitions = theme !== "doraemon-dist" ? definitions : doraDefinitions
     useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange])
     useEffect(() => onBusyChange(busy || reading), [busy, reading, onBusyChange])
 
@@ -464,7 +467,11 @@ function ThemeAppearanceEditor({
             enabled={config.features[d.key].enabled}
             onEnabledChange={(v) => update(d.key, "enabled", v)}
         >
-            {d.key === "visitorIP" ? (
+            {d.key === "font" && theme !== "doraemon-dist" ? (
+                <FontSettings value={config.features.font} onChange={value=>patch("font",value)}/>
+            ) : ["heart","stars","sakura","links"].includes(d.key) && theme !== "doraemon-dist" ? (
+                <AppearanceOptionsSettings definition={d} value={config.features[d.key]} onChange={value=>patch(d.key,value)}/>
+            ) : d.key === "visitorIP" ? (
                 <VisitorIPSettings
                     value={config.features.visitorIP}
                     onChange={(value) => patch("visitorIP", value)}

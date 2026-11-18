@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { safeSessionStorage } from "@/lib/storage";
 import { useLoginUser } from "@/hooks/use-login-user";
 import {useFeature} from "@/appearance/context";
@@ -57,12 +58,18 @@ const useCurrentTime = () => {
 
 function Header() {
 const brand=useFeature('branding'), hidden=useFeature('hideControls');
-const linksStyle=useFeature('links').enabled;
+const linkConfig=useFeature('links'), linksStyle=linkConfig.enabled;
+const linkVariables = linksStyle ? {
+ "--link-size": linkConfig.fontSize+"px", "--link-gap": linkConfig.gap+"px",
+ "--link-opacity": linkConfig.opacity, "--link-color": linkConfig.textColor || "inherit",
+ "--link-hover": linkConfig.hoverColor || undefined, "--link-login": linkConfig.loginColor || undefined,
+ "--link-underline": linkConfig.hoverUnderline ? "underline" : "none", "--link-lift": linkConfig.hoverLift+"px",
+} as CSSProperties : undefined;
 	const { t } = useTranslation();
 	const navigate = useNavigate();
 	const { backgroundImage, updateBackground } = useBackground();
 
-	const { data: settingData, isLoading } = useQuery({
+	const { data: settingData, isLoading, isError: settingsFailed } = useQuery({
 		queryKey: ["setting"],
 		queryFn: () => fetchSetting(),
 		refetchOnMount: true,
@@ -162,10 +169,10 @@ const linksStyle=useFeature('links').enabled;
 					</p>
 				</section>
 				<NativeCounter/>
-				<section className={"flex items-center gap-2 header-handles"+(linksStyle?" nz-links":"")}>
-					<div className="hidden sm:flex items-center gap-2">
+				<section style={linkVariables} className={"flex items-center gap-2 header-handles"+(linksStyle?" nz-links":"")}>
+					<div className="nz-login-row hidden sm:flex items-center gap-2">
 						<Links />
-						<DashboardLink />
+						<DashboardLink hidden={(!controlsReady && !settingsFailed) || (hidden.enabled && hidden.login)} />
 					</div>
 					{controlsReady && !(hidden.enabled&&hidden.search)&&<SearchButton />}
 					{controlsReady && !(hidden.enabled&&hidden.language)&&<LanguageSwitcher />}
@@ -210,8 +217,8 @@ const linksStyle=useFeature('links').enabled;
 					</Button>
 				</section>
 			</section>
-			<div className="w-full flex justify-between sm:hidden mt-1">
-				<DashboardLink />
+			<div style={linkVariables} className={"w-full flex flex-wrap gap-2 justify-between sm:hidden mt-1"+(linksStyle?" nz-links":"")}>
+				<DashboardLink hidden={(!controlsReady && !settingsFailed) || (hidden.enabled && hidden.login)} />
 				<Links />
 			</div>
 			<Overview />
@@ -254,7 +261,7 @@ const brand=useFeature('branding');
 	if (!links) return null;
 
 	return (
-		<div className="flex items-center gap-2 w-fit">
+		<div className="nz-top-links flex flex-wrap items-center gap-2 w-fit">
 			{links.map((link, index) => {
 				return (
 					<a
@@ -299,7 +306,7 @@ export function RefreshToast() {
 	);
 }
 
-function DashboardLink() {
+function DashboardLink({ hidden = false }: { hidden?: boolean }) {
 	const { t } = useTranslation();
 	const { setNeedReconnect } = useWebSocketContext();
 	const previousLoginState = useRef<boolean | null>(null);
@@ -309,6 +316,7 @@ function DashboardLink() {
   if (previousLoginState.current !== null && previousLoginState.current !== isLogin) setNeedReconnect(true);
   previousLoginState.current = isLogin;
  }, [session, isLogin, setNeedReconnect]);
+ if (hidden) return null;
 
 	return (
 		<div className="flex items-center gap-2">

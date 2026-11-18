@@ -10,6 +10,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/nezhahq/nezha/model"
+	appearance "github.com/nezhahq/nezha/resource/appearance"
 	"github.com/nezhahq/nezha/service/rpc"
 	"github.com/nezhahq/nezha/service/singleton"
 )
@@ -46,6 +47,14 @@ func listConfig(c *gin.Context) (*model.SettingResponse, error) {
 		configForTheme.AppearanceConfig = ""
 	}
 
+	// Return only the active theme's appearance; keep stored themes independent.
+	configForTheme.PaperAppearanceConfig = ""
+	if config.UserTemplate == "paper-dist" {
+		configForTheme.AppearanceConfig = config.PaperAppearanceConfig
+		if configForTheme.AppearanceConfig == "" {
+			configForTheme.AppearanceConfig = string(appearance.PaperDefaults)
+		}
+	}
 	if config.UserTemplate == "doraemon-dist" {
 		if configForTheme.DoraemonAppearanceConfig == "" {
 			configForTheme.DoraemonAppearanceConfig = defaultDoraemonAppearance

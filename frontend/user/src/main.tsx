@@ -13,6 +13,8 @@ import { TooltipProvider } from "./context/tooltip-provider";
 import { AuthenticatedWebSocketProvider as WebSocketProvider } from "./context/websocket-provider";
 import "./i18n";
 import "./index.css";
+import "./themes/paper/paper.css";
+document.documentElement.dataset.themeVariant = import.meta.env.VITE_THEME_VARIANT;
 
 const queryClient = new QueryClient();
 const ReactQueryDevtools = import.meta.env.DEV
@@ -29,8 +31,8 @@ if (!rootElement) {
 }
 
 ReactDOM.createRoot(rootElement).render(
-	<ThemeProvider storageKey={import.meta.env.VITE_THEME_VARIANT === "doraemon" ? "doraemon-ui-theme" : "vite-ui-theme"}>
-		{import.meta.env.VITE_THEME_VARIANT !== "doraemon" && <ThemeColorManager />}
+	<ThemeProvider storageKey={import.meta.env.VITE_THEME_VARIANT === "doraemon" ? "doraemon-ui-theme" : import.meta.env.VITE_THEME_VARIANT === "paper" ? "paper-ui-theme" : "vite-ui-theme"}>
+		{import.meta.env.VITE_THEME_VARIANT === "default" && <ThemeColorManager />}
 		<QueryClientProvider client={queryClient}>
 			<WebSocketProvider url="/api/v1/ws/server">
 				<CommandProvider>

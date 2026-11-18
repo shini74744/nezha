@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
+	appearance "github.com/nezhahq/nezha/resource/appearance"
 	"github.com/nezhahq/nezha/service/singleton"
 )
 
@@ -38,6 +39,14 @@ func appearanceState() map[string]any {
 	return themeAppearanceState("user-dist")
 }
 func themeAppearanceState(theme string) map[string]any {
+	if theme == "paper-dist" {
+		stored := singleton.Conf.PaperAppearanceConfig
+		config := stored
+		if config == "" {
+			config = string(appearance.PaperDefaults)
+		}
+		return map[string]any{"theme": theme, "config": json.RawMessage(config), "custom_code": "", "current_template": singleton.Conf.UserTemplate, "revision": appearanceRevision(stored, "")}
+	}
 	if theme == "doraemon-dist" {
 		stored := singleton.Conf.DoraemonAppearanceConfig
 		config := stored
