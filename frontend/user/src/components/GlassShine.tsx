@@ -17,6 +17,7 @@ export function useGlassShine() {
 	}, []);
 	useEffect(() => clear, [clear]);
 	const update = (event: PointerEvent<HTMLElement>) => {
+        if (import.meta.env.VITE_THEME_VARIANT === "paper") return;
 		media.current ??= window.matchMedia(query);
 		if (event.pointerType !== "mouse" || !media.current.matches) {
 			clear();

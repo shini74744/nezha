@@ -60,7 +60,7 @@ const brand=useFeature("branding");
 			: undefined;
 
 	// @ts-expect-error ShowNetTransfer is a global variable
-	const showNetTransfer = brand.enabled ? brand.showNetTransfer : window.ShowNetTransfer as boolean;
+	const showNetTransfer = brand.enabled ? brand.showNetTransfer : (import.meta.env.VITE_THEME_VARIANT === "paper" || window.ShowNetTransfer as boolean);
 
 	// @ts-expect-error FixedTopServerName is a global variable
 	const fixedTopServerName = window.FixedTopServerName as boolean;
