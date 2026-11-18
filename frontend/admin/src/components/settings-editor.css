@@ -1,0 +1,14 @@
+[data-settings-editor] fieldset {
+    min-width: 0;
+}
+[data-settings-editor] fieldset:disabled {
+    opacity: 0.7;
+}
+[data-settings-editor] [data-settings-save-bar] {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+@media (max-width: 639px) {
+    body:has([data-settings-save-bar]) [data-sonner-toaster][data-y-position="bottom"] {
+        bottom: calc(8rem + env(safe-area-inset-bottom)) !important;
+    }
+}

@@ -4,7 +4,9 @@ import { type ReactNode, useId, useState } from "react"
 
 type Props = {
     title: string
-    description: string
+    description?: string
+    onReset?: () => void
+    changed?: boolean
     enabled?: boolean
     onEnabledChange?: (value: boolean) => void
     headingLevel?: 2 | 3
@@ -17,8 +19,11 @@ export function AppearanceSection({
     onEnabledChange,
     headingLevel = 2,
     children,
+    onReset,
+    changed,
 }: Props) {
     const [open, setOpen] = useState(false)
+    const [visited, setVisited] = useState(false)
     const id = useId()
     const Heading = headingLevel === 3 ? "h3" : "h2"
     return (
@@ -32,11 +37,25 @@ export function AppearanceSection({
                             aria-label={title}
                             aria-expanded={open}
                             aria-controls={id}
-                            onClick={() => setOpen((value) => !value)}
+                            onClick={() => {
+                                setVisited(true)
+                                setOpen((value) => !value)
+                            }}
                         >
                             <span className="min-w-0 flex-1">
-                                <span className="block">{title}</span>
-                                <span className="mt-1 block text-sm font-normal text-muted-foreground">{description}</span>
+                                <span className="block">
+                                    {title}
+                                    {changed && (
+                                        <span className="ml-2 text-xs font-normal text-amber-600">
+                                            已修改
+                                        </span>
+                                    )}
+                                </span>
+                                {description && (
+                                    <span className="mt-1 block text-sm font-normal text-muted-foreground">
+                                        {description}
+                                    </span>
+                                )}
                             </span>
                             <ChevronDown
                                 aria-hidden="true"
@@ -48,11 +67,30 @@ export function AppearanceSection({
                         </button>
                     </Heading>
                 </div>
-                {enabled !== undefined && onEnabledChange && <Switch aria-label={title} checked={enabled} onCheckedChange={onEnabledChange} />}
+                {enabled !== undefined && onEnabledChange && (
+                    <Switch
+                        aria-label={title}
+                        checked={enabled}
+                        onCheckedChange={onEnabledChange}
+                    />
+                )}
             </div>
-            <div id={id} hidden={!open}>
-                <div className="mt-4 border-t pt-4">{children}</div>
-            </div>
+            {visited && (
+                <div id={id} hidden={!open}>
+                    <div className="mt-4 space-y-4 border-t pt-4">
+                        {children}
+                        {onReset && (
+                            <button
+                                type="button"
+                                className="rounded border px-3 py-2 text-sm disabled:opacity-50"
+                                onClick={onReset}
+                            >
+                                恢复本项默认
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
         </section>
     )
 }
