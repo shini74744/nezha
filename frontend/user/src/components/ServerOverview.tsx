@@ -1,3 +1,4 @@
+import { PaperIllustration } from "@/themes/paper/PaperChapter";
 import {useRef} from "react";
 import {createFiveTapGate} from "@/lib/five-tap";
 import {useFeature} from "@/appearance/context";
@@ -184,7 +185,7 @@ const brand=useFeature("branding");
                             onClick={tapIllustration}
                             onKeyDown={event => { if (event.repeat && (event.key === "Enter" || event.key === " ")) event.preventDefault(); }}
                         >
-                            <img className="w-full" alt="animated-man" draggable={false} src={customIllustration} loading="eager" />
+                            {import.meta.env.VITE_THEME_VARIANT === "paper" && !brand.enabled ? <PaperIllustration /> : <img className="w-full" alt="animated-man" draggable={false} src={customIllustration} loading="eager" />}
                         </button>
 					)}
 				</CardContent>

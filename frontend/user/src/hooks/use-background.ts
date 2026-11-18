@@ -14,6 +14,8 @@ declare global {
 	}
 }
 
+export const backgroundStorageKey = import.meta.env.VITE_THEME_VARIANT === "paper" ? "paper-background-image" : "savedBackgroundImage";
+
 const BACKGROUND_CHANGE_EVENT = "backgroundChange";
 
 export function useBackground() {
@@ -32,7 +34,7 @@ export function useBackground() {
 			if (window.CustomBackgroundImage) {
 				setBackgroundImage(window.CustomBackgroundImage);
 			} else {
-				const savedImage = safeSessionStorage.getItem("savedBackgroundImage");
+				const savedImage = safeSessionStorage.getItem(backgroundStorageKey);
 				if (savedImage) {
 					window.CustomBackgroundImage = savedImage;
 					setBackgroundImage(savedImage);
@@ -44,7 +46,7 @@ export function useBackground() {
 		const intervalId = setInterval(() => {
 			if (
 				window.CustomBackgroundImage ||
-				safeSessionStorage.getItem("savedBackgroundImage")
+				safeSessionStorage.getItem(backgroundStorageKey)
 			) {
 				checkInitialBackground();
 				clearInterval(intervalId);

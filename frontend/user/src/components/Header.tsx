@@ -15,7 +15,7 @@ import { useNavigate } from "react-router-dom";
 import { ModeToggle } from "@/components/ThemeSwitcher";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useBackground } from "@/hooks/use-background";
+import { useBackground, backgroundStorageKey } from "@/hooks/use-background";
 import { useWebSocketContext } from "@/hooks/use-websocket-context";
 import { fetchSetting } from "@/lib/nezha-api";
 import { cn } from "@/lib/utils";
@@ -118,13 +118,13 @@ const linkVariables = linksStyle ? {
 		if (window.CustomBackgroundImage) {
 			// Store the current background image before removing it
 			safeSessionStorage.setItem(
-				"savedBackgroundImage",
+				backgroundStorageKey,
 				window.CustomBackgroundImage,
 			);
 			updateBackground(undefined);
 		} else {
 			// Restore the saved background image
-			const savedImage = safeSessionStorage.getItem("savedBackgroundImage");
+			const savedImage = safeSessionStorage.getItem(backgroundStorageKey);
 			if (savedImage) {
 				updateBackground(savedImage);
 			}
@@ -178,7 +178,7 @@ const linkVariables = linksStyle ? {
 					{controlsReady && !(hidden.enabled&&hidden.language)&&<LanguageSwitcher />}
 					{controlsReady && !(hidden.enabled&&hidden.theme)&&<ModeToggle />}
 					{(customBackgroundImage ||
-						safeSessionStorage.getItem("savedBackgroundImage")) && (
+						safeSessionStorage.getItem(backgroundStorageKey)) && (
 						<Button
 							variant="outline"
 							size="sm"
@@ -344,7 +344,7 @@ function Overview() {
 
 	return (
 		<section className={"mt-10 flex flex-col md:mt-16 header-timer"}>
-			<p className="text-base font-semibold"><NativeGreeting fallback={<>👋 {t("overview")}</>}/></p>
+			<p className="text-base font-semibold"><NativeGreeting fallback={import.meta.env.VITE_THEME_VARIANT === "paper" ? "今日观测" : <>👋 {t("overview")}</>}/></p>
 			<div className="flex items-center gap-1">
 				<p className="text-sm font-medium opacity-50">{t("whereTheTimeIs")}</p>
 				{mounted ? (

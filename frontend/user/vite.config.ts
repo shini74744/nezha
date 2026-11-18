@@ -158,7 +158,12 @@ export default defineConfig(({ mode }) => ({
 				codeSplitting: {
 					groups: [
 						{
-							name: getVendorChunkName,
+							// Keep Paper chart dependencies together: a network pane should not
+                            // depend on dozens of separately fetched d3 modules.
+                            name: (id: string) => {
+                                const name = getVendorChunkName(id);
+                                return mode === "paper" && name && /^(recharts|d3-.*|internmap|victory-vendor|decimal.js-light|eventemitter3|@reduxjs|react-redux|redux|redux-thunk|reselect|use-sync-external-store)$/.test(name) ? "paper-charts" : name;
+                            },
 							test: /[\\/]node_modules[\\/]/,
 						},
 					],
