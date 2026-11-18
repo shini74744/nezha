@@ -45,7 +45,7 @@
   {
     "key": "runtime",
     "title": "网站运行时间",
-    "description": "保留运行天数、时、分、秒",
+    "description": "显示网站运行的天数和时间。",
     "defaults": {
       "enabled": true,
       "startDate": "2024-11-28T00:00:00Z",
@@ -60,7 +60,7 @@
   {
     "key": "greeting",
     "title": "分时段问候",
-    "description": "按访客本地时间切换；可编辑时段并增删问候语，默认保留原来的七组文案",
+    "description": "按访客本地时间显示问候语，可调整时段和文案。",
     "defaults": {
       "enabled": true,
       "rules": [
@@ -460,7 +460,7 @@
   {
     "key": "sponsor",
     "title": "赞助商胶囊",
-    "description": "桌面原生嵌入视图与排序按钮之间，手机端紧贴页脚；保留缩小、停留、淡出与悬停暂停，随页面自然滚动",
+    "description": "轮播赞助商信息，可分别设置电脑和手机端。",
     "defaults": {
       "enabled": true,
       "desktop": true,
@@ -528,7 +528,7 @@
   {
     "key": "visitorIP",
     "title": "访客 IP 与网络检测",
-    "description": "IP、地区、ASN、测速点切换和本地缓存",
+    "description": "显示访客 IP、地区和网络检测结果。",
     "defaults": {
       "enabled": true,
       "cacheDuration": 21600000,
@@ -591,7 +591,7 @@
   {
     "key": "footerIP",
     "title": "底部 IP 详情",
-    "description": "滚动到底部时在桌面显示详细 IP 卡片",
+    "description": "在页脚显示访客 IP 详情。",
     "defaults": {
       "enabled": true,
       "url": "https://ip.skk.moe/simple-dark",
@@ -611,7 +611,7 @@
   {
     "key": "quote",
     "title": "随机文案",
-    "description": "桌面顶部随机文案及晚安文字、颜色变化",
+    "description": "根据白天或夜间显示随机文案。",
     "defaults": {
       "enabled": true,
       "dayUrls": [
@@ -630,7 +630,7 @@
   {
     "key": "counter",
     "title": "访问统计图片",
-    "description": "原生嵌入页头，在标题与操作区之间自适应缩放；保留电脑／手机尺寸设置，空间不足时收起，滚动隐藏",
+    "description": "显示访问统计图片，可调整电脑和手机端尺寸。",
     "defaults": {
       "enabled": true,
       "imageUrl": "https://count.getloli.com/@tongji?name=tongji&theme=random&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto",
@@ -716,7 +716,7 @@
   {
     "key": "traffic",
     "title": "流量进度条",
-    "description": "使用服务器系统 ID 关联流量记录，显示用量、周期和百分比",
+    "description": "显示本期流量、统计周期和用量占比。",
     "defaults": {
       "enabled": true,
       "toggleInterval": 5000
@@ -776,7 +776,7 @@
   {
     "key": "links",
     "title": "顶部链接样式",
-    "description": "联系链接、GitHub 和后台登录按钮的悬停样式",
+    "description": "调整顶部链接与登录入口的悬停样式。",
     "defaults": {
       "enabled": true
     },
@@ -786,7 +786,7 @@
   {
     "key": "hideControls",
     "title": "隐藏顶部按钮",
-    "description": "改为按功能隐藏，不再依赖不稳定的 Radix 编号",
+    "description": "选择要隐藏的搜索、语言和主题按钮。",
     "defaults": {
       "enabled": true,
       "search": true,
@@ -803,7 +803,7 @@
   {
     "key": "protection",
     "title": "页面操作保护",
-    "description": "限制右键、复制和拖动；输入框可正常编辑，不会跳转到其他网站",
+    "description": "设置右键、复制和拖动限制，不影响输入框编辑。",
     "defaults": {
       "enabled": true,
       "contextMenu": true,
@@ -841,7 +841,7 @@
   {
     "key": "sideImage",
     "title": "可拖动侧边图片",
-    "description": "桌面侧边图片与拖动；不再强制整页高度",
+    "description": "在页面侧边显示可拖动的图片。",
     "defaults": {
       "enabled": true,
       "imageUrl": "https://t.alcy.cc/tx"
@@ -928,7 +928,7 @@
   {
     "key": "heart",
     "title": "点击爱心",
-    "description": "独立内置效果，可单独关闭",
+    "description": "点击时显示爱心。",
     "defaults": {
       "enabled": true
     },
@@ -938,7 +938,7 @@
   {
     "key": "sakura",
     "title": "页面樱花",
-    "description": "独立内置效果，可单独关闭",
+    "description": "飘落的樱花动画。",
     "defaults": {
       "enabled": true
     },
@@ -948,7 +948,7 @@
   {
     "key": "stars",
     "title": "鼠标星星",
-    "description": "独立内置效果，可单独关闭",
+    "description": "星星跟随鼠标移动。",
     "defaults": {
       "enabled": true
     },
@@ -958,7 +958,7 @@
   {
     "key": "peakCut",
     "title": "网络图削峰",
-    "description": "独立控制网络图默认削峰，不受背景、地区或分时规则影响；电脑和手机可分别启用。图表内仍可临时切换。",
+    "description": "分别设置电脑和手机的默认图表削峰，查看图表时仍可切换。",
     "defaults": {
       "enabled": true,
       "desktop": true,
@@ -973,7 +973,7 @@
   {
     "key": "live2d",
     "title": "看板娘",
-    "description": "选择原 Live2D 或 Sakana Widget，同一时间只启用一种；关闭总开关隐藏看板娘。",
+    "description": "选择看板娘和显示方式，可使用自定义角色；关闭后隐藏。",
     "defaults": {
       "enabled": true,
       "provider": "live2d",

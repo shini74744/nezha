@@ -9,7 +9,7 @@ export function DashboardAppearanceProvider({raw,children}:{raw?:string;children
  return <Context.Provider value={config}><DashboardDecorations/>{children}</Context.Provider>;
 }
 const quote=(s:string)=>JSON.stringify(s).replace(/</g,"\\3c ");
-function dashboardCSS(c:DashboardAppearance){
+export function dashboardCSS(c:DashboardAppearance){
  if(!c.enabled)return "";
  const {font:f,background:b,appearance:a}=c.features;let css="";
  if(f.enabled)css+='html[data-nz-dashboard]{font-size:'+f.size+'}html[data-nz-dashboard] body,html[data-nz-dashboard] #root,html[data-nz-dashboard] #root *:not(.terminal-shell):not(.terminal-shell *){font-family:'+quote(f.family)+',"PingFang SC","Microsoft YaHei",Arial,sans-serif!important}html[data-nz-dashboard] body{text-shadow:'+f.shadow+';font-variant-numeric:tabular-nums;'+(f.color?'color:'+f.color+'!important;':'')+'}';

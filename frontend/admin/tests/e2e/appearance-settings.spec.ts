@@ -112,19 +112,19 @@ test("background editor saves multiline media, ordered schedules and region sett
 }) => {
     const { updates } = await setup(page)
     await page.getByRole("button", { name: "背景图片与视频", exact: true }).click()
-    await page.getByRole("button", {name:"背景地址",exact:true}).click()
+    await page.getByRole("button", { name: "背景地址", exact: true }).click()
     const desktop = page.getByLabel("电脑背景地址", { exact: true })
     await desktop.fill("https://media.test/a.jpg\n")
     await desktop.press("End")
     await desktop.pressSequentially("https://media.test/b.mp4")
     await expect(desktop).toHaveValue("https://media.test/a.jpg\nhttps://media.test/b.mp4")
     await page.getByLabel("手机背景地址", { exact: true }).fill("https://media.test/mobile-api")
-    await page.getByRole("button", {name:"分时背景",exact:true}).click()
+    await page.getByRole("button", { name: "分时背景", exact: true }).click()
     await page.getByRole("button", { name: "添加分时规则" }).click()
     await page.getByLabel("分时规则名称 2", { exact: true }).fill("晚间")
     await page.getByLabel("分时电脑背景 2", { exact: true }).fill("https://media.test/night.webm")
     await page.getByLabel("启用分时规则 2", { exact: true }).click()
-    await page.getByRole("button", {name:"特殊地区背景与运营商查询",exact:true}).click()
+    await page.getByRole("button", { name: "特殊地区背景与运营商查询", exact: true }).click()
     await page.getByLabel("背景规则优先级", { exact: true }).selectOption("schedule-first")
     await page.getByLabel("国家或地区代码", { exact: true }).fill("CN, HK")
     await page.getByLabel("运营商字段路径", { exact: true }).fill("asn.org")
@@ -151,14 +151,14 @@ test("background editor rejects unsafe URLs and previews custom region API field
 }) => {
     await setup(page)
     await page.getByRole("button", { name: "背景图片与视频", exact: true }).click()
-    await page.getByRole("button", {name:"背景地址",exact:true}).click()
+    await page.getByRole("button", { name: "背景地址", exact: true }).click()
     await page.getByLabel("电脑背景地址", { exact: true }).fill("javascript:alert(1)")
     await expect(page.getByRole("button", { name: "保存美化设置", exact: true })).toBeDisabled()
     await page.getByLabel("电脑背景地址", { exact: true }).fill("https://media.test/api")
     await page.route("https://region.test/query", (route) =>
         route.fulfill({ json: { asn: { org: "AS123 Example" }, data: { country: "CN" } } }),
     )
-    await page.getByRole("button", {name:"特殊地区背景与运营商查询",exact:true}).click()
+    await page.getByRole("button", { name: "特殊地区背景与运营商查询", exact: true }).click()
     await page.getByLabel("运营商查询地址", { exact: true }).fill("https://region.test/query")
     await page.getByLabel("运营商字段路径", { exact: true }).fill("asn.org")
     await page.getByLabel("地区字段路径", { exact: true }).fill("data.country")
@@ -171,7 +171,7 @@ test("all sections collapse independently without toggling or losing unsaved dat
 }) => {
     await setup(page)
     const buttons = page.locator("section h2 button")
-    await expect(buttons).toHaveCount(24)
+    await expect(buttons).toHaveCount(23)
     for (const button of await buttons.all())
         await expect(button).toHaveAttribute("aria-expanded", "false")
     const greeting = page.getByRole("button", { name: "分时段问候", exact: true })
@@ -265,243 +265,461 @@ test("phone editors fit the viewport and support color picker and period deletio
     await page.screenshot({ path: "test-results/greeting-settings-mobile.png" })
 })
 
-test("six effects share a second-level group with independent switches and saved drafts",async({page})=>{
- const {updates}=await setup(page);
- const group=page.getByRole("button",{name:"页面特效",exact:true});
- await expect(group).toHaveAttribute("aria-expanded","false");
- await expect(page.getByRole("switch",{name:"雪花",exact:true})).not.toBeVisible();
- await group.click();
- const titles=["鼠标连线","雪花","点击碎片与返回顶部","点击爱心","页面樱花","鼠标星星"];
- for(const title of titles){
-  await expect(page.getByRole("heading",{level:3,name:title,exact:true})).toBeVisible();
-  await expect(page.getByRole("button",{name:title,exact:true})).toHaveAttribute("aria-expanded","false");
- }
- await expect(page.getByRole("switch",{name:"页面特效",exact:true})).toHaveCount(0);
- await page.getByRole("button",{name:"雪花",exact:true}).click();
- await page.getByLabel("桌面雪花数量",{exact:true}).fill("55");
- await page.getByRole("switch",{name:"点击爱心",exact:true}).click();
- await group.click();await expect(page.getByLabel("桌面雪花数量",{exact:true})).not.toBeVisible();
- await group.click();await expect(page.getByLabel("桌面雪花数量",{exact:true})).toHaveValue("55");
- await expect(page.getByRole("switch",{name:"雪花",exact:true})).toBeChecked();
- await expect(page.getByRole("switch",{name:"点击爱心",exact:true})).not.toBeChecked();
- await page.getByRole("button",{name:"保存美化设置",exact:true}).click();
- await expect.poll(()=>updates.length).toBe(1);
- expect(updates[0].config.features.snow.count).toBe(55);
- expect(updates[0].config.features.heart.enabled).toBe(false);
- expect(Object.keys(updates[0].config.features)).toHaveLength(30);
- await page.reload();await group.click();await page.getByRole("button",{name:"雪花",exact:true}).click();
- await expect(page.getByLabel("桌面雪花数量",{exact:true})).toHaveValue("55");
- await page.getByRole("button",{name:"雪花",exact:true}).click();
- await group.scrollIntoViewIfNeeded();await page.screenshot({path:"test-results/effects-group-desktop.png"});
- await page.setViewportSize({width:390,height:844});
- await page.getByRole("button",{name:"雪花",exact:true}).click();
- await page.getByLabel("桌面雪花数量",{exact:true}).scrollIntoViewIfNeeded();
- expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
- await page.screenshot({path:"test-results/effects-group-mobile.png"});
-});
+test("effects filter preserves independent switches and saved drafts", async ({ page }) => {
+    const { updates } = await setup(page)
+    const group = page.getByRole("button", { name: "动画与特效", exact: true })
+    await group.click()
+    const titles = ["鼠标连线", "雪花", "点击碎片与返回顶部", "点击爱心", "页面樱花", "鼠标星星"]
+    for (const title of titles) {
+        await expect(
+            page.getByRole("heading", { level: 3, name: title, exact: true }),
+        ).toBeVisible()
+        await expect(page.getByRole("button", { name: title, exact: true })).toHaveAttribute(
+            "aria-expanded",
+            "false",
+        )
+    }
+    await expect(page.getByRole("switch", { name: "页面特效", exact: true })).toHaveCount(0)
+    await page.getByRole("button", { name: "雪花", exact: true }).click()
+    await page.getByLabel("桌面雪花数量", { exact: true }).fill("55")
+    await page.getByRole("switch", { name: "点击爱心", exact: true }).click()
+    await page.getByRole("button", { name: "品牌与文字", exact: true }).click()
+    await expect(page.getByLabel("桌面雪花数量", { exact: true })).not.toBeVisible()
+    await group.click()
+    await expect(page.getByLabel("桌面雪花数量", { exact: true })).toHaveValue("55")
+    await expect(page.getByRole("switch", { name: "雪花", exact: true })).toBeChecked()
+    await expect(page.getByRole("switch", { name: "点击爱心", exact: true })).not.toBeChecked()
+    await page.getByRole("button", { name: "保存美化设置", exact: true }).click()
+    await expect.poll(() => updates.length).toBe(1)
+    expect(updates[0].config.features.snow.count).toBe(55)
+    expect(updates[0].config.features.heart.enabled).toBe(false)
+    expect(Object.keys(updates[0].config.features)).toHaveLength(30)
+    await page.reload()
+    await group.click()
+    await page.getByRole("button", { name: "雪花", exact: true }).click()
+    await expect(page.getByLabel("桌面雪花数量", { exact: true })).toHaveValue("55")
+    await page.getByRole("button", { name: "雪花", exact: true }).click()
+    await group.scrollIntoViewIfNeeded()
+    await page.screenshot({ path: "test-results/effects-group-desktop.png" })
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.getByRole("button", { name: "雪花", exact: true }).click()
+    await page.getByLabel("桌面雪花数量", { exact: true }).scrollIntoViewIfNeeded()
+    expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true)
+    await page.screenshot({ path: "test-results/effects-group-mobile.png" })
+})
 
-test("speed card and overview have separate nested editors and persistent switches",async({page})=>{
- const {updates}=await setup(page);
- const parent=page.getByRole("button",{name:"网络速率与颜色",exact:true});
- const card=page.getByRole("button",{name:"单台服务器卡片速率",exact:true});
- const overview=page.getByRole("button",{name:"网络概览卡片速率",exact:true});
- await expect(card).not.toBeVisible();await parent.click();
- await expect(card).toHaveAttribute("aria-expanded","false");await expect(overview).toHaveAttribute("aria-expanded","false");
- await card.click();await overview.click();
- const cardBits=page.getByRole("switch",{name:"单台服务器卡片速率：转换成 Mbps/Gbps",exact:true});
- const overviewColor=page.getByRole("switch",{name:"网络概览卡片速率：启用上下行颜色",exact:true});
- await cardBits.click();await overviewColor.click();
- await expect(page.getByRole("switch",{name:"网络概览卡片速率：转换成 Mbps/Gbps",exact:true})).toBeChecked();
- await expect(page.getByRole("switch",{name:"单台服务器卡片速率：启用上下行颜色",exact:true})).toBeChecked();
- await parent.click();await parent.click();
- await expect(cardBits).not.toBeChecked();await expect(overviewColor).not.toBeChecked();
- await page.getByRole("switch",{name:"单台服务器卡片速率",exact:true}).click();
- await expect(page.getByRole("switch",{name:"网络概览卡片速率",exact:true})).toBeChecked();
- await page.getByRole("button",{name:"保存美化设置",exact:true}).click();
- await expect.poll(()=>updates.length).toBe(1);
- expect(updates[0].config.features.speed).toMatchObject({enabled:true,cardEnabled:false,bits:false,color:true,animation:true,overviewEnabled:true,overviewBits:true,overviewColor:false,overviewAnimation:true});
- await page.reload();await parent.click();await card.click();await overview.click();
- await expect(cardBits).not.toBeChecked();await expect(overviewColor).not.toBeChecked();
- await expect(page.getByRole("switch",{name:"单台服务器卡片速率",exact:true})).not.toBeChecked();
- await parent.scrollIntoViewIfNeeded();await page.screenshot({path:"test-results/speed-settings-desktop.png"});
- await page.setViewportSize({width:390,height:844});
- await card.scrollIntoViewIfNeeded();
- expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
- await page.screenshot({path:"test-results/speed-settings-mobile.png"});
-});
+test("speed card and overview have separate nested editors and persistent switches", async ({
+    page,
+}) => {
+    const { updates } = await setup(page)
+    const parent = page.getByRole("button", { name: "网络速率与颜色", exact: true })
+    const card = page.getByRole("button", { name: "单台服务器卡片速率", exact: true })
+    const overview = page.getByRole("button", { name: "网络概览卡片速率", exact: true })
+    await expect(card).not.toBeVisible()
+    await parent.click()
+    await expect(card).toHaveAttribute("aria-expanded", "false")
+    await expect(overview).toHaveAttribute("aria-expanded", "false")
+    await card.click()
+    await overview.click()
+    const cardBits = page.getByRole("switch", {
+        name: "单台服务器卡片速率：转换成 Mbps/Gbps",
+        exact: true,
+    })
+    const overviewColor = page.getByRole("switch", {
+        name: "网络概览卡片速率：启用上下行颜色",
+        exact: true,
+    })
+    await cardBits.click()
+    await overviewColor.click()
+    await expect(
+        page.getByRole("switch", { name: "网络概览卡片速率：转换成 Mbps/Gbps", exact: true }),
+    ).toBeChecked()
+    await expect(
+        page.getByRole("switch", { name: "单台服务器卡片速率：启用上下行颜色", exact: true }),
+    ).toBeChecked()
+    await parent.click()
+    await parent.click()
+    await expect(cardBits).not.toBeChecked()
+    await expect(overviewColor).not.toBeChecked()
+    await page.getByRole("switch", { name: "单台服务器卡片速率", exact: true }).click()
+    await expect(page.getByRole("switch", { name: "网络概览卡片速率", exact: true })).toBeChecked()
+    await page.getByRole("button", { name: "保存美化设置", exact: true }).click()
+    await expect.poll(() => updates.length).toBe(1)
+    expect(updates[0].config.features.speed).toMatchObject({
+        enabled: true,
+        cardEnabled: false,
+        bits: false,
+        color: true,
+        animation: true,
+        overviewEnabled: true,
+        overviewBits: true,
+        overviewColor: false,
+        overviewAnimation: true,
+    })
+    await page.reload()
+    await parent.click()
+    await card.click()
+    await overview.click()
+    await expect(cardBits).not.toBeChecked()
+    await expect(overviewColor).not.toBeChecked()
+    await expect(
+        page.getByRole("switch", { name: "单台服务器卡片速率", exact: true }),
+    ).not.toBeChecked()
+    await parent.scrollIntoViewIfNeeded()
+    await page.screenshot({ path: "test-results/speed-settings-desktop.png" })
+    await page.setViewportSize({ width: 390, height: 844 })
+    await card.scrollIntoViewIfNeeded()
+    expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true)
+    await page.screenshot({ path: "test-results/speed-settings-mobile.png" })
+})
 
-for (const width of [390,1366]) test("visitor IP settings expand and retain values "+width,async({page})=>{
- await page.setViewportSize({width,height:900});const {updates}=await setup(page);
- const section=page.locator("section").filter({has:page.getByRole("button",{name:"访客 IP 与网络检测",exact:true})});
- await section.getByText("IP、地区、ASN、测速点切换和本地缓存",{exact:true}).click();
- await expect(page.getByLabel("缓存有效期（毫秒）",{exact:true})).toBeVisible();
- await expect(page.getByLabel("底部隐藏距离（像素）",{exact:true})).toBeVisible();
- await page.getByLabel("缓存有效期（毫秒）",{exact:true}).fill("60000");
- await page.getByLabel("底部隐藏距离（像素）",{exact:true}).fill("36");
- await page.getByRole("switch",{name:"访客 IP 与网络检测",exact:true}).click();
- await expect(page.getByLabel("缓存有效期（毫秒）",{exact:true})).toBeVisible();
- await page.getByRole("button",{name:"访客 IP 与网络检测",exact:true}).click();
- await page.getByRole("button",{name:"访客 IP 与网络检测",exact:true}).click();
- await expect(page.getByLabel("缓存有效期（毫秒）",{exact:true})).toHaveValue("60000");
- await page.getByRole("button",{name:"保存美化设置",exact:true}).click();await expect.poll(()=>updates.length).toBe(1);
- expect(updates[0].config.features.visitorIP).toMatchObject({enabled:false,cacheDuration:60000,bottomThreshold:36});
- expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-});
+for (const width of [390, 1366])
+    test("visitor IP settings expand and retain values " + width, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 })
+        const { updates } = await setup(page)
+        const section = page
+            .locator("section")
+            .filter({ has: page.getByRole("button", { name: "访客 IP 与网络检测", exact: true }) })
+        await section.getByRole("button", { name: "访客 IP 与网络检测", exact: true }).click()
+        await expect(page.getByLabel("缓存有效期（毫秒）", { exact: true })).toBeVisible()
+        await expect(page.getByLabel("底部隐藏距离（像素）", { exact: true })).toBeVisible()
+        await page.getByLabel("缓存有效期（毫秒）", { exact: true }).fill("60000")
+        await page.getByLabel("底部隐藏距离（像素）", { exact: true }).fill("36")
+        await page.getByRole("switch", { name: "访客 IP 与网络检测", exact: true }).click()
+        await expect(page.getByLabel("缓存有效期（毫秒）", { exact: true })).toBeVisible()
+        await page.getByRole("button", { name: "访客 IP 与网络检测", exact: true }).click()
+        await page.getByRole("button", { name: "访客 IP 与网络检测", exact: true }).click()
+        await expect(page.getByLabel("缓存有效期（毫秒）", { exact: true })).toHaveValue("60000")
+        await page.getByRole("button", { name: "保存美化设置", exact: true }).click()
+        await expect.poll(() => updates.length).toBe(1)
+        expect(updates[0].config.features.visitorIP).toMatchObject({
+            enabled: false,
+            cacheDuration: 60000,
+            bottomThreshold: 36,
+        })
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+            true,
+        )
+    })
 
-for(const width of [390,1366])test("runtime prefix precedes start date "+width,async({page})=>{
- await page.setViewportSize({width,height:900});const {updates}=await setup(page);
- await page.getByRole("button",{name:"网站运行时间",exact:true}).click();
- const prefix=page.getByLabel("前缀",{exact:true}),start=page.getByLabel("开始时间（包含时区）",{exact:true});
- const a=(await prefix.boundingBox())!,b=(await start.boundingBox())!;
- if(width<640)expect(a.y).toBeLessThan(b.y);else{expect(a.x).toBeLessThan(b.x);expect(a.y).toBe(b.y)}
- await prefix.fill("测试运行时间");await start.fill("2024-11-28T00:00:00+08:00");
- await page.getByRole("button",{name:"保存美化设置",exact:true}).click();await expect.poll(()=>updates.length).toBe(1);
- expect(updates[0].config.features.runtime).toMatchObject({prefix:"测试运行时间",startDate:"2024-11-28T00:00:00+08:00"});
-});
+for (const width of [390, 1366])
+    test("runtime prefix precedes start date " + width, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 })
+        const { updates } = await setup(page)
+        await page.getByRole("button", { name: "网站运行时间", exact: true }).click()
+        const prefix = page.getByLabel("前缀", { exact: true }),
+            start = page.getByLabel("开始时间（包含时区）", { exact: true })
+        const a = (await prefix.boundingBox())!,
+            b = (await start.boundingBox())!
+        if (width < 640) expect(a.y).toBeLessThan(b.y)
+        else {
+            expect(a.x).toBeLessThan(b.x)
+            expect(a.y).toBe(b.y)
+        }
+        await prefix.fill("测试运行时间")
+        await start.fill("2024-11-28T00:00:00+08:00")
+        await page.getByRole("button", { name: "保存美化设置", exact: true }).click()
+        await expect.poll(() => updates.length).toBe(1)
+        expect(updates[0].config.features.runtime).toMatchObject({
+            prefix: "测试运行时间",
+            startDate: "2024-11-28T00:00:00+08:00",
+        })
+    })
 
-for(const width of [390,1366])test("visitor IP complete editor saves all settings "+width,async({page})=>{
- await page.setViewportSize({width,height:900});const {updates}=await setup(page);await page.getByRole("button",{name:"访客 IP 与网络检测",exact:true}).click();
- await expect(page.getByLabel("检测节点名称 1",{exact:true})).toHaveValue("Google");await expect(page.getByLabel("检测节点名称 2",{exact:true})).toHaveValue("CF");
- const defaultUrls=baseConfig().features.visitorIP.ipApiUrls as string[];
- await expect(page.getByRole("textbox",{name:/^IP 查询接口 \d+$/})).toHaveCount(defaultUrls.length);
- await page.getByRole("button",{name:"添加查询接口",exact:true}).click();await page.getByLabel("IP 查询接口 "+(defaultUrls.length+1),{exact:true}).fill("https://custom.test/json");
- await page.getByRole("button",{name:"删除查询接口 1",exact:true}).click();
- await page.getByLabel("信息补全接口（留空关闭）",{exact:true}).fill("https://fallback.test/json");
- for(const [label,value] of [["IP 查询超时（毫秒）","900"],["信息补全超时（毫秒）","800"],["首次检测超时（毫秒）","700"],["切换节点超时（毫秒）","600"]])await page.getByLabel(label,{exact:true}).fill(value);
- await page.getByRole("button",{name:"添加检测节点",exact:true}).click();
- await page.getByLabel("检测节点名称 3",{exact:true}).fill("Custom");await page.getByLabel("检测节点地址 3",{exact:true}).fill("https://custom.test/ping");
- await page.getByRole("button",{name:"上移检测节点 3",exact:true}).click();await page.getByRole("button",{name:"删除检测节点 3",exact:true}).click();
- for(const name of ["显示地区","显示 ASN","显示运营商","显示浏览器估算带宽"])await page.getByRole("switch",{name,exact:true}).click();
- await page.getByRole("button",{name:"保存美化设置",exact:true}).click();await expect.poll(()=>updates.length).toBe(1);
- expect(updates[0].config.features.visitorIP).toMatchObject({queryTimeout:900,fallbackTimeout:800,checkTimeout:700,switchTimeout:600,showRegion:false,showASN:false,showOrganization:false,showDownlink:false,fallbackUrl:"https://fallback.test/json"});
- expect(updates[0].config.features.visitorIP.ipApiUrls).toEqual([...defaultUrls.slice(1),"https://custom.test/json"]);expect(updates[0].config.features.visitorIP.checkNodes.map((n:any)=>n.name)).toEqual(["Google","Custom"]);
- // Wait for the response to be adopted and the mobile toast animation to leave
- // the sticky action row before the next physical click; request receipt alone is not completion.
- await expect(page.getByRole("button",{name:"保存美化设置",exact:true})).toBeDisabled();
- const savedToast=page.getByText("默认主题美化设置已保存，仅影响该主题",{exact:true});
- await expect(savedToast).toBeVisible();
- await expect(savedToast).toBeHidden({timeout:10000});
- await Promise.all([
-  page.waitForResponse(response=>response.url().endsWith("/api/v1/setting/appearance")&&response.request().method()==="GET"),
-  page.getByRole("button",{name:"重新读取",exact:true}).click(),
- ]);
- await expect(page.getByText("正在读取默认主题设置…",{exact:true})).toHaveCount(0);
- const visitorSection=page.getByRole("button",{name:"访客 IP 与网络检测",exact:true});
- if(await visitorSection.getAttribute("aria-expanded")==="false")await visitorSection.click();
- await expect(page.getByLabel("检测节点名称 2",{exact:true})).toHaveValue("Custom");
- await page.getByLabel("检测节点地址 2",{exact:true}).fill("javascript:alert(1)");await expect(page.getByRole("button",{name:"保存美化设置",exact:true})).toBeDisabled();
- await page.getByLabel("检测节点地址 2",{exact:true}).fill("https://custom.test/ping");await page.getByLabel("检测节点名称 2",{exact:true}).fill("Google");await expect(page.getByRole("button",{name:"保存美化设置",exact:true})).toBeDisabled();
- await page.getByLabel("检测节点名称 2",{exact:true}).fill("Custom");expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
- await page.locator("section").filter({has:page.getByRole("button",{name:"访客 IP 与网络检测",exact:true})}).last().screenshot({path:"test-results/visitor-settings-"+width+".png"});
-});
+for (const width of [390, 1366])
+    test("visitor IP complete editor saves all settings " + width, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 })
+        const { updates } = await setup(page)
+        await page.getByRole("button", { name: "访客 IP 与网络检测", exact: true }).click()
+        await expect(page.getByLabel("检测节点名称 1", { exact: true })).toHaveValue("Google")
+        await expect(page.getByLabel("检测节点名称 2", { exact: true })).toHaveValue("CF")
+        const defaultUrls = baseConfig().features.visitorIP.ipApiUrls as string[]
+        await expect(page.getByRole("textbox", { name: /^IP 查询接口 \d+$/ })).toHaveCount(
+            defaultUrls.length,
+        )
+        await page.getByRole("button", { name: "添加查询接口", exact: true }).click()
+        await page
+            .getByLabel("IP 查询接口 " + (defaultUrls.length + 1), { exact: true })
+            .fill("https://custom.test/json")
+        await page.getByRole("button", { name: "删除查询接口 1", exact: true }).click()
+        await page
+            .getByLabel("信息补全接口（留空关闭）", { exact: true })
+            .fill("https://fallback.test/json")
+        for (const [label, value] of [
+            ["IP 查询超时（毫秒）", "900"],
+            ["信息补全超时（毫秒）", "800"],
+            ["首次检测超时（毫秒）", "700"],
+            ["切换节点超时（毫秒）", "600"],
+        ])
+            await page.getByLabel(label, { exact: true }).fill(value)
+        await page.getByRole("button", { name: "添加检测节点", exact: true }).click()
+        await page.getByLabel("检测节点名称 3", { exact: true }).fill("Custom")
+        await page.getByLabel("检测节点地址 3", { exact: true }).fill("https://custom.test/ping")
+        await page.getByRole("button", { name: "上移检测节点 3", exact: true }).click()
+        await page.getByRole("button", { name: "删除检测节点 3", exact: true }).click()
+        for (const name of ["显示地区", "显示 ASN", "显示运营商", "显示浏览器估算带宽"])
+            await page.getByRole("switch", { name, exact: true }).click()
+        await page.getByRole("button", { name: "保存美化设置", exact: true }).click()
+        await expect.poll(() => updates.length).toBe(1)
+        expect(updates[0].config.features.visitorIP).toMatchObject({
+            queryTimeout: 900,
+            fallbackTimeout: 800,
+            checkTimeout: 700,
+            switchTimeout: 600,
+            showRegion: false,
+            showASN: false,
+            showOrganization: false,
+            showDownlink: false,
+            fallbackUrl: "https://fallback.test/json",
+        })
+        expect(updates[0].config.features.visitorIP.ipApiUrls).toEqual([
+            ...defaultUrls.slice(1),
+            "https://custom.test/json",
+        ])
+        expect(updates[0].config.features.visitorIP.checkNodes.map((n: any) => n.name)).toEqual([
+            "Google",
+            "Custom",
+        ])
+        // Wait for the response to be adopted and the mobile toast animation to leave
+        // the sticky action row before the next physical click; request receipt alone is not completion.
+        await expect(page.getByRole("button", { name: "保存美化设置", exact: true })).toBeDisabled()
+        const savedToast = page.getByText("默认主题美化设置已保存，仅影响该主题", { exact: true })
+        await expect(savedToast).toBeVisible()
+        await expect(savedToast).toBeHidden({ timeout: 10000 })
+        await Promise.all([
+            page.waitForResponse(
+                (response) =>
+                    response.url().endsWith("/api/v1/setting/appearance") &&
+                    response.request().method() === "GET",
+            ),
+            page.getByRole("button", { name: "重新读取", exact: true }).click(),
+        ])
+        await expect(page.getByText("正在读取默认主题设置…", { exact: true })).toHaveCount(0)
+        const visitorSection = page.getByRole("button", { name: "访客 IP 与网络检测", exact: true })
+        if ((await visitorSection.getAttribute("aria-expanded")) === "false")
+            await visitorSection.click()
+        await expect(page.getByLabel("检测节点名称 2", { exact: true })).toHaveValue("Custom")
+        await page.getByLabel("检测节点地址 2", { exact: true }).fill("javascript:alert(1)")
+        await expect(page.getByRole("button", { name: "保存美化设置", exact: true })).toBeDisabled()
+        await page.getByLabel("检测节点地址 2", { exact: true }).fill("https://custom.test/ping")
+        await page.getByLabel("检测节点名称 2", { exact: true }).fill("Google")
+        await expect(page.getByRole("button", { name: "保存美化设置", exact: true })).toBeDisabled()
+        await page.getByLabel("检测节点名称 2", { exact: true }).fill("Custom")
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+            true,
+        )
+        await page
+            .locator("section")
+            .filter({ has: page.getByRole("button", { name: "访客 IP 与网络检测", exact: true }) })
+            .last()
+            .screenshot({ path: "test-results/visitor-settings-" + width + ".png" })
+    })
 
-test("independent peak-cut and mutually exclusive mascot settings save and reload",async({page})=>{
- const {updates}=await setup(page);
- await page.getByRole("button",{name:"网络图削峰",exact:true}).click();
- await page.getByRole("switch",{name:"手机端启用",exact:true}).click();
- await page.getByRole("switch",{name:"电脑端启用",exact:true}).click();
- await page.getByRole("button",{name:"看板娘",exact:true}).click();
- await page.getByLabel("看板娘类型",{exact:true}).selectOption("sakana");
- await page.getByLabel("Sakana 默认角色",{exact:true}).selectOption("takina");
- await page.getByLabel("Sakana 尺寸（像素）",{exact:true}).fill("180");
- await expect(page.getByLabel("模型资源目录",{exact:true})).toHaveCount(0);
- await page.getByRole("button",{name:"保存美化设置",exact:true}).click();
- await expect.poll(()=>updates.length).toBe(1);
- expect(updates[0].config.features.peakCut).toEqual({enabled:true,desktop:false,mobile:true});
- expect(updates[0].config.features.live2d.provider).toBe("sakana");
- expect(updates[0].config.features.live2d.character).toBe("takina");
- await page.reload();await page.getByRole("button",{name:"看板娘",exact:true}).click();
- await expect(page.getByLabel("看板娘类型",{exact:true})).toHaveValue("sakana");
- await page.getByLabel("看板娘类型",{exact:true}).selectOption("live2d");
- await expect(page.getByLabel("模型资源目录",{exact:true})).toBeVisible();
- await expect(page.getByLabel("Sakana 默认角色",{exact:true})).toHaveCount(0);
-});
+test("independent peak-cut and mutually exclusive mascot settings save and reload", async ({
+    page,
+}) => {
+    const { updates } = await setup(page)
+    await page.getByRole("button", { name: "网络图削峰", exact: true }).click()
+    await page.getByRole("switch", { name: "手机端启用", exact: true }).click()
+    await page.getByRole("switch", { name: "电脑端启用", exact: true }).click()
+    await page.getByRole("button", { name: "看板娘", exact: true }).click()
+    await page.getByLabel("看板娘类型", { exact: true }).selectOption("sakana")
+    await page.getByLabel("Sakana 默认角色", { exact: true }).selectOption("takina")
+    await page.getByLabel("Sakana 尺寸（像素）", { exact: true }).fill("180")
+    await expect(page.getByLabel("模型资源目录", { exact: true })).toHaveCount(0)
+    await page.getByRole("button", { name: "保存美化设置", exact: true }).click()
+    await expect.poll(() => updates.length).toBe(1)
+    expect(updates[0].config.features.peakCut).toEqual({
+        enabled: true,
+        desktop: false,
+        mobile: true,
+    })
+    expect(updates[0].config.features.live2d.provider).toBe("sakana")
+    expect(updates[0].config.features.live2d.character).toBe("takina")
+    await page.reload()
+    await page.getByRole("button", { name: "看板娘", exact: true }).click()
+    await expect(page.getByLabel("看板娘类型", { exact: true })).toHaveValue("sakana")
+    await page.getByLabel("看板娘类型", { exact: true }).selectOption("live2d")
+    await expect(page.getByLabel("模型资源目录", { exact: true })).toBeVisible()
+    await expect(page.getByLabel("Sakana 默认角色", { exact: true })).toHaveCount(0)
+})
 
-test("custom Sakana roles add, save, reload, validate and delete selected",async({page},testInfo)=>{
- const {updates}=await setup(page);await page.getByRole("button",{name:"看板娘",exact:true}).click();
- await page.getByLabel("看板娘类型",{exact:true}).selectOption("sakana");
- await page.getByRole("button",{name:"添加自定义角色",exact:true}).click();
- await expect(page.getByRole("button",{name:"保存美化设置",exact:true})).toBeDisabled();
- await page.getByLabel("自定义角色名称 1",{exact:true}).fill("我的看板娘");
- await page.getByLabel("自定义角色图片 1",{exact:true}).fill("javascript:alert(1)");
- await expect(page.getByRole("button",{name:"保存美化设置",exact:true})).toBeDisabled();
- await page.getByLabel("自定义角色图片 1",{exact:true}).fill("https://images.test/role.png");
- await page.getByLabel("自定义角色缩放 1",{exact:true}).fill("201");await expect(page.getByRole("button",{name:"保存美化设置",exact:true})).toBeDisabled();
- await page.getByLabel("自定义角色缩放 1",{exact:true}).fill("150");
- await page.getByLabel("Sakana 默认角色",{exact:true}).selectOption({label:"我的看板娘"});
- await page.getByRole("button",{name:"保存美化设置",exact:true}).click();await expect.poll(()=>updates.length).toBe(1);
- expect(updates[0].config.features.live2d.customCharacters[0].name).toBe("我的看板娘");
- expect(updates[0].config.features.live2d.customCharacters[0].scale).toBe(150);
- expect(updates[0].config.features.live2d.character).toBe(updates[0].config.features.live2d.customCharacters[0].id);
- await page.reload();await page.getByRole("button",{name:"看板娘",exact:true}).click();
- await expect(page.getByLabel("自定义角色图片 1",{exact:true})).toHaveCount(0);
- await page.getByRole("group",{name:"自定义角色图片",exact:true}).screenshot({path:testInfo.outputPath("character-fold.png")});
- await page.getByRole("button",{name:/我的看板娘.*默认角色/}).click();
- await expect(page.getByLabel("自定义角色图片 1",{exact:true})).toHaveValue("https://images.test/role.png");
- await expect(page.getByLabel("自定义角色缩放 1",{exact:true})).toHaveValue("150");
- await page.getByRole("button",{name:"恢复100%",exact:true}).click();await expect(page.getByLabel("自定义角色缩放 1",{exact:true})).toHaveValue("100");
- await page.getByRole("button",{name:"删除自定义角色 1",exact:true}).click();
- await expect(page.getByLabel("Sakana 默认角色",{exact:true})).toHaveValue("chisato");
- await page.getByRole("button",{name:"保存美化设置",exact:true}).click();await expect.poll(()=>updates.length).toBe(2);
- expect(updates[1].config.features.live2d.customCharacters).toEqual([]);
-});
+test("custom Sakana roles add, save, reload, validate and delete selected", async ({
+    page,
+}, testInfo) => {
+    const { updates } = await setup(page)
+    await page.getByRole("button", { name: "看板娘", exact: true }).click()
+    await page.getByLabel("看板娘类型", { exact: true }).selectOption("sakana")
+    await page.getByRole("button", { name: "添加自定义角色", exact: true }).click()
+    await expect(page.getByRole("button", { name: "保存美化设置", exact: true })).toBeDisabled()
+    await page.getByLabel("自定义角色名称 1", { exact: true }).fill("我的看板娘")
+    await page.getByLabel("自定义角色图片 1", { exact: true }).fill("javascript:alert(1)")
+    await expect(page.getByRole("button", { name: "保存美化设置", exact: true })).toBeDisabled()
+    await page.getByLabel("自定义角色图片 1", { exact: true }).fill("https://images.test/role.png")
+    await page.getByLabel("自定义角色缩放 1", { exact: true }).fill("201")
+    await expect(page.getByRole("button", { name: "保存美化设置", exact: true })).toBeDisabled()
+    await page.getByLabel("自定义角色缩放 1", { exact: true }).fill("150")
+    await page.getByLabel("Sakana 默认角色", { exact: true }).selectOption({ label: "我的看板娘" })
+    await page.getByRole("button", { name: "保存美化设置", exact: true }).click()
+    await expect.poll(() => updates.length).toBe(1)
+    expect(updates[0].config.features.live2d.customCharacters[0].name).toBe("我的看板娘")
+    expect(updates[0].config.features.live2d.customCharacters[0].scale).toBe(150)
+    expect(updates[0].config.features.live2d.character).toBe(
+        updates[0].config.features.live2d.customCharacters[0].id,
+    )
+    await page.reload()
+    await page.getByRole("button", { name: "看板娘", exact: true }).click()
+    await expect(page.getByLabel("自定义角色图片 1", { exact: true })).toHaveCount(0)
+    await page
+        .getByRole("group", { name: "自定义角色图片", exact: true })
+        .screenshot({ path: testInfo.outputPath("character-fold.png") })
+    await page.getByRole("button", { name: /我的看板娘.*默认角色/ }).click()
+    await expect(page.getByLabel("自定义角色图片 1", { exact: true })).toHaveValue(
+        "https://images.test/role.png",
+    )
+    await expect(page.getByLabel("自定义角色缩放 1", { exact: true })).toHaveValue("150")
+    await page.getByRole("button", { name: "恢复100%", exact: true }).click()
+    await expect(page.getByLabel("自定义角色缩放 1", { exact: true })).toHaveValue("100")
+    await page.getByRole("button", { name: "删除自定义角色 1", exact: true }).click()
+    await expect(page.getByLabel("Sakana 默认角色", { exact: true })).toHaveValue("chisato")
+    await page.getByRole("button", { name: "保存美化设置", exact: true }).click()
+    await expect.poll(() => updates.length).toBe(2)
+    expect(updates[1].config.features.live2d.customCharacters).toEqual([])
+})
 
-test("theme transparency settings save independently and survive reload",async({page},testInfo)=>{
- const {updates}=await setup(page);
- await page.getByRole("button",{name:"背景图片与视频",exact:true}).click();
- await page.getByRole("button",{name:"卡片透明效果",exact:true}).click();
- await page.getByLabel("白天模式（亮色）卡片背景不透明度",{exact:true}).fill("0.25");
- await page.getByLabel("黑夜模式（暗色）卡片背景不透明度",{exact:true}).fill("0.7");
- await page.getByLabel("白天模式（亮色）卡片模糊（像素）",{exact:true}).fill("2");
- await page.getByLabel("黑夜模式（暗色）卡片模糊（像素）",{exact:true}).fill("8");
- await page.getByRole("button",{name:"保存美化设置",exact:true}).click();
- await expect.poll(()=>updates.length).toBe(1);
- expect(updates[0].config.features.background).toMatchObject({lightOpacity:0.25,darkOpacity:0.7,lightBlur:2,darkBlur:8,opacity:0.4,blur:4});
- await page.reload();await page.getByRole("button",{name:"背景图片与视频",exact:true}).click();
- await page.getByRole("button",{name:"卡片透明效果",exact:true}).click();
- await expect(page.getByLabel("白天模式（亮色）卡片背景不透明度",{exact:true})).toHaveValue("0.25");
- await expect(page.getByLabel("黑夜模式（暗色）卡片背景不透明度",{exact:true})).toHaveValue("0.7");
- await expect(page.getByLabel("白天模式（亮色）卡片模糊（像素）",{exact:true})).toHaveValue("2");
- await expect(page.getByLabel("黑夜模式（暗色）卡片模糊（像素）",{exact:true})).toHaveValue("8");
- await page.getByRole("button",{name:"卡片透明效果",exact:true}).locator("xpath=ancestor::section[1]").screenshot({path:testInfo.outputPath("card-theme-settings.png")});
-});
+test("theme transparency settings save independently and survive reload", async ({
+    page,
+}, testInfo) => {
+    const { updates } = await setup(page)
+    await page.getByRole("button", { name: "背景图片与视频", exact: true }).click()
+    await page.getByRole("button", { name: "卡片透明效果", exact: true }).click()
+    await page.getByLabel("白天模式（亮色）卡片背景不透明度", { exact: true }).fill("0.25")
+    await page.getByLabel("黑夜模式（暗色）卡片背景不透明度", { exact: true }).fill("0.7")
+    await page.getByLabel("白天模式（亮色）卡片模糊（像素）", { exact: true }).fill("2")
+    await page.getByLabel("黑夜模式（暗色）卡片模糊（像素）", { exact: true }).fill("8")
+    await page.getByRole("button", { name: "保存美化设置", exact: true }).click()
+    await expect.poll(() => updates.length).toBe(1)
+    expect(updates[0].config.features.background).toMatchObject({
+        lightOpacity: 0.25,
+        darkOpacity: 0.7,
+        lightBlur: 2,
+        darkBlur: 8,
+        opacity: 0.4,
+        blur: 4,
+    })
+    await page.reload()
+    await page.getByRole("button", { name: "背景图片与视频", exact: true }).click()
+    await page.getByRole("button", { name: "卡片透明效果", exact: true }).click()
+    await expect(page.getByLabel("白天模式（亮色）卡片背景不透明度", { exact: true })).toHaveValue(
+        "0.25",
+    )
+    await expect(page.getByLabel("黑夜模式（暗色）卡片背景不透明度", { exact: true })).toHaveValue(
+        "0.7",
+    )
+    await expect(page.getByLabel("白天模式（亮色）卡片模糊（像素）", { exact: true })).toHaveValue(
+        "2",
+    )
+    await expect(page.getByLabel("黑夜模式（暗色）卡片模糊（像素）", { exact: true })).toHaveValue(
+        "8",
+    )
+    await page
+        .getByRole("button", { name: "卡片透明效果", exact: true })
+        .locator("xpath=ancestor::section[1]")
+        .screenshot({ path: testInfo.outputPath("card-theme-settings.png") })
+})
 
-for (const width of [1440,390,320]) test("background loading settings save/reload independently at "+width,async({page})=>{
- await page.setViewportSize({width,height:900});const {updates}=await setup(page);
- await page.getByRole("button",{name:"背景图片与视频",exact:true}).click();
- await page.getByRole("button",{name:"载入效果",exact:true}).click();
- const pc=page.getByLabel("电脑载入效果",{exact:true}),phone=page.getByLabel("手机载入效果",{exact:true});
- await pc.selectOption("left");await phone.selectOption("zoom");
- await page.getByLabel("电脑载入时长（秒）",{exact:true}).fill("4.5");
- await page.getByLabel("手机载入时长（秒）",{exact:true}).fill("0.8");
- await page.getByRole("button",{name:"保存美化设置",exact:true}).click();
- await expect.poll(()=>updates.length).toBe(1);
- expect(updates[0].config.features.background).toMatchObject({desktopLoadEffect:"left",desktopLoadDuration:4.5,mobileLoadEffect:"zoom",mobileLoadDuration:0.8});
- await page.reload();await page.getByRole("button",{name:"背景图片与视频",exact:true}).click();
- await page.getByRole("button",{name:"载入效果",exact:true}).click();
- await expect(pc).toHaveValue("left");await expect(phone).toHaveValue("zoom");
- await expect(page.getByLabel("电脑载入时长（秒）",{exact:true})).toHaveValue("4.5");
- await expect(page.getByLabel("手机载入时长（秒）",{exact:true})).toHaveValue("0.8");
- const group=page.getByRole("button",{name:"载入效果",exact:true}).locator("xpath=ancestor::section[1]");await group.scrollIntoViewIfNeeded();
- await page.screenshot({path:test.info().outputPath("background-editor-"+width+".png")});
- expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
- const a=await pc.boundingBox(),b=await phone.boundingBox();
- if(width<768)expect(b!.y).toBeGreaterThan(a!.y);else expect(b!.y).toBe(a!.y);
- await pc.selectOption("none");await expect(page.getByLabel("电脑载入时长（秒）",{exact:true})).toBeDisabled();
- await expect(phone).toHaveValue("zoom");
-});
-for(const width of [1440,390,320]) test("background subsections preserve drafts and collapse at "+width,async({page},testInfo)=>{
- await page.setViewportSize({width,height:900});const {updates}=await setup(page);
- const outer=page.getByRole("button",{name:"背景图片与视频",exact:true});await outer.click();
- const groups=page.locator("[data-background-settings] > section h3 button");
- await expect(groups).toHaveText(["背景地址电脑 5 条；手机 5 条","分时背景未启用 · 按时段选择背景","特殊地区背景与运营商查询已启用 · 按地区或运营商选择背景","卡片透明效果分别调整亮色、暗色模式的不透明度与模糊","背景视频与关联设置声音控制已启用 · 视频默认静音播放","载入效果电脑：中心展开 · 1.2 秒；手机：中心展开 · 1.2 秒"].map(t=>new RegExp(t.split(/电脑|未启用|已启用|分别|声音/)[0])));
- for(const button of await groups.all())await expect(button).toHaveAttribute("aria-expanded","false");
- await page.locator("[data-background-settings]").screenshot({path:testInfo.outputPath("background-folded-"+width+".png")});
- const address=page.getByRole("button",{name:"背景地址",exact:true});await address.focus();await page.keyboard.press("Enter");
- const field=page.getByLabel("电脑背景地址",{exact:true});await field.fill("https://example.test/draft.png\n");
- await address.click();await expect(field).not.toBeVisible();await outer.click();await outer.click();await address.focus();await page.keyboard.press("Space");
- await expect(field).toHaveValue("https://example.test/draft.png\n");
- await page.getByRole("button",{name:"保存美化设置",exact:true}).click();await expect.poll(()=>updates.length).toBe(1);
- expect(updates[0].config.features.background.desktopMedia[0].src).toBe("https://example.test/draft.png");
- expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-});
+for (const width of [1440, 390, 320])
+    test("background loading settings save/reload independently at " + width, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 })
+        const { updates } = await setup(page)
+        await page.getByRole("button", { name: "背景图片与视频", exact: true }).click()
+        await page.getByRole("button", { name: "载入效果", exact: true }).click()
+        const pc = page.getByLabel("电脑载入效果", { exact: true }),
+            phone = page.getByLabel("手机载入效果", { exact: true })
+        await pc.selectOption("left")
+        await phone.selectOption("zoom")
+        await page.getByLabel("电脑载入时长（秒）", { exact: true }).fill("4.5")
+        await page.getByLabel("手机载入时长（秒）", { exact: true }).fill("0.8")
+        await page.getByRole("button", { name: "保存美化设置", exact: true }).click()
+        await expect.poll(() => updates.length).toBe(1)
+        expect(updates[0].config.features.background).toMatchObject({
+            desktopLoadEffect: "left",
+            desktopLoadDuration: 4.5,
+            mobileLoadEffect: "zoom",
+            mobileLoadDuration: 0.8,
+        })
+        await page.reload()
+        await page.getByRole("button", { name: "背景图片与视频", exact: true }).click()
+        await page.getByRole("button", { name: "载入效果", exact: true }).click()
+        await expect(pc).toHaveValue("left")
+        await expect(phone).toHaveValue("zoom")
+        await expect(page.getByLabel("电脑载入时长（秒）", { exact: true })).toHaveValue("4.5")
+        await expect(page.getByLabel("手机载入时长（秒）", { exact: true })).toHaveValue("0.8")
+        const group = page
+            .getByRole("button", { name: "载入效果", exact: true })
+            .locator("xpath=ancestor::section[1]")
+        await group.scrollIntoViewIfNeeded()
+        await page.screenshot({
+            path: test.info().outputPath("background-editor-" + width + ".png"),
+        })
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+            true,
+        )
+        const a = await pc.boundingBox(),
+            b = await phone.boundingBox()
+        if (width < 768) expect(b!.y).toBeGreaterThan(a!.y)
+        else expect(b!.y).toBe(a!.y)
+        await pc.selectOption("none")
+        await expect(page.getByLabel("电脑载入时长（秒）", { exact: true })).toBeDisabled()
+        await expect(phone).toHaveValue("zoom")
+    })
+for (const width of [1440, 390, 320])
+    test(
+        "background subsections preserve drafts and collapse at " + width,
+        async ({ page }, testInfo) => {
+            await page.setViewportSize({ width, height: 900 })
+            const { updates } = await setup(page)
+            const outer = page.getByRole("button", { name: "背景图片与视频", exact: true })
+            await outer.click()
+            const groups = page.locator("[data-background-settings] > section h3 button")
+            await expect(groups).toHaveText(
+                [
+                    "背景地址电脑 5 条；手机 5 条",
+                    "分时背景未启用 · 按时段选择背景",
+                    "特殊地区背景与运营商查询已启用 · 按地区或运营商选择背景",
+                    "卡片透明效果分别调整亮色、暗色模式的不透明度与模糊",
+                    "背景视频与关联设置声音控制已启用 · 视频默认静音播放",
+                    "载入效果电脑：中心展开 · 1.2 秒；手机：中心展开 · 1.2 秒",
+                ].map((t) => new RegExp(t.split(/电脑|未启用|已启用|分别|声音/)[0])),
+            )
+            for (const button of await groups.all())
+                await expect(button).toHaveAttribute("aria-expanded", "false")
+            await page
+                .locator("[data-background-settings]")
+                .screenshot({ path: testInfo.outputPath("background-folded-" + width + ".png") })
+            const address = page.getByRole("button", { name: "背景地址", exact: true })
+            await address.focus()
+            await page.keyboard.press("Enter")
+            const field = page.getByLabel("电脑背景地址", { exact: true })
+            await field.fill("https://example.test/draft.png\n")
+            await address.click()
+            await expect(field).not.toBeVisible()
+            await outer.click()
+            await outer.click()
+            await address.focus()
+            await page.keyboard.press("Space")
+            await expect(field).toHaveValue("https://example.test/draft.png\n")
+            await page.getByRole("button", { name: "保存美化设置", exact: true }).click()
+            await expect.poll(() => updates.length).toBe(1)
+            expect(updates[0].config.features.background.desktopMedia[0].src).toBe(
+                "https://example.test/draft.png",
+            )
+            expect(
+                await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+            ).toBe(true)
+        },
+    )

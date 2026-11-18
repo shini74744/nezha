@@ -195,6 +195,8 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	auth.POST("/logo/groups", restScopeMiddleware(model.ScopeAdminAll), adminHandler(saveLogoGroup))
 	auth.PUT("/logo/groups/:id", restScopeMiddleware(model.ScopeAdminAll), adminHandler(saveLogoGroup))
 	auth.DELETE("/logo/groups/:id", restScopeMiddleware(model.ScopeAdminAll), adminHandler(deleteLogoGroup))
+	auth.GET("/logo/usage", restScopeMiddleware(model.ScopeAdminAll), adminHandler(listLogoUsage))
+	auth.POST("/logo/batch-group", restScopeMiddleware(model.ScopeAdminAll), adminHandler(batchGroupLogos))
 	auth.GET("/logo/library", restScopeMiddleware(model.ScopeInventoryRead), commonHandler(listLogoLibrary))
 	auth.POST("/logo/library", restScopeMiddleware(model.ScopeAdminAll), adminHandler(createLogoLibrary))
 	auth.PUT("/logo/library/:id", restScopeMiddleware(model.ScopeAdminAll), adminHandler(updateLogoLibrary))
