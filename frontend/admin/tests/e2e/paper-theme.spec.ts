@@ -354,14 +354,18 @@ for(const [width,color] of [[320,"light"],[390,"dark"],[768,"light"],[1440,"ligh
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
  await page.screenshot({path:info.outputPath("paper-framed-home.jpg"),type:"jpeg",quality:80});
 
- const tray=page.locator(".paper-tools-tray");
- await expect(tray).toHaveAttribute("aria-hidden","true");
- await expect(tray.locator("[data-stationery-kind]")).toHaveCount(10);
- expect(new Set(await tray.locator("[data-stationery-kind]").evaluateAll(els=>els.map(el=>el.getAttribute("data-stationery-kind")))).size).toBe(10);
+ await expect(page.locator(".paper-tools-tray,.paper-tools-row,.paper-tools-margins")).toHaveCount(0);
+ await expect(page.locator(".global-map-shell .paper-metal-clip")).toBeVisible();
  for(const tool of await page.locator(".paper-tool").all())await expect(tool).toHaveCSS("pointer-events","none");
- if(width>=1024)await expect(page.locator(".paper-tools-margins")).toBeVisible();else await expect(page.locator(".paper-tools-margins")).toBeHidden();
- await tray.scrollIntoViewIfNeeded();
- await tray.screenshot({path:info.outputPath("paper-ten-tools.jpg"),type:"jpeg",quality:85});
+ if(width>=1024)await expect(page.locator(".paper-writing-tools")).toBeVisible();else await expect(page.locator(".paper-writing-tools")).toBeHidden();
+ await page.locator('.global-map-shell [data-region="HK"]').focus();await page.keyboard.press("Enter");
+ await expect(page.getByTestId("map-tooltip")).toContainText("香港 · HKT");
+ await page.getByTestId("map-tooltip").getByRole("button",{name:"关闭"}).click();
+ const firstCard=page.locator(".server-card-list [data-server-card]").first();
+ const upload=await firstCard.locator('[data-native-speed="up"]').boundingBox(),download=await firstCard.locator('[data-native-speed="down"]').boundingBox(),cardBox=await firstCard.boundingBox();
+ expect(upload!.x+upload!.width).toBeLessThanOrEqual(download!.x+1);
+ expect(download!.x+download!.width).toBeLessThanOrEqual(cardBox!.x+cardBox!.width);
+ await page.locator(".server-card-list").screenshot({path:info.outputPath("paper-fixed-cards.jpg"),type:"jpeg",quality:80});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
  const eraser=page.getByRole("button",{name:"页面插画",exact:true});
  // Send a real five-click burst within the gesture window; repeated actionability waits can exceed it on the build host.
@@ -438,8 +442,8 @@ for(const [width,color] of [[320,"light"],[390,"dark"],[1440,"light"],[1440,"dar
   expect(await note.evaluate(e=>getComputedStyle(e,"::before").pointerEvents)).toBe("none");
   expect(await note.evaluate(e=>getComputedStyle(e,"::after").pointerEvents)).toBe("none");
  }
- await expect(page.locator(".paper-metal-clip")).toBeVisible();
- await expect(page.locator(".paper-metal-clip")).toHaveCSS("pointer-events","none");
+ await expect(page.locator("[data-network-note-header] .paper-metal-clip")).toBeVisible();
+ await expect(page.locator("[data-network-note-header] .paper-metal-clip")).toHaveCSS("pointer-events","none");
  const peak=page.locator("[data-server-network] #Peak");
  const peakState=await peak.getAttribute("aria-checked");await peak.click();await expect(peak).toHaveAttribute("aria-checked",peakState==="true"?"false":"true");
  const selected=await notes.first().getAttribute("data-active");
@@ -462,18 +466,16 @@ for(const [width,color] of [[320,"light"],[390,"dark"],[1440,"light"],[1440,"dar
 });
 
 
-test("Paper ten tools on a short empty dark page",async({page},info)=>{
+test("Paper quiet empty dark page without a stationery gallery",async({page},info)=>{
  test.setTimeout(90000);await page.setViewportSize({width:1440,height:950});
  const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
- const {state,tick}=await setup(page,"dark",0,true);
- state.servers.length=0;tick();
+ const {state,tick}=await setup(page,"dark",0,true);state.servers.length=0;tick();
  await expect(page.locator("[data-server-card]")).toHaveCount(0,{timeout:30000});
- const tray=page.locator(".paper-tools-tray");
- await expect(tray.locator("[data-stationery-kind]")).toHaveCount(10);
+ await expect(page.locator(".paper-tools-tray,.paper-tools-row,.paper-tools-margins")).toHaveCount(0);
  const before=await page.evaluate(()=>document.documentElement.scrollHeight);
- await page.locator(".paper-tools-margins").evaluate(el=>(el as HTMLElement).style.display="none");
+ await page.locator(".paper-writing-tools").evaluate(el=>(el as HTMLElement).style.display="none");
  expect(await page.evaluate(()=>document.documentElement.scrollHeight)).toBe(before);
- await page.locator(".paper-tools-margins").evaluate(el=>(el as HTMLElement).style.removeProperty("display"));
+ await page.locator(".paper-writing-tools").evaluate(el=>(el as HTMLElement).style.removeProperty("display"));
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
  await page.screenshot({path:info.outputPath("paper-empty-dark.jpg"),type:"jpeg",quality:80,fullPage:true});
  expect(errors).toEqual([]);

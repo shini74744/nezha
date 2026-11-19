@@ -23,7 +23,6 @@ import Server from "./pages/Server";
 import { RetainedServerList } from "./components/RetainedServerList";
 import CardPreview from "./pages/CardPreview";
 import {PaperChapter} from "./themes/paper/PaperChapter";
-import {PaperToolsTray} from "./themes/paper/PaperTools";
 
 const { View: DoraemonApp } = preloadableView(() => import("./themes/doraemon/App"));
 const { View: NotFound } = preloadableView(() => import("./pages/NotFound"));
@@ -150,7 +149,6 @@ const MainApp: React.FC = () => {
 							}
 						/>
 					</Routes>
-                    {import.meta.env.VITE_THEME_VARIANT === "paper" && <PaperToolsTray/>}
 					<Footer />
 				</main>
 			</div>
