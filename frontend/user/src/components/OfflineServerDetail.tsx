@@ -1,3 +1,5 @@
+import {useFeature} from "@/appearance/context";
+import {formatSpeed} from "@/appearance/widgets";
 import NetworkInterfaceSelect from "./NetworkInterfaceSelect";
 import {networkInterfaceMetric} from "@/lib/network-interface-rates";
 import OnlineHistoryPanel from "./OnlineHistoryPanel";
@@ -117,7 +119,7 @@ export function OfflineServerDetail({server,now,initialTab="Detail",onTabIntent}
   </div>
  </div>;
 }
-function MetricHeader({group,report,title}:{group:typeof groups[number];report:LastReport;title?:ReactNode}) {
+function MetricHeader({group,report,title,rateFormatter}:{group:typeof groups[number];report:LastReport;title?:ReactNode;rateFormatter?:(value:number|undefined)=>string}) {
  const metrics=report.metrics,host=report.snapshot?.host;
  const value=metrics[group.keys[0]];
  const capacities:Record<string,number|undefined>={memory:host?.mem_total,swap:host?.swap_total,disk:host?.disk_total};
@@ -127,7 +129,7 @@ function MetricHeader({group,report,title}:{group:typeof groups[number];report:L
   <section className="flex flex-col items-end gap-0.5">{group.keys.length===1&&percent(group.keys[0],0)}{group.keys.map(key=><p key={key} className="text-[11px] font-medium" title="已用容量 / 总容量">{key==="swap"&&host&&!(host.swap_total||0)&&metrics.swap===0?"no swap":valueText(metrics[key],"bytes")+" / "+(capacities[key]?formatBytes(capacities[key]!):"未知")}</p>)}</section>
  </div>;
  if(group.keys.length>1)return <section className="flex items-center gap-4">{group.keys.map((key,i)=><div key={key}>
-  <p className="text-xs text-muted-foreground">{group.labels[i]}</p><p className="flex items-center gap-1 text-xs font-medium"><span className="size-1.5 rounded-full" style={{backgroundColor:"hsl(var(--chart-"+group.colors[i]+"))"}}/>{valueText(metrics[key],group.unit)}</p>
+  <p className="text-xs text-muted-foreground">{group.labels[i]}</p><p className="flex items-center gap-1 text-xs font-medium"><span className="size-1.5 rounded-full" style={{backgroundColor:"hsl(var(--chart-"+group.colors[i]+"))"}}/>{rateFormatter?rateFormatter(metrics[key]):valueText(metrics[key],group.unit)}</p>
  </div>)}</section>;
  return <div className="flex min-w-0 items-center justify-between gap-2"><p className={cn("text-md font-medium",/^gpu_\d+$/.test(group.keys[0])&&"min-w-0 break-all")}>{group.title}</p><section className="flex shrink-0 items-center gap-2"><p className="text-xs text-end font-medium">{valueText(value,group.unit)}</p>
   {group.unit==="percent"&&value!==undefined&&<AnimatedCircularProgressBar className="size-3 text-[0px]" max={100} min={0} value={value} primaryColor="hsl(var(--chart-1))"/>}
@@ -144,6 +146,8 @@ export function OfflineMetricCard({group,report,period,now=Date.now()}:{group:ty
 function LegacyOfflineMetricCard({group:originalGroup,report,period,now}:{group:typeof groups[number];report:LastReport;period:"last"|MetricPeriod;now:number}) {
  const isDisk=originalGroup.keys[0]==="disk";
  const isNetwork=originalGroup.keys[0]==="net_out_speed";
+ const speed=useFeature("speed");
+ const networkBits=import.meta.env.VITE_THEME_VARIANT==="paper"&&isNetwork&&speed.enabled&&speed.cardEnabled&&speed.bits;
  const {isAdmin}=useLoginUser();
  const [chosen,setChosen]=useState("");
  const selected=isAdmin?chosen:"";
@@ -169,6 +173,7 @@ function LegacyOfflineMetricCard({group:originalGroup,report,period,now}:{group:
  onChange:(name:string)=>{if(name===selected)void history.refetch();else setChosen(name);}}:undefined;
  const percentChart=period==="last"&&group.unit==="bytes"&&!!report.recent[group.keys[0]+"_percent"]?.length;
  const unit=percentChart?"percent":group.unit;
+ const formatValue=(value:number|undefined)=>networkBits&&value!==undefined&&Number.isFinite(value)?formatSpeed(value,true):valueText(value,unit);
  const keys=group.keys.map(key=>percentChart?key+"_percent":key);
  const series=period==="last"?report.recent:history.data||{};
  const merged=new Map<number,Record<string,number|null>>();
@@ -188,7 +193,7 @@ function LegacyOfflineMetricCard({group:originalGroup,report,period,now}:{group:
   {isDisk?<div className="flex min-h-9 items-center justify-between gap-2">
    <DiskModeToggle io={diskIO} onToggle={toggle}/>
    {diskIO?<DiskIORates read={valueText(report.metrics.disk_read_speed,"speed")} write={valueText(report.metrics.disk_write_speed,"speed")}/>:<MetricHeader group={originalGroup} report={report} title={null}/>}
-  </div>:<div className="flex min-w-0 items-center gap-2"><MetricHeader group={group} report={report}/>{selection&&<NetworkInterfaceSelect selection={selection}/>}</div>}
+  </div>:<div className="flex min-w-0 items-center gap-2"><MetricHeader group={group} report={report} rateFormatter={networkBits?formatValue:undefined}/>{selection&&<NetworkInterfaceSelect selection={selection}/>}</div>}
   {period==="last" && /^gpu_\d+$/.test(group.keys[0]) && <GpuMemorySummary recorded memory={report.snapshot?.state.gpus?.[Number(group.keys[0].slice(4))]}/>}
   <div key={diskIO?"io":"capacity"} className={cn("mt-auto shrink-0",isDisk&&"animate-in fade-in duration-200 motion-reduce:animate-none")}>
   {period!=="last"&&history.isPending?<p className="h-[130px] flex items-center justify-center text-xs">正在读取历史记录…</p>:
@@ -198,14 +203,14 @@ function LegacyOfflineMetricCard({group:originalGroup,report,period,now}:{group:
     <AreaChart syncId="offlineDetailCharts" accessibilityLayer data={data} margin={{top:12,left:12,right:12}}>
      <CartesianGrid vertical={false}/>
      <XAxis tick={<MetricTimeTick />} dataKey="ts" type="number" domain={["dataMin","dataMax"]} tickLine={false} axisLine={false} tickMargin={8} minTickGap={200} interval="preserveStartEnd" tickFormatter={v=>dayjs(Number(v)).format(period==="last"?"HH:mm":"MM-DD HH:mm")} {...metricTimeAxis(period,now)}/>
-     <YAxis tickLine={false} axisLine={false} mirror tickMargin={-15} domain={unit==="percent"?[0,100]:[0,"auto"]} tickFormatter={v=>unit==="percent"?v+"%":valueText(v,unit).replace(/\s/g,"")}/>
-     <ChartTooltip isAnimationActive={false} content={<ChartTooltipContent indicator="dot" labelFormatter={(_,payload)=>dateText(Number(payload[0]?.payload?.ts))} formatter={(value,name)=><div className="flex flex-1 items-center justify-between leading-none"><span className="text-muted-foreground">{config[String(name)]?.label}</span><span className="ml-2 font-medium text-foreground tabular-nums">{valueText(Number(value),unit)}</span></div>}/>}/>
+     <YAxis tickLine={false} axisLine={false} mirror tickMargin={-15} domain={unit==="percent"?[0,100]:[0,"auto"]} tickFormatter={v=>unit==="percent"?v+"%":formatValue(v).replace(/\s/g,"")}/>
+     <ChartTooltip isAnimationActive={false} content={<ChartTooltipContent indicator="dot" labelFormatter={(_,payload)=>dateText(Number(payload[0]?.payload?.ts))} formatter={(value,name)=><div className="flex flex-1 items-center justify-between leading-none"><span className="text-muted-foreground">{config[String(name)]?.label}</span><span className="ml-2 font-medium text-foreground tabular-nums">{formatValue(Number(value))}</span></div>}/>}/>
      {keys.map((key,i)=><Area key={key} dataKey={key} type="step" stroke={"hsl(var(--chart-"+group.colors[i]+"))"} fill={"hsl(var(--chart-"+group.colors[i]+"))"} fillOpacity={0.3} dot={data.length===1} connectNulls={false} isAnimationActive={false}/>)}
     </AreaChart>
    </ChartContainer>}
  </div><ChartDetailButton selection={selection} history={group.keys.some(key=>key.startsWith("gpu_"))?undefined:{serverId:report.server_id,metrics:keys.map((key,i)=>({
    metric:group.keys[i] as MetricType,key,scale:percentChart?(() => {const host=report.snapshot?.host;const total=group.keys[i]==="memory"?host?.mem_total:group.keys[i]==="swap"?host?.swap_total:host?.disk_total;return total?100/total:0;})():1
   }))}} timeWindow={metricTimeWindow(period,now)} scopeKey={report.server_id+":"+period+":"+(isNetwork?"network:"+isAdmin:keys.join(","))} title={group.title} data={data} timeKey="ts" period={period}
-  series={keys.map((key,i)=>({key,label:group.labels[i],color:"hsl(var(--chart-"+group.colors[i]+"))"}))} formatValue={v=>valueText(v,unit)} disabled={period!=="last"&&(history.isPending||history.isError)}/>
+  series={keys.map((key,i)=>({key,label:group.labels[i],color:"hsl(var(--chart-"+group.colors[i]+"))"}))} formatValue={formatValue} disabled={period!=="last"&&(history.isPending||history.isError)}/>
  </section></CardContent></Card>;
 }
