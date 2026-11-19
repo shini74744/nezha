@@ -139,6 +139,7 @@ export function NativeSpeed({
   : {...shared,enabled:shared.enabled && shared.cardEnabled};
 	if (!f.enabled || (!f.bits && !f.color && !f.animation)) {
 		const value = fallback ?? formatSpeed(bytes, false);
+        if (import.meta.env.VITE_THEME_VARIANT === "paper") return <span data-native-speed={direction} className={overview ? "nz-network-speed" : undefined}>{icon}<span className="nz-rate-value">{value}</span></span>;
 		return overview ? <span className="nz-network-speed">{icon}<span className="nz-rate-value">{value}</span></span> : <>{icon}{value}</>;
 	}
 	const color = speedColor(bytes, direction, overview);

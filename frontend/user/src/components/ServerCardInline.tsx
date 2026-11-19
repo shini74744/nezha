@@ -158,7 +158,7 @@ function ServerCardInline({
 							<p className="text-xs text-muted-foreground">
 								{t("serverCard.totalUpload")}
 							</p>
-							<div className="flex items-center text-xs font-semibold">
+							<div data-network-direction="up" className="flex items-center text-xs font-semibold">
 								{formatBytes(net_out_transfer)}
 							</div>
 						</div>
@@ -166,7 +166,7 @@ function ServerCardInline({
 							<p className="text-xs text-muted-foreground">
 								{t("serverCard.totalDownload")}
 							</p>
-							<div className="flex items-center text-xs font-semibold">
+							<div data-network-direction="down" className="flex items-center text-xs font-semibold">
 								{formatBytes(net_in_transfer)}
 							</div>
 						</div>

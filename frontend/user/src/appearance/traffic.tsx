@@ -38,7 +38,7 @@ export function TrafficRow({serverId,stat,interval}:{serverId:number;stat:Traffi
  const next=new Date(stat.to);
  const direction=stat.direction==="1"?"仅下载（入站）":stat.direction==="3"?"仅上传（出站）":"上传＋下载";
  const note=(stat.partial?"；历史记录不完整，仅统计已保存数据":"")+(stat.estimated?"；包含小时历史或断线间隔估算":"");
- return <div data-native-traffic={serverId} data-quota-type={limited?"limited":stat.quota_type==="unlimited"?"unlimited":"unset"} className="nz-traffic"
+ return <div data-traffic-level={!limited?"unlimited":percent>=90?"critical":percent>=70?"warning":"normal"} data-native-traffic={serverId} data-quota-type={limited?"limited":stat.quota_type==="unlimited"?"unlimited":"unset"} className="nz-traffic"
   style={{"--nz-traffic-light-color":limited?trafficColor(percent,true):"#1e3a8a"} as CSSProperties}
   title={stat.name+"；"+direction+note+"；下次重置："+(Number.isNaN(next.getTime())?"":next.toLocaleString("zh-CN",{timeZone:"Asia/Shanghai"}))}>
   <div className="nz-traffic-labels">

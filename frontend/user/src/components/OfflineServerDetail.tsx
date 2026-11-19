@@ -50,7 +50,7 @@ const groups=[
  {title:"内存",keys:["memory","swap"],labels:["内存","虚拟内存"],unit:"bytes",colors:[8,10]},
  {title:"磁盘",keys:["disk"],labels:["磁盘"],unit:"bytes",colors:[5]},
  {title:"进程数",keys:["process_count"],labels:["进程"],unit:"number",colors:[2]},
- {title:"网络速率",keys:["net_out_speed","net_in_speed"],labels:["上传","下载"],unit:"speed",colors:[1,10]},
+ {title:"网络速率",keys:["net_out_speed","net_in_speed"],labels:["上传","下载"],unit:"speed",colors:[1,import.meta.env.VITE_THEME_VARIANT === "paper" ? 4 : 10]},
  {title:"连接数",keys:["tcp_conn","udp_conn"],labels:["TCP","UDP"],unit:"number",colors:[1,10]},
 ];
 function valueText(value:number|undefined,unit:string) {
@@ -150,7 +150,7 @@ function LegacyOfflineMetricCard({group:originalGroup,report,period,now}:{group:
  useEffect(()=>setChosen(""),[report.server_id,isAdmin]);
  const names=(report.snapshot?.state.network_interfaces??[]).map(n=>n.name);
  const [diskIO,setDiskIO]=useState(false);
- const group=isDisk&&diskIO?{title:"磁盘读写",keys:["disk_read_speed","disk_write_speed"],labels:["读取","写入"],unit:"speed",colors:[1,10]}:isNetwork&&selected?{...originalGroup,keys:[networkInterfaceMetric(selected,"out"),networkInterfaceMetric(selected,"in")]}:originalGroup;
+ const group=isDisk&&diskIO?{title:"磁盘读写",keys:["disk_read_speed","disk_write_speed"],labels:["读取","写入"],unit:"speed",colors:[1,import.meta.env.VITE_THEME_VARIANT === "paper" ? 4 : 10]}:isNetwork&&selected?{...originalGroup,keys:[networkInterfaceMetric(selected,"out"),networkInterfaceMetric(selected,"in")]}:originalGroup;
  const toggle=()=>{if(isDisk)setDiskIO(value=>!value)};
  const history=useQuery({
   queryKey:["offline-history",report.server_id,period,group.keys],

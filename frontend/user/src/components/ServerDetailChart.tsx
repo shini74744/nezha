@@ -1259,7 +1259,7 @@ function NetworkChart({
 								</p>
 								<div className="flex items-center gap-1">
 									<span className="relative inline-flex  size-1.5 rounded-full bg-[hsl(var(--chart-1))]" />
-									<p data-network-rate className="whitespace-nowrap text-xs font-medium tabular-nums">
+									<p data-network-rate data-network-direction="up" className="whitespace-nowrap text-xs font-medium tabular-nums">
 										{formatCurrent(rates.upload,up)}
 </p>
 								</div>
@@ -1270,7 +1270,7 @@ function NetworkChart({
 								</p>
 								<div className="flex items-center gap-1">
 									<span className="relative inline-flex  size-1.5 rounded-full bg-[hsl(var(--chart-4))]" />
-									<p data-network-rate className="whitespace-nowrap text-xs font-medium tabular-nums">
+									<p data-network-rate data-network-direction="down" className="whitespace-nowrap text-xs font-medium tabular-nums">
 										{formatCurrent(rates.download,down)}
 </p>
 								</div>

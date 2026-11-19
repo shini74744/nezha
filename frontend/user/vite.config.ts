@@ -44,6 +44,7 @@ export default defineConfig(({ mode }) => ({
 		{
 			name: "doraemon-html",
 			generateBundle() {
+                if (mode === "paper") this.emitFile({type:"asset",fileName:"paper-font-OFL.txt",source:fs.readFileSync(path.resolve(__dirname,"src/themes/paper/fonts/OFL.txt"),"utf8")});
 				if (mode === "doraemon")
 					this.emitFile({
 						type: "asset",

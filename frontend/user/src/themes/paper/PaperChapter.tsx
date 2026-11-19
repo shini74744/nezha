@@ -31,7 +31,11 @@ export function PaperIllustration() {
   <path d="M15 28c15-6 26-3 39 7 15-10 30-13 47-9v46c-18-3-32 0-47 12-13-10-24-14-39-10Z" fill="var(--paper-raised)" stroke="var(--paper-ink)" strokeWidth="1.2"/>
   <path d="M54 35v49M22 39c9-2 17 0 25 5m-25 3c9-2 17 0 25 5m-25 3c9-2 17 0 25 5m16-16c9-5 18-7 29-6m-29 14c9-5 18-7 29-6m-29 14c9-5 18-7 29-6" stroke="var(--paper-line)" strokeLinecap="round"/>
   <path d="m76 29 8-2v34l-4-3-4 5Z" fill="var(--paper-red)"/>
-  <path d="M92 8c14 0 17 10 8 23-6 10-13 14-23 15L92 8Z" fill="var(--paper-raised)" stroke="var(--paper-ink)" strokeWidth="1.2"/>
-  <path d="m76 50 24-34m-14 20 11-3m-6-5 10-3" stroke="var(--paper-ink)" strokeWidth="1.2" strokeLinecap="round"/>
+  <g transform="rotate(32 93 27)">
+   <path d="M88 5h10v36l-5 12-5-12Z" fill="var(--paper-warning)" stroke="var(--paper-ink)" strokeWidth="1.1"/>
+   <path d="M88 36h10v5l-5 12-5-12Z" fill="var(--paper)" stroke="var(--paper-ink)" strokeWidth="1"/>
+   <path d="m91 48 2 5 2-5M91 9v25m4-25v25" stroke="var(--paper-ink)" strokeLinecap="round"/>
+   <path d="M88 5h10v6H88Z" fill="var(--paper-red)" stroke="var(--paper-ink)"/>
+  </g>
  </svg>;
 }
