@@ -501,15 +501,15 @@
       "toggleInterval": 5000
     },
     "speed": {
-      "enabled": false,
+      "enabled": true,
       "bits": true,
-      "color": true,
-      "animation": true,
+      "color": false,
+      "animation": false,
       "cardEnabled": true,
       "overviewEnabled": true,
       "overviewBits": true,
-      "overviewColor": true,
-      "overviewAnimation": true
+      "overviewColor": false,
+      "overviewAnimation": false
     },
     "nameColor": {
       "enabled": false,

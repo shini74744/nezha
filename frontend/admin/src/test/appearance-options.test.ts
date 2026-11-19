@@ -59,6 +59,7 @@ describe("font and effect configuration", () => {
   const c=normalizeThemeAppearance("paper-dist");
   expect(validate(c)).toBe("");expect(c.enabled).toBe(true);expect(c.features.background.enabled).toBe(false);
   expect(c.features.links.enabled).toBe(true);expect(c.features.hideControls.theme).toBe(false);
+  expect(c.features.speed).toMatchObject({enabled:true,bits:true,overviewBits:true,animation:false,overviewAnimation:false});
   expect(Object.keys(c.features)).toEqual(Object.keys(defaults().features));
   expect(appearanceEndpoint("paper-dist")).toBe("/api/v1/setting/appearance?theme=paper-dist");
   expect(appearancePayload("paper-dist",c)).toEqual(c);
