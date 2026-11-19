@@ -20,12 +20,15 @@ export function PaperChapter() {
  </header>;
 }
 
-/** Paper sheets preserve the existing illustration interaction without stationery props. */
+/** The eraser preserves the original illustration button and its click behavior. */
 export function PaperIllustration() {
- return <svg className="paper-illustration" viewBox="0 0 80 80" fill="none" aria-hidden="true">
-  <path d="m16 18 46-6 6 57-46 4Z" fill="var(--paper)" stroke="var(--paper-edge)"/>
-  <path d="M12 10h42l12 12v44H12Z" fill="var(--paper-raised)" stroke="var(--paper-edge)"/>
-  <path d="M54 10v12h12" stroke="var(--paper-edge)" fill="var(--paper)"/>
-  <path d="M15 64h48M19 71l47-4" stroke="var(--paper-line)" opacity=".7"/>
+ return <svg className="paper-illustration paper-eraser" viewBox="0 0 88 80" fill="none" aria-hidden="true">
+  <ellipse cx="44" cy="67" rx="31" ry="5" fill="var(--paper-ink)" opacity=".10"/>
+  <path d="m11 31 43-17 23 17-43 18Z" fill="var(--paper-eraser)" stroke="var(--paper-ink)" strokeWidth=".8" strokeLinejoin="round"/>
+  <path d="M11 31v18l23 17V49Zm23 18 43-18v18L34 66Z" fill="var(--paper-eraser-side)" stroke="var(--paper-ink)" strokeWidth=".8" strokeLinejoin="round"/>
+  <path d="m24 26 22-9 23 17-22 9Z" fill="var(--paper-eraser-sleeve)" stroke="var(--paper-ink)" strokeWidth=".7" strokeLinejoin="round"/>
+  <path d="m47 43 22-9v18l-22 9Z" fill="var(--paper-eraser-wrap)" stroke="var(--paper-ink)" strokeWidth=".7"/>
+  <path d="m26 27 20-8m4 26 16-7m-16 17 16-7" stroke="var(--paper-raised)" opacity=".45" strokeLinecap="round"/>
+  <path d="m15 32 9 7m32-21 15 11" stroke="var(--paper-raised)" strokeWidth="1.4" opacity=".65" strokeLinecap="round"/>
  </svg>;
 }

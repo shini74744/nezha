@@ -334,3 +334,88 @@ for(const width of [390,1440])test("Paper unit conversion across summary cards l
  await page.getByRole("dialog").screenshot({path:info.outputPath("paper-offline-units.jpg"),type:"jpeg",quality:75});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });
+
+for(const [width,color] of [[320,"light"],[390,"dark"],[768,"light"],[1440,"light"]] as const) test("Paper margin and toolbar interactions "+width+" "+color,async({page},info)=>{
+ test.setTimeout(120000);await page.setViewportSize({width,height:950});
+ const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
+ await setup(page,color,0,true);await page.evaluate(()=>document.fonts.ready);
+ await expect(page.locator(".paper-eraser")).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ await page.screenshot({path:info.outputPath("paper-framed-home.jpg"),type:"jpeg",quality:80});
+ const eraser=page.getByRole("button",{name:"页面插画",exact:true});
+ for(let i=0;i<5;i++)await eraser.click();
+ await expect(eraser).toHaveAttribute("aria-pressed","true");
+ await page.getByRole("button",{name:"切换地区地图",exact:true}).click();
+ await expect(page.getByRole("region",{name:"服务器分布",exact:true})).toHaveCount(0);
+ await page.getByRole("button",{name:"选择统计视图",exact:true}).click();
+ await page.getByRole("menuitemradio").filter({hasText:/周期/}).click();
+ await expect(page.locator('[data-statistics-view="cycle"]')).toBeVisible({timeout:30000});
+ await page.getByRole("button",{name:"选择统计视图",exact:true}).click();
+ await page.getByRole("menuitemradio").filter({hasText:/周期/}).click();
+ await expect(page.locator('[data-statistics-view="cycle"]')).toHaveCount(0);
+ await page.getByRole("button",{name:"切换卡片列表布局",exact:true}).click();
+ await expect(page.locator(".server-inline-list")).toBeVisible();
+ await page.getByRole("button",{name:"Sort metric",exact:true}).click();
+ await page.getByRole("menuitemradio").filter({hasText:/CPU/}).click();
+ const direction=page.getByRole("button",{name:"Toggle sort direction",exact:true});await expect(direction).toBeEnabled();
+ const first=await page.locator(".server-inline-list [data-server-name]").first().textContent();
+ await direction.click();
+ await expect(page.locator(".server-inline-list [data-server-name]").first()).not.toHaveText(first!);
+ await page.getByRole("button",{name:"切换卡片列表布局",exact:true}).click();
+ await expect(page.locator(".server-card-list [data-server-card]")).toHaveCount(6);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ await page.locator(".server-overview-controls").screenshot({path:info.outputPath("paper-toolbar.jpg"),type:"jpeg",quality:85});
+ expect(errors).toEqual([]);
+});
+
+for(const [width,color] of [[320,"light"],[390,"dark"],[1440,"light"],[1440,"dark"]] as const) test("Paper detail tape labels and chart stationery "+width+" "+color,async({page},info)=>{
+ test.setTimeout(120000);await page.setViewportSize({width,height:1000});
+ const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
+ const {state,tick}=await setup(page,color,0,true);state.combined=true;
+ state.servers[0].host.cpu=["Intel(R) Xeon(R) Platinum 2 Virtual Core / long CPU description with 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"];
+ tick();await page.locator("[data-server-card]").first().click();
+ const summary=page.locator(".server-detail-overview");
+ const charts=page.locator(".server-charts");
+ await expect(charts.locator(".chart-detail-open")).toHaveCount(6,{timeout:30000});
+ await page.evaluate(()=>document.fonts.ready);
+ const labels=summary.locator(":scope>section>[data-ui-card]");
+ expect(await labels.count()).toBeGreaterThan(8);
+ for(const label of await labels.all()){
+  expect(await label.evaluate(e=>e.scrollWidth<=e.clientWidth+1)).toBe(true);
+  expect(await label.evaluate(e=>getComputedStyle(e,"::before").content)).toBe('""');
+ }
+ expect(await summary.evaluate(e=>e.scrollWidth<=e.clientWidth+1)).toBe(true);
+ await summary.screenshot({path:info.outputPath("paper-detail-labels.jpg"),type:"jpeg",quality:85});
+ for(let i=0;i<6;i++){tick();await page.waitForTimeout(300)}
+ const cpu=charts.locator(":scope>[data-ui-card]").first();
+ await cpu.scrollIntoViewIfNeeded();
+ const plot=cpu.locator(".recharts-wrapper").first();const rect=await plot.boundingBox();
+ await plot.hover({position:{x:rect!.width*.65,y:rect!.height*.5}});
+ const tooltip=cpu.locator(".recharts-tooltip-wrapper").first();
+ await expect(tooltip).toBeVisible();
+ await expect(tooltip).toContainText("CPU");
+ expect(await tooltip.locator(":scope>div").evaluate(e=>getComputedStyle(e).backgroundColor)).toBe(color==="light"?"rgb(255, 253, 245)":"rgb(69, 65, 56)");
+ await page.screenshot({path:info.outputPath("paper-drawing-charts.jpg"),type:"jpeg",quality:85});
+ await page.getByRole("button",{name:"网络速率详细查看",exact:true}).click();
+ await expect(page.getByRole("dialog")).toBeVisible();
+ expect(await page.getByRole("dialog").evaluate(e=>e.scrollWidth<=e.clientWidth+1)).toBe(true);
+ await page.getByRole("dialog").getByRole("button",{name:"Close",exact:true}).click();
+ const period=page.locator("[data-metric-period-selector]");
+ await period.getByRole("button",{name:"1 天",exact:true}).click();
+ await expect(period.getByRole("button",{name:"1 天",exact:true})).toHaveAttribute("aria-pressed","true");
+ await expect(charts.locator(".chart-detail-open")).toHaveCount(6);
+ await expect(page.locator("[data-network-period-selector]")).toBeVisible();
+ await page.locator("[data-network-period-selector] [data-period-option]").filter({hasText:"7 天"}).click();
+ const tabStrip=page.locator(".server-info-tab");
+ for(const tab of await tabStrip.getByRole("button").all()){
+  const b=await tab.boundingBox();const parent=await tabStrip.boundingBox();
+  expect(b!.x).toBeGreaterThanOrEqual(parent!.x-1);
+  expect(b!.x+b!.width).toBeLessThanOrEqual(parent!.x+parent!.width+1);
+ }
+ const bgp=page.locator(".server-info-tab").getByRole("button",{name:"BGP",exact:true});
+ await bgp.focus();await page.keyboard.press("Enter");await expect(bgp).toHaveAttribute("aria-pressed","true");
+ const detail=page.locator(".server-info-tab").getByRole("button",{name:"详情",exact:true});
+ await detail.click();await expect(charts.locator(".chart-detail-open")).toHaveCount(6);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ expect(errors).toEqual([]);
+});

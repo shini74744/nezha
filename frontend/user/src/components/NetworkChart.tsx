@@ -607,6 +607,7 @@ export const NetworkChartClient = React.memo(function NetworkChart({
 				<TooltipProvider delayDuration={120}>
 					<div
 						ref={containerRef}
+                        data-network-period-selector
 						className="relative flex items-center gap-1 rounded-full bg-muted dark:bg-muted/40 p-0.5 border border-border/60 dark:border-border"
 					>
 						{indicator && (
@@ -627,6 +628,7 @@ export const NetworkChartClient = React.memo(function NetworkChart({
 							const optionItem = (
 								<div
 									ref={setItemRef(index)}
+                                    data-period-option
 									onClick={() => {
 										if (!isLocked) {
 											if (period !== option.value) {

@@ -114,6 +114,7 @@ const MainApp: React.FC = () => {
 				/>
 			)}
 			<div
+                data-paper-desk={import.meta.env.VITE_THEME_VARIANT === "paper" ? "" : undefined}
 				className={cn("flex min-h-screen w-full flex-col", {
 					"bg-background": !customBackgroundImage,
 				})}

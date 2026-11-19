@@ -1,3 +1,4 @@
+import {PaperControlGlyph} from "@/themes/paper/PaperControlGlyph";
 import { ChartBarSquareIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -24,7 +25,7 @@ export default function StatisticsMenu({ value, onChange, split = true, disabled
 		aria-label={t("statistics.toggle")} aria-pressed={value !== "closed"}
 		onClick={() => onChange(value === "closed" ? "traffic" : "closed")}
 		className={cn("relative shrink-0 flex items-center justify-center rounded-full bg-blue-100 p-2.5 text-blue-600 dark:bg-blue-900 dark:text-blue-100 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500", value !== "closed" && "bg-blue-600 text-white dark:bg-blue-100 dark:text-blue-600")}>
-		<ChartBarSquareIcon className="size-[13px]" aria-hidden="true" />
+		{import.meta.env.VITE_THEME_VARIANT==="paper"?<><PaperControlGlyph kind="stats"/><span aria-hidden="true">统计</span></>:<ChartBarSquareIcon className="size-[13px]" aria-hidden="true" />}
 	</button>;
 	return (
 		// This toolbar menu must not lock body scrolling or compensate its scrollbar gap.
@@ -36,7 +37,7 @@ export default function StatisticsMenu({ value, onChange, split = true, disabled
 						"relative shrink-0 flex items-center justify-center rounded-full bg-blue-100 p-2.5 text-blue-600 dark:bg-blue-900 dark:text-blue-100 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500",
 						value !== "closed" && "bg-blue-600 text-white dark:bg-blue-100 dark:text-blue-600",
 					)}>
-					<ChartBarSquareIcon className="size-[13px]" aria-hidden="true" />
+					{import.meta.env.VITE_THEME_VARIANT==="paper"?<><PaperControlGlyph kind="stats"/><span aria-hidden="true">统计</span></>:<ChartBarSquareIcon className="size-[13px]" aria-hidden="true" />}
 					<ChevronDownIcon className="absolute bottom-0.5 right-0.5 size-2" aria-hidden="true" />
 				</button>
 			</DropdownMenuTrigger>
