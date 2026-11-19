@@ -193,3 +193,78 @@ for(const width of [390,1440])test("Paper homepage cumulative traffic and select
  await expect(rateCard(page).getByRole("button",{name:"选择网卡，当前：所选合计"})).toBeVisible();
  await expect(rateCard(page).locator("[data-network-rate]")).toHaveText(["3.00M/s","4.00M/s"]);
 });
+
+for (const width of [390,1440]) for (const color of ["light","dark"]) {
+ test("pencil paper typography, contrast and stationery "+width+" "+color,async({page},info)=>{
+  test.setTimeout(120000);
+  await page.setViewportSize({width,height:950});
+  const {state,tick}=await setup(page,color);
+  await page.evaluate(()=>document.fonts.ready);
+  const title=page.getByRole("heading",{name:"云端观测手记"});
+  await expect(title).toHaveCSS("font-family",/DDnezha Paper Hand/);
+  const client=await page.context().newCDPSession(page);
+  await client.send("DOM.enable");await client.send("CSS.enable");
+  const {root}=await client.send("DOM.getDocument");
+  const {nodeId}=await client.send("DOM.querySelector",{nodeId:root.nodeId,selector:".paper-chapter h1"});
+  const used=await client.send("CSS.getPlatformFontsForNode",{nodeId});
+  expect(used.fonts.some((f:any)=>f.isCustomFont&&f.glyphCount>0&&f.familyName==="DDnezha Paper Hand")).toBe(true);
+  const card=page.locator("[data-server-card]").first();
+  const up=card.locator('[data-native-speed="up"]'),down=card.locator('[data-native-speed="down"]');
+  expect(await up.evaluate(e=>getComputedStyle(e).color)).not.toBe(await down.evaluate(e=>getComputedStyle(e).color));
+  for (const element of [up,down,card.locator(".text-muted-foreground").first()]) {
+   const contrast=await element.evaluate(el=>{
+    const rgb=(s:string)=>s.match(/[\d.]+/g)!.slice(0,3).map(Number).map(n=>{n/=255;return n<=.04045?n/12.92:((n+.055)/1.055)**2.4});
+    const lum=(c:number[])=>.2126*c[0]+.7152*c[1]+.0722*c[2];
+    const a=lum(rgb(getComputedStyle(el).color)),b=lum(rgb(getComputedStyle(el.closest("[data-server-card]")!).backgroundColor));
+    return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+   });
+   expect(contrast).toBeGreaterThanOrEqual(4.5);
+  }
+  await expect(page.locator(".server-overview [data-network-direction=up]")).toHaveCSS("color",await up.evaluate(e=>getComputedStyle(e).color));
+  await expect(page.locator(".server-overview [data-network-direction=down]")).toHaveCSS("color",await down.evaluate(e=>getComputedStyle(e).color));
+  expect(await page.locator("main").evaluate(e=>getComputedStyle(e).backgroundImage)).toContain("svg");
+  expect(await card.evaluate(e=>getComputedStyle(e).backgroundImage)).toContain("repeating-linear-gradient");
+  const fonts=await page.evaluate(()=>performance.getEntriesByType("resource").filter((e:any)=>e.name.includes(".woff2")).map((e:any)=>({url:e.name,size:e.decodedBodySize})));
+  expect(fonts.length).toBeGreaterThan(0);
+  expect(fonts.every((f:any)=>new URL(f.url).origin===locationOrigin())).toBe(true);
+  function locationOrigin(){return new URL(origin).origin}
+  expect(fonts.reduce((sum:number,f:any)=>sum+f.size,0)).toBeLessThan(1500000);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await page.screenshot({path:info.outputPath("pencil-paper-home.png"),fullPage:true});
+  await card.click();
+  for(let i=0;i<4;i++){tick();await page.waitForTimeout(50)}
+  await expect(page.locator("[data-network-rate]").first()).toBeVisible();
+  await page.getByRole("button",{name:"网络速率详细查看",exact:true}).click();
+  const dialog=page.getByRole("dialog");await expect(dialog).toBeVisible();
+  await page.evaluate(()=>document.fonts.ready);
+  expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
+  await dialog.screenshot({path:info.outputPath("pencil-paper-detail.png")});
+ });
+}
+test("pencil paper stays usable when fonts are unavailable",async({page})=>{
+ await setup(page,"light");
+ await page.route("**/*.woff2",r=>r.abort());
+ await page.reload();
+ await expect(page.locator("[data-server-card]")).toHaveCount(6);
+ await expect(page.getByRole("heading",{name:"云端观测手记"})).toBeVisible();
+ await page.locator("[data-server-card]").first().click();
+ await expect(page.getByRole("heading",{name:"运行详情",exact:true})).toBeVisible();
+});
+
+for (const color of ["light","dark"]) test("pencil palette stays consistent with speed effects enabled "+color,async({page})=>{
+ const {state}=await setup(page,color);
+ state.config.features.speed.enabled=true;
+ await page.reload();
+ const card=page.locator("[data-server-card]").first();
+ await expect(card.locator('[data-native-speed="up"]')).toBeVisible();
+ for (const direction of ["up","down"]) {
+  const value=card.locator('[data-native-speed="'+direction+'"]');
+  const expected=await page.evaluate(d=>{const e=document.createElement("span");e.style.color="var(--paper-"+d+")";document.body.append(e);const c=getComputedStyle(e).color;e.remove();return c},direction);
+  await expect(value).toHaveCSS("color",expected);
+  await expect(value).toHaveCSS("animation-name","none");
+  await expect(page.locator('.server-overview [data-network-direction="'+direction+'"]')).toHaveCSS("color",expected);
+ }
+ const traffic=card.locator(".nz-traffic-used").first();
+ const expected=await page.evaluate(()=>{const e=document.createElement("span");e.style.color="var(--paper-green)";document.body.append(e);const c=getComputedStyle(e).color;e.remove();return c});
+ await expect(traffic).toHaveCSS("color",expected);
+});

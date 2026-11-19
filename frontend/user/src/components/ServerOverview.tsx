@@ -158,10 +158,12 @@ const brand=useFeature("branding");
 						</div>
 						<section className="flex items-start flex-row z-10 pr-0 gap-1">
 							<NumericText
+								data-network-direction="up"
 								value={`↑${formatBytes(up)}`}
 								className="sm:text-[12px] text-[10px] text-blue-800 dark:text-blue-400  text-nowrap font-medium"
 							/>
 							<NumericText
+								data-network-direction="down"
 								value={`↓${formatBytes(down)}`}
 								className="sm:text-[12px] text-[10px]  text-purple-800 dark:text-purple-400  text-nowrap font-medium"
 							/>

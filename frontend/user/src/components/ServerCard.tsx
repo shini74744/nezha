@@ -176,12 +176,14 @@ const brand=useFeature("branding");
 				{showNetTransfer && (
 					<section className={"flex items-center w-full justify-between gap-1"}>
 						<Badge
+							data-network-direction="up"
 							variant="secondary"
 							className="items-center flex-1 justify-center rounded-[8px] text-nowrap text-[11px] border-muted-50 shadow-md shadow-neutral-200/30 dark:shadow-none"
 						>
 							{t("serverCard.upload")}:{formatBytes(net_out_transfer)}
 						</Badge>
 						<Badge
+							data-network-direction="down"
 							variant="outline"
 							className="items-center flex-1 justify-center rounded-[8px] text-nowrap text-[11px] shadow-md shadow-neutral-200/30 dark:shadow-none"
 						>
