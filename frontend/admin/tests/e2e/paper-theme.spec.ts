@@ -232,6 +232,7 @@ for (const width of [390,1440]) for (const color of ["light","dark"]) {
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
   await page.screenshot({path:info.outputPath("pencil-paper-home.png"),fullPage:true});
   await card.click();
+  await expect(page.locator(".server-charts .chart-detail-open")).toHaveCount(6,{timeout:30000});
   for(let i=0;i<4;i++){tick();await page.waitForTimeout(50)}
   await expect(page.locator("[data-network-rate]").first()).toBeVisible();
   await page.getByRole("button",{name:"网络速率详细查看",exact:true}).click();
