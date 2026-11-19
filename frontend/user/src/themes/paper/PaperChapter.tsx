@@ -1,4 +1,4 @@
-import {PaperPencil,PaperRuler} from "./PaperStationery";
+import {PaperPencil,PaperRuler,PaperDeskExtras} from "./PaperStationery";
 import { Link, useLocation } from "react-router-dom";
 import { ArrowLeft, Radio } from "lucide-react";
 import { useWebSocketContext } from "@/hooks/use-websocket-context";
@@ -8,6 +8,7 @@ export function PaperChapter() {
  const {connected}=useWebSocketContext();
  return <header className="paper-chapter" data-paper-detail={detail || undefined}>
   <PaperPencil/>
+  <PaperDeskExtras/>
   <div className="paper-running-head">
    <span>DDNEZHA <span className="paper-head-divider" aria-hidden> / </span> 服务器监控</span>
    <span className={connected?"paper-live":"paper-reconnecting"}><Radio size={12} aria-hidden/>{connected?"实时连接":"正在连接"}</span>

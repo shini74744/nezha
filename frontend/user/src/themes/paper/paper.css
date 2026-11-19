@@ -563,3 +563,25 @@ html[data-theme-variant="paper"].dark {--paper-pencil:#c3a260;--paper-wood:#8b76
  [data-theme-variant="paper"] [data-network-note-header]>div:first-child {align-self:stretch;max-width:none}
 }
 @media print {[data-theme-variant="paper"] :is(.paper-margin-pencil,.paper-short-ruler,.paper-metal-clip) {display:none}}
+
+
+/* More desk stationery follows the page edges rather than the reading columns. */
+html[data-theme-variant="paper"] {--paper-pen:#465b59;--paper-binder:#494b47;--paper-index-rose:#d9b5a3;--paper-index-sage:#b2c4a3;--paper-index-blue:#abc2c8}
+html[data-theme-variant="paper"].dark {--paper-pen:#728a86;--paper-binder:#666c66;--paper-index-rose:#977763;--paper-index-sage:#788665;--paper-index-blue:#657f87}
+[data-theme-variant="paper"] .paper-desk-extras {display:contents}
+[data-theme-variant="paper"] .paper-desk-extras :is(svg,span,i) {pointer-events:none;user-select:none}
+[data-theme-variant="paper"] .paper-desk-extras svg {position:absolute;z-index:1;filter:drop-shadow(2px 4px 2px #261c1640)}
+[data-theme-variant="paper"] .paper-binder-clip {top:-14px;left:calc(50% - 29px);width:58px;height:57px;transform:rotate(-2deg)}
+[data-theme-variant="paper"] .paper-margin-pen {right:10px;top:230px;width:32px;height:235px;transform:rotate(-5deg)}
+[data-theme-variant="paper"] .paper-pencil-shavings {left:8px;top:480px;width:42px;height:52px;transform:rotate(8deg)}
+[data-theme-variant="paper"] .paper-edge-index {position:absolute;right:-22px;top:525px;display:grid;gap:16px;z-index:0}
+[data-theme-variant="paper"] .paper-edge-index i {display:block;width:43px;height:29px;border:1px solid var(--paper-edge);border-radius:1px 4px 4px 1px;background:var(--paper-index-rose);box-shadow:1px 3px 3px #261c1628;transform:rotate(-2deg)}
+[data-theme-variant="paper"] .paper-edge-index i:nth-child(2) {background:var(--paper-index-sage);transform:rotate(2deg)}
+[data-theme-variant="paper"] .paper-edge-index i:nth-child(3) {background:var(--paper-index-blue);transform:rotate(-1deg)}
+@media(max-width:1023px) {
+ [data-theme-variant="paper"] :is(.paper-margin-pen,.paper-pencil-shavings,.paper-edge-index) {display:none}
+}
+@media(max-width:767px) {
+ [data-theme-variant="paper"] .paper-binder-clip {top:-9px;left:calc(50% - 13px);width:26px;height:25px}
+}
+@media print {[data-theme-variant="paper"] .paper-desk-extras {display:none}}
