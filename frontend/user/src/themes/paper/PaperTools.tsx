@@ -83,22 +83,12 @@ const tools = {
  </>
 } satisfies Record<string, ReactNode>;
 type Tool = keyof typeof tools;
-const kinds = Object.keys(tools) as Tool[];
 const verticalBoxes:Partial<Record<Tool,string>> = {"mechanical-pencil":"38 0 30 100",highlighter:"28 0 44 100","glue-stick":"26 0 48 100",bookmark:"22 0 56 100"};
 
 export function PaperTool({kind,className=""}:{kind:Tool;className?:string}) {
  return <svg className={"paper-tool "+className} data-stationery-kind={kind} viewBox={verticalBoxes[kind] || "0 0 100 100"} fill="none" aria-hidden="true" focusable="false" strokeLinejoin="round" strokeLinecap="round">{tools[kind]}</svg>;
 }
-/** Clipped to the page: short/empty pages never acquire a decorative scrollbar. */
-export function PaperToolsMargins() {
- return <div className="paper-tools-margins" aria-hidden="true">
-  {(["bookmark","sharpener","scissors","highlighter","mechanical-pencil","glue-stick"] as Tool[]).map(kind=><PaperTool key={kind} kind={kind}/>)}
- </div>;
-}
-export function PaperToolsTray() {
- return <div className="paper-tools-tray" aria-hidden="true">
-  <span className="paper-tools-rule"/>
-  <div className="paper-tools-row">{kinds.map(kind=><PaperTool key={kind} kind={kind}/>)}</div>
-  <span className="paper-tools-rule"/>
- </div>;
+/** A sharpener belongs beside the existing pencil and shavings, not in a gallery. */
+export function PaperWritingTools() {
+ return <div className="paper-writing-tools" aria-hidden="true"><PaperTool kind="sharpener"/></div>;
 }

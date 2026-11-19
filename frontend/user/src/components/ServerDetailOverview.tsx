@@ -1,3 +1,4 @@
+import {PaperTool} from "@/themes/paper/PaperTools";
 import { safeSessionStorage } from "@/lib/storage";
 import dayjs from "dayjs";
 import type { NezhaServer } from "@/types/nezha-api";
@@ -123,6 +124,7 @@ export default function ServerDetailOverview({
 				"bg-card/70 p-4 rounded-[10px]": customBackgroundImage,
 			})}
 		>
+            {import.meta.env.VITE_THEME_VARIANT === "paper" && <PaperTool kind="bookmark" className="paper-record-bookmark"/>}
 			<div
 				onClick={linkClick}
 				className="flex flex-none cursor-pointer font-semibold leading-none items-center break-all tracking-tight gap-1 text-xl server-name"

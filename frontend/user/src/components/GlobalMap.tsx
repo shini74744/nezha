@@ -1,3 +1,5 @@
+import {PaperClip} from "@/themes/paper/PaperStationery";
+import {PaperTool} from "@/themes/paper/PaperTools";
 import { geoGraticule10, geoNaturalEarth1, geoPath } from "d3-geo";
 import { Globe2 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
@@ -81,6 +83,7 @@ export default function GlobalMap({
 
 	return (
 		<section className="global-map-shell" aria-label={t("map.Title")}>
+            {import.meta.env.VITE_THEME_VARIANT === "paper" && <div className="paper-map-attachment" aria-hidden="true"><PaperClip/><PaperTool kind="set-square"/></div>}
 			<header className="global-map-header">
 				<div className="global-map-heading">
 					<span className="global-map-emblem" aria-hidden="true">
