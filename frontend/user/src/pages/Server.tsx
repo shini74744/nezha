@@ -1,3 +1,4 @@
+import {PaperControlGlyph} from "@/themes/paper/PaperControlGlyph";
 import { useQueryClient } from "@tanstack/react-query";
 import { safeLocalStorage, safeSessionStorage } from "@/lib/storage";
 import {
@@ -506,7 +507,7 @@ export default function Servers({
 							},
 						)}
 					>
-						<span className="sr-only">切换地区地图</span><MapIcon className="size-[13px]" />
+						<span className="sr-only">切换地区地图</span>{import.meta.env.VITE_THEME_VARIANT==="paper"?<><PaperControlGlyph kind="map"/><span aria-hidden="true">地图</span></>:<MapIcon className="size-[13px]" />}
 					</button>
 					<StatisticsMenu value={statisticsView} onChange={selectStatisticsView} split={statisticsSplit} disabled={displaySettingsLoading} />
 					<button
@@ -525,7 +526,7 @@ export default function Servers({
 							},
 						)}
 					>
-						<span className="sr-only">切换卡片列表布局</span><ViewColumnsIcon className="size-[13px]" />
+						<span className="sr-only">切换卡片列表布局</span>{import.meta.env.VITE_THEME_VARIANT==="paper"?<><PaperControlGlyph kind={inline==="1"?"rows":"cards"}/><span aria-hidden="true">{inline==="1"?"列表":"卡片"}</span></>:<ViewColumnsIcon className="size-[13px]" />}
 					</button>
 					<GroupSwitch
 						tabs={groupTabs}
@@ -554,11 +555,11 @@ export default function Servers({
 					>
 						<div className="text-stone-900 dark:text-stone-100">
 							{sortOrder === "asc" && sortType !== "default" ? (
-								<ArrowUpIcon className="size-3.5 shrink-0" />
+								import.meta.env.VITE_THEME_VARIANT==="paper" ? <PaperControlGlyph kind="up"/> : <ArrowUpIcon className="size-3.5 shrink-0" />
 							) : sortOrder === "desc" && sortType !== "default" ? (
-								<ArrowDownIcon className="size-3.5 shrink-0" />
+								import.meta.env.VITE_THEME_VARIANT==="paper" ? <PaperControlGlyph kind="down"/> : <ArrowDownIcon className="size-3.5 shrink-0" />
 							) : (
-								<ArrowsUpDownIcon className="size-3.5 shrink-0" />
+								import.meta.env.VITE_THEME_VARIANT==="paper" ? <PaperControlGlyph kind="sort"/> : <ArrowsUpDownIcon className="size-3.5 shrink-0" />
 							)}
 						</div>
 
