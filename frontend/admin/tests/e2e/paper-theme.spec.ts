@@ -340,6 +340,8 @@ for(const [width,color] of [[320,"light"],[390,"dark"],[768,"light"],[1440,"ligh
  const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
  await setup(page,color,0,true);await page.evaluate(()=>document.fonts.ready);
  await expect(page.locator(".paper-eraser")).toBeVisible();
+ if(width>=768)await expect(page.locator(".paper-short-ruler")).toBeVisible();else await expect(page.locator(".paper-short-ruler")).toBeHidden();
+ if(width>=1024)await expect(page.locator(".paper-margin-pencil")).toBeVisible();else await expect(page.locator(".paper-margin-pencil")).toBeHidden();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
  await page.screenshot({path:info.outputPath("paper-framed-home.jpg"),type:"jpeg",quality:80});
  const eraser=page.getByRole("button",{name:"页面插画",exact:true});
@@ -372,7 +374,7 @@ for(const [width,color] of [[320,"light"],[390,"dark"],[1440,"light"],[1440,"dar
  test.setTimeout(120000);await page.setViewportSize({width,height:1000});
  const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
  const {state,tick}=await setup(page,color,0,true);state.combined=true;
- state.monitorNames=Array.from({length:12},(_,i)=>i===0?"很长的线路名称 ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789":"网络线路 "+(i+1));
+ state.monitorNames=Array.from({length:18},(_,i)=>i===0?"很长的线路名称 ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789":"网络线路 "+(i+1));
  state.servers[0].host.cpu=["Intel(R) Xeon(R) Platinum 2 Virtual Core / long CPU description with 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"];
  tick();await page.locator("[data-server-card]").first().click();
  const summary=page.locator(".server-detail-overview");
@@ -391,7 +393,7 @@ for(const [width,color] of [[320,"light"],[390,"dark"],[1440,"light"],[1440,"dar
  const cpu=charts.locator(":scope>[data-ui-card]").first();
  await cpu.scrollIntoViewIfNeeded();
  expect(await cpu.evaluate(e=>getComputedStyle(e,"::before").pointerEvents)).toBe("none");
- expect(await cpu.evaluate(e=>getComputedStyle(e,"::before").height)).toBe("19px");
+ expect(await cpu.evaluate(e=>getComputedStyle(e,"::before").height)).toBe("28px");
  expect(await cpu.evaluate(e=>getComputedStyle(e).backgroundColor)).not.toBe(await page.locator("main").evaluate(e=>getComputedStyle(e).backgroundColor));
  const plot=cpu.locator(".recharts-wrapper").first();const rect=await plot.boundingBox();
  await plot.hover({position:{x:rect!.width*.65,y:rect!.height*.5}});
@@ -410,8 +412,16 @@ for(const [width,color] of [[320,"light"],[390,"dark"],[1440,"light"],[1440,"dar
  await expect(charts.locator(".chart-detail-open")).toHaveCount(6);
  await expect(page.locator("[data-network-period-selector]")).toBeVisible();
  const notes=page.locator("[data-network-note-list]>button");
- await expect(notes).toHaveCount(12);
- for(const note of await notes.all())expect(await note.evaluate(e=>e.scrollWidth<=e.clientWidth+1)).toBe(true);
+ await expect(notes).toHaveCount(18);
+ for(const note of await notes.all()){
+  expect(await note.evaluate(e=>e.scrollWidth<=e.clientWidth+1)).toBe(true);
+  expect(await note.evaluate(e=>getComputedStyle(e,"::before").pointerEvents)).toBe("none");
+  expect(await note.evaluate(e=>getComputedStyle(e,"::after").pointerEvents)).toBe("none");
+ }
+ await expect(page.locator(".paper-metal-clip")).toBeVisible();
+ await expect(page.locator(".paper-metal-clip")).toHaveCSS("pointer-events","none");
+ const peak=page.locator("[data-server-network] #Peak");
+ const peakState=await peak.getAttribute("aria-checked");await peak.click();await expect(peak).toHaveAttribute("aria-checked",peakState==="true"?"false":"true");
  const selected=await notes.first().getAttribute("data-active");
  await notes.first().click();await expect(notes.first()).toHaveAttribute("data-active",selected==="true"?"false":"true");
  await page.locator("[data-network-note-header]").screenshot({path:info.outputPath("paper-network-notes.jpg"),type:"jpeg",quality:85});

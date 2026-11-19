@@ -1,3 +1,4 @@
+import {PaperClip} from "@/themes/paper/PaperStationery";
 import { useLoginUser } from "@/hooks/use-login-user";
 "use client";
 
@@ -682,6 +683,7 @@ export const NetworkChartClient = React.memo(function NetworkChart({
 			>
 				<CardHeader data-network-note-header className="flex flex-col items-stretch space-y-0 overflow-hidden rounded-t-lg p-0 sm:flex-row">
 					<div className="flex flex-none flex-col justify-center gap-1 border-b px-6 py-4">
+						{import.meta.env.VITE_THEME_VARIANT === "paper" && <PaperClip/>}
 						<CardTitle className="flex flex-none items-center gap-0.5 text-md">
 							{serverName}
 						</CardTitle>
