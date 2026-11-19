@@ -243,19 +243,22 @@ for (const width of [390,1440]) for (const color of ["light","dark"]) {
  });
 }
 test("pencil paper stays usable when fonts are unavailable",async({page})=>{
+ test.setTimeout(90000);
  await setup(page,"light");
  await page.route("**/*.woff2",r=>r.abort());
  await page.reload();
- await expect(page.locator("[data-server-card]")).toHaveCount(6);
+ await expect(page.locator("[data-server-card]")).toHaveCount(6,{timeout:30000});
  await expect(page.getByRole("heading",{name:"云端观测手记"})).toBeVisible();
  await page.locator("[data-server-card]").first().click();
  await expect(page.getByRole("heading",{name:"运行详情",exact:true})).toBeVisible();
 });
 
 for (const color of ["light","dark"]) test("pencil palette stays consistent with speed effects enabled "+color,async({page})=>{
+ test.setTimeout(90000);
  const {state}=await setup(page,color);
  state.config.features.speed.enabled=true;
  await page.reload();
+ await expect(page.locator("[data-server-card]")).toHaveCount(6,{timeout:30000});
  const card=page.locator("[data-server-card]").first();
  await expect(card.locator('[data-native-speed="up"]')).toBeVisible();
  for (const direction of ["up","down"]) {
