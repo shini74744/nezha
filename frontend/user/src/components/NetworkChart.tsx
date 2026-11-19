@@ -680,7 +680,7 @@ export const NetworkChartClient = React.memo(function NetworkChart({
 					"bg-card/70": customBackgroundImage,
 				})}
 			>
-				<CardHeader className="flex flex-col items-stretch space-y-0 overflow-hidden rounded-t-lg p-0 sm:flex-row">
+				<CardHeader data-network-note-header className="flex flex-col items-stretch space-y-0 overflow-hidden rounded-t-lg p-0 sm:flex-row">
 					<div className="flex flex-none flex-col justify-center gap-1 border-b px-6 py-4">
 						<CardTitle className="flex flex-none items-center gap-0.5 text-md">
 							{serverName}
@@ -689,7 +689,7 @@ export const NetworkChartClient = React.memo(function NetworkChart({
 							{chartDataKey.length} {t("monitor.monitorCount")}
 						</CardDescription>
 					</div>
-					<div className="flex flex-wrap w-full">{chartButtons}</div>
+					<div data-network-note-list className="flex flex-wrap w-full">{chartButtons}</div>
 				</CardHeader>
 				<CardContent className="pr-2 pl-0 py-4 sm:pt-6 sm:pb-6 sm:pr-6 sm:pl-2">
 					<div className="relative">

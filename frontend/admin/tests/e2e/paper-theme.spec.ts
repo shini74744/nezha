@@ -13,7 +13,7 @@ async function setup(page:Page,color="light",role:number|null=0,bits=false){
   createServer({id:10,name:"新加坡 · StarHub",country_code:"SG",last_active:"2020-01-01T00:00:00Z"}),
   createServer({id:11,name:"首尔 · 韩国节点",country_code:"KR",last_active:new Date(now).toISOString(),state:{cpu:61}}),
   createServer({id:12,name:"法兰克福 · 欧洲节点",country_code:"DE",last_active:new Date(now).toISOString(),state:{cpu:17}}),
- ],config:structuredClone(paper),mode:"normal",combined:false,requests:[] as string[],offlineReport:null as any};
+ ],config:structuredClone(paper),monitorNames:["香港电信","东京线路","新加坡线路"],mode:"normal",combined:false,requests:[] as string[],offlineReport:null as any};
  if(!bits)state.config.features.speed.enabled=false;
  await page.addInitScript(({color})=>{localStorage.setItem("paper-ui-theme",color);localStorage.setItem("language","zh-CN");localStorage.setItem("showMap","1");localStorage.setItem("showServices","0");localStorage.setItem("inline","0")},{color});
  let seq=0;
@@ -37,7 +37,7 @@ async function setup(page:Page,color="light",role:number|null=0,bits=false){
   }
   if(u.pathname==="/api/v1/server/7/service") {
    if(state.mode==="error")return route.fulfill({status:503,json:{success:false}});
-   data=state.mode==="empty"?[]:["香港电信","东京线路","新加坡线路"].map((name,i)=>({monitor_id:i+1,monitor_name:name,display_index:3-i,server_id:7,server_name:state.servers[0].name,created_at:Array.from({length:60},(_,n)=>now-(60-n)*60000),avg_delay:Array.from({length:60},(_,n)=>40+i*25+Math.sin(n)*8),packet_loss:Array(60).fill(0)}));
+   data=state.mode==="empty"?[]:state.monitorNames.map((name,i)=>({monitor_id:i+1,monitor_name:name,display_index:3-i,server_id:7,server_name:state.servers[0].name,created_at:Array.from({length:60},(_,n)=>now-(60-n)*60000),avg_delay:Array.from({length:60},(_,n)=>40+i*25+Math.sin(n)*8),packet_loss:Array(60).fill(0)}));
   }
   if(u.pathname.endsWith("/last-report"))data=state.offlineReport;
   if(u.pathname.endsWith("/connectivity"))data={server_id:7,state:"complete",online:true,can_run:false,results:[],groups:[]};
@@ -372,6 +372,7 @@ for(const [width,color] of [[320,"light"],[390,"dark"],[1440,"light"],[1440,"dar
  test.setTimeout(120000);await page.setViewportSize({width,height:1000});
  const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
  const {state,tick}=await setup(page,color,0,true);state.combined=true;
+ state.monitorNames=Array.from({length:12},(_,i)=>i===0?"很长的线路名称 ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789":"网络线路 "+(i+1));
  state.servers[0].host.cpu=["Intel(R) Xeon(R) Platinum 2 Virtual Core / long CPU description with 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"];
  tick();await page.locator("[data-server-card]").first().click();
  const summary=page.locator(".server-detail-overview");
@@ -389,6 +390,9 @@ for(const [width,color] of [[320,"light"],[390,"dark"],[1440,"light"],[1440,"dar
  for(let i=0;i<6;i++){tick();await page.waitForTimeout(300)}
  const cpu=charts.locator(":scope>[data-ui-card]").first();
  await cpu.scrollIntoViewIfNeeded();
+ expect(await cpu.evaluate(e=>getComputedStyle(e,"::before").pointerEvents)).toBe("none");
+ expect(await cpu.evaluate(e=>getComputedStyle(e,"::before").height)).toBe("19px");
+ expect(await cpu.evaluate(e=>getComputedStyle(e).backgroundColor)).not.toBe(await page.locator("main").evaluate(e=>getComputedStyle(e).backgroundColor));
  const plot=cpu.locator(".recharts-wrapper").first();const rect=await plot.boundingBox();
  await plot.hover({position:{x:rect!.width*.65,y:rect!.height*.5}});
  const tooltip=cpu.locator(".recharts-tooltip-wrapper").first();
@@ -405,6 +409,13 @@ for(const [width,color] of [[320,"light"],[390,"dark"],[1440,"light"],[1440,"dar
  await expect(period.getByRole("button",{name:"1 天",exact:true})).toHaveAttribute("aria-pressed","true");
  await expect(charts.locator(".chart-detail-open")).toHaveCount(6);
  await expect(page.locator("[data-network-period-selector]")).toBeVisible();
+ const notes=page.locator("[data-network-note-list]>button");
+ await expect(notes).toHaveCount(12);
+ for(const note of await notes.all())expect(await note.evaluate(e=>e.scrollWidth<=e.clientWidth+1)).toBe(true);
+ const selected=await notes.first().getAttribute("data-active");
+ await notes.first().click();await expect(notes.first()).toHaveAttribute("data-active",selected==="true"?"false":"true");
+ await page.locator("[data-network-note-header]").screenshot({path:info.outputPath("paper-network-notes.jpg"),type:"jpeg",quality:85});
+
  await page.locator("[data-network-period-selector] [data-period-option]").filter({hasText:"7 天"}).click();
  const tabStrip=page.locator(".server-info-tab");
  for(const tab of await tabStrip.getByRole("button").all()){
