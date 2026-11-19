@@ -353,6 +353,16 @@ for(const [width,color] of [[320,"light"],[390,"dark"],[768,"light"],[1440,"ligh
  if(width>=1024)await expect(page.locator(".paper-margin-pencil")).toBeVisible();else await expect(page.locator(".paper-margin-pencil")).toBeHidden();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
  await page.screenshot({path:info.outputPath("paper-framed-home.jpg"),type:"jpeg",quality:80});
+
+ const tray=page.locator(".paper-tools-tray");
+ await expect(tray).toHaveAttribute("aria-hidden","true");
+ await expect(tray.locator("[data-stationery-kind]")).toHaveCount(10);
+ expect(new Set(await tray.locator("[data-stationery-kind]").evaluateAll(els=>els.map(el=>el.getAttribute("data-stationery-kind")))).size).toBe(10);
+ for(const tool of await page.locator(".paper-tool").all())await expect(tool).toHaveCSS("pointer-events","none");
+ if(width>=1024)await expect(page.locator(".paper-tools-margins")).toBeVisible();else await expect(page.locator(".paper-tools-margins")).toBeHidden();
+ await tray.scrollIntoViewIfNeeded();
+ await tray.screenshot({path:info.outputPath("paper-ten-tools.jpg"),type:"jpeg",quality:85});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
  const eraser=page.getByRole("button",{name:"页面插画",exact:true});
  // Send a real five-click burst within the gesture window; repeated actionability waits can exceed it on the build host.
  await eraser.click({clickCount:5,delay:80});
@@ -448,5 +458,23 @@ for(const [width,color] of [[320,"light"],[390,"dark"],[1440,"light"],[1440,"dar
  const detail=page.locator(".server-info-tab").getByRole("button",{name:"详情",exact:true});
  await detail.click();await expect(charts.locator(".chart-detail-open")).toHaveCount(6);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ expect(errors).toEqual([]);
+});
+
+
+test("Paper ten tools on a short empty dark page",async({page},info)=>{
+ test.setTimeout(90000);await page.setViewportSize({width:1440,height:950});
+ const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
+ const {state,tick}=await setup(page,"dark",0,true);
+ state.servers.length=0;tick();
+ await expect(page.locator("[data-server-card]")).toHaveCount(0,{timeout:30000});
+ const tray=page.locator(".paper-tools-tray");
+ await expect(tray.locator("[data-stationery-kind]")).toHaveCount(10);
+ const before=await page.evaluate(()=>document.documentElement.scrollHeight);
+ await page.locator(".paper-tools-margins").evaluate(el=>(el as HTMLElement).style.display="none");
+ expect(await page.evaluate(()=>document.documentElement.scrollHeight)).toBe(before);
+ await page.locator(".paper-tools-margins").evaluate(el=>(el as HTMLElement).style.removeProperty("display"));
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ await page.screenshot({path:info.outputPath("paper-empty-dark.jpg"),type:"jpeg",quality:80,fullPage:true});
  expect(errors).toEqual([]);
 });
