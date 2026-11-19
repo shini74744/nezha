@@ -340,12 +340,22 @@ for(const [width,color] of [[320,"light"],[390,"dark"],[768,"light"],[1440,"ligh
  const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
  await setup(page,color,0,true);await page.evaluate(()=>document.fonts.ready);
  await expect(page.locator(".paper-eraser")).toBeVisible();
+ await expect(page.locator(".paper-binder-clip")).toBeVisible();
+ for(const selector of [".paper-margin-pen",".paper-pencil-shavings",".paper-edge-index"]){
+  if(width>=1024)await expect(page.locator(selector)).toBeVisible();else await expect(page.locator(selector)).toBeHidden();
+ }
+ for(const prop of await page.locator(".paper-desk-extras svg").all())await expect(prop).toHaveCSS("pointer-events","none");
+ const clipBox=await page.locator(".paper-binder-clip").boundingBox();
+ const headerBox=await page.locator(".paper-chapter").boundingBox();
+ expect(clipBox!.y+clipBox!.height).toBeLessThan(headerBox!.y);
+
  if(width>=768)await expect(page.locator(".paper-short-ruler")).toBeVisible();else await expect(page.locator(".paper-short-ruler")).toBeHidden();
  if(width>=1024)await expect(page.locator(".paper-margin-pencil")).toBeVisible();else await expect(page.locator(".paper-margin-pencil")).toBeHidden();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
  await page.screenshot({path:info.outputPath("paper-framed-home.jpg"),type:"jpeg",quality:80});
  const eraser=page.getByRole("button",{name:"页面插画",exact:true});
- for(let i=0;i<5;i++)await eraser.click();
+ // Send a real five-click burst within the gesture window; repeated actionability waits can exceed it on the build host.
+ await eraser.click({clickCount:5,delay:80});
  await expect(eraser).toHaveAttribute("aria-pressed","true");
  await page.getByRole("button",{name:"切换地区地图",exact:true}).click();
  await expect(page.getByRole("region",{name:"服务器分布",exact:true})).toHaveCount(0);

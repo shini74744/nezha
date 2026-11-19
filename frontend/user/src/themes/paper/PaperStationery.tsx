@@ -25,3 +25,38 @@ export function PaperClip() {
   <path d={d} stroke="var(--paper-raised)" strokeWidth=".65" strokeLinecap="round" opacity=".75"/>
  </svg>;
 }
+
+
+/** Page-edge props are decorative, static and excluded from keyboard navigation. */
+export function PaperDeskExtras() {
+ return <div className="paper-desk-extras" aria-hidden="true">
+  <svg className="paper-binder-clip" viewBox="0 0 76 74" fill="none" focusable="false">
+   <path d="M23 39 19 14Q18 5 29 5h18q11 0 10 9l-4 25" stroke="var(--paper-ink)" strokeWidth="4.5" opacity=".3"/>
+   <path d="M23 39 19 14Q18 5 29 5h18q11 0 10 9l-4 25" stroke="var(--paper-metal)" strokeWidth="3"/>
+   <path d="m16 30 44 1 6 29-56 1Z" fill="var(--paper-binder)" stroke="var(--paper-ink)" strokeWidth=".8"/>
+   <path d="m16 31 5 25 40 1M12 61h53" stroke="var(--paper-raised)" opacity=".18"/>
+   <path d="M24 35 27 57q1 9 11 9t11-9l3-22" stroke="var(--paper-metal)" strokeWidth="3" strokeLinecap="round"/>
+   <path d="m25 36 3 21q1 7 10 7t10-7l3-21" stroke="var(--paper-raised)" strokeWidth=".7" opacity=".7"/>
+  </svg>
+  <svg className="paper-margin-pen" viewBox="0 0 36 264" fill="none" focusable="false">
+   <path d="M9 19q0-9 9-9t9 9v79H9Z" fill="var(--paper-pen)" stroke="var(--paper-ink)" strokeWidth=".8"/>
+   <path d="M12 16v74" stroke="var(--paper-raised)" opacity=".26" strokeWidth="2"/>
+   <path d="M24 19v49q0 7-4 7V20Z" fill="var(--paper-metal)" stroke="var(--paper-ink)" strokeWidth=".6"/>
+   <path d="M9 91h18v9H9Z" fill="var(--paper-metal)"/>
+   <path d="M10 100h16l-2 114H12Z" fill="var(--paper-pen)" stroke="var(--paper-ink)" strokeWidth=".7"/>
+   <path d="m13 105 1 104" stroke="var(--paper-raised)" strokeWidth="1.3" opacity=".25"/>
+   <path d="M12 214h12v9H12Z" fill="var(--paper-metal)"/>
+   <path d="m12 223 6 31 6-31-6 5Z" fill="var(--paper-wood)" stroke="var(--paper-ink)" strokeWidth=".7"/>
+   <path d="M18 231v23" stroke="var(--paper-ink)" strokeWidth=".8"/><circle cx="18" cy="232" r="1.4" fill="var(--paper-ink)"/>
+  </svg>
+  <svg className="paper-pencil-shavings" viewBox="0 0 60 74" fill="none" focusable="false">
+   <path d="M8 15Q30-2 45 22L31 34Q27 15 16 28Z" fill="var(--paper-wood)" stroke="var(--paper-edge)" strokeWidth=".8"/>
+   <path d="M8 15Q30-2 45 22" stroke="var(--paper-pencil)" strokeWidth="3"/>
+   <path d="m15 15 7 10m1-12 4 11m5-9 0 11m7-7-3 10" stroke="var(--paper-edge)" strokeWidth=".7"/>
+   <path d="M21 48q18-13 25 6L34 64q1-13-9-7Z" fill="var(--paper-wood)" stroke="var(--paper-edge)" strokeWidth=".8"/>
+   <path d="M21 48q18-13 25 6" stroke="var(--paper-pencil)" strokeWidth="2.4"/>
+   <path d="m8 41 3 2m4 23 2-1m34-27 2 1M9 56l2-2" stroke="var(--paper-ink)" opacity=".65" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+  <span className="paper-edge-index"><i/><i/><i/></span>
+ </div>;
+}
