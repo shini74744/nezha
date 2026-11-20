@@ -37,3 +37,13 @@ func TestReleaseGeoIPAsset(t *testing.T) {
 		})
 	}
 }
+
+func TestReleaseEmbeddedGeoIPSelfCheck(t *testing.T) {
+	results, err := ValidateEmbedded()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("expected IPv4 and IPv6 checks, got %v", results)
+	}
+}

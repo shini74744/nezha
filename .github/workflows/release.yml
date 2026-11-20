@@ -62,6 +62,9 @@ jobs:
         with:
           go-version: "^1.26.6"
 
+      - name: Validate embedded GeoIP release data
+        run: go test -mod=readonly -tags go_json,releaseassets -count=1 ./pkg/geoip
+
       - name: generate swagger docs
         run: |
           go install github.com/swaggo/swag/cmd/swag@latest
