@@ -56,12 +56,12 @@ describe("basic display components", () => {
 		const values = [0, 25, 37.1, 37.2, 50, 69.9, 70, 70.1, 89.9, 90, 90.1, 100];
 		const colors = values.map((value) => {
 			rerender(<ServerUsageBar value={value} />);
-			const indicator = screen.getByRole("progressbar")
-				.firstElementChild as HTMLElement;
-			expect(indicator.style.transform).toBe(`translateX(-${100 - value}%)`);
-			expect(indicator.className).not.toMatch(/bg-(green|orange|red)-/);
-			expect(indicator.style.backgroundColor).not.toBe("");
-			return indicator.style.backgroundColor;
+			const indicator = screen.getByRole("progressbar").querySelector("[data-progress-fill]") as SVGElement;
+			expect(indicator.style.width).toBe(value + "%");
+			expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", String(value));
+			expect(indicator.getAttribute("shape-rendering")).toBe("crispEdges");
+			expect(indicator.style.fill).not.toBe("");
+			return indicator.style.fill;
 		});
 		expect(new Set(colors).size).toBe(values.length);
 	});
@@ -76,9 +76,8 @@ describe("basic display components", () => {
 		]) {
 			rerender(<ServerUsageBar value={value} />);
 			expect(
-				(screen.getByRole("progressbar").firstElementChild as HTMLElement).style
-					.transform,
-			).toBe(`translateX(-${100 - width}%)`);
+				(screen.getByRole("progressbar").querySelector("[data-progress-fill]") as SVGElement).style.width,
+			).toBe(width + "%");
 		}
 	});
 

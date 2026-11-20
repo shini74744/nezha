@@ -15,6 +15,7 @@ import ServerFlag from "@/components/ServerFlag";
 import ServerLinkTags from "@/components/ServerLinkTags";
 import { formatBytes } from "@/lib/format";
 import { usageColor } from "@/lib/usage-color";
+import { ThinProgress } from "@/components/ui/thin-progress";
 import { saveMainPageScrollPosition } from "@/lib/navigation";
 import { homeNetworkServer } from "@/lib/home-network";
 import { formatNezhaInfo, parsePublicNote } from "@/lib/utils";
@@ -66,19 +67,14 @@ function Meter({
 				</span>
 				<b>{safe.toFixed(1)}%</b>
 			</div>
-			<div
-				className="dora-meter-track"
-				role="progressbar"
+			<ThinProgress
 				aria-label={term}
-				aria-valuenow={safe}
-				aria-valuemin={0}
-				aria-valuemax={100}
-			>
-				<i
-					className="transition-[width,background-color] duration-500 ease-linear motion-reduce:transition-none"
-					style={{ width: safe + "%", backgroundColor: usageColor(safe) }}
-				/>
-			</div>
+				data-dora-meter
+				value={safe}
+				color={usageColor(safe)}
+				trackColor="var(--dora-soft)"
+				className="mt-[3px]"
+			/>
 			<small className="dora-meter-name">{name}</small>
 			{caption && <p>{caption}</p>}
 		</div>
