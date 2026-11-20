@@ -19,10 +19,12 @@ bash script/fetch-frontends.sh
 rsync -a --delete frontend/admin/dist/ cmd/dashboard/admin-dist/
 rsync -a --delete frontend/user/dist/ cmd/dashboard/user-dist/
 install -m 0644 "$GEOIP_DB" pkg/geoip/geoip.db
+go test -mod=readonly -tags go_json,releaseassets -count=1 ./pkg/geoip
 swag init --pd -d cmd/dashboard -g main.go -o cmd/dashboard/docs
 mkdir -p dist
 version="${VERSION:-dev-$(git rev-parse --short HEAD)}"
 CGO_ENABLED=1 go build -tags go_json -trimpath -buildvcs=false \
   -ldflags "-s -w -X github.com/nezhahq/nezha/service/singleton.Version=$version" \
   -o dist/dashboard ./cmd/dashboard
+dist/dashboard -check-geoip
 sha256sum dist/dashboard

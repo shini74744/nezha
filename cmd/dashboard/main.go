@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"embed"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -23,6 +24,7 @@ import (
 	"github.com/nezhahq/nezha/cmd/dashboard/controller/waf"
 	"github.com/nezhahq/nezha/cmd/dashboard/rpc"
 	"github.com/nezhahq/nezha/model"
+	"github.com/nezhahq/nezha/pkg/geoip"
 	"github.com/nezhahq/nezha/pkg/idcodec"
 	"github.com/nezhahq/nezha/pkg/logolibrary"
 	"github.com/nezhahq/nezha/pkg/utils"
@@ -32,6 +34,7 @@ import (
 
 type DashboardCliParam struct {
 	Version          bool
+	CheckGeoIP       bool
 	ConfigFile       string
 	DatabaseLocation string
 }
@@ -134,11 +137,25 @@ func main() {
 	flag.BoolVar(&dashboardCliParam.Version, "v", false, "查看当前版本号")
 	flag.StringVar(&dashboardCliParam.ConfigFile, "c", "data/config.yaml", "配置文件路径")
 	flag.StringVar(&dashboardCliParam.DatabaseLocation, "db", "data/sqlite.db", "Sqlite3数据库文件路径")
+	flag.BoolVar(&dashboardCliParam.CheckGeoIP, "check-geoip", false, "校验程序内嵌 IP 地区库后退出")
 	flag.Parse()
 
 	if dashboardCliParam.Version {
 		fmt.Println(singleton.Version)
 		os.Exit(0)
+	}
+
+	if dashboardCliParam.CheckGeoIP {
+		lookups, err := geoip.ValidateEmbedded()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "GeoIP validation failed:", err)
+			os.Exit(1)
+		}
+		if err := json.NewEncoder(os.Stdout).Encode(lookups); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
 	}
 
 	serviceSentinelDispatchBus := make(chan *model.Service)
