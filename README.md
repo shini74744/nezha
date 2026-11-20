@@ -10,7 +10,7 @@
 
 ## 安装与管理
 
-主面板与 Agent 统一在本仓库维护：当前正式安装包为主面板 **v0.0.28**、Agent **v1.0.11**，以后分别递增版本（以正式 Releases 及组件版本入口为准）。源码与安装包的对应关系见 [更新记录](CHANGELOG.md)；`main` 后续可能包含尚未打包的修改，源码推送不等于安装包更新。Agent 源码在 [`agent/`](agent/)，两者安装包均在本仓库 Releases，更新使用独立版本入口，不能用全仓库 Latest 判断 Agent 版本。旧 `shini74744/agent` 仓库仅保留历史，不再用于新安装或后续更新。详见 [统一仓库、升级与发布](docs/unified-repository.md)。
+主面板与 Agent 统一在本仓库维护：当前正式安装包为主面板 **v0.0.29**、Agent **v1.0.11**，以后分别递增版本（以正式 Releases 及组件版本入口为准）。源码与安装包的对应关系见 [更新记录](CHANGELOG.md)；`main` 后续可能包含尚未打包的修改，源码推送不等于安装包更新。Agent 源码在 [`agent/`](agent/)，两者安装包均在本仓库 Releases，更新使用独立版本入口，不能用全仓库 Latest 判断 Agent 版本。旧 `shini74744/agent` 仓库仅保留历史，不再用于新安装或后续更新。详见 [统一仓库、升级与发布](docs/unified-repository.md)。
 
 **生命周期隔离**：Agent v1.0.2 使用独立 `DDnezha` 程序／服务、`/opt/DDnezha`（Windows 为 `C:\DDnezha`）和 `DDNZ_*` 变量。只隔离安装、升级和卸载，不改变通信协议；现有旧目录节点需要受控迁移。主面板入口为 `./nezha.sh`，Agent 入口为 `cd /opt/DDnezha && ./agent.sh uninstall`；v1.0.3 起自动保存 Agent 管理脚本，不覆盖当前目录的同名官方文件。详见 [DDnezha 隔离说明](docs/ddnezha-isolation.md)。
 
@@ -97,7 +97,7 @@ Linux 构建依赖：Go 1.26.8、C/C++ 编译工具、Node.js 24、npm、Corepac
 GEOIP_DB=/path/to/country.mmdb VERSION=custom-$(git rev-parse --short HEAD) bash script/build-custom.sh
 ```
 
-产物为 `dist/dashboard`。脚本会编译本仓库的两套前端、保留原有社区主题，再嵌入后端。
+产物为 `dist/dashboard`。脚本会编译本仓库的管理后台、默认前台、哆啦 A 梦和纸间主题，保留原有社区主题，再嵌入后端。
 仅运行上游 `fetch-frontends.sh` 会下载上游界面；构建此二开版请使用上述 `build-custom.sh`。
 自有发布从 `v0.0.1` 开始使用 `v0.*` 标签，历史 `custom-*` 标签仍保留；安装和更新仅使用 `shini74744/nezha` 校验过的安装包，不使用上游仓库资产。Linux 安装、停机、重启、更新和故障恢复说明见 [面板管理与发布](PANEL_MANAGEMENT.md)。Windows x64 原生程序、密钥权限和运行方式见 [Windows 部署说明](docs/windows-deployment.md)，修复、全平台测试及上线证据见 [Windows 兼容验收记录](docs/windows-compatibility-regression-20261008.md)。
 回程标签使用 NextTrace，仅检测节点回程路由，提供九个内置检测点、逐跳平均延迟、独立节点开关和后台检测策略；自动检测初始关闭。自动周期每天从北京时间零点起算，管理员重测无冷却、同节点任务合并避免冲突；时间卡片选择历史快照，支持两次已完成快照的线路、状态、最终延迟与逐跳对比，详情使用限高弹层。卡片显示最终目标平均延迟，逐跳显示常见网络类别标签。CN2/GIA 等综合判断及访客 IP 脱敏见 [线路判断说明](RETURN_ROUTE_CLASSIFICATION.md)。运行要求与安全边界见 [网络检测说明](NETWORK_INSIGHTS.md#return-route-nexttrace-only)。
@@ -114,6 +114,8 @@ GEOIP_DB=/path/to/country.mmdb VERSION=custom-$(git rev-parse --short HEAD) bash
 </details>
 
 ## 更新记录
+
+v0.0.29 同步已部署的美化与图标设置、纸间主题、国旗地区库修复及连续变色进度条；内容对照和发布验证见 [版本核对说明](docs/release-parity-20261120.md)。
 
 当前功能集与正式安装包说明见 [更新记录](CHANGELOG.md)。Linux／Windows x64 二进制、管理脚本及 SHA-256 清单统一从 [自有 Releases](https://github.com/shini74744/nezha/releases) 获取。
 
