@@ -1,6 +1,7 @@
 @import "./fonts/font.css";
 /* Paper uses same-origin subset fonts and static paper texture only. */
 html[data-theme-variant="paper"] {
+ --usage-saturation:34%;--usage-lightness:42%;
  --background:42 38% 94%;--foreground:28 22% 19%;--card:43 50% 97%;--card-foreground:28 22% 19%;
  --popover:43 50% 97%;--popover-foreground:28 22% 19%;--primary:10 39% 40%;--primary-foreground:43 55% 97%;
  --secondary:39 24% 89%;--secondary-foreground:27 22% 22%;--muted:39 24% 90%;--muted-foreground:28 17% 39%;
@@ -12,6 +13,7 @@ html[data-theme-variant="paper"] {
  background:var(--paper-desk)!important;
 }
 html[data-theme-variant="paper"].dark {
+ --usage-saturation:40%;--usage-lightness:65%;
  --background:30 18% 13%;--foreground:39 28% 85%;--card:30 18% 16%;--card-foreground:39 28% 85%;
  --popover:30 18% 18%;--popover-foreground:39 28% 85%;--primary:18 46% 67%;--primary-foreground:30 18% 12%;
  --secondary:30 15% 21%;--secondary-foreground:39 28% 85%;--muted:30 15% 22%;--muted-foreground:34 22% 72%;
