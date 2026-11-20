@@ -171,7 +171,7 @@ func requireCheckoutAndSetupGo(t *testing.T, steps []qualityStep) {
 	require.False(t, *checkout.With.PersistCredentials)
 	setupGo := steps[1]
 	require.Equal(t, "actions/setup-go@v7", setupGo.Uses)
-	require.Equal(t, "^1.26.6", setupGo.With.GoVersion)
+	require.Equal(t, "1.26.8", setupGo.With.GoVersion)
 	require.NotNil(t, setupGo.With.Cache)
 	require.False(t, *setupGo.With.Cache)
 }
