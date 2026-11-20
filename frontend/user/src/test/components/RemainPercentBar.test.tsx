@@ -10,7 +10,7 @@ function fill() {
 describe("RemainPercentBar", () => {
 	it("uses green at full time, yellow in the middle and red at expiry", () => {
 		const { rerender } = render(<RemainPercentBar value={100} />);
-		expect(screen.getByRole("progressbar")).toHaveClass("w-[70px]", "h-[4px]");
+		expect(screen.getByRole("progressbar")).toHaveClass("w-[70px]", "h-[3px]");
 		for (const [value, hue] of [
 			[100, 120],
 			[50, 60],

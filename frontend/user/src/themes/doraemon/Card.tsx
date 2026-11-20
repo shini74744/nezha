@@ -69,6 +69,7 @@ function Meter({
 			</div>
 			<ThinProgress
 				aria-label={term}
+				barHeight={term === "Swap" ? 4 : 3}
 				data-dora-meter
 				value={safe}
 				color={usageColor(safe)}
