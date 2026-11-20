@@ -670,19 +670,6 @@ html.dark[data-probe-theme="doraemon"] {
 	margin-top: 2px;
 	white-space: nowrap;
 }
-.dora-meter-track {
-	height: 4px;
-	border-radius: 4px;
-	overflow: hidden;
-	background: var(--dora-soft);
-	margin-top: 3px;
-}
-.dora-meter-track i {
-	display: block;
-	height: 100%;
-	background: var(--meter-color);
-	border-radius: 4px;
-}
 /* Compact cycle quota: scoped to Doraemon, independent of default-theme effects. */
 .dora-network {
 	min-width: 0;
