@@ -59,6 +59,12 @@ func TestDashboardAccessPasswords(t *testing.T) {
 	start := func() {
 		logfile, err := os.CreateTemp(root, "access-*.log")
 		require.NoError(t, err)
+		t.Cleanup(func() {
+			if t.Failed() {
+				log, readErr := os.ReadFile(logfile.Name())
+				t.Logf("access fixture log %s (read error: %v):\n%s", logfile.Name(), readErr, log)
+			}
+		})
 		cmd = exec.Command(binary, "-c", filepath.Join(root, "data/config.yaml"), "-db", filepath.Join(root, "data/sqlite.db"))
 		cmd.Dir, cmd.Stdout, cmd.Stderr = root, logfile, logfile
 		prepareProcess(cmd)
