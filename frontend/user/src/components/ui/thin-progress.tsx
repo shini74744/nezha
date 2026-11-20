@@ -7,6 +7,7 @@ type ThinProgressProps = Omit<SVGProps<SVGSVGElement>, "color" | "children"> & {
 	value: number;
 	color: string;
 	trackColor?: string;
+	barHeight?: 3 | 4;
 };
 
 // Crisp SVG edges keep fractional card positions from blurring a thin bar.
@@ -15,12 +16,13 @@ export function ThinProgress({
 	value,
 	color,
 	trackColor,
+	barHeight = 4,
 	className,
 	...props
 }: ThinProgressProps) {
 	const percent = usagePercent(value);
-	const paintedHeight = usePixelAlignedHeight(4);
-	const y = (4 - paintedHeight) / 2;
+	const paintedHeight = usePixelAlignedHeight(barHeight);
+	const y = (barHeight - paintedHeight) / 2;
 	return (
 		<svg
 			{...props}
@@ -30,9 +32,10 @@ export function ThinProgress({
 			aria-valuemax={100}
 			aria-valuenow={percent}
 			width="100%"
-			height={4}
+			height={barHeight}
 			className={cn(
-				"block h-[4px] w-full shrink-0 overflow-visible",
+				"block w-full shrink-0 overflow-visible",
+				barHeight === 3 ? "h-[3px]" : "h-[4px]",
 				className,
 			)}
 		>

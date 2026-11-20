@@ -11,6 +11,7 @@ export default function RemainPercentBar({
 }) {
 	return (
 		<ThinProgress
+			barHeight={3}
 			data-expiry-progress
 			aria-label="Remaining time"
 			value={value}

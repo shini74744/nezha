@@ -21,16 +21,16 @@ describe("ThinProgress pixel alignment", () => {
 		0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 3,
 	])("paints an integer device-pixel thickness at scale %s", (ratio) => {
 		setScale(ratio);
-		render(<ThinProgress value={52.5} color="green" aria-label="test usage" />);
+		render(<ThinProgress barHeight={3} value={52.5} color="green" aria-label="test usage" />);
 		const svg = screen.getByRole("progressbar");
 		const fill = svg.querySelector("[data-progress-fill]")!;
-		expect(svg).toHaveAttribute("height", "4");
+		expect(svg).toHaveAttribute("height", "3");
 		expect(Number(fill.getAttribute("height")) * ratio).toBeCloseTo(
-			Math.round(4 * ratio),
+			Math.round(3 * ratio),
 			8,
 		);
 		expect(Number(fill.getAttribute("y"))).toBeCloseTo(
-			(4 - Number(fill.getAttribute("height"))) / 2,
+			(3 - Number(fill.getAttribute("height"))) / 2,
 			8,
 		);
 	});
@@ -38,8 +38,8 @@ describe("ThinProgress pixel alignment", () => {
 		setScale(1);
 		render(
 			<>
-				<ThinProgress value={10} color="green" />
-				<ThinProgress value={90} color="red" />
+				<ThinProgress barHeight={3} value={10} color="green" />
+				<ThinProgress barHeight={3} value={90} color="red" />
 			</>,
 		);
 		act(() => {
@@ -47,12 +47,12 @@ describe("ThinProgress pixel alignment", () => {
 			window.dispatchEvent(new Event("resize"));
 		});
 		for (const svg of screen.getAllByRole("progressbar")) {
-			expect(svg).toHaveAttribute("height", "4");
+			expect(svg).toHaveAttribute("height", "3");
 			expect(
 				Number(
 					svg.querySelector("[data-progress-fill]")!.getAttribute("height"),
 				) * 1.1,
-			).toBeCloseTo(4, 8);
+			).toBeCloseTo(3, 8);
 		}
 	});
 });
