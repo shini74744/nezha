@@ -682,7 +682,6 @@ html.dark[data-probe-theme="doraemon"] {
 	height: 100%;
 	background: var(--meter-color);
 	border-radius: 4px;
-	transition: width 0.4s;
 }
 /* Compact cycle quota: scoped to Doraemon, independent of default-theme effects. */
 .dora-network {

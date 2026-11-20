@@ -51,21 +51,35 @@ describe("basic display components", () => {
 		expect(screen.getByText("2")).toBeInTheDocument();
 	});
 
-	it("renders server usage colors for healthy, warning, and critical values", () => {
-		const { rerender } = render(<ServerUsageBar value={70} />);
-		expect(screen.getByRole("progressbar").firstElementChild).toHaveClass(
-			"bg-green-500",
-		);
+	it("changes usage color continuously, including fractional values and old thresholds", () => {
+		const { rerender } = render(<ServerUsageBar value={0} />);
+		const values = [0, 25, 37.1, 37.2, 50, 69.9, 70, 70.1, 89.9, 90, 90.1, 100];
+		const colors = values.map((value) => {
+			rerender(<ServerUsageBar value={value} />);
+			const indicator = screen.getByRole("progressbar")
+				.firstElementChild as HTMLElement;
+			expect(indicator.style.transform).toBe(`translateX(-${100 - value}%)`);
+			expect(indicator.className).not.toMatch(/bg-(green|orange|red)-/);
+			expect(indicator.style.backgroundColor).not.toBe("");
+			return indicator.style.backgroundColor;
+		});
+		expect(new Set(colors).size).toBe(values.length);
+	});
 
-		rerender(<ServerUsageBar value={71} />);
-		expect(screen.getByRole("progressbar").firstElementChild).toHaveClass(
-			"bg-orange-400",
-		);
-
-		rerender(<ServerUsageBar value={91} />);
-		expect(screen.getByRole("progressbar").firstElementChild).toHaveClass(
-			"bg-red-500",
-		);
+	it("keeps invalid and out-of-range usage within the track", () => {
+		const { rerender } = render(<ServerUsageBar value={0} />);
+		for (const [value, width] of [
+			[-10, 0],
+			[200, 100],
+			[NaN, 0],
+			[Infinity, 0],
+		]) {
+			rerender(<ServerUsageBar value={value} />);
+			expect(
+				(screen.getByRole("progressbar").firstElementChild as HTMLElement).style
+					.transform,
+			).toBe(`translateX(-${100 - width}%)`);
+		}
 	});
 
 	it("renders loading primitives", () => {

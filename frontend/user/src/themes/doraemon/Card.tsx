@@ -14,6 +14,7 @@ import PlanInfo from "@/components/PlanInfo";
 import ServerFlag from "@/components/ServerFlag";
 import ServerLinkTags from "@/components/ServerLinkTags";
 import { formatBytes } from "@/lib/format";
+import { usageColor } from "@/lib/usage-color";
 import { saveMainPageScrollPosition } from "@/lib/navigation";
 import { homeNetworkServer } from "@/lib/home-network";
 import { formatNezhaInfo, parsePublicNote } from "@/lib/utils";
@@ -73,7 +74,10 @@ function Meter({
 				aria-valuemin={0}
 				aria-valuemax={100}
 			>
-				<i style={{ width: safe + "%" }} />
+				<i
+					className="transition-[width,background-color] duration-500 ease-linear motion-reduce:transition-none"
+					style={{ width: safe + "%", backgroundColor: usageColor(safe) }}
+				/>
 			</div>
 			<small className="dora-meter-name">{name}</small>
 			{caption && <p>{caption}</p>}
