@@ -326,3 +326,25 @@ test("reduced motion and touch devices retain their existing effect exclusions",
 		await context.close();
 	}
 });
+
+test("slow worker context initialization retains the worker renderer", async ({
+	page,
+}) => {
+	await page.addInitScript(() => {
+		const Original = window.Worker;
+		(window as any).Worker = class extends Original {
+			postMessage(message: any, transfer: any) {
+				if (message.type === "init")
+					setTimeout(() => super.postMessage(message, transfer), 6000);
+				else super.postMessage(message, transfer);
+			}
+		};
+	});
+	await setup(page);
+	await expect(page.locator("#canvas-nest")).toHaveAttribute(
+		"data-network-renderer",
+		"worker",
+		{ timeout: 15000 },
+	);
+	expect(page.workers()).toHaveLength(1);
+});
