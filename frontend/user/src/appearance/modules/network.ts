@@ -1,3 +1,4 @@
+import NetworkWorker from "./network.worker?worker&inline";
 import type { Feature } from "../config";
 import type { FeatureScope } from "../scope";
 import {
@@ -144,8 +145,7 @@ export function network(
 		return;
 	}
 	try {
-		worker = new Worker(new URL("./network.worker.ts", import.meta.url), {
-			type: "module",
+		worker = new NetworkWorker({
 			name: "ddnezha-network-effect",
 		});
 		worker.onerror = (event) => {
@@ -156,6 +156,10 @@ export function network(
 		worker.onmessage = ({ data }) => {
 			if (disposed || !scope.active) return;
 			if (data.type === "ready") {
+				// Loading and context creation are separate progress stages. A slow
+				// first paint must not consume the entire worker initialization budget.
+				scope.clearTimeout(timeout);
+				timeout = scope.setTimeout(fallback, 10000);
 				if (!data.supported) {
 					fallback();
 					return;
@@ -181,7 +185,7 @@ export function network(
 				canvas.dataset.networkRenderer = "worker";
 			} else if (data.type === "failed") fallback();
 		};
-		timeout = scope.setTimeout(fallback, 4000);
+		timeout = scope.setTimeout(fallback, 10000);
 	} catch {
 		fallback();
 	}
