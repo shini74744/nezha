@@ -12,8 +12,9 @@ export function NativeCanvas({
 	config: Feature;
 }) {
 	const canvas = useRef<HTMLCanvasElement>(null);
+	const networkHost = useRef<HTMLDivElement>(null);
 	useEffect(() => {
-		const node = canvas.current;
+		const node = kind === "network" ? networkHost.current : canvas.current;
 		if (!node) return;
 		const scope = new FeatureScope(kind);
 		void (async () => {
@@ -22,7 +23,7 @@ export function NativeCanvas({
 				if (scope.active) network(scope, config, node);
 			} else {
 				const { sakura } = await import("./modules/sakura");
-				if (scope.active) sakura(scope, config, node);
+				if (scope.active) sakura(scope, config, node as HTMLCanvasElement);
 			}
 		})().catch((error) => {
 			console.error("Appearance canvas failed", kind, error);
@@ -30,15 +31,17 @@ export function NativeCanvas({
 		});
 		return () => scope.dispose();
 	}, [kind, config]);
+	if (kind === "network")
+		return <div ref={networkHost} data-native-network aria-hidden style={{ display: "contents" }} />;
 	return (
 		<canvas
 			ref={canvas}
-			id={kind === "network" ? "canvas-nest" : "canvas_sakura"}
+			id="canvas_sakura"
 			data-native-canvas={kind}
 			aria-hidden
 			className="nz-native-canvas"
 			style={{
-				zIndex: kind === "network" ? 10 : 0,
+				zIndex: 0,
 				opacity: config.opacity ?? 1,
 			}}
 		/>
