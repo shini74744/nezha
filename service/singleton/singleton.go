@@ -105,6 +105,9 @@ func InitDBFromPath(path string) error {
 	if Conf.Debug {
 		DB = DB.Debug()
 	}
+	if err := migrateAPITokenVersions(DB); err != nil {
+		return err
+	}
 	err = DB.AutoMigrate(model.SSHLoginPolicy{}, model.SSHLoginReceipt{}, model.SSHLoginEvent{}, model.SSHUnbanCommand{}, SSHLoginDelivery{}, model.ServerNICNotice{}, model.OnlineSession{}, model.OnlineHistoryCoverage{}, model.TelegramDailyDelivery{}, model.TelegramMenuCursor{}, networkinsight.DetectionPriority{}, networkinsight.Record{}, networkinsight.BGPPolicy{}, networkinsight.ReturnPolicy{}, connectivity.Record{}, connectivity.Policy{}, latency.Record{}, latency.Settings{}, model.ServerExpiryConfig{}, model.ServerExpiryDelivery{}, model.ServerIPHistory{}, model.Server{}, model.User{}, model.ServerGroup{}, model.NotificationGroup{},
 		model.Notification{}, model.AlertRule{}, model.Service{}, model.NotificationGroupNotification{},
 		model.Cron{}, model.Transfer{}, model.ServerGroupServer{},

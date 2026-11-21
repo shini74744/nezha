@@ -2,6 +2,7 @@ package singleton
 
 import (
 	"log"
+	"maps"
 	"sync"
 	"time"
 
@@ -29,6 +30,43 @@ var (
 	alertsPrevState               map[uint64]map[uint64]uint8          // [alert_id][server_id] -> 对应报警规则的上一次报警状态
 	AlertsCycleTransferStatsStore map[uint64]*model.CycleTransferStats // [alert_id] -> 对应报警规则的周期流量统计
 )
+
+// cycleTransferStatsMu guards the maps inside AlertsCycleTransferStatsStore
+// entries. The alert evaluator writes them and the public /service endpoint
+// reads them, and both hold AlertsLock for reading only, so AlertsLock does not
+// keep them apart. Go aborts the whole process on a concurrent map read and
+// write. Always taken after AlertsLock.
+var cycleTransferStatsMu sync.Mutex
+
+// CopyCycleTransferStats returns a copy of the cycle transfer statistics that
+// shares no map with the store and is safe to read and filter without a lock.
+func CopyCycleTransferStats() map[uint64]model.CycleTransferStats {
+	AlertsLock.RLock()
+	defer AlertsLock.RUnlock()
+	cycleTransferStatsMu.Lock()
+	defer cycleTransferStatsMu.Unlock()
+
+	copied := make(map[uint64]model.CycleTransferStats, len(AlertsCycleTransferStatsStore))
+	for alertID, stats := range AlertsCycleTransferStatsStore {
+		if stats == nil {
+			continue
+		}
+		statsCopy := *stats
+		statsCopy.ServerName = maps.Clone(stats.ServerName)
+		statsCopy.Transfer = maps.Clone(stats.Transfer)
+		statsCopy.NextUpdate = maps.Clone(stats.NextUpdate)
+		copied[alertID] = statsCopy
+	}
+	return copied
+}
+
+// snapshotCycleTransferStats evaluates under the same lock as the public copy.
+// The deferred unlock also allows checkStatusForServer's panic recovery to continue.
+func snapshotCycleTransferStats(alert *model.AlertRule, server *model.Server) []bool {
+	cycleTransferStatsMu.Lock()
+	defer cycleTransferStatsMu.Unlock()
+	return alert.Snapshot(AlertsCycleTransferStatsStore[alert.ID], server, DB)
+}
 
 // addCycleTransferStatsInfo 向AlertsCycleTransferStatsStore中添加周期流量报警统计信息
 func addCycleTransferStatsInfo(alert *model.AlertRule) {
@@ -176,7 +214,7 @@ func checkStatusForServer(alert *model.AlertRule, server *model.Server) {
 	}()
 
 	alertsStore[alert.ID][server.ID] = append(alertsStore[alert.
-		ID][server.ID], alert.Snapshot(AlertsCycleTransferStatsStore[alert.ID], server, DB))
+		ID][server.ID], snapshotCycleTransferStats(alert, server))
 	// 发送通知，分为触发报警和恢复通知
 	_, passed := alert.Check(alertsStore[alert.ID][server.ID])
 	// 保存当前服务器状态信息

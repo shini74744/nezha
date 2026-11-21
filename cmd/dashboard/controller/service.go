@@ -28,11 +28,8 @@ import (
 // @Router /service [get]
 func showService(c *gin.Context) (*model.ServiceResponse, error) {
 	res, err, _ := requestGroup.Do(serviceResponseCacheKey(c), func() (any, error) {
-		singleton.AlertsLock.RLock()
-		defer singleton.AlertsLock.RUnlock()
 		stats := filterServiceStatsForViewer(c, singleton.ServiceSentinelShared.CopyStats())
-		var cycleTransferStats map[uint64]model.CycleTransferStats
-		copier.Copy(&cycleTransferStats, singleton.AlertsCycleTransferStatsStore)
+		cycleTransferStats := singleton.CopyCycleTransferStats()
 		return []any{
 			stats, filterCycleTransferStatsForViewer(c, cycleTransferStats),
 		}, nil
@@ -524,6 +521,7 @@ func createService(c *gin.Context) (uint64, error) {
 	m.RecoverTriggerTasks = mf.RecoverTriggerTasks
 	m.FailTriggerTasks = mf.FailTriggerTasks
 
+	normalizeServiceReferences(&m)
 	if err := validateServers(c, &m); err != nil {
 		return 0, err
 	}
@@ -598,6 +596,7 @@ func updateService(c *gin.Context) (any, error) {
 	m.RecoverTriggerTasks = mf.RecoverTriggerTasks
 	m.FailTriggerTasks = mf.FailTriggerTasks
 
+	normalizeServiceReferences(&m)
 	if err := validateServers(c, &m); err != nil {
 		return 0, err
 	}

@@ -25,3 +25,8 @@ export const deleteUser = async (id: number[]): Promise<void> => {
 export const updateProfile = async (data: ModelProfileForm): Promise<void> => {
     return fetcher<void>(FetcherMethod.POST, "/api/v1/profile", data)
 }
+
+// DDnezha revokes the current browser session before clearing local state.
+export const logout = async (): Promise<void> => {
+    return fetcher<void>(FetcherMethod.POST, "/api/v1/logout", null, AbortSignal.timeout(10000))
+}

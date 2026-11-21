@@ -72,7 +72,7 @@ func beginTOTP(c *gin.Context) (*singleton.TOTPSetup, error) {
 // only the verified caller's current browser session; concurrent password
 // logins made before enrollment or a GitHub policy change become invalid.
 func saveTOTPChange(c *gin.Context, user *model.User, updates map[string]any, pending bool) error {
-	return singleton.DB.Transaction(func(tx *gorm.DB) error {
+	err := singleton.DB.Transaction(func(tx *gorm.DB) error {
 		query := tx.Model(&model.User{}).Where("id = ? AND token_version = ? AND password = ? AND totp_enabled = ?", user.ID, user.TokenVersion, user.Password, user.TOTPEnabled)
 		if pending {
 			query = query.Where("totp_pending = ? AND totp_pending_until > ?", user.TOTPPending, time.Now().Unix())
@@ -102,7 +102,12 @@ func saveTOTPChange(c *gin.Context, user *model.User, updates map[string]any, pe
 		}
 		return nil
 	})
+	if err == nil {
+		revokeUserPATConnections(user.ID)
+	}
+	return err
 }
+
 func confirmTOTP(c *gin.Context) (*totpCodes, error) {
 	user, form, err := totpCredentials(c)
 	if err != nil {

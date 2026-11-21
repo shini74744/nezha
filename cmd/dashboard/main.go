@@ -105,7 +105,7 @@ func initIDCodec() error {
 	return idcodec.Init([]byte(singleton.Conf.JWTSecretKey))
 }
 
-// @title           Nezha Monitoring API
+// @title           DDnezha Monitoring API
 // @version         1.0
 // @description     Nezha Monitoring API
 // @termsOfService  http://nezhahq.github.io
@@ -213,24 +213,16 @@ func main() {
 	singleton.StartTelegramMenus()
 
 	muxHandler := newHTTPandGRPCMux(httpHandler, grpcHandler)
-	muxServerHTTP := &http.Server{
-		Handler:           muxHandler,
-		ReadHeaderTimeout: time.Second * 5,
-	}
+	muxServerHTTP := newDashboardHTTPServer(muxHandler)
 	muxServerHTTP.Protocols = new(http.Protocols)
 	muxServerHTTP.Protocols.SetHTTP1(true)
 	muxServerHTTP.Protocols.SetUnencryptedHTTP2(true)
 
 	var muxServerHTTPS *http.Server
 	if singleton.Conf.HTTPS.ListenPort != 0 {
-		muxServerHTTPS = &http.Server{
-			Addr:              fmt.Sprintf("%s:%d", singleton.Conf.ListenHost, singleton.Conf.HTTPS.ListenPort),
-			Handler:           muxHandler,
-			ReadHeaderTimeout: time.Second * 5,
-			TLSConfig: &tls.Config{
-				InsecureSkipVerify: singleton.Conf.HTTPS.InsecureTLS,
-			},
-		}
+		muxServerHTTPS = newDashboardHTTPServer(muxHandler)
+		muxServerHTTPS.Addr = fmt.Sprintf("%s:%d", singleton.Conf.ListenHost, singleton.Conf.HTTPS.ListenPort)
+		muxServerHTTPS.TLSConfig = &tls.Config{InsecureSkipVerify: singleton.Conf.HTTPS.InsecureTLS}
 	}
 
 	errChan := make(chan error, 2)

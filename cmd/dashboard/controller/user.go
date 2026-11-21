@@ -109,6 +109,7 @@ func updateProfile(c *gin.Context) (any, error) {
 		return nil, singleton.Localizer.ErrorT("unauthorized")
 	}
 
+	revokeUserPATConnections(user.ID)
 	singleton.OnUserUpdate(&user)
 	if err := singleton.RevokeJWTSessionsByUser(user.ID); err != nil {
 		return nil, newGormError("%v", err)

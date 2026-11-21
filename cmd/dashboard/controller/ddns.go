@@ -6,7 +6,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/copier"
-	"golang.org/x/net/idna"
 
 	"github.com/nezhahq/nezha/model"
 	"github.com/nezhahq/nezha/service/singleton"
@@ -86,14 +85,11 @@ func createDDNS(c *gin.Context) (uint64, error) {
 	p.WebhookRequestBody = df.WebhookRequestBody
 	p.WebhookHeaders = df.WebhookHeaders
 
-	for n, domain := range p.Domains {
-		// IDN to ASCII
-		domainValid, domainErr := idna.Lookup.ToASCII(domain)
-		if domainErr != nil {
-			return 0, singleton.Localizer.ErrorT("error parsing %s: %v", domain, domainErr)
-		}
-		p.Domains[n] = domainValid
+	domains, err := normalizeDDNSDomains(p.Domains)
+	if err != nil {
+		return 0, err
 	}
+	p.Domains = domains
 
 	if err := singleton.DB.Create(&p).Error; err != nil {
 		return 0, newGormError("%v", err)
@@ -169,14 +165,11 @@ func updateDDNS(c *gin.Context) (any, error) {
 		p.WebhookHeaders = df.WebhookHeaders
 	}
 
-	for n, domain := range p.Domains {
-		// IDN to ASCII
-		domainValid, domainErr := idna.Lookup.ToASCII(domain)
-		if domainErr != nil {
-			return nil, singleton.Localizer.ErrorT("error parsing %s: %v", domain, domainErr)
-		}
-		p.Domains[n] = domainValid
+	domains, err := normalizeDDNSDomains(p.Domains)
+	if err != nil {
+		return nil, err
 	}
+	p.Domains = domains
 
 	if err = singleton.DB.Save(&p).Error; err != nil {
 		return nil, newGormError("%v", err)

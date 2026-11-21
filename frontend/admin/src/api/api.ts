@@ -99,10 +99,10 @@ export async function fetcher<T>(method: FetcherMethod, path: string, data?: any
             if (response.status === 200 && responseData.error === "ApiErrorUnauthorized") notifyExpired()
             throw new Error(responseData.error)
         }
-        if (isSameOrigin(path)) void renewSessionIfNeeded()
+        if (isSameOrigin(path) && path !== "/api/v1/logout") void renewSessionIfNeeded()
         return responseData.data
     }
-    if (isSameOrigin(path)) void renewSessionIfNeeded()
+    if (isSameOrigin(path) && path !== "/api/v1/logout") void renewSessionIfNeeded()
     return undefined as T
 }
 

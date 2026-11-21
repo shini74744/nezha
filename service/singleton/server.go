@@ -161,10 +161,17 @@ func (c *ServerClass) UUIDToID(uuid string) (id uint64, ok bool) {
 }
 
 func (c *ServerClass) UpdateDDNS(server *model.Server, ip *model.IP) error {
+	// DDnezha: unknown addresses after restart/offline must not delete DNS records.
+	if ip == nil && server.GeoIP != nil {
+		ip = &server.GeoIP.IP
+	}
+	if ip == nil || (ip.IPv4Addr == "" && ip.IPv6Addr == "") {
+		return nil
+	}
 	confServers := strings.Split(Conf.DNSServers, ",")
 	ctx := context.WithValue(context.Background(), ddns.DNSServerKey{}, utils.IfOr(confServers[0] != "", confServers, utils.DNSServers))
 
-	providers, err := DDNSShared.GetDDNSProvidersFromProfiles(server.DDNSProfiles, utils.IfOr(ip != nil, ip, &server.GeoIP.IP), server.GetUserID())
+	providers, err := DDNSShared.GetDDNSProvidersFromProfiles(server.DDNSProfiles, ip, server.GetUserID())
 	if err != nil {
 		return err
 	}

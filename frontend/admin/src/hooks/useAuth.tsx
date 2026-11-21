@@ -1,5 +1,5 @@
 import { cancelSessionRenewal, startSessionRenewal, renewSessionIfNeeded, readCookie, SESSION_EXPIRED_EVENT, type SessionExpiry } from "@/api/session-renewal"
-import { getProfile, login as loginRequest } from "@/api/user"
+import { getProfile, login as loginRequest, logout as logoutRequest } from "@/api/user"
 import { AuthContextProps } from "@/types"
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
@@ -15,7 +15,7 @@ const AuthContext = createContext<AuthContextProps>({
     loading: true,
     login: async () => {},
     loginOauth2: () => {},
-    logout: () => {},
+    logout: async () => {},
 })
 
 // Admin is role 0 on the backend. A missing/non-numeric role must never
@@ -36,6 +36,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // mount probe is still in flight must win: bump this so the stale probe's
     // result is discarded instead of clobbering the authenticated state.
     const authEpoch = useRef(0)
+    const logoutPending = useRef(false)
+    const [loggingOut, setLoggingOut] = useState(false)
 
     useEffect(() => {
         const epoch = authEpoch.current
@@ -109,8 +111,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }, [profile?.id, loading, navigate, setProfile])
 
     useEffect(() => {
-        if (!loading && profile) return startSessionRenewal()
-    }, [loading, profile?.id])
+        if (!loading && profile && !loggingOut) return startSessionRenewal()
+    }, [loading, profile?.id, loggingOut])
 
     const login = useCallback(
         async (
@@ -165,14 +167,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     }, [navigate, setProfile])
 
-    const logout = useCallback(() => {
+    const logout = useCallback(async () => {
+        if (logoutPending.current) return
+        logoutPending.current = true
+        setLoggingOut(true)
         cancelSessionRenewal()
-        authEpoch.current++
-        document.cookie.split(";").forEach(function (c) {
-            document.cookie = c
-                .replace(/^ +/, "")
-                .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/")
-        })
+        const epoch = ++authEpoch.current
+        try {
+            await logoutRequest()
+        } catch (error) {
+            const message = error instanceof Error ? error.message : ""
+            // An already expired session also satisfies server-side logout.
+            if (message !== "ApiErrorUnauthorized" && message !== "Unauthorized") {
+                if (authEpoch.current === epoch) toast("退出登录失败，请重试。服务器尚未确认会话退出。")
+                return
+            }
+        } finally {
+            logoutPending.current = false
+            setLoggingOut(false)
+        }
+        if (authEpoch.current !== epoch) return
+        document.cookie = "nz-jwt=; Max-Age=0; Path=/; SameSite=Lax"
         setProfile(undefined)
         setLoading(false)
         navigate("/dashboard/login", { replace: true })

@@ -7,6 +7,7 @@ afterEach(cleanup);
 function Harness(){const [c,setC]=useState(defaults);return <><BackgroundSettings value={c.features.background} sound={c.features.video} onChange={f=>setC({...c,features:{...c.features,background:f}})} onSoundChange={()=>{}}/><output data-testid="validation">{validate(c)}</output></>}
 it("edits the two themes independently and validates empty and out-of-range input",()=>{
  render(<Harness/>);
+ fireEvent.click(screen.getByRole("button",{name:"卡片透明效果"}));
  const light=screen.getByLabelText("白天模式（亮色）卡片背景不透明度") as HTMLInputElement;
  const dark=screen.getByLabelText("黑夜模式（暗色）卡片背景不透明度") as HTMLInputElement;
  const lightBlur=screen.getByLabelText("白天模式（亮色）卡片模糊（像素）") as HTMLInputElement;

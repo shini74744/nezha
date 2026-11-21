@@ -30,11 +30,12 @@ describe("appearance editor configuration", () => {
                 <input aria-label="草稿" defaultValue="before" />
             </AppearanceSection>,
         )
-        const button = screen.getByRole("button", { name: "设置" }),
-            input = screen.getByLabelText("草稿")
+        const button = screen.getByRole("button", { name: "设置" })
         expect(button.getAttribute("aria-expanded")).toBe("false")
-        expect(input.closest("[hidden]")).not.toBeNull()
+        // Existing lazy mounting avoids loading every hidden editor on startup.
+        expect(screen.queryByLabelText("草稿")).toBeNull()
         fireEvent.click(button)
+        const input = screen.getByLabelText("草稿")
         fireEvent.change(input, { target: { value: "unsaved" } })
         fireEvent.click(button)
         expect(input.closest("[hidden]")).not.toBeNull()

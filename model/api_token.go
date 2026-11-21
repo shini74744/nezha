@@ -136,17 +136,18 @@ const APITokenPrefix = "nzp_"
 // APIToken 是用户用于程序化访问的长期凭证。MCP 接入点 /mcp 用它做鉴权。
 // 双层鉴权：闸 1 用 UserID 复用 Server.HasPermission；闸 2 用 Scopes / ServerIDs。
 type APIToken struct {
-	ID         uint64     `gorm:"primaryKey" json:"id,omitempty"`
-	UserID     uint64     `gorm:"index" json:"user_id,omitempty"`
-	Name       string     `gorm:"type:varchar(128)" json:"name,omitempty"`
-	TokenHash  string     `gorm:"uniqueIndex;type:char(64)" json:"-"`
-	ScopesCSV  string     `gorm:"type:text" json:"-"`
-	ServersCSV string     `gorm:"type:text" json:"-"`
-	ExpiresAt  *time.Time `gorm:"index" json:"expires_at,omitempty"`
-	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
-	LastUsedIP string     `gorm:"type:varchar(64)" json:"last_used_ip,omitempty"`
-	CreatedAt  time.Time  `json:"created_at,omitempty"`
-	UpdatedAt  time.Time  `gorm:"autoUpdateTime" json:"updated_at,omitempty"`
+	UserVersion uint64     `gorm:"not null;default:0" json:"-"`
+	ID          uint64     `gorm:"primaryKey" json:"id,omitempty"`
+	UserID      uint64     `gorm:"index" json:"user_id,omitempty"`
+	Name        string     `gorm:"type:varchar(128)" json:"name,omitempty"`
+	TokenHash   string     `gorm:"uniqueIndex;type:char(64)" json:"-"`
+	ScopesCSV   string     `gorm:"type:text" json:"-"`
+	ServersCSV  string     `gorm:"type:text" json:"-"`
+	ExpiresAt   *time.Time `gorm:"index" json:"expires_at,omitempty"`
+	LastUsedAt  *time.Time `json:"last_used_at,omitempty"`
+	LastUsedIP  string     `gorm:"type:varchar(64)" json:"last_used_ip,omitempty"`
+	CreatedAt   time.Time  `json:"created_at,omitempty"`
+	UpdatedAt   time.Time  `gorm:"autoUpdateTime" json:"updated_at,omitempty"`
 }
 
 func (APIToken) TableName() string {

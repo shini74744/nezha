@@ -95,7 +95,8 @@ func TestReassignServerIDsInDBUpdatesEveryReference(t *testing.T) {
 
 	var service model.Service
 	require.NoError(t, db.First(&service, 1).Error)
-	require.Equal(t, map[uint64]bool{2: true, 1: false}, service.SkipServers)
+	// False entries are semantically absent and normalized on load.
+	require.Equal(t, map[uint64]bool{2: true}, service.SkipServers)
 
 	var alert model.AlertRule
 	require.NoError(t, db.First(&alert, 1).Error)
