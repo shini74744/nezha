@@ -190,3 +190,7 @@ The network card and detail dialog share an administrator-only interface menu. A
 The independent admin homepage selection supports multiple monitored interfaces. Both themes project card rates and totals without mutating the original state. The detail chart defaults to the saved selection while temporary choices remain local. Guests receive the homepage projection without interface names or a selector. Period responses include a selection key to prevent stale cached totals from appearing after a change.
 
 Regression coverage includes default/single/multiple selections, unavailable data, sum-by-timestamp history, separate configuration saves, permission checks, and both themes at mobile and desktop widths. See [usage and accounting limits](../docs/home-network.md).
+
+## v0.0.31 动画交互优化
+
+飞机拖动减少布局读取，松开后保留原弹性和连续摆动；蜘蛛网优化邻近节点计算并采用独立线程，原有显示参数保持不变。慢启动、兼容回退、手机和开关清理说明见 [动画交互优化](../docs/animation-performance.md)。
