@@ -21,7 +21,7 @@ export async function sakana(scope:FeatureScope,f:Feature,host:HTMLElement){
  widget.unmount=()=>{motion?.dispose();return unmount()};
  const show=(next:number)=>{
   if(probe){probe.onerror=null;probe.removeAttribute("src");probe=undefined}
-  index=next;motion?.cancel();widget.setCharacter(roles[index].key);widget.setState({r:0,y:0,t:0,w:0});host.dataset.character=roles[index].id;
+  index=next;motion?.cancel();motion?.setDamping(SakanaWidget.getCharacter(roles[index].key)!.initialState.d);widget.setCharacter(roles[index].key);widget.setState({r:0,y:0,t:0,w:0});host.dataset.character=roles[index].id;
   const image=host.querySelector<HTMLElement>(".sakana-widget-img");image?.setAttribute("role","img");image?.setAttribute("aria-label",roles[index].name);
   // A separate artwork layer scales without replacing Sakana's physics transform.
   image?.querySelector(".nz-sakana-artwork")?.remove();
@@ -40,6 +40,7 @@ export async function sakana(scope:FeatureScope,f:Feature,host:HTMLElement){
  widget.setState({r:0,y:0,t:0,w:0});
  widget.mount(anchor);show(index);
  motion=bindSakanaMotion(scope,host,!!f.controls);
+ motion.setDamping(SakanaWidget.getCharacter(roles[index].key)!.initialState.d);
  scope.own(()=>{
   if(probe){probe.onerror=null;probe.removeAttribute("src")}
   if(host.firstElementChild?.childElementCount)widget.unmount();

@@ -3,7 +3,8 @@ import { FeatureScope } from "../appearance/scope";
 import {
 	bindSakanaMotion,
 	springPose,
-	SPRING_DURATION,
+	createSpring,
+	SPRING_STEP,
 } from "../appearance/modules/sakana-motion";
 
 describe("Sakana frame-batched dragging", () => {
@@ -95,9 +96,9 @@ describe("Sakana frame-batched dragging", () => {
 		s.flush();
 		s.dispatch("pointerup", 180, 140);
 		expect(s.animate).toHaveBeenCalledTimes(2);
-		expect(s.animate.mock.calls[0][0]).toHaveLength(97);
+		expect(s.animate.mock.calls[0][0].length).toBeGreaterThan(600);
 		expect(s.animate.mock.calls[0][1]).toMatchObject({
-			duration: SPRING_DURATION,
+			duration: createSpring({ r: 8, y: 8 }).duration,
 		});
 		s.flush();
 		expect(s.frames.size).toBe(0);
@@ -112,7 +113,7 @@ describe("Sakana frame-batched dragging", () => {
 		s.dispatch("pointerdown", 100, 100);
 		s.dispatch("pointerup", 200, 150);
 		s.animations[0].currentTime = 120;
-		const expected = springPose({ r: 10, y: 10 }, 120);
+		const expected = springPose(createSpring({ r: 10, y: 10 }), 120);
 		s.dispatch("pointerdown", 300, 300);
 		s.dispatch("pointermove", 300, 300);
 		s.flush();
@@ -135,12 +136,46 @@ describe("Sakana frame-batched dragging", () => {
 	});
 	it("settles by elapsed time independently of the screen refresh rate", () => {
 		const start = { r: 40, y: 50 };
+		const curve = createSpring(start);
 		for (const fps of [30, 60, 120, 144]) {
 			const step = 1000 / fps;
 			expect(
-				springPose(start, Math.ceil(SPRING_DURATION / step) * step),
+				springPose(curve, Math.ceil(curve.duration / step) * step),
 			).toEqual({ r: 0, y: 0 });
 		}
-		expect(springPose(start, 0)).toEqual(start);
+		expect(springPose(curve, 0)).toEqual(start);
+	});
+	it("preserves the original elastic response instead of dying after one swing", () => {
+		const curve = createSpring({ r: 40, y: 50 });
+		expect(curve.samples[1].r).toBeCloseTo(32.32, 8);
+		expect(curve.samples[1].y).toBeCloseTo(34, 8);
+		// Compare the first three seconds with a separate reference recurrence.
+		let angle = 40,
+			height = 50,
+			angularVelocity = 0,
+			verticalVelocity = 0;
+		for (let i = 1; i <= 180; i++) {
+			angularVelocity -= angle * 2;
+			angle += angularVelocity * 0.096;
+			angularVelocity *= 0.99;
+			verticalVelocity -= height * 2;
+			height += verticalVelocity * 0.16;
+			verticalVelocity *= 0.99;
+			expect(curve.samples[i].r).toBeCloseTo(angle, 8);
+			expect(curve.samples[i].y).toBeCloseTo(height, 8);
+		}
+		const later = curve.samples.slice(60, 180);
+		expect(Math.max(...later.map((p) => Math.abs(p.r)))).toBeGreaterThan(25);
+		expect(Math.min(...later.map((p) => p.r))).toBeLessThan(-20);
+		expect(curve.duration).toBeGreaterThan(10000);
+		expect(curve.duration).toBeLessThanOrEqual(30000);
+		expect(springPose(curve, curve.duration)).toEqual({ r: 0, y: 0 });
+		expect(createSpring({ r: 40, y: 50 }, 0.988).duration).toBeLessThan(
+			curve.duration,
+		);
+		expect(springPose(curve, SPRING_STEP / 2).r).toBeCloseTo(
+			(40 + 32.32) / 2,
+			8,
+		);
 	});
 });
