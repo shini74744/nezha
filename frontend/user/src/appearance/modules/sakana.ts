@@ -1,4 +1,5 @@
 import type {Feature} from "../config";
+import {bindSakanaMotion} from "./sakana-motion";
 import type {CustomCharacter} from "../mascot-config";
 import type {FeatureScope} from "../scope";
 export async function sakana(scope:FeatureScope,f:Feature,host:HTMLElement){
@@ -11,12 +12,16 @@ export async function sakana(scope:FeatureScope,f:Feature,host:HTMLElement){
  host.id="nz-sakana-widget";
  Object.assign(host.style,{position:"fixed",left:"0",right:"auto",bottom:"0",zIndex:"9990",width:"min("+f.size+"px, calc(100vw - 24px))",height:"min("+f.size+"px, calc(100vw - 24px))"});
  let index=Math.max(0,roles.findIndex(r=>r.id===f.character));
- const widget=new SakanaWidget({character:roles[index].key,size:f.size,autoFit:true,controls:f.controls,title:true,saveState:false});
+ const widget=new SakanaWidget({character:roles[index].key,size:f.size,autoFit:true,controls:f.controls,title:true,saveState:false,draggable:false});
  const anchor=document.createElement("div");Object.assign(anchor.style,{width:"100%",height:"100%",position:"relative"});host.append(anchor);
  let probe:HTMLImageElement|undefined;
+ let motion:ReturnType<typeof bindSakanaMotion>|undefined;
+ widget.triggerAutoMode=()=>motion?.toggleAuto();
+ const unmount=widget.unmount;
+ widget.unmount=()=>{motion?.dispose();return unmount()};
  const show=(next:number)=>{
   if(probe){probe.onerror=null;probe.removeAttribute("src");probe=undefined}
-  index=next;widget.setCharacter(roles[index].key);host.dataset.character=roles[index].id;
+  index=next;motion?.cancel();widget.setCharacter(roles[index].key);widget.setState({r:0,y:0,t:0,w:0});host.dataset.character=roles[index].id;
   const image=host.querySelector<HTMLElement>(".sakana-widget-img");image?.setAttribute("role","img");image?.setAttribute("aria-label",roles[index].name);
   // A separate artwork layer scales without replacing Sakana's physics transform.
   image?.querySelector(".nz-sakana-artwork")?.remove();
@@ -32,12 +37,14 @@ export async function sakana(scope:FeatureScope,f:Feature,host:HTMLElement){
   if(index>1){probe=new Image();probe.onerror=()=>{if(scope.active)show(0)};probe.src=custom[index-2].imageUrl}
  };
  widget.nextCharacter=()=>{show((index+1)%roles.length);return widget};
+ widget.setState({r:0,y:0,t:0,w:0});
  widget.mount(anchor);show(index);
+ motion=bindSakanaMotion(scope,host,!!f.controls);
  scope.own(()=>{
   if(probe){probe.onerror=null;probe.removeAttribute("src")}
   if(host.firstElementChild?.childElementCount)widget.unmount();
   anchor.remove();
   custom.forEach((_,i)=>{SakanaWidget.registerCharacter("nz-custom-"+i,builtin);});
  });
- if(f.autoMotion&&!matchMedia("(prefers-reduced-motion: reduce)").matches)widget.triggerAutoMode();
+ motion.setAuto(!!f.autoMotion);
 }
