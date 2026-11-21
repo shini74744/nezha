@@ -23,7 +23,8 @@ const headerMocks = vi.hoisted(() => ({
 	updateBackground: vi.fn(),
 }));
 
-vi.mock("@/hooks/use-background", () => ({
+vi.mock("@/hooks/use-background", async (importOriginal) => ({
+	...await importOriginal<typeof import("@/hooks/use-background")>(),
 	useBackground: () => ({
 		backgroundImage: headerMocks.backgroundImage,
 		updateBackground: headerMocks.updateBackground,
