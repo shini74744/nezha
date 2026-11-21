@@ -62,3 +62,23 @@ func TestInitDBFromPathBackfillsAPITokenUserVersionOnce(t *testing.T) {
 	require.Equal(t, []uint64{5, 0, 0}, userVersions())
 	closeDB(DB)
 }
+
+func TestAPITokenMigrationWithoutLegacyUserVersion(t *testing.T) {
+	db, err := gorm.Open(openSQLiteDialector(filepath.Join(t.TempDir(), "legacy.sqlite")), &gorm.Config{})
+	require.NoError(t, err)
+	raw, err := db.DB()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = raw.Close() })
+	require.NoError(t, db.Exec("CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT)").Error)
+	require.NoError(t, db.Exec("INSERT INTO users (id,username) VALUES (1,'legacy')").Error)
+	require.NoError(t, db.AutoMigrate(&legacyAPIToken{}))
+	require.NoError(t, db.Create(&legacyAPIToken{ID: 1, UserID: 1, TokenHash: "legacy"}).Error)
+	require.NoError(t, migrateAPITokenVersions(db))
+	var version uint64
+	require.NoError(t, db.Model(&model.APIToken{}).Select("user_version").Where("id = 1").Scan(&version).Error)
+	require.Zero(t, version)
+	require.NoError(t, db.AutoMigrate(&model.User{}))
+	var user model.User
+	require.NoError(t, db.First(&user, 1).Error)
+	require.Equal(t, user.TokenVersion, version)
+}
