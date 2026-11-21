@@ -107,12 +107,10 @@ func initIDCodec() error {
 
 // @title           DDnezha Monitoring API
 // @version         1.0
-// @description     Nezha Monitoring API
-// @termsOfService  http://nezhahq.github.io
+// @description     DDnezha Monitoring API
 
-// @contact.name   API Support
-// @contact.url    http://nezhahq.github.io
-// @contact.email  hi@nai.ba
+// @contact.name   DDnezha Support
+// @contact.url    https://github.com/shini74744/nezha/issues
 
 // @license.name  Apache 2.0
 // @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
