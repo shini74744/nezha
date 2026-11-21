@@ -173,7 +173,9 @@ for (const width of [390, 1440]) test("DDnezha logout retries a failed server re
         // Let Radix finish closing under Playwright's mocked clock before retry.
         await page.keyboard.press("Escape")
         await page.clock.runFor(300)
-        await page.getByRole("button", { name: "账户菜单" }).click()
+        await expect(page.locator('[role="menu"]')).toHaveCount(0)
+        const trigger = page.getByRole("button", { name: "账户菜单" })
+        await trigger.click()
         await page.getByRole("menuitem", { name: /登出|退出|Log out|Logout/ }).click()
     }
     await logout()
