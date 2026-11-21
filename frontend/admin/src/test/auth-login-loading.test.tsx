@@ -28,6 +28,7 @@ vi.mock("react-router-dom", () => ({
 let initialProfilePromise: Promise<any>
 let getProfileCall = 0
 const loginRequest = vi.fn(async () => {})
+const logoutRequest = vi.fn(async () => {})
 vi.mock("@/api/user", () => ({
     getProfile: vi.fn(() => {
         getProfileCall++
@@ -35,9 +36,13 @@ vi.mock("@/api/user", () => ({
         return Promise.resolve({ id: 42, role: 0 })
     }),
     login: () => loginRequest(),
+    logout: () => logoutRequest(),
 }))
 
 beforeEach(() => {
+    logoutRequest.mockReset()
+    logoutRequest.mockResolvedValue(undefined)
+    document.cookie = "nz-jwt=; Max-Age=0; Path=/"
     profileStore = undefined
     getProfileCall = 0
     initialProfilePromise = new Promise<any>(() => {})
@@ -147,4 +152,25 @@ test("logout() clears loading even while the initial profile probe is still pend
     })
 
     expect(captured.auth!.loading).toBe(false)
+})
+
+test("logout waits for server confirmation and does not report success on network failure", async () => {
+    const { AuthProvider, useAuth } = await import("@/hooks/useAuth")
+    let auth: ReturnType<typeof useAuth>
+    function Capture() { auth = useAuth(); return null }
+    await act(async () => { render(<AuthProvider><Capture /></AuthProvider>) })
+    document.cookie = "nz-jwt=still-valid; Path=/"
+    let reject: (error: Error) => void = () => {}
+    logoutRequest.mockImplementationOnce(() => new Promise<void>((_, fail) => { reject = fail }))
+    let pending: Promise<void>
+    await act(async () => { pending = auth!.logout() })
+    expect(navigate).not.toHaveBeenCalled()
+    expect(document.cookie).toContain("nz-jwt=still-valid")
+    await act(async () => { reject(new Error("network unavailable")); await pending! })
+    expect(navigate).not.toHaveBeenCalled()
+    expect(document.cookie).toContain("nz-jwt=still-valid")
+    await act(async () => { await auth!.logout() })
+    expect(logoutRequest).toHaveBeenCalledTimes(2)
+    expect(navigate).toHaveBeenCalledWith("/dashboard/login", { replace: true })
+    expect(document.cookie).not.toContain("nz-jwt=")
 })

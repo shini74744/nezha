@@ -170,6 +170,10 @@ func (s *NezhaHandler) RequestTask(stream pb.NezhaService_RequestTaskServer) err
 		if deliverConnectivityResult(result, clientID, stream) || deliverLatencyResult(result, clientID, stream) {
 			continue
 		}
+		// Custom backup, credential and probe replies above keep their protocol.
+		if result.GetType() == model.TaskTypeCommand || model.IsServiceSentinelNeeded(result.GetType()) {
+			result.Data = truncateTaskResultText(result.GetData())
+		}
 		switch result.GetType() {
 		case model.TaskTypeCommand:
 			// 处理上报的计划任务
@@ -180,11 +184,11 @@ func (s *NezhaHandler) RequestTask(stream pb.NezhaService_RequestTaskServer) err
 				var curServer model.Server
 				copier.Copy(&curServer, server)
 				if cr.PushSuccessful && result.GetSuccessful() {
-					singleton.NotificationShared.SendEvent(cr.NotificationGroupID, fmt.Sprintf("[%s] %s, %s\n%s", singleton.Localizer.T("Scheduled Task Executed Successfully"),
+					sendTaskNotification(cr.NotificationGroupID, fmt.Sprintf("[%s] %s, %s\n%s", singleton.Localizer.T("Scheduled Task Executed Successfully"),
 						cr.Name, server.Name, result.GetData()), "", model.NotificationEvent{Kind: "task_success", RuleName: cr.Name}, &curServer)
 				}
 				if !result.GetSuccessful() {
-					singleton.NotificationShared.SendEvent(cr.NotificationGroupID, fmt.Sprintf("[%s] %s, %s\n%s", singleton.Localizer.T("Scheduled Task Executed Failed"),
+					sendTaskNotification(cr.NotificationGroupID, fmt.Sprintf("[%s] %s, %s\n%s", singleton.Localizer.T("Scheduled Task Executed Failed"),
 						cr.Name, server.Name, result.GetData()), "", model.NotificationEvent{Kind: "task_failure", RuleName: cr.Name}, &curServer)
 				}
 				singleton.DB.Model(cr).Updates(model.Cron{

@@ -138,10 +138,12 @@ func createAPIToken(c *gin.Context) (*model.APITokenCreateResponse, error) {
 	}
 	plaintext := model.APITokenPrefix + secret
 
+	user := c.MustGet(model.CtxKeyAuthorizedUser).(*model.User)
 	tok := model.APIToken{
-		UserID:    getUid(c),
-		Name:      req.Name,
-		TokenHash: model.HashAPIToken(plaintext),
+		UserVersion: user.TokenVersion,
+		UserID:      getUid(c),
+		Name:        req.Name,
+		TokenHash:   model.HashAPIToken(plaintext),
 	}
 	tok.SetScopes(cleaned)
 	if len(req.ServerIDs) > 0 {
@@ -249,6 +251,11 @@ func apiTokenAuthMiddleware() gin.HandlerFunc {
 				model.BlockIP(singleton.DB, realIP, model.WAFBlockReasonTypeBruteForceToken, model.BlockIDToken)
 			}
 			abortAPITokenUnauthorized(c, "owner of api token not found")
+			return
+		}
+
+		if user.TokenVersion != tok.UserVersion {
+			abortAPITokenUnauthorized(c, "api token revoked by credential change")
 			return
 		}
 

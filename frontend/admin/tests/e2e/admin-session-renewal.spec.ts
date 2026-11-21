@@ -158,3 +158,30 @@ test("returning after the browser removes the expired cookie opens login with a 
     expect(state.attempts).toBe(attempts)
     expect(state.errors).toEqual([])
 })
+
+for (const width of [390, 1440]) test("DDnezha logout retries a failed server revocation " + width, async ({ page }) => {
+    await setup(page, width)
+    let attempts = 0
+    await page.route("**/api/v1/logout", async route => {
+        attempts++
+        expect(route.request().method()).toBe("POST")
+        expect(route.request().headers()["x-csrf-token"]).toBe("fixture-csrf")
+        if (attempts === 1) return route.fulfill({ status: 503, json: { success: false, error: "temporary" } })
+        return route.fulfill({ json: { success: true, data: null } })
+    })
+    const logout = async () => {
+        // Let Radix finish closing under Playwright's mocked clock before retry.
+        await page.keyboard.press("Escape")
+        await page.clock.runFor(300)
+        await page.getByRole("button", { name: "账户菜单" }).click()
+        await page.getByRole("menuitem", { name: /登出|退出|Log out|Logout/ }).click()
+    }
+    await logout()
+    await expect(page.getByText("退出登录失败，请重试。服务器尚未确认会话退出。")).toBeVisible()
+    await expect(page).not.toHaveURL(/login/)
+    expect((await page.context().cookies()).some(c => c.name === "nz-jwt")).toBe(true)
+    await logout()
+    await expect(page).toHaveURL(/login/)
+    expect(attempts).toBe(2)
+    expect((await page.context().cookies()).some(c => c.name === "nz-jwt")).toBe(false)
+})

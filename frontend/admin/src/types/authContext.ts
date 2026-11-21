@@ -5,5 +5,5 @@ export interface AuthContextProps {
     loading: boolean
     login: (username: string, password: string, code?: string) => Promise<"totp-required" | void>
     loginOauth2: () => void
-    logout: () => void
+    logout: () => Promise<void>
 }

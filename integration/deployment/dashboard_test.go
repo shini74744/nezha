@@ -687,6 +687,19 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 	_, err = replacementAgent.ReportSystemInfo2(oldContext, &pb.Host{Platform: "old machine"})
 	require.Error(t, err)
 	t.Log("inventory category/date persistence, replacement admission/cleanup and manual history deletion passed")
+	// Exercise the real production router, not a handler-only fixture.
+	otherToken := login()
+	request("POST", "/api/v1/logout", token, nil, nil)
+	rejectedRequest, err := http.NewRequest("GET", base+"/api/v1/profile", nil)
+	require.NoError(t, err)
+	rejectedRequest.Header.Set("Authorization", "Bearer "+token)
+	rejectedResponse, err := client.Do(rejectedRequest)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusUnauthorized, rejectedResponse.StatusCode)
+	_ = rejectedResponse.Body.Close()
+	request("GET", "/api/v1/profile", otherToken, nil, nil)
+	t.Log("DDnezha server-side logout rejects copied tokens and preserves other sessions")
+
 	require.NoError(t, stopProcess(p.cmd))
 	select {
 	case err := <-p.done:
