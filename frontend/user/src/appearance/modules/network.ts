@@ -1,112 +1,188 @@
-// @ts-nocheck
-// Migrated source for the built-in network feature; resources are owned by FeatureScope.
-export function network(scope, config, canvas: HTMLCanvasElement) {
-const window = scope.window; const document = scope.document;
-(() => {
-  var _0x58d316 = !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  if (!_0x58d316) {
-    return;
-  }
-  function _0x2de556(_0x1119e1, _0x1df741, _0x11f990) {
-    return _0x1119e1.getAttribute(_0x1df741) || _0x11f990;
-  }
-  function _0x2a7625() {
-    return {
-      z: 10,
-      o: config.opacity,
-      c: config.color,
-      n: config.count
-    };
-  }
-  function _0x168c11() {
-    _0x145ce2 = _0x51a74c.width = window.innerWidth;
-    _0x1a8ee4 = _0x51a74c.height = window.innerHeight;
-    const _0x208ccc = window.devicePixelRatio || 1;
-    _0x51a74c.width = _0x145ce2 * _0x208ccc;
-    _0x51a74c.height = _0x1a8ee4 * _0x208ccc;
-    _0x51a74c.getContext("2d").scale(_0x208ccc, _0x208ccc);
-  }
-  function _0x533f11() {
-    _0x1f1a1f.clearRect(0, 0, _0x145ce2, _0x1a8ee4);
-    let _0xc7811d: number;
-    let _0x4ea916: number;
-    let _0x493483: number;
-    let _0x51acf8: number;
-    _0x5efe24.forEach((_0x21a71c, _0x1fc94c) => {
-      _0x21a71c.x += _0x21a71c.vx;
-      _0x21a71c.y += _0x21a71c.vy;
-      if (_0x21a71c.x > _0x145ce2 || _0x21a71c.x < 0) {
-        _0x21a71c.vx *= -1;
-      }
-      if (_0x21a71c.y > _0x1a8ee4 || _0x21a71c.y < 0) {
-        _0x21a71c.vy *= -1;
-      }
-      _0x1f1a1f.fillRect(_0x21a71c.x - 0.5, _0x21a71c.y - 0.5, 1, 1);
-      for (let _0x28506f = _0x1fc94c + 1; _0x28506f < _0x59a8c2.length; _0x28506f++) {
-        const _0x182185 = _0x59a8c2[_0x28506f];
-        if (_0x182185.x == null || _0x182185.y == null) {
-          continue;
-        }
-        _0xc7811d = _0x21a71c.x - _0x182185.x;
-        _0x4ea916 = _0x21a71c.y - _0x182185.y;
-        _0x493483 = _0xc7811d * _0xc7811d + _0x4ea916 * _0x4ea916;
-        if (_0x493483 < _0x182185.max) {
-          if (_0x182185 === _0xe4b10e && _0x493483 >= _0x182185.max / 2) {
-            _0x21a71c.x -= _0xc7811d * 0.03;
-            _0x21a71c.y -= _0x4ea916 * 0.03;
-          }
-          _0x51acf8 = (_0x182185.max - _0x493483) / _0x182185.max;
-          _0x1f1a1f.beginPath();
-          _0x1f1a1f.lineWidth = _0x51acf8 / 2;
-          _0x1f1a1f.strokeStyle = "rgba(" + _0x1df04c.c + "," + (_0x51acf8 + 0.2) + ")";
-          _0x1f1a1f.moveTo(_0x21a71c.x, _0x21a71c.y);
-          _0x1f1a1f.lineTo(_0x182185.x, _0x182185.y);
-          _0x1f1a1f.stroke();
-        }
-      }
-    });
-    scope.requestAnimationFrame(_0x533f11);
-  }
-  const _0x1df04c = _0x2a7625();
-  const _0x51a74c = canvas;
-  const _0x1f1a1f = _0x51a74c.getContext("2d");
-  if (!_0x1f1a1f) return;
-  let _0x145ce2: number;
-  let _0x1a8ee4: number;
-  _0x51a74c.id = "canvas-nest";
-  scope.styleOf(_0x51a74c).cssText = "position:fixed;top:0;left:0;width:100%;height:100%;z-index:" + _0x1df04c.z + ";opacity:" + _0x1df04c.o + ";pointer-events:none";
-  const _0x5efe24 = [];
-  let _0x59a8c2: Array<{x:number|null;y:number|null;max:number}>;
-  const _0xe4b10e = {
-    x: null,
-    y: null,
-    max: 20000
-  };
-  const _0x4d75d0 = Math.random;
-  _0x168c11();
-  scope.listen(window, "resize", _0x168c11);
-  scope.listen(window, "mousemove", (_0x1b32ef) => {
-    _0xe4b10e.x = _0x1b32ef.clientX;
-    _0xe4b10e.y = _0x1b32ef.clientY;
-  });
-  scope.listen(window, "mouseout", () => {
-    _0xe4b10e.x = null;
-    _0xe4b10e.y = null;
-  });
-  for (let _0x320c80 = 0; _0x320c80 < _0x1df04c.n; _0x320c80++) {
-    const _0x26e6cf = _0x4d75d0() * window.innerWidth;
-    const _0x2900ed = _0x4d75d0() * window.innerHeight;
-    const _0x4820f7 = _0x4d75d0() * 2 - 1;
-    const _0x48c0b5 = _0x4d75d0() * 2 - 1;
-    _0x5efe24.push({
-      x: _0x26e6cf,
-      y: _0x2900ed,
-      vx: _0x4820f7,
-      vy: _0x48c0b5,
-      max: 12000
-    });
-  }
-  _0x59a8c2 = _0x5efe24.concat([_0xe4b10e]);
-  scope.requestAnimationFrame(_0x533f11);
-})();
+import type { Feature } from "../config";
+import type { FeatureScope } from "../scope";
+import {
+	NetworkScene,
+	type NetworkPointer,
+	type NetworkWorkerMessage,
+} from "./network-scene";
+
+export function network(
+	scope: FeatureScope,
+	config: Feature,
+	host: HTMLElement,
+) {
+	if (
+		/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+			navigator.userAgent,
+		)
+	)
+		return;
+	let worker: Worker | undefined, scene: NetworkScene | undefined;
+	let transferred = false,
+		disposed = false,
+		frame = 0,
+		pointerFrame = 0,
+		timeout = 0;
+	let pointer: NetworkPointer = null;
+	const settings = { count: config.count, color: config.color };
+	const dimensions = () => ({
+		width: window.innerWidth,
+		height: window.innerHeight,
+		dpr: window.devicePixelRatio || 1,
+	});
+	const createCanvas = () => {
+		const c = scope.createElement("canvas") as HTMLCanvasElement;
+		c.id = "canvas-nest";
+		c.className = "nz-native-canvas";
+		c.dataset.nativeCanvas = "network";
+		c.setAttribute("aria-hidden", "true");
+		Object.assign(c.style, {
+			position: "fixed",
+			top: "0",
+			left: "0",
+			width: "100%",
+			height: "100%",
+			zIndex: "10",
+			opacity: String(config.opacity),
+			pointerEvents: "none",
+		});
+		host.append(c);
+		return c;
+	};
+	let canvas = createCanvas();
+	const stopWorker = () => {
+		if (worker) {
+			worker.onmessage = null;
+			worker.onerror = null;
+			worker.onmessageerror = null;
+			worker.terminate();
+			worker = undefined;
+		}
+		scope.clearTimeout(timeout);
+		timeout = 0;
+	};
+	const draw = () => {
+		frame = 0;
+		if (disposed || document.hidden || !scene) return;
+		scene.frame();
+		frame = scope.requestAnimationFrame(draw);
+	};
+	const fallback = () => {
+		if (disposed || !scope.active || scene) return;
+		stopWorker();
+		// A transferred canvas cannot regain a main-thread context. The host is
+		// owned by React; each rendering canvas is owned and replaced by this scope.
+		if (transferred) {
+			scope.remove(canvas);
+			canvas = createCanvas();
+			transferred = false;
+		}
+		const ctx = canvas.getContext("2d");
+		if (!ctx) return;
+		const { width, height, dpr } = dimensions();
+		scene = new NetworkScene(ctx, width, height, settings);
+		scene.resize(width, height, dpr);
+		scene.pointer = pointer;
+		canvas.dataset.networkRenderer = "main";
+		if (!document.hidden) frame = scope.requestAnimationFrame(draw);
+	};
+	const post = (message: NetworkWorkerMessage) => {
+		if (!worker || !transferred) return;
+		try {
+			worker.postMessage(message);
+		} catch {
+			fallback();
+		}
+	};
+	const sendPointer = () => {
+		pointerFrame = 0;
+		if (scene) scene.pointer = pointer;
+		else post({ type: "pointer", pointer });
+	};
+	const move = (event: MouseEvent) => {
+		pointer = { x: event.clientX, y: event.clientY };
+		if (scene) scene.pointer = pointer;
+		else if (!pointerFrame)
+			pointerFrame = scope.requestAnimationFrame(sendPointer);
+	};
+	const leave = () => {
+		pointer = null;
+		scope.cancelAnimationFrame(pointerFrame);
+		pointerFrame = 0;
+		sendPointer();
+	};
+	scope.listen(window, "mousemove", move as EventListener, { passive: true });
+	scope.listen(window, "mouseout", ((event: MouseEvent) => {
+		if (event.relatedTarget === null) leave();
+	}) as EventListener);
+	scope.listen(window, "blur", leave);
+	scope.listen(window, "resize", () => {
+		const d = dimensions();
+		if (scene) scene.resize(d.width, d.height, d.dpr);
+		else post({ type: "resize", ...d });
+	});
+	scope.listen(document, "visibilitychange", () => {
+		if (document.hidden) leave();
+		if (scene) {
+			scope.cancelAnimationFrame(frame);
+			frame = 0;
+			if (!document.hidden) frame = scope.requestAnimationFrame(draw);
+		} else post({ type: "visibility", visible: !document.hidden });
+	});
+	scope.own(() => {
+		disposed = true;
+		stopWorker();
+		scope.cancelAnimationFrame(frame);
+		scope.cancelAnimationFrame(pointerFrame);
+		scene = undefined;
+	});
+	if (
+		typeof Worker === "undefined" ||
+		typeof canvas.transferControlToOffscreen !== "function"
+	) {
+		fallback();
+		return;
+	}
+	try {
+		worker = new Worker(new URL("./network.worker.ts", import.meta.url), {
+			type: "module",
+			name: "ddnezha-network-effect",
+		});
+		worker.onerror = (event) => {
+			event.preventDefault();
+			fallback();
+		};
+		worker.onmessageerror = () => fallback();
+		worker.onmessage = ({ data }) => {
+			if (disposed || !scope.active) return;
+			if (data.type === "ready") {
+				if (!data.supported) {
+					fallback();
+					return;
+				}
+				try {
+					const offscreen = canvas.transferControlToOffscreen();
+					transferred = true;
+					const message: NetworkWorkerMessage = {
+						type: "init",
+						canvas: offscreen,
+						...dimensions(),
+						settings,
+						visible: !document.hidden,
+						pointer,
+					};
+					worker!.postMessage(message, [offscreen]);
+				} catch {
+					fallback();
+				}
+			} else if (data.type === "initialized") {
+				scope.clearTimeout(timeout);
+				timeout = 0;
+				canvas.dataset.networkRenderer = "worker";
+			} else if (data.type === "failed") fallback();
+		};
+		timeout = scope.setTimeout(fallback, 4000);
+	} catch {
+		fallback();
+	}
 }
