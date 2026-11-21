@@ -35,6 +35,22 @@ test("dragging has no per-movement layout reads and release needs no JS paint lo
   return {writes,animation:e.getAnimations()[0]?.playState,willChange:getComputedStyle(e).willChange};
  });
  expect(report.writes).toBe(0);expect(report.willChange).toBe("transform");
+ const bounce = await img.evaluate(async e => {
+  const animation=e.getAnimations()[0];animation.pause();
+  const rotations:number[]=[];
+  for (const ms of [700,800,900,1000,1100,1200,1300,1400,1500,1600,1700,1800,1900,2000]) {
+   animation.currentTime=ms;
+   await new Promise(requestAnimationFrame);
+   const m=new DOMMatrixReadOnly(getComputedStyle(e).transform);
+   rotations.push(Math.atan2(m.b,m.a)*180/Math.PI);
+  }
+  const duration=Number(animation.effect!.getTiming().duration);
+  animation.finish();
+  return {rotations,duration};
+ });
+ expect(bounce.duration).toBeGreaterThan(10000);
+ expect(Math.max(...bounce.rotations)).toBeGreaterThan(5);
+ expect(Math.min(...bounce.rotations)).toBeLessThan(-5);
  await expect.poll(()=>img.evaluate(e=>e.getAnimations().length),{timeout:2500}).toBe(0);
  await expect(img).toHaveCSS("transform","matrix(1, 0, 0, 1, 0, 0)");
  expect(errors).toEqual([]);
@@ -87,4 +103,24 @@ test("touch pointer drag on tablet is captured and released safely",async({brows
  await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
  await expect.poll(()=>page.locator(".sakana-widget-img").evaluate(e=>e.getAnimations().length)).toBe(1);
  await context.close();
+});
+
+test("ordinary release keeps visibly swinging for multiple seconds without script writes",async({page})=>{
+ await setup(page);
+ await drag(page,160,-60);
+ const report=await page.locator(".sakana-widget-img").evaluate(async e=>{
+  const samples:number[]=[];let writes=0;
+  const observer=new MutationObserver(r=>writes+=r.length);observer.observe(e,{attributes:true,attributeFilter:["style"]});
+  for(let i=0;i<20;i++) {
+   await new Promise(r=>setTimeout(r,100));
+   const m=new DOMMatrixReadOnly(getComputedStyle(e).transform);
+   samples.push(Math.atan2(m.b,m.a)*180/Math.PI);
+  }
+  observer.disconnect();return {samples,writes,playing:e.getAnimations()[0]?.playState};
+ });
+ const tail=report.samples.slice(8);
+ expect(Math.max(...tail)).toBeGreaterThan(6);
+ expect(Math.min(...tail)).toBeLessThan(-6);
+ expect(report.playing).toBe("running");expect(report.writes).toBe(0);
+ console.log("visible-rebound",JSON.stringify(report));
 });

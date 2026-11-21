@@ -1,15 +1,43 @@
 import type { FeatureScope } from "../scope";
 
 export type Pose = { r: number; y: number };
-export const SPRING_DURATION = 1600;
+export const SPRING_STEP = 1000 / 60;
+export type Spring = { samples: Pose[]; duration: number };
 const rest: Pose = { r: 0, y: 0 };
-export function springPose(start: Pose, elapsed: number): Pose {
-	const t = Math.max(0, elapsed) / 1000;
-	if (elapsed >= SPRING_DURATION) return { ...rest };
-	const decay = Math.exp(-4.8 * t);
+// Sample the original Sakana spring at a fixed 60 Hz. Sampling happens once
+// per release; playback stays on the compositor regardless of page frame rate.
+export function createSpring(start: Pose, damping = 0.99): Spring {
+	const samples = [{ ...start }];
+	let { r, y } = start,
+		w = 0,
+		t = 0;
+	for (let frame = 1; frame <= 1800; frame++) {
+		w -= r * 2;
+		r += w * 0.08 * 1.2;
+		w *= damping;
+		t -= y * 2;
+		y += t * 0.08 * 2;
+		t *= damping;
+		if (Math.max(Math.abs(r), Math.abs(y), Math.abs(w), Math.abs(t)) < 0.1) {
+			samples.push({ ...rest });
+			break;
+		}
+		samples.push({ r, y });
+	}
+	samples[samples.length - 1] = { ...rest };
+	return { samples, duration: (samples.length - 1) * SPRING_STEP };
+}
+export function springPose(spring: Spring, elapsed: number): Pose {
+	if (elapsed >= spring.duration) return { ...rest };
+	const position =
+		(Math.max(0, elapsed) / spring.duration) * (spring.samples.length - 1);
+	const index = Math.floor(position),
+		fraction = position - index;
+	const from = spring.samples[index],
+		to = spring.samples[index + 1] || from;
 	return {
-		r: start.r * decay * Math.cos(14 * t),
-		y: start.y * decay * Math.cos(17 * t),
+		r: from.r + (to.r - from.r) * fraction,
+		y: from.y + (to.y - from.y) * fraction,
 	};
 }
 export const artworkTransform = ({ r, y }: Pose) =>
@@ -77,7 +105,8 @@ export function bindSakanaMotion(
 		auto = false,
 		timer = 0,
 		disposed = false;
-	let spring: { start: Pose; image: Animation; rod: Animation } | undefined;
+	let damping = 0.99;
+	let spring: { curve: Spring; image: Animation; rod: Animation } | undefined;
 
 	const paint = (next: Pose) => {
 		pose = next;
@@ -87,7 +116,7 @@ export function bindSakanaMotion(
 	const stopSpring = () => {
 		if (!spring) return;
 		const next = springPose(
-			spring.start,
+			spring.curve,
 			Number(spring.image.currentTime) || 0,
 		);
 		spring.image.onfinish = null;
@@ -141,11 +170,10 @@ export function bindSakanaMotion(
 			paint({ ...rest });
 			return;
 		}
-		const samples = Array.from({ length: 97 }, (_, i) =>
-			springPose(start, (i * SPRING_DURATION) / 96),
-		);
+		const curve = createSpring(start, damping);
+		const samples = curve.samples;
 		const options: KeyframeAnimationOptions = {
-			duration: SPRING_DURATION,
+			duration: curve.duration,
 			easing: "linear",
 			fill: "none",
 		};
@@ -157,7 +185,7 @@ export function bindSakanaMotion(
 			samples.map((p) => ({ transform: rodTransform(p, size, controls) })),
 			options,
 		);
-		spring = { start, image: imageAnimation, rod: rodAnimation };
+		spring = { curve, image: imageAnimation, rod: rodAnimation };
 		// The resting inline pose also covers throttled finish events in background tabs.
 		paint({ ...rest });
 		imageAnimation.onfinish = () => {
@@ -277,6 +305,9 @@ export function bindSakanaMotion(
 	scope.own(dispose);
 	return {
 		rebound,
+		setDamping: (value: number) => {
+			damping = value;
+		},
 		cancel,
 		setAuto,
 		toggleAuto: () => setAuto(!auto),
