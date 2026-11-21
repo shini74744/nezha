@@ -69,6 +69,11 @@ export default function Header() {
     const [dropdownOpen, setDropdownOpen] = useState(false)
 
     const navigate = useNavigate()
+    const handleLogout = () => {
+        // Async revocation can fail; close the action menu before awaiting it.
+        setDropdownOpen(false)
+        void logout()
+    }
 
     const disableAnimatedMan = animated.enabled
         ? animated.disabled
@@ -209,7 +214,7 @@ export default function Header() {
                                             </DropdownMenuGroup>
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem
-                                                onClick={logout}
+                                                onClick={handleLogout}
                                                 className="cursor-pointer"
                                             >
                                                 <LogOut />
@@ -443,7 +448,7 @@ export default function Header() {
                                     )}
                                 </DropdownMenuGroup>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={logout} className="cursor-pointer">
+                                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                                     <LogOut />
                                     {t("Logout")}
                                     <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>

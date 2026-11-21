@@ -695,7 +695,13 @@ func TestDashboardDeploymentLifecycle(t *testing.T) {
 	rejectedRequest.Header.Set("Authorization", "Bearer "+token)
 	rejectedResponse, err := client.Do(rejectedRequest)
 	require.NoError(t, err)
-	require.Equal(t, http.StatusUnauthorized, rejectedResponse.StatusCode)
+	// DDnezha's legacy auth envelope reports unauthorized with HTTP 200.
+	require.Equal(t, http.StatusOK, rejectedResponse.StatusCode)
+	var rejected model.CommonResponse[any]
+	require.NoError(t, json.NewDecoder(rejectedResponse.Body).Decode(&rejected))
+	require.False(t, rejected.Success)
+	require.Equal(t, "ApiErrorUnauthorized", rejected.Error)
+	require.Nil(t, rejected.Data)
 	_ = rejectedResponse.Body.Close()
 	request("GET", "/api/v1/profile", otherToken, nil, nil)
 	t.Log("DDnezha server-side logout rejects copied tokens and preserves other sessions")
