@@ -10,13 +10,15 @@
 
 ## 安装与管理
 
-主面板与 Agent 统一在本仓库维护：当前正式安装包为主面板 **v0.0.31**、Agent **v1.0.11**，以后分别递增版本（以正式 Releases 及组件版本入口为准）。源码与安装包的对应关系见 [更新记录](CHANGELOG.md)；`main` 后续可能包含尚未打包的修改，源码推送不等于安装包更新。Agent 源码在 [`agent/`](agent/)，两者安装包均在本仓库 Releases，更新使用独立版本入口，不能用全仓库 Latest 判断 Agent 版本。旧 `shini74744/agent` 仓库仅保留历史，不再用于新安装或后续更新。详见 [统一仓库、升级与发布](docs/unified-repository.md)。
+主面板与 Agent 统一在本仓库维护：当前正式安装包为主面板 **v0.0.32**、Agent **v1.0.11**，以后分别递增版本（以正式 Releases 及组件版本入口为准）。源码与安装包的对应关系见 [更新记录](CHANGELOG.md)；`main` 后续可能包含尚未打包的修改，源码推送不等于安装包更新。Agent 源码在 [`agent/`](agent/)，两者安装包均在本仓库 Releases，更新使用独立版本入口，不能用全仓库 Latest 判断 Agent 版本。旧 `shini74744/agent` 仓库仅保留历史，不再用于新安装或后续更新。详见 [统一仓库、升级与发布](docs/unified-repository.md)。
 
 **生命周期隔离**：Agent v1.0.2 使用独立 `DDnezha` 程序／服务、`/opt/DDnezha`（Windows 为 `C:\DDnezha`）和 `DDNZ_*` 变量。只隔离安装、升级和卸载，不改变通信协议；现有旧目录节点需要受控迁移。主面板入口为 `./nezha.sh`，Agent 入口为 `cd /opt/DDnezha && ./agent.sh uninstall`；v1.0.3 起自动保存 Agent 管理脚本，不覆盖当前目录的同名官方文件。详见 [DDnezha 隔离说明](docs/ddnezha-isolation.md)。
 
 Linux systemd 部署请使用[本仓库 Releases](https://github.com/shini74744/nezha/releases/latest) 和[面板管理说明](PANEL_MANAGEMENT.md)。`bash /opt/nezha/nezha.sh` 提供交互菜单，停止和重启显示实际停机阶段；更新只下载 `shini74744/nezha` 的校验安装包，不回退到官方版本。
 
 ## 二开新增功能
+
+- **账单显示与服务器 IP**：每台机器可独立隐藏价格或剩余天数，默认显示；SSH 安全页支持 IP 搜索；后台服务器列表保留离线机器最后上报的地址。见 [v0.0.32 更新范围](docs/release-parity-v032.md)。
 
 > 主面板正式版本从 `v0.0.1`、自有 Agent 从 `v1.0.0` 重新编号，保留既有功能与数据，不是上游同名旧版。包含一机一密、认证防火墙、双栈地区延迟及自动快照。升级顺序和新旧版本兼容见 [版本重新编号](docs/version-renumbering.md)，完整变更见 [更新记录](CHANGELOG.md)。
 
