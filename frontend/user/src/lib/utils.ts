@@ -259,6 +259,8 @@ interface BillingData {
 	autoRenewal: string;
 	cycle: string;
 	amount: string;
+	showPrice?: "0" | "1";
+	showExpiry?: "0" | "1";
 }
 
 interface PlanData {
@@ -300,6 +302,8 @@ export function parsePublicNote(publicNote: string): PublicNoteData | null {
 					autoRenewal: data.billingDataMod.autoRenewal || "",
 					cycle: data.billingDataMod.cycle || "",
 					amount: data.billingDataMod.amount || "",
+					showPrice: data.billingDataMod.showPrice === "0" || data.billingDataMod.showPrice === false ? "0" : "1",
+					showExpiry: data.billingDataMod.showExpiry === "0" || data.billingDataMod.showExpiry === false ? "0" : "1",
 				},
 			};
 		}
@@ -331,6 +335,8 @@ export function parsePublicNote(publicNote: string): PublicNoteData | null {
 				autoRenewal: data.billingDataMod.autoRenewal || "",
 				cycle: data.billingDataMod.cycle || "",
 				amount: data.billingDataMod.amount || "",
+				showPrice: data.billingDataMod.showPrice === "0" || data.billingDataMod.showPrice === false ? "0" : "1",
+				showExpiry: data.billingDataMod.showExpiry === "0" || data.billingDataMod.showExpiry === false ? "0" : "1",
 			},
 			planDataMod: {
 				bandwidth: data.planDataMod.bandwidth || "",

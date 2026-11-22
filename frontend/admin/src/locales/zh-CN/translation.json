@@ -241,6 +241,8 @@
     "Preview": "预览",
     "Option": "选项",
     "PublicNote": {
+        "ShowPrice": "显示金额",
+        "ShowExpiry": "显示剩余天数",
         "Label": "公开备注",
         "Billing": "账单信息",
         "Plan": "套餐配置",

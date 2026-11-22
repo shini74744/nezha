@@ -724,6 +724,13 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                             >
                                                                 {t("PublicNote.Clear") ?? "Clear"}
                                                             </Button>
+                                                            <div className="ml-auto flex shrink-0 items-center gap-1.5" data-billing-visibility="showExpiry">
+                                                                <Label htmlFor="billing-showExpiry" className="text-xs whitespace-nowrap">{t("PublicNote.ShowExpiry")}</Label>
+                                                                <Switch id="billing-showExpiry"
+                                                                    checked={publicNoteObj.billingDataMod?.showExpiry !== "0"}
+                                                                    onCheckedChange={checked => patchPublicNote("billingDataMod.showExpiry", checked ? "1" : "0")}
+                                                                />
+                                                            </div>
                                                         </div>
                                                         <Select
                                                             onValueChange={(val) =>
@@ -791,6 +798,13 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                             >
                                                                 {t("PublicNote.PayAsYouGo")}
                                                             </Button>
+                                                            <div className="ml-auto flex shrink-0 items-center gap-1.5" data-billing-visibility="showPrice">
+                                                                <Label htmlFor="billing-showPrice" className="text-xs whitespace-nowrap">{t("PublicNote.ShowPrice")}</Label>
+                                                                <Switch id="billing-showPrice"
+                                                                    checked={publicNoteObj.billingDataMod?.showPrice !== "0"}
+                                                                    onCheckedChange={checked => patchPublicNote("billingDataMod.showPrice", checked ? "1" : "0")}
+                                                                />
+                                                            </div>
                                                         </div>
                                                         <PlanValueInput
                                                             id="billing-amount" kind="amount" label={t("PublicNote.Amount")}

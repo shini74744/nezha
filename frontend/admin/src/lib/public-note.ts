@@ -24,6 +24,8 @@ export const PublicNoteSchema = z.object({
             autoRenewal: z.string().optional(),
             cycle: z.string().optional(),
             amount: z.string().optional(),
+            showPrice: z.enum(["0", "1"]).optional(),
+            showExpiry: z.enum(["0", "1"]).optional(),
         }).passthrough()
         .optional(),
     planDataMod: z

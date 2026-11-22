@@ -241,6 +241,8 @@
     "Value": "Value",
     "Preview": "Preview",
     "PublicNote": {
+        "ShowPrice": "Show price",
+        "ShowExpiry": "Show days left",
         "Label": "Public Note",
         "Billing": "Billing",
         "Plan": "Plan",

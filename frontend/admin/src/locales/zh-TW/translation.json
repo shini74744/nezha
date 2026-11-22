@@ -287,5 +287,6 @@
     "ServiceSortSearch": "搜尋服務名稱或ID",
     "ServiceSortSearchClear": "清除搜尋",
     "ServiceSortSearchEmpty": "找不到符合的服務",
-    "ServiceSortSearchHint": "顯示 {{count}} / {{total}} 项"
+    "ServiceSortSearchHint": "顯示 {{count}} / {{total}} 项",
+    "PublicNote": {"ShowPrice": "顯示金額", "ShowExpiry": "顯示剩餘天數"}
 }

@@ -1,7 +1,7 @@
 // Public-note compatibility only; these settings do not change traffic accounting.
 type Obj = Record<string, any>;
 const object = (v: unknown): v is Obj => !!v && typeof v === "object" && !Array.isArray(v);
-const billing = {startDate:"开始时间",endDate:"到期时间",autoRenewal:"自动续费",cycle:"付费周期",amount:"价格"};
+const billing = {startDate:"开始时间",endDate:"到期时间",autoRenewal:"自动续费",cycle:"付费周期",amount:"价格",showPrice:"显示金额",showExpiry:"显示剩余天数"};
 const plan = {bandwidth:"带宽",trafficVol:"流量",trafficType:"流量统计方向",resetDay:"流量重置日",IPv4:"IPv4",IPv6:"IPv6",networkRoute:"网络线路",networkRoutes:"运营商线路",networkRouteColors:"运营商颜色",networkRouteLogos:"运营商图标",providerLogo:"厂商图标",networkRouteEntries:"其他运营商线路",linkTags:"链接标签",extra:"补充说明",extraColors:"补充说明颜色"};
 export const routeFields = [
  {key:"telecom",label:"中国电信",placeholder:"163PP/CN2",color:"#2563eb"},
@@ -31,6 +31,7 @@ export function normalizeNote(input:unknown):Obj {
  const out=aliases(input,{billingDataMod:"账单信息",planDataMod:"套餐信息"});
  if(out.billingDataMod!==undefined){
   const b=aliases(out.billingDataMod,billing);b.autoRenewal=flags(b.autoRenewal);
+  for(const key of ["showPrice","showExpiry"])if(b[key]!==undefined)b[key]=flags(b[key]);
   if(typeof b.cycle==="string")b.cycle=cycles[b.cycle]||cycles[b.cycle.toLowerCase()]||b.cycle;
   out.billingDataMod=b;
  }
@@ -109,6 +110,7 @@ export function chineseNote(input:Obj):string {
  if(out.billingDataMod){
   const b={...out.billingDataMod};
   b.autoRenewal=b.autoRenewal==="1"?true:b.autoRenewal==="0"?false:b.autoRenewal;
+  for(const key of ["showPrice","showExpiry"])if(b[key]!==undefined)b[key]=b[key]==="1"?true:b[key]==="0"?false:b[key];
   b.cycle=({Day:"日",Week:"周",Month:"月",Year:"年"} as Obj)[b.cycle]||b.cycle;
   out.billingDataMod=translated(b,billing);
  }
