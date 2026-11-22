@@ -22,7 +22,7 @@ type Policy = {
 type BanEntry = {ip:string;banned_at:number;expires_at:number}
 type BanPage = {items:BanEntry[];total:number;page:number;page_size:number;observed_at:number;complete:boolean}
 type Status = { backend?: string; backend_selection?: boolean; ban_paging?:boolean;ban_total?:number; imported_allowlist?: string[]; updated_at: number; revision: number; source: string; message: string; ports: number[]; banned: string[]; ban_ready: boolean; block_ready: boolean; dropped: number; reused: boolean; migrated: boolean; existing?: {active: boolean; ports: number[]; max_retry: number; find_time: number; ban_time: number; allowlist: string[]} }
-type Row = { id: number; name: string; policy: Policy; status: Status }
+type Row = { id: number; name: string; ip?: { ipv4_addr?: string; ipv6_addr?: string }; policy: Policy; status: Status }
 type Event = { id: string; time: number; username: string; source_ip: string; port: number; method: string; success: boolean; reason: string }
 export function parseSSHPorts(value: string) {
  const parts = value.trim().split(/[,，\s]+/)
@@ -65,7 +65,7 @@ export default function SSHLoginPage() {
  useEffect(()=>{const t=setTimeout(()=>{setDebouncedBanSearch(banSearch.trim());setBanPage(1)},300);return()=>clearTimeout(t)},[banSearch])
 
  const row = data?.find(r => r.id === selected)
- const rows = useMemo(() => (data || []).filter(r => (r.name + " " + r.id).toLowerCase().includes(search.toLowerCase())), [data, search])
+ const rows = useMemo(() => (data || []).filter(r => [r.name, r.id, r.ip?.ipv4_addr, r.ip?.ipv6_addr].join(" ").toLowerCase().includes(search.trim().toLowerCase())), [data, search])
  const eventsKey=admin&&selected&&activeTab==="records"?`/api/v1/ssh-login/${selected}/events`:null
  const {data:events,error:eventsError,loading:eventsLoading,refresh:refreshEvents}=useSSHRead<Event[]>(eventsKey,String(selected))
  const bansKey=admin&&selected&&activeTab==="bans"?"/api/v1/ssh-login/"+selected+"/bans?page="+banPage+"&page_size="+banSize+"&search="+encodeURIComponent(debouncedBanSearch):null
@@ -142,7 +142,7 @@ export default function SSHLoginPage() {
   {error && <p role="alert" className="mb-4 text-sm text-red-500">加载失败，请重试。</p>}
   <div className="grid min-w-0 gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
    <aside className="min-w-0 rounded-lg border bg-card/80 p-3 shadow-sm">
-    <Input aria-label="搜索服务器" placeholder="搜索服务器名称或 ID" value={search} onChange={e=>setSearch(e.target.value)}/>
+    <Input aria-label="搜索服务器" placeholder="搜索名称、ID 或 IP" value={search} onChange={e=>setSearch(e.target.value)}/>
     <div aria-label="SSH 服务器列表" className="mt-3 max-h-48 space-y-1 overflow-y-auto overscroll-contain lg:max-h-[70vh]">
      {isLoading ? <p className="p-2 text-sm">加载中…</p> : rows.map(s=><button key={s.id} disabled={saving} aria-pressed={selected===s.id} onClick={()=>choose(s.id)} className={"w-full rounded-md p-3 text-left transition-colors "+(selected===s.id?"bg-accent text-accent-foreground":"hover:bg-muted")}>
       <span className="block break-words text-sm font-medium">{s.name}</span>

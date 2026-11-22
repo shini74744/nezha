@@ -93,7 +93,7 @@ func TestSSHRouteRequiresAdminScope(t *testing.T) {
 
 func TestSSHAdminPATRemainsRestrictedToSelectedNodes(t *testing.T) {
 	defer setupTenancyTest(t)()
-	require.NoError(t, singleton.DB.AutoMigrate(&model.SSHLoginPolicy{}, &model.SSHUnbanCommand{}, &model.Server{}))
+	require.NoError(t, singleton.DB.AutoMigrate(&model.SSHLoginPolicy{}, &model.SSHUnbanCommand{}, &model.Server{}, &model.ServerIPHistory{}))
 	for _, s := range []*model.Server{{Common: model.Common{ID: 701}, UUID: "ssh-a"}, {Common: model.Common{ID: 702}, UUID: "ssh-b"}} {
 		require.NoError(t, singleton.DB.Create(s).Error)
 	}
@@ -177,7 +177,7 @@ func TestSSHBackendSaveRequiresCapabilityAndPreservesPolicy(t *testing.T) {
 
 func TestSSHListUsesBoundedBatchAndOptionalSummary(t *testing.T) {
 	defer setupTenancyTest(t)()
-	require.NoError(t, singleton.DB.AutoMigrate(&model.SSHLoginPolicy{}, &model.Server{}))
+	require.NoError(t, singleton.DB.AutoMigrate(&model.SSHLoginPolicy{}, &model.Server{}, &model.ServerIPHistory{}))
 	for i := 1; i <= 120; i++ {
 		server := model.Server{Common: model.Common{ID: uint64(i)}, UUID: fmt.Sprintf("ssh-speed-%d", i), Name: fmt.Sprint(i)}
 		require.NoError(t, singleton.DB.Create(&server).Error)
@@ -209,4 +209,40 @@ func TestSSHListUsesBoundedBatchAndOptionalSummary(t *testing.T) {
 	require.Len(t, rows, 1)
 	require.EqualValues(t, 2, rows[0].ID)
 	require.Equal(t, "fail2ban", rows[0].Policy.Backend)
+}
+
+func TestSSHListAddressesFollowUUIDAndLatestReport(t *testing.T) {
+	defer setupTenancyTest(t)()
+	require.NoError(t, singleton.DB.AutoMigrate(&model.Server{}, &model.ServerIPHistory{}, &model.SSHLoginPolicy{}))
+	for _, s := range []model.Server{
+		{Common: model.Common{ID: 701}, UUID: "offline-address", Name: "offline"},
+		{Common: model.Common{ID: 702}, UUID: "never-reported", Name: "unknown"},
+		{Common: model.Common{ID: 703}, UUID: "replaced-uuid", Name: "replacement"},
+	} {
+		require.NoError(t, singleton.DB.Create(&s).Error)
+	}
+	ip := model.IP{IPv4Addr: "192.0.2.8", IPv6Addr: "2001:db8::8"}
+	history := model.ServerIPHistory{ServerUUID: "offline-address", CurrentIP: ip, History: []model.ServerIPHistoryEntry{{IP: model.IP{IPv4Addr: "198.51.100.1"}}}}
+	require.NoError(t, singleton.DB.Create(&history).Error)
+	require.NoError(t, singleton.DB.Create(&model.ServerIPHistory{ServerUUID: "old-replaced-uuid", CurrentIP: model.IP{IPv4Addr: "203.0.113.3"}}).Error)
+	tok := &model.APIToken{ScopesCSV: model.ScopeAdminAll}
+	c, _ := patRequestCtx(t, tok, 1, "GET", "/ssh-login?summary=1", nil)
+	rows, err := listSSHLogin(c)
+	require.NoError(t, err)
+	require.Len(t, rows, 3)
+	require.Equal(t, ip, rows[0].IP)
+	require.Empty(t, rows[1].IP)
+	require.Empty(t, rows[2].IP)
+	history.CurrentIP = model.IP{IPv4Addr: "192.0.2.9"}
+	require.NoError(t, singleton.DB.Save(&history).Error)
+	rows, err = listSSHLogin(c)
+	require.NoError(t, err)
+	require.Equal(t, history.CurrentIP, rows[0].IP)
+	tok.SetServerIDs([]uint64{702})
+	c, _ = patRequestCtx(t, tok, 1, "GET", "/ssh-login?summary=1", nil)
+	rows, err = listSSHLogin(c)
+	require.NoError(t, err)
+	require.Len(t, rows, 1)
+	require.EqualValues(t, 702, rows[0].ID)
+	require.Empty(t, rows[0].IP)
 }

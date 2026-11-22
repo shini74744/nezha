@@ -17,17 +17,29 @@ import (
 type sshLoginRow struct {
 	ID     uint64               `json:"id"`
 	Name   string               `json:"name"`
+	IP     model.IP             `json:"ip"`
 	Policy model.SSHLoginPolicy `json:"policy"`
 	Status model.SSHLoginStatus `json:"status"`
 }
 
 func listSSHLogin(c *gin.Context) ([]sshLoginRow, error) {
-	var servers []*model.Server
-	if err := singleton.DB.Select("id", "uuid", "name").Order("display_index DESC, id").Find(&servers).Error; err != nil {
+	// Use the last reported addresses by UUID, including offline nodes. Joining
+	// only the current pair keeps this summary bounded and avoids per-node reads.
+	type serverAddress struct {
+		ID   uint64
+		UUID string
+		Name string
+		IP   model.IP `gorm:"column:current_ip;serializer:json"`
+	}
+	var servers []serverAddress
+	if err := singleton.DB.Table("servers").
+		Select("servers.id, servers.uuid, servers.name, server_ip_histories.current_ip").
+		Joins("LEFT JOIN server_ip_histories ON server_ip_histories.server_uuid = servers.uuid").
+		Order("servers.display_index DESC, servers.id").
+		Find(&servers).Error; err != nil {
 		return nil, err
 	}
-
-	permitted := make([]*model.Server, 0, len(servers))
+	permitted := make([]serverAddress, 0, len(servers))
 	uuids := make([]string, 0, len(servers))
 	for _, server := range servers {
 		if patAllowsServer(c, server.ID) {
@@ -60,7 +72,7 @@ func listSSHLogin(c *gin.Context) ([]sshLoginRow, error) {
 			st.BanTotal = max(st.BanTotal, len(st.Banned))
 			st.Banned = []string{}
 		}
-		rows = append(rows, sshLoginRow{ID: server.ID, Name: server.Name, Policy: policy, Status: st})
+		rows = append(rows, sshLoginRow{ID: server.ID, Name: server.Name, IP: server.IP, Policy: policy, Status: st})
 	}
 
 	return rows, nil
