@@ -30,7 +30,7 @@ for (const width of [320, 390, 1440]) test("billing controls save and keep layou
     const control = dialog.locator('[data-billing-visibility="' + flag + '"]');
     expect(await control.evaluate(el => {
       const r = el.getBoundingClientRect(), row = el.parentElement!, a = row.firstElementChild!.getBoundingClientRect(), p = row.getBoundingClientRect();
-      return r.right <= innerWidth && r.left >= 0 && r.bottom <= p.bottom + 1 && Math.abs(r.top + r.height / 2 - a.top - a.height / 2) < 3 && row.scrollWidth <= row.clientWidth + 1;
+      return r.right <= innerWidth && r.left >= 0 && r.bottom <= p.bottom + 1 && Math.abs(r.top + r.height / 2 - a.top - a.height / 2) < 3 && row.scrollWidth <= row.clientWidth + 1 && a.height < 20;
     })).toBe(true);
   }
   await page.screenshot({ path: info.outputPath("billing-controls.png") });

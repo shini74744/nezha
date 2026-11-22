@@ -768,14 +768,14 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                         )}
                                                     </div>
                                                     <div className="space-y-1 sm:col-span-2">
-                                                        <div className="flex items-center gap-2">
-                                                            <Label className="text-xs">
+                                                        <div className="flex items-center gap-1 sm:gap-2">
+                                                            <Label className="text-xs shrink-0 whitespace-nowrap">
                                                                 {t("PublicNote.Amount")}
                                                             </Label>
                                                             <Button
                                                                 type="button"
                                                                 variant="outline"
-                                                                className="text-xs px-2 py-0 h-auto bg-gray-200 dark:bg-gray-700"
+                                                                className="text-xs px-1 sm:px-2 py-0 h-auto bg-gray-200 dark:bg-gray-700"
                                                                 onClick={() =>
                                                                     patchPublicNote(
                                                                         "billingDataMod.amount",
@@ -788,7 +788,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                             <Button
                                                                 type="button"
                                                                 variant="outline"
-                                                                className="text-xs px-2 py-0 h-auto bg-gray-200 dark:bg-gray-700"
+                                                                className="text-xs px-1 sm:px-2 py-0 h-auto bg-gray-200 dark:bg-gray-700"
                                                                 onClick={() =>
                                                                     patchPublicNote(
                                                                         "billingDataMod.amount",
@@ -798,7 +798,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({ data, mutate }) => {
                                                             >
                                                                 {t("PublicNote.PayAsYouGo")}
                                                             </Button>
-                                                            <div className="ml-auto flex shrink-0 items-center gap-1.5" data-billing-visibility="showPrice">
+                                                            <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5" data-billing-visibility="showPrice">
                                                                 <Label htmlFor="billing-showPrice" className="text-xs whitespace-nowrap">{t("PublicNote.ShowPrice")}</Label>
                                                                 <Switch id="billing-showPrice"
                                                                     checked={publicNoteObj.billingDataMod?.showPrice !== "0"}
