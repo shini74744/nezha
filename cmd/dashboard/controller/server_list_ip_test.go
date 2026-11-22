@@ -17,13 +17,13 @@ func setupServerListIPFixture(t *testing.T) {
 	t.Helper()
 	setupServerGroupVisibilityFixture(t)
 	require.NoError(t, singleton.DB.AutoMigrate(&model.ServerIPHistory{}))
-	for _, s := range []model.Server{
+	for _, s := range []*model.Server{
 		{Common: model.Common{ID: 3, UserID: 200}, Name: "never reported", UUID: "new"},
 		{Common: model.Common{ID: 4, UserID: 1}, Name: "replaced identity", UUID: "replacement"},
 		{Common: model.Common{ID: 5, UserID: 1}, Name: "IPv6 only", UUID: "v6"},
 		{Common: model.Common{ID: 6, UserID: 1}, Name: "no UUID"},
 	} {
-		require.NoError(t, singleton.DB.Create(&s).Error)
+		require.NoError(t, singleton.DB.Create(s).Error)
 	}
 	for _, r := range []model.ServerIPHistory{
 		{ServerUUID: "public", CurrentIP: model.IP{IPv4Addr: "192.0.2.82", IPv6Addr: "2001:db8::82"}, History: []model.ServerIPHistoryEntry{{IP: model.IP{IPv4Addr: "192.0.2.81"}}}},
@@ -37,7 +37,7 @@ func setupServerListIPFixture(t *testing.T) {
 	singleton.ServerShared = singleton.NewServerClass()
 }
 
-func serverListResponse(t *testing.T, user *model.User, tok *model.APIToken) []model.Server {
+func serverListResponse(t *testing.T, user *model.User, tok *model.APIToken) []*model.Server {
 	t.Helper()
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -49,8 +49,8 @@ func serverListResponse(t *testing.T, user *model.User, tok *model.APIToken) []m
 	listHandler(listServer)(c)
 	require.Equal(t, 200, w.Code)
 	var response struct {
-		Success bool           `json:"success"`
-		Data    []model.Server `json:"data"`
+		Success bool            `json:"success"`
+		Data    []*model.Server `json:"data"`
 	}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
 	require.True(t, response.Success, w.Body.String())
@@ -64,7 +64,7 @@ func TestServerListIPSurvivesRestartWithoutChangingRuntime(t *testing.T) {
 	require.Empty(t, shared.GeoIP.IP.Join())
 	for restart := 0; restart < 2; restart++ {
 		rows := serverListResponse(t, admin, nil)
-		got := make(map[uint64]model.Server)
+		got := make(map[uint64]*model.Server)
 		for _, s := range rows {
 			got[s.ID] = s
 		}

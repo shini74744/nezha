@@ -214,12 +214,12 @@ func TestSSHListUsesBoundedBatchAndOptionalSummary(t *testing.T) {
 func TestSSHListAddressesFollowUUIDAndLatestReport(t *testing.T) {
 	defer setupTenancyTest(t)()
 	require.NoError(t, singleton.DB.AutoMigrate(&model.Server{}, &model.ServerIPHistory{}, &model.SSHLoginPolicy{}))
-	for _, s := range []model.Server{
+	for _, s := range []*model.Server{
 		{Common: model.Common{ID: 701}, UUID: "offline-address", Name: "offline"},
 		{Common: model.Common{ID: 702}, UUID: "never-reported", Name: "unknown"},
 		{Common: model.Common{ID: 703}, UUID: "replaced-uuid", Name: "replacement"},
 	} {
-		require.NoError(t, singleton.DB.Create(&s).Error)
+		require.NoError(t, singleton.DB.Create(s).Error)
 	}
 	ip := model.IP{IPv4Addr: "192.0.2.8", IPv6Addr: "2001:db8::8"}
 	history := model.ServerIPHistory{ServerUUID: "offline-address", CurrentIP: ip, History: []model.ServerIPHistoryEntry{{IP: model.IP{IPv4Addr: "198.51.100.1"}}}}
