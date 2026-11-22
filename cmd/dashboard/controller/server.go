@@ -41,6 +41,9 @@ func listServer(c *gin.Context) ([]*model.Server, error) {
 		}
 		ssl = append(ssl, server.RuntimeCopy(runtime))
 	}
+	if err := restoreServerListIPs(ssl); err != nil {
+		return nil, err
+	}
 	return ssl, nil
 }
 
