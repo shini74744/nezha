@@ -70,7 +70,7 @@ export function NetworkInterfacePicker({
     return (
         <details className="min-w-0 rounded-md border border-input p-3" data-monitor-nic-picker>
             <summary className="cursor-pointer break-words text-sm">
-                {automatic ? "沿用默认统计规则" : "已选择 " + selectedCount + " 个网卡"}
+                选择监控网卡 · {automatic ? "默认" : "已选择 " + selectedCount + " 个网卡"}
             </summary>
             <div className="mt-3 space-y-2">
                 <div className="flex justify-end">

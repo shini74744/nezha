@@ -92,7 +92,9 @@ for (const width of [320, 390, 844, 1440])
             await row.locator('[data-column="actions"] button').nth(2).click()
             const dialog = page.getByRole("dialog")
             const group = dialog.getByRole("group", { name: "监控网卡" })
-            await expect(group.getByText("沿用默认统计规则")).toBeVisible()
+            await expect(group.getByText("选择监控网卡 · 默认")).toBeVisible()
+            await expect(group.locator("[data-monitor-nic-picker]")).not.toHaveAttribute("open", "")
+            await group.locator("summary").click()
             await expect(
                 group.getByRole("checkbox", { name: "统计 enp2s0f0", exact: true }),
             ).toBeChecked()
@@ -103,7 +105,7 @@ for (const width of [320, 390, 844, 1440])
             for (const name of ["br1204", "br1205", "ppp0"]) {
                 await group.getByRole("checkbox", { name: "统计 " + name, exact: true }).uncheck()
             }
-            await expect(group.getByText("已选择 2 个网卡")).toBeVisible()
+            await expect(group.getByText("选择监控网卡 · 已选择 2 个网卡")).toBeVisible()
             await expect(group.getByText(/可能重复计数/)).toHaveCount(0)
             expect(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true)
             expect(await group.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true)

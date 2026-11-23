@@ -8,10 +8,11 @@ import {
 import { useFeature } from "./context";
 import { footerPlacement } from "./footer-collision";
 import { isBuiltInFooterURL } from "./footer-network";
+import { isTouchDevice } from "./native-hooks";
 
 export function FitFooterRow({ children }: { children: ReactNode }) {
 	const ip = useFeature("footerIP"),
-		native = ip.enabled && isBuiltInFooterURL(ip.url);
+		native = ip.enabled && !isTouchDevice() && isBuiltInFooterURL(ip.url);
 	const container = useRef<HTMLDivElement>(null),
 		left = useRef<HTMLDivElement>(null),
 		right = useRef<HTMLDivElement>(null);

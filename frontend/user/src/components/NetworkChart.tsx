@@ -1,3 +1,5 @@
+import "@/appearance/overview-surfaces.css";
+import { ViewportChartTooltip } from "./ViewportChartTooltip";
 import {networkSeriesColor} from "@/lib/network-series-color";
 import "./network-series-color.css";
 import {PaperClip} from "@/themes/paper/PaperStationery";
@@ -30,7 +32,6 @@ import {
 	ChartLegend,
 	ChartLegendContent,
 	ChartTooltip,
-	ChartTooltipContent,
 } from "@/components/ui/chart";
 import {
 	Tooltip,
@@ -253,6 +254,8 @@ export const NetworkChartClient = React.memo(function NetworkChart({
 	isLogin: boolean;
 	unavailable?: React.ReactNode;
 }) {
+	const chartAnchor = React.useRef<HTMLDivElement>(null);
+	const [tooltipHeld, setTooltipHeld] = React.useState(false);
 	const { t } = useTranslation();
 	const [showPeriodLoading, setShowPeriodLoading] = React.useState(false);
 	const loadingStartedAtRef = React.useRef<number | null>(null);
@@ -707,7 +710,7 @@ export const NetworkChartClient = React.memo(function NetworkChart({
 								{t("monitor.clearSelections", "Clear")} ({activeCharts.length})
 							</button>
 						)}
-						<ChartContainer deferMount
+						<ChartContainer ref={chartAnchor} deferMount
 							config={activeCharts.length === 1 ? {...chartConfig, avg_delay: {label: chartConfig.avg_delay?.label, color: getColorByIndex(activeCharts[0])}} : chartConfig}
 							className={cn(
 								"aspect-auto h-105 sm:h-62.5 w-full transition-opacity",
@@ -782,10 +785,10 @@ export const NetworkChartClient = React.memo(function NetworkChart({
 										tickFormatter={(value) => `${value}%`}
 									/>
 								)}
-								<ChartTooltip
+								<ChartTooltip active={tooltipHeld ? true : undefined}
 									isAnimationActive={false}
 									content={
-										<ChartTooltipContent
+										<ViewportChartTooltip anchor={chartAnchor} onHoldChange={setTooltipHeld}
 											indicator={"line"}
 											labelKey="created_at"
 											labelFormatter={(_, payload) => {
@@ -822,7 +825,7 @@ export const NetworkChartClient = React.memo(function NetworkChart({
 									}
 								/>
 								{activeCharts.length !== 1 && (
-									<ChartLegend content={<ChartLegendContent />} />
+									<ChartLegend content={<ChartLegendContent className="nz-network-legend" />} />
 								)}
 								{chartElements}
 							</ComposedChart>

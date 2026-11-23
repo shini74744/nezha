@@ -1,3 +1,4 @@
+import "@/appearance/overview-surfaces.css";
 import {PaperControlGlyph} from "@/themes/paper/PaperControlGlyph";
 import { useQueryClient } from "@tanstack/react-query";
 import { safeLocalStorage, safeSessionStorage } from "@/lib/storage";
@@ -491,7 +492,7 @@ export default function Servers({
 				className={cn("flex mt-6 items-center justify-between gap-2 server-overview-controls",{"nz-controls-with-sponsor":sponsorFeature.enabled&&sponsorFeature.desktop})}
 			>
 				<section className="flex items-center gap-2 w-full overflow-hidden">
-					<button
+					<button data-overview-view-control aria-pressed={showMap === "1"}
 						onClick={() => {
 							setShowMap(showMap === "0" ? "1" : "0");
 							if (!presentation) safeLocalStorage.setItem(preference("showMap"), showMap === "0" ? "1" : "0");
@@ -510,7 +511,7 @@ export default function Servers({
 						<span className="sr-only">切换地区地图</span>{import.meta.env.VITE_THEME_VARIANT==="paper"?<><PaperControlGlyph kind="map"/><span aria-hidden="true">地图</span></>:<MapIcon className="size-[13px]" />}
 					</button>
 					<StatisticsMenu value={statisticsView} onChange={selectStatisticsView} split={statisticsSplit} disabled={displaySettingsLoading} />
-					<button
+					<button data-overview-view-control aria-pressed={inline === "1"}
 						onClick={() => {
 							setInline(inline === "0" ? "1" : "0");
 							safeLocalStorage.setItem(preference("inline"), inline === "0" ? "1" : "0");
@@ -535,7 +536,7 @@ export default function Servers({
 					/>
 				</section>
 				<NativeDesktopSponsor/>
-				<div
+				<div data-sort-control
 					className={cn(
 						"flex h-8 items-center rounded-full border border-stone-200 bg-white text-sm text-stone-600 shadow-xs transition-all dark:border-stone-800 dark:bg-stone-800 dark:text-stone-300 dark:shadow-none shrink-0",
 						{

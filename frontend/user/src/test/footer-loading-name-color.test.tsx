@@ -28,6 +28,18 @@ afterEach(()=>{cleanup();globalThis.ResizeObserver=OriginalResizeObserver;vi.use
 const tick=(ms=1000)=>act(()=>vi.advanceTimersByTime(ms));
 const visible=(view:ReturnType<typeof render>)=>view.container.querySelector<HTMLElement>("[data-native-footer-ip]")!.dataset.visible;
 describe("footer IP loading and geometry gate",()=>{
+ it.each(["Mozilla/5.0 (iPhone) Mobile", "Mozilla/5.0 (Linux; Android 14) Chrome", "Mozilla/5.0 (iPad) Mobile", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15)"])("never mounts or probes on mobile/tablet %s", ua=>{
+  vi.stubGlobal("navigator", Object.create(navigator, {userAgent:{value:ua},maxTouchPoints:{value:5}}));
+  const view=render(fixture());tick();
+  act(()=>{window.dispatchEvent(new Event("scroll"));window.dispatchEvent(new Event("resize"))});tick();
+  expect(view.container.querySelector("[data-native-footer-ip]")).toBeNull();
+  expect(fetch).not.toHaveBeenCalled();
+ });
+ it("keeps desktop visibility even in a narrow window",()=>{
+  vi.stubGlobal("innerWidth",320);
+  const view=render(fixture());tick(300);expect(visible(view)).toBe("true");
+ });
+
  it.each([[false,false],[true,false]])("never opens a short loading page, connected=%s loaded=%s",(connected,loaded)=>{
   const view=render(fixture(connected,loaded));tick();
   expect(visible(view)).toBe("false");

@@ -3,15 +3,16 @@ import { createPortal } from "react-dom";
 import { useWebSocketContext } from "@/hooks/use-websocket-context";
 import { useAppearanceLayout, useFeature } from "./context";
 import { FooterNetworkCard, isBuiltInFooterURL } from "./footer-network";
+import { isTouchDevice } from "./native-hooks";
 export function NativeFooterIP() {
 	const f = useFeature("footerIP"),
 		[visible, setVisible] = useState(false),
 		[dismissed, setDismissed] = useState(false);
 	const { connected, lastData } = useWebSocketContext();
-	const mobile = /Mobi|Android/i.test(navigator.userAgent),
+	const mobile = isTouchDevice(),
 		native = isBuiltInFooterURL(f.url);
 	const ready = connected && lastData !== null,
-		allowed = native || !mobile;
+		allowed = !mobile;
 	const shown = f.enabled && allowed && ready && visible && !dismissed;
 	const layout = useAppearanceLayout();
 	const footer = useFeature("footer");
@@ -21,13 +22,14 @@ export function NativeFooterIP() {
 		const slot = layout.footer.current;
 		setHost(
 			native &&
+				allowed &&
 				footer.enabled &&
 				f.enabled &&
 				slot?.hasAttribute("data-footer-network-slot")
 				? slot
 				: null,
 		);
-	}, [native, footer.enabled, f.enabled, layout.footer]);
+	}, [native, allowed, footer.enabled, f.enabled, layout.footer]);
 	useLayoutEffect(() => {
 		const panel = panelRef.current;
 		if (!native || !host || !panel) return;
@@ -82,7 +84,7 @@ export function NativeFooterIP() {
 			requestAnimationFrame(notify);
 		};
 	}, [shown, f.height]);
-	if (!f.enabled) return null;
+	if (!f.enabled || !allowed) return null;
 	const panel = (
 		<div
 			ref={panelRef}

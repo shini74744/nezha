@@ -1,4 +1,5 @@
 import { isBuiltInFooterURL } from "@/appearance/footer-network";
+import { isTouchDevice } from "@/appearance/native-hooks";
 import {useFeature,useAppearanceLayout} from "@/appearance/context";
 import {NativeFooter} from "@/appearance/widgets";
 import {NativeMobileSponsor} from "@/appearance/native-sponsor";
@@ -11,7 +12,8 @@ const Footer: React.FC = () => {
 const nativeFooter=useFeature('footer');
 const footerIP=useFeature('footerIP');
 const layout=useAppearanceLayout(), sponsorFeature=useFeature("sponsor");
-const networkSlot=nativeFooter.enabled && footerIP.enabled && isBuiltInFooterURL(footerIP.url);
+const networkEnabled=footerIP.enabled && !isTouchDevice() && isBuiltInFooterURL(footerIP.url);
+const networkSlot=nativeFooter.enabled && networkEnabled;
 	const { t } = useTranslation();
 	const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
 
@@ -23,7 +25,7 @@ const networkSlot=nativeFooter.enabled && footerIP.enabled && isBuiltInFooterURL
 		retry: false,
 	});
 
-	return <div ref={layout.footer} style={{"--nz-footer-card-height": networkSlot ? "95px" : `${footerIP.height}px`, minHeight:networkSlot ? undefined : footerIP.enabled && isBuiltInFooterURL(footerIP.url) ? footerIP.height : undefined} as React.CSSProperties} data-footer-network-slot={networkSlot ? "" : undefined} data-footer-region className={"nz-footer-region"+(sponsorFeature.enabled&&sponsorFeature.mobile?" nz-footer-with-sponsor":"")}>
+	return <div ref={layout.footer} style={{"--nz-footer-card-height": networkSlot ? "95px" : `${footerIP.height}px`, minHeight:networkSlot ? undefined : networkEnabled ? footerIP.height : undefined} as React.CSSProperties} data-footer-network-slot={networkSlot ? "" : undefined} data-footer-region className={"nz-footer-region"+(sponsorFeature.enabled&&sponsorFeature.mobile?" nz-footer-with-sponsor":"")}>
 		{nativeFooter.enabled ? <NativeFooter/> : (
 		<footer className="mx-auto w-full max-w-5xl px-4 lg:px-0 pb-4 server-footer">
 			<section className="flex flex-col">

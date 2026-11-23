@@ -32,7 +32,7 @@ export default function StatisticsMenu({ value, onChange, split = true, disabled
 		<DropdownMenu modal={false}>
 			<DropdownMenuTrigger asChild>
 				<button ref={triggerRef} type="button" disabled={disabled} aria-label={t("statistics.choose")}
-					title={t("statistics.choose")} data-statistics-trigger
+					title={t("statistics.choose")} data-statistics-trigger aria-pressed={value !== "closed"}
 					className={cn(
 						"relative shrink-0 flex items-center justify-center rounded-full bg-blue-100 p-2.5 text-blue-600 dark:bg-blue-900 dark:text-blue-100 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500",
 						value !== "closed" && "bg-blue-600 text-white dark:bg-blue-100 dark:text-blue-600",

@@ -621,7 +621,7 @@
   {
     "key": "footerIP",
     "title": "底部 IP 详情",
-    "description": "页面底部显示 IP 与网站响应，适配电脑、手机和当前主题",
+    "description": "仅电脑端滚动到底部时显示 IP 与网站响应，手机端不显示",
     "defaults": {
       "enabled": true,
       "url": "https://network.example.invalid/sample-2",
