@@ -26,35 +26,12 @@ func DispatchTask(serviceSentinelDispatchBus <-chan *model.Service) {
 			continue
 		}
 
-		switch task.Cover {
-		case model.ServiceCoverIgnoreAll:
-			for id, enabled := range task.SkipServers {
-				if !enabled {
-					continue
-				}
-
-				server, _ := singleton.ServerShared.Get(id)
-				if server == nil {
-					continue
-				}
-				if !canSendTaskToServer(task, server) {
-					continue
-				}
-				if err := server.SendTask(probe); err != nil && !errors.Is(err, model.ErrTaskStreamOffline) {
-					log.Printf("NEZHA>> DispatchTask send error (server=%d): %v", id, err)
-				}
+		for id, server := range singleton.ServerShared.GetList() {
+			if server == nil || !task.CoversServer(server) || !canSendTaskToServer(task, server) {
+				continue
 			}
-		case model.ServiceCoverAll:
-			for id, server := range singleton.ServerShared.GetList() {
-				if server == nil || task.SkipServers[id] {
-					continue
-				}
-				if !canSendTaskToServer(task, server) {
-					continue
-				}
-				if err := server.SendTask(probe); err != nil && !errors.Is(err, model.ErrTaskStreamOffline) {
-					log.Printf("NEZHA>> DispatchTask send error (server=%d): %v", id, err)
-				}
+			if err := server.SendTask(probe); err != nil && !errors.Is(err, model.ErrTaskStreamOffline) {
+				log.Printf("NEZHA>> DispatchTask send error (server=%d): %v", id, err)
 			}
 		}
 	}

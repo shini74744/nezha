@@ -16,7 +16,7 @@ import (
 )
 
 func TestReplacementRealTransportStagesUntilFirstState(t *testing.T) {
-	server := &model.Server{Common: model.Common{ID: 7, UserID: 1}, UUID: "11111111-1111-4111-8111-111111111111", Name: "fixture"}
+	server := &model.Server{Common: model.Common{ID: 7, UserID: 1}, UUID: "11111111-1111-4111-8111-111111111111", Name: "fixture", ServicePreferencesRaw: `[{"service_id":12,"color":"#123456"}]`}
 	setupApplyConfigAuthzFixture(t, []*model.Server{server}, map[uint64]model.UserInfo{1: {Role: model.RoleAdmin}}, map[string]uint64{"owner-fixture": 1})
 	require.NoError(t, singleton.DB.AutoMigrate(&model.Transfer{}, &model.ServerSnapshot{}, &model.ServiceHistory{}, &model.PlanTrafficCheckpoint{}, &model.PlanTrafficDay{}, &model.ServerIPHistory{}, &model.AgentUUIDConflict{}))
 	prepareFullReplacementSchema(t)
@@ -49,6 +49,7 @@ func TestReplacementRealTransportStagesUntilFirstState(t *testing.T) {
 	require.NoError(t, err)
 	live, _ := singleton.ServerShared.Get(7)
 	require.Equal(t, "debian", live.RuntimeSnapshot().Host.Platform)
+	require.Equal(t, server.ServicePreferencesRaw, live.ServicePreferencesRaw)
 	var count int64
 	require.NoError(t, singleton.DB.Model(&model.Transfer{}).Where("server_id = ?", 7).Count(&count).Error)
 	require.EqualValues(t, 1, count)
@@ -62,6 +63,9 @@ func TestReplacementRealTransportStagesUntilFirstState(t *testing.T) {
 	require.True(t, receipt.Proced)
 	live, _ = singleton.ServerShared.Get(7)
 	require.Equal(t, "ubuntu", live.RuntimeSnapshot().Host.Platform)
+	prefs, err := live.ServicePreferences()
+	require.NoError(t, err)
+	require.Empty(t, prefs)
 	require.NoError(t, singleton.DB.Model(&model.Transfer{}).Where("server_id = ?", 7).Count(&count).Error)
 	require.Zero(t, count)
 	// Active token survives reconnect and cannot clear newly collected data again.

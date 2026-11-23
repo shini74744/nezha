@@ -1,0 +1,4 @@
+:root {--network-series-saturation:68%;--network-series-lightness:43%}
+:root.dark {--network-series-saturation:72%;--network-series-lightness:65%}
+:root[data-theme-variant="paper"] {--network-series-saturation:38%;--network-series-lightness:39%}
+:root[data-theme-variant="paper"].dark {--network-series-saturation:40%;--network-series-lightness:68%}

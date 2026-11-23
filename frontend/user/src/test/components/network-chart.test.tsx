@@ -25,12 +25,14 @@ vi.mock("recharts", () => {
 			children,
 			data,
 			dataKey,
+            stroke,
 		}: {
 			children?: ReactNode;
 			data?: unknown[];
 			dataKey?: string;
+            stroke?: string;
 		}) => (
-			<div data-key={dataKey} data-values={data ? JSON.stringify(data) : undefined} data-points={data?.length} data-testid={testId}>
+			<div data-stroke={stroke} data-key={dataKey} data-values={data ? JSON.stringify(data) : undefined} data-points={data?.length} data-testid={testId}>
 				{children}
 			</div>
 		);
@@ -379,4 +381,17 @@ it("keeps selected lines across missing history, errors and recovery", async () 
  expect(screen.getByRole("button",{name:/^Alpha/})).toHaveAttribute("data-active","true");
  expect(await screen.findByTestId("composed-chart")).toHaveAttribute("data-points","12");
  expect(screen.getByTestId("area")).toHaveAttribute("data-key","packet_loss");
+});
+
+it("uses saved service colors, including single-line tooltip and duplicate names",async()=>{
+ apiMocks.fetchLoginUser.mockResolvedValue(loginResponse());
+ const rows=Array.from({length:18},(_,i)=>({monitor_id:i+1,monitor_name:i<2?"同名服务":"线路"+i,chart_color:"#"+(0x305070+i*1003).toString(16),server_id:19,server_name:"测试",display_index:18-i,created_at:times,avg_delay:times.map(()=>i+10)}));
+ apiMocks.fetchMonitor.mockResolvedValue({success:true,data:rows});
+ renderWithQuery(<NetworkChart server_id={19} show/>);
+ await waitFor(()=>expect(screen.getAllByTestId("line")).toHaveLength(18));
+ const lines=screen.getAllByTestId("line");
+ expect(new Set(lines.map(line=>line.getAttribute("data-stroke"))).size).toBe(18);
+ for(const row of rows)expect(lines.some(line=>line.getAttribute("data-stroke")===row.chart_color)).toBe(true);
+ expect(screen.getByRole("button",{name:/同名服务 #1/})).toBeInTheDocument();
+ expect(screen.getByRole("button",{name:/同名服务 #2/})).toBeInTheDocument();
 });

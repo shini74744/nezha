@@ -1,4 +1,4 @@
-import {describe,it,expect,vi} from "vitest";
+import {beforeEach,describe,it,expect,vi} from "vitest";
 import {render} from "@testing-library/react";
 import {QueryClient,QueryClientProvider} from "@tanstack/react-query";
 import {AppearanceProvider,useFeature} from "@/appearance/context";
@@ -48,3 +48,5 @@ describe("independent appearance switches",()=>{
   expect(view.container.querySelector(".server-footer")).not.toBeNull();view.unmount();client.clear();
  });
 });
+
+beforeEach(()=>vi.stubGlobal("fetch",vi.fn((_url:any,o:any)=>new Promise((_r,reject)=>o.signal.addEventListener("abort",()=>reject(new DOMException("Aborted","AbortError")))))));

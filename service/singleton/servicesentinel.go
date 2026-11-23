@@ -482,6 +482,7 @@ func (ss *ServiceSentinel) CopyStats() map[uint64]model.ServiceResponseItem {
 	for k, service := range stats {
 		service.ServiceName = service.service.Name
 		service.DisplayIndex = service.service.DisplayIndex
+		service.ChartColor = service.service.ChartColor
 		sri[k] = service.ServiceResponseItem
 	}
 
@@ -528,16 +529,7 @@ func canReportServiceResult(service *model.Service, reporter *model.Server, task
 	if service == nil || reporter == nil || uint64(service.Type) != taskType {
 		return false
 	}
-	switch service.Cover {
-	case model.ServiceCoverAll:
-		if service.SkipServers[reporter.ID] {
-			return false
-		}
-	case model.ServiceCoverIgnoreAll:
-		if !service.SkipServers[reporter.ID] {
-			return false
-		}
-	default:
+	if !service.CoversServer(reporter) {
 		return false
 	}
 

@@ -47,6 +47,8 @@ func TestAgentCredentialNewNameUsesIssuanceAndPreservesExistingName(t *testing.T
 	// Generating an ordinary reinstall command and reconnecting are not rename operations.
 	require.NoError(t, DB.Model(&model.Server{}).Where("id = ?", id).Update("name", "我的电脑").Error)
 	server.Name = "我的电脑"
+	server.ServicePreferencesRaw = `[{"service_id":10,"color":"#123456"},{"service_id":11}]`
+	require.NoError(t, DB.Model(&model.Server{}).Where("id = ?", id).Update("service_preferences_raw", server.ServicePreferencesRaw).Error)
 	again, err := IssueAgentCredential(pair.UUID, 1, actor)
 	require.NoError(t, err)
 	require.Equal(t, pair, again)
@@ -55,4 +57,7 @@ func TestAgentCredentialNewNameUsesIssuanceAndPreservesExistingName(t *testing.T
 	require.Equal(t, id, againID)
 	require.NoError(t, DB.First(&saved, id).Error)
 	require.Equal(t, "我的电脑", saved.Name)
+	require.Equal(t, server.ServicePreferencesRaw, saved.ServicePreferencesRaw)
+	current, _ := ServerShared.Get(id)
+	require.Equal(t, server.ServicePreferencesRaw, current.ServicePreferencesRaw)
 }

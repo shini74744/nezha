@@ -1,3 +1,4 @@
+import { isBuiltInFooterURL } from "@/appearance/footer-network";
 import {useFeature,useAppearanceLayout} from "@/appearance/context";
 import {NativeFooter} from "@/appearance/widgets";
 import {NativeMobileSponsor} from "@/appearance/native-sponsor";
@@ -8,6 +9,7 @@ import { fetchSetting } from "@/lib/nezha-api";
 
 const Footer: React.FC = () => {
 const nativeFooter=useFeature('footer');
+const footerIP=useFeature('footerIP');
 const layout=useAppearanceLayout(), sponsorFeature=useFeature("sponsor");
 	const { t } = useTranslation();
 	const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
@@ -20,7 +22,7 @@ const layout=useAppearanceLayout(), sponsorFeature=useFeature("sponsor");
 		retry: false,
 	});
 
-	return <div ref={layout.footer} data-footer-region className={"nz-footer-region"+(sponsorFeature.enabled&&sponsorFeature.mobile?" nz-footer-with-sponsor":"")}>
+	return <div ref={layout.footer} style={{minHeight:footerIP.enabled && isBuiltInFooterURL(footerIP.url) ? footerIP.height : undefined}} data-footer-region className={"nz-footer-region"+(sponsorFeature.enabled&&sponsorFeature.mobile?" nz-footer-with-sponsor":"")}>
 		{nativeFooter.enabled ? <NativeFooter/> : (
 		<footer className="mx-auto w-full max-w-5xl px-4 lg:px-0 pb-4 server-footer">
 			<section className="flex flex-col">

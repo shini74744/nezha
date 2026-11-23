@@ -11,6 +11,7 @@ func NewEmptyServerClassForTest() *ServerClass {
 		},
 		uuidToID: make(map[string]uint64),
 	}
+	model.ServiceOverrideServerIDsLookup = sc.serviceOverrideServerIDs
 	model.OwnerServerIDsLookup = sc.ownerServerIDs
 	model.AllServerIDsLookup = sc.allServerIDs
 	model.OwnerIsAdminLookup = ownerIsAdmin

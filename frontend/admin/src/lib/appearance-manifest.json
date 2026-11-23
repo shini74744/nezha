@@ -621,14 +621,14 @@
   {
     "key": "footerIP",
     "title": "底部 IP 详情",
-    "description": "在页脚显示访客 IP 详情。",
+    "description": "页面底部显示 IP 与网站响应，适配电脑、手机和当前主题",
     "defaults": {
       "enabled": true,
       "url": "https://network.example.invalid/sample-2",
       "height": 125
     },
     "labels": {
-      "url": "IP 信息页面地址",
+      "url": "信息页面地址（默认使用内置卡片）",
       "height": "卡片高度（像素）"
     },
     "constraints": {

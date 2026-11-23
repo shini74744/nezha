@@ -103,6 +103,7 @@ const fields: Record<string, string> = {
     connectivity_local_only: "连通性仅保留本地延迟",
     network_default_view: "默认显示页面",
     network_display_mode: "连通性与延迟显示",
+    server_services: "服务选择、排序与颜色",
     bgp_disabled: "隐藏 BGP",
     return_route_disabled: "隐藏回程",
     streaming_disabled: "隐藏流媒体",

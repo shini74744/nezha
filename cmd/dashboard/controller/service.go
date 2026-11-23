@@ -328,15 +328,10 @@ func listServerServices(c *gin.Context) ([]*model.ServiceInfos, error) {
 	}
 
 	for _, service := range services {
-		if service.Cover == model.ServiceCoverAll {
-			if service.SkipServers[serverID] {
-				continue
-			}
-		} else {
-			if !service.SkipServers[serverID] {
-				continue
-			}
+		if !service.CoversServer(server) || !serviceOwnedForServer(service, server) {
+			continue
 		}
+		position, color := server.ServicePresentation(service)
 
 		historyResult, ok := historyResults[service.ID]
 		if !ok || len(historyResult.Servers) == 0 {
@@ -350,7 +345,8 @@ func listServerServices(c *gin.Context) ([]*model.ServiceInfos, error) {
 			ServerID:     serverID,
 			ServiceName:  service.Name,
 			ServerName:   server.Name,
-			DisplayIndex: service.DisplayIndex,
+			DisplayIndex: position,
+			ChartColor:   color,
 			CreatedAt:    make([]int64, len(serverStats.Stats.DataPoints)),
 			AvgDelay:     make([]float64, len(serverStats.Stats.DataPoints)),
 		}
@@ -367,6 +363,10 @@ func listServerServices(c *gin.Context) ([]*model.ServiceInfos, error) {
 }
 
 func queryServerServicesFromDB(serverID uint64, serverName string, period tsdb.QueryPeriod, services []*model.Service) ([]*model.ServiceInfos, error) {
+	server, ok := singleton.ServerShared.Get(serverID)
+	if !ok || server == nil {
+		return []*model.ServiceInfos{}, nil
+	}
 	since := time.Now().Add(-period.Duration())
 
 	var histories []model.ServiceHistory
@@ -382,15 +382,10 @@ func queryServerServicesFromDB(serverID uint64, serverName string, period tsdb.Q
 
 	var result []*model.ServiceInfos
 	for _, service := range services {
-		if service.Cover == model.ServiceCoverAll {
-			if service.SkipServers[serverID] {
-				continue
-			}
-		} else {
-			if !service.SkipServers[serverID] {
-				continue
-			}
+		if !service.CoversServer(server) || !serviceOwnedForServer(service, server) {
+			continue
 		}
+		position, color := server.ServicePresentation(service)
 
 		records, ok := grouped[service.ID]
 		if !ok {
@@ -402,7 +397,8 @@ func queryServerServicesFromDB(serverID uint64, serverName string, period tsdb.Q
 			ServerID:     serverID,
 			ServiceName:  service.Name,
 			ServerName:   serverName,
-			DisplayIndex: service.DisplayIndex,
+			DisplayIndex: position,
+			ChartColor:   color,
 			CreatedAt:    make([]int64, 0, len(records)),
 			AvgDelay:     make([]float64, 0, len(records)),
 		}
@@ -435,19 +431,12 @@ func listServerWithServices(c *gin.Context) ([]uint64, error) {
 	serverIDSet := make(map[uint64]bool)
 
 	for _, service := range services {
-		if service.Cover == model.ServiceCoverAll {
-			// 除了跳过的服务器，其他都包含
-			for serverID := range serverMap {
-				if !service.SkipServers[serverID] {
-					serverIDSet[serverID] = true
-				}
-			}
-		} else {
-			// 只包含指定的服务器
-			for serverID, enabled := range service.SkipServers {
-				if enabled {
-					serverIDSet[serverID] = true
-				}
+		if !userCanViewService(c, service) {
+			continue
+		}
+		for id, server := range serverMap {
+			if service.CoversServer(server) && serviceOwnedForServer(service, server) {
+				serverIDSet[id] = true
 			}
 		}
 	}
@@ -497,6 +486,20 @@ func createService(c *gin.Context) (uint64, error) {
 
 	var m model.Service
 	m.UserID = uid
+	if mf.ChartColor != nil {
+		var err error
+		m.ChartColor, err = model.NormalizeServiceColor(*mf.ChartColor)
+		if err != nil {
+			return 0, err
+		}
+	}
+	if m.ChartColor == "" {
+		var err error
+		m.ChartColor, err = model.AllocateServiceColor(singleton.DB)
+		if err != nil {
+			return 0, err
+		}
+	}
 	m.Name = mf.Name
 	m.Target = strings.TrimSpace(mf.Target)
 	m.Type = mf.Type
@@ -580,6 +583,20 @@ func updateService(c *gin.Context) (any, error) {
 		return nil, singleton.Localizer.ErrorT("permission denied")
 	}
 
+	if mf.ChartColor != nil {
+		var err error
+		m.ChartColor, err = model.NormalizeServiceColor(*mf.ChartColor)
+		if err != nil {
+			return 0, err
+		}
+	}
+	if m.ChartColor == "" {
+		var err error
+		m.ChartColor, err = model.AllocateServiceColor(singleton.DB)
+		if err != nil {
+			return 0, err
+		}
+	}
 	m.Name = mf.Name
 	m.Target = strings.TrimSpace(mf.Target)
 	m.Type = mf.Type
@@ -662,6 +679,9 @@ func batchDeleteService(c *gin.Context) (any, error) {
 }
 
 func validateServers(c *gin.Context, ss *model.Service) error {
+	if !ss.HasPermission(c) {
+		return singleton.Localizer.ErrorT("permission denied")
+	}
 	if err := checkServiceSkipServerPermission(c, ss.Cover, ss.SkipServers, ss.GetUserID()); err != nil {
 		return err
 	}

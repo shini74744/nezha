@@ -119,6 +119,10 @@ func InitDBFromPath(path string) error {
 		return err
 	}
 
+	if err := model.BackfillServiceColors(DB); err != nil {
+		return err
+	}
+
 	// Normalize legacy gaps before requests or background writers start.
 	if err := model.WithServerOperation(DB, model.ServerOperationActor{Name: "系统", Source: "system"},
 		"group", nil, model.CompactServerGroupIDs); err != nil {

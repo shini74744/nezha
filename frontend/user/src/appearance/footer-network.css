@@ -1,0 +1,61 @@
+/* Keep the configured overlay height. The footer anchors its top to the last content card. */
+.nz-footer-ip.nz-footer-network {width:90%;max-width:650px;overflow:visible;transition:opacity .2s ease,transform .2s ease}
+.nz-net-card,.nz-net-details {--net-bg:#f8fafcf5;--net-panel:#edf2f7;--net-ink:#1e293b;--net-muted:#526277;--net-line:#ccd7e2;--net-accent:#087568;--net-failure:#9a4514;background:var(--net-bg);color:var(--net-ink);border:1px solid var(--net-line);font-family:inherit;font-size:12px;line-height:1.4;text-align:left}
+.dark .nz-net-card,.dark .nz-net-details {--net-bg:#161d28fa;--net-panel:#202b3b;--net-ink:#edf3fa;--net-muted:#acbcd0;--net-line:#3b4a60;--net-accent:#66d9c4;--net-failure:#ffba86}
+.nz-net-card {height:100%;box-sizing:border-box;border-radius:9px;box-shadow:0 4px 12px #0f172a20;overflow:hidden}
+.nz-net-header {height:27px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 9px;border-bottom:1px solid var(--net-line)}
+.nz-net-title,.nz-net-actions {display:flex;align-items:center;gap:6px;min-width:0}
+.nz-net-title {color:var(--net-accent);flex-shrink:0}
+.nz-net-title svg {width:14px;height:14px}
+.nz-net-title h2 {font-size:12px;font-weight:650;color:var(--net-ink);margin:0}
+.nz-net-card button,.nz-net-details button {font:inherit;cursor:pointer}
+.nz-net-card button:disabled {cursor:wait;opacity:.55}
+:is(.nz-net-card,.nz-net-details) button:focus-visible {outline:2px solid var(--net-accent);outline-offset:1px}
+.nz-net-updated {font-size:10px;color:var(--net-muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.nz-net-refresh,.nz-net-icon {display:inline-flex;align-items:center;justify-content:center;gap:4px;border:1px solid transparent;background:transparent;color:var(--net-ink);border-radius:4px;min-height:23px;padding:2px 5px;white-space:nowrap}
+.nz-net-icon {padding:3px;min-width:23px}
+:is(.nz-net-card,.nz-net-details) button:hover:not(:disabled) {background:var(--net-panel);border-color:var(--net-line);color:var(--net-accent)}
+.nz-net-columns {display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr)}
+.nz-net-ip,.nz-net-probes {min-width:0;padding:5px 9px}
+.nz-net-ip {position:relative;border-right:1px solid var(--net-line)}
+.nz-net-card h3 {display:none}
+.nz-net-source {min-width:0}
+.nz-net-provider {font-size:10px;color:var(--net-muted);display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.nz-net-address {display:flex;align-items:center;gap:6px;min-width:0;height:24px}
+.nz-net-address strong {font-size:15px;letter-spacing:.01em;line-height:1.5;font-weight:600;font-variant-numeric:tabular-nums;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.nz-net-address .nz-net-icon {flex-shrink:0}
+.nz-net-location {margin:1px 0 0;color:var(--net-muted);font-size:11px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.nz-net-probes dl {display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;margin:0}
+.nz-net-probes dl>div {display:flex;justify-content:space-between;align-items:center;gap:5px;padding:2px 4px;border-radius:4px;background:var(--net-panel);min-width:0}
+.nz-net-probes dt {font-size:11px;white-space:nowrap}
+.nz-net-probes dd {display:flex;align-items:baseline;gap:2px;flex-shrink:0;font-variant-numeric:tabular-nums;margin:0;font-size:10px}
+.nz-net-probes dd strong {font-size:12px;font-weight:600}
+.nz-net-latency {color:var(--net-accent)}
+.nz-net-failure {color:var(--net-failure);font-size:11px}
+.nz-net-muted,.nz-net-hint {color:var(--net-muted)}
+.nz-net-hint {font-size:10px;margin:4px 0 0}
+.nz-net-notice {position:absolute;top:0;left:6px;right:6px;padding:2px 6px;margin:0;background:var(--net-bg);color:var(--net-accent);font-size:11px;border:1px solid var(--net-line);border-radius:4px}
+.nz-net-details {z-index:10020!important;width:min(360px,calc(100vw - 24px));max-height:min(65vh,var(--radix-popover-content-available-height));overflow:auto;padding:12px;border-radius:8px;box-shadow:0 8px 28px #0f172a26}
+.nz-net-details h3 {font-size:13px;font-weight:600;margin:0 0 8px}
+.nz-net-details .nz-net-source {padding:8px 0;border-top:1px dashed var(--net-line)}
+.nz-net-details .nz-net-address {height:auto;min-height:26px}
+.nz-net-details .nz-net-address strong {white-space:normal;overflow-wrap:anywhere;font-size:14px}
+.nz-net-details .nz-net-location {white-space:normal;overflow-wrap:anywhere}
+[data-theme-variant="paper"] :is(.nz-net-card,.nz-net-details) {--net-bg:var(--paper-raised);--net-panel:var(--paper);--net-ink:var(--paper-ink);--net-muted:var(--paper-muted);--net-line:var(--paper-line);--net-accent:var(--paper-green);--net-failure:var(--paper-red);border-radius:3px;background-image:var(--paper-texture);box-shadow:1px 2px 0 var(--paper-line)}
+@media(max-width:600px) {
+ .nz-footer-ip.nz-footer-network {width:calc(100% - 20px)}
+ .nz-net-updated {display:none}
+ .nz-net-header {padding-inline:6px}
+ .nz-net-columns {grid-template-columns:minmax(0,1fr)}
+ .nz-net-ip {padding:2px 8px;border-right:0}
+ .nz-net-ip>.nz-net-source {display:flex;gap:6px;align-items:center}
+ .nz-net-ip .nz-net-provider {display:none}
+ .nz-net-ip .nz-net-address {flex:1;min-width:0}
+ .nz-net-ip .nz-net-location {max-width:36%;font-size:10px}
+ .nz-net-address strong {font-size:12px}
+ .nz-net-probes {padding:2px 8px}
+ .nz-net-probes dl {gap:3px 8px}
+ .nz-net-probes dl>div {padding:1px 4px}
+ .nz-net-probes .nz-net-hint {display:none}
+}
+@media(prefers-reduced-motion:reduce) {.nz-footer-ip.nz-footer-network {transition:none}}

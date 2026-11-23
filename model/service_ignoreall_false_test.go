@@ -21,6 +21,9 @@ func adminPATCtx(tok *APIToken) *gin.Context {
 // `{2: false}` entry has no dispatch effect, so a PAT scoped to {1} must
 // still be allowed to manage this service.
 func TestServiceHasPermissionIgnoreAllSkipsFalseEntries(t *testing.T) {
+	old := ServiceOverrideServerIDsLookup
+	t.Cleanup(func() { ServiceOverrideServerIDsLookup = old })
+	ServiceOverrideServerIDsLookup = func(uint64) []uint64 { return nil }
 	tok := &APIToken{ID: 1, UserID: 1}
 	tok.SetServerIDs([]uint64{1})
 

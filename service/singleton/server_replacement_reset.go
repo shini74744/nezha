@@ -131,7 +131,8 @@ func resetReplacementNode(tx *gorm.DB, server *model.Server, issuedAt time.Time)
 		"network_default_view": "connectivity", "network_display_mode": "",
 		"bgp_disabled": false, "return_route_disabled": false, "streaming_disabled": false,
 		"EnableDDNS": false, "ddns_profiles_raw": "[]", "override_ddns_domains_raw": "{}",
-		"machine_generation": server.MachineGeneration + 1,
+		"machine_generation":      server.MachineGeneration + 1,
+		"service_preferences_raw": "[]",
 	}
 	if err := tx.Model(&model.Server{}).Where("id = ? AND uuid = ? AND user_id = ?", id, uuid, server.UserID).Updates(defaults).Error; err != nil {
 		return nil, err
@@ -142,6 +143,7 @@ func resetReplacementNode(tx *gorm.DB, server *model.Server, issuedAt time.Time)
 		return nil, err
 	}
 	// Avoid copying Server's atomic runtime holders.
+	server.ServicePreferencesRaw = clean.ServicePreferencesRaw
 	server.Name, server.Note, server.PublicNote = clean.Name, clean.Note, clean.PublicNote
 	server.HideForGuest, server.HideForDisplay = clean.HideForGuest, clean.HideForDisplay
 	server.ConnectivityDisabled, server.ConnectivityLocalOnly = clean.ConnectivityDisabled, clean.ConnectivityLocalOnly

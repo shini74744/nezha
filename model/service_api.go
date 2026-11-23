@@ -3,6 +3,7 @@ package model
 import "time"
 
 type ServiceForm struct {
+	ChartColor          *string         `json:"chart_color,omitempty"`
 	Name                string          `json:"name,omitempty" minLength:"1"`
 	Target              string          `json:"target,omitempty"`
 	Type                uint8           `json:"type,omitempty"`
@@ -22,6 +23,7 @@ type ServiceForm struct {
 }
 
 type ServiceResponseItem struct {
+	ChartColor   string       `json:"chart_color"`
 	DisplayIndex int          `json:"display_index"`
 	ServiceName  string       `json:"service_name,omitempty"`
 	CurrentUp    uint64       `json:"current_up"`

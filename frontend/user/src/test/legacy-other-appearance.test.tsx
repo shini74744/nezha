@@ -1,4 +1,4 @@
-import {describe,it,expect,vi,afterEach} from "vitest";
+import {beforeEach,describe,it,expect,vi,afterEach} from "vitest";
 import {render,act,cleanup} from "@testing-library/react";
 import {AppearanceProvider} from "@/appearance/context";
 import {defaults} from "@/appearance/config";
@@ -37,10 +37,12 @@ describe("other legacy appearance parity",()=>{
   vi.stubGlobal("scrollY",0);act(()=>window.dispatchEvent(new Event("scroll")));
   expect(node.dataset.visible).toBe("false");
  });
- it("preserves the original mobile hide policy",()=>{
+ it("enables responsive native content on mobile while remaining hidden until ready",()=>{
   vi.spyOn(navigator,"userAgent","get").mockReturnValue("iPhone Mobile");
   const view=render(<WebSocketContext.Provider value={loadedSocket}><AppearanceProvider raw={JSON.stringify(config())}><NativeFooterIP/></AppearanceProvider></WebSocketContext.Provider>);
   const node=view.container.querySelector<HTMLElement>("[data-native-footer-ip]")!;
-  expect(node.style.display).toBe("none");expect(node.dataset.visible).toBe("false");
+  expect(node.style.display).not.toBe("none");expect(node.dataset.visible).toBe("false");
  });
 });
+
+beforeEach(()=>vi.stubGlobal("fetch",vi.fn((_url:any,o:any)=>new Promise((_r,reject)=>o.signal.addEventListener("abort",()=>reject(new DOMException("Aborted","AbortError")))))));

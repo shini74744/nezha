@@ -19,6 +19,7 @@ import (
 var runtimeHolderInitMu sync.Mutex
 
 type Server struct {
+	ServicePreferencesRaw    string `gorm:"not null;default:'[]'" json:"-"`
 	HomeNetworkInterfacesRaw string `gorm:"not null;default:'[]'" json:"-"`
 	NetworkDefaultView       string `json:"network_default_view" gorm:"default:connectivity"`
 	NetworkDisplayMode       string `json:"network_display_mode"`
@@ -782,6 +783,7 @@ func (s *Server) RuntimeCopy(runtime RuntimeSnapshot) *Server {
 		NetworkDefaultView:       s.NetworkDefaultView,
 		NetworkDisplayMode:       s.NetworkDisplayMode,
 		HomeNetworkInterfacesRaw: s.HomeNetworkInterfacesRaw,
+		ServicePreferencesRaw:    s.ServicePreferencesRaw,
 		EnableDDNS:               s.EnableDDNS,
 		DDNSProfilesRaw:          s.DDNSProfilesRaw,
 		OverrideDDNSDomainsRaw:   s.OverrideDDNSDomainsRaw,

@@ -63,6 +63,7 @@ const serviceFormSchema = z.object({
     max_latency: z.coerce.number().int().min(0),
     min_latency: z.coerce.number().int().min(0),
     name: z.string().min(1),
+    chart_color: z.string().regex(/^(#[0-9a-fA-F]{6})?$/, "请输入 #RRGGBB 格式的颜色"),
     notification_group_id: z.coerce.number().int(),
     notify: asOptionalField(z.boolean()),
     recover_trigger_tasks: z.array(z.number()),
@@ -80,6 +81,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ data, mutate }) => {
         defaultValues: data
             ? {
                   ...data,
+                  chart_color: data.chart_color || "",
                   fail_trigger_tasks_raw: conv.arrToStr(data.fail_trigger_tasks),
                   recover_trigger_tasks_raw: conv.arrToStr(data.recover_trigger_tasks),
                   skip_servers_raw: conv.recordToStrArr(data.skip_servers ? data.skip_servers : {}),
@@ -88,6 +90,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ data, mutate }) => {
                   type: 1,
                   cover: 0,
                   name: "",
+                  chart_color: "",
                   target: "",
                   max_latency: 0.0,
                   min_latency: 0.0,
@@ -144,7 +147,10 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ data, mutate }) => {
     })) || [{ value: "", label: "" }]
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={next => {
+            if (next && data) form.reset({ ...data, chart_color: data.chart_color || "", fail_trigger_tasks_raw: conv.arrToStr(data.fail_trigger_tasks), recover_trigger_tasks_raw: conv.arrToStr(data.recover_trigger_tasks), skip_servers_raw: conv.recordToStrArr(data.skip_servers || {}) })
+            setOpen(next)
+        }}>
             <DialogTrigger asChild>
                 {data ? <IconButton variant="outline" icon="edit" /> : <IconButton icon="plus" />}
             </DialogTrigger>
@@ -175,6 +181,19 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ data, mutate }) => {
                                         </FormItem>
                                     )}
                                 />
+                                <FormField control={form.control} name="chart_color" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>图表颜色</FormLabel>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <Input type="color" aria-label="选择服务颜色" className="h-10 w-12 shrink-0 p-1"
+                                                value={field.value || "#396b9c"} onChange={field.onChange}/>
+                                            <Input aria-label="服务颜色值" placeholder="系统分配不重复的颜色" className="min-w-0 flex-1"
+                                                value={field.value} onChange={field.onChange}/>
+                                            <Button type="button" variant="outline" onClick={() => field.onChange("")}>系统分配</Button>
+                                        </div>
+                                        <FormMessage/>
+                                    </FormItem>
+                                )}/>
                                 <FormField
                                     control={form.control}
                                     name="target"

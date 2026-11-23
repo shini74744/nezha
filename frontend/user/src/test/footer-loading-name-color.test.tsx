@@ -14,6 +14,7 @@ function fixture(connected=true,loaded=true,enabled=true){
  return <WebSocketContext.Provider value={socket}><AppearanceProvider raw={JSON.stringify(config)}><NativeFooterIP/></AppearanceProvider></WebSocketContext.Provider>;
 }
 beforeEach(()=>{
+ vi.stubGlobal("fetch",vi.fn((_url:any,o:any)=>new Promise((_r,reject)=>o.signal.addEventListener("abort",()=>reject(new DOMException("Aborted","AbortError"))))));
  vi.useFakeTimers();pageHeight=600;resize=()=>{};disconnect.mockClear();
  vi.spyOn(navigator,"userAgent","get").mockReturnValue("Desktop Chrome");
  vi.stubGlobal("innerHeight",600);vi.stubGlobal("scrollY",0);

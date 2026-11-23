@@ -648,6 +648,7 @@ export interface ModelServerTaskResponse {
 }
 
 export interface ModelService {
+    chart_color?: string
     cover: number
     created_at: string
     /** 展示排序，越大越靠前 */
@@ -675,6 +676,7 @@ export interface ModelService {
 }
 
 export interface ModelServiceForm {
+    chart_color?: string
     cover: number
     /** 展示排序，越大越靠前 */
     display_index: number
@@ -698,6 +700,7 @@ export interface ModelServiceForm {
 }
 
 export interface ModelServiceInfos {
+    chart_color?: string
     avg_delay: number[]
     created_at: number[]
     monitor_id: number
@@ -712,6 +715,7 @@ export interface ModelServiceResponse {
 }
 
 export interface ModelServiceResponseItem {
+    chart_color?: string
     current_down: number
     current_up: number
     delay: number[]

@@ -90,6 +90,7 @@ func ServerOperationChanges(before, after *Server) []ServerOperationChange {
 	add("connectivity_local_only", before.ConnectivityLocalOnly, after.ConnectivityLocalOnly)
 	add("network_default_view", before.NetworkDefaultView, after.NetworkDefaultView)
 	add("network_display_mode", before.NetworkDisplayMode, after.NetworkDisplayMode)
+	add("server_services", before.ServicePreferencesRaw, after.ServicePreferencesRaw)
 	add("bgp_disabled", before.BGPDisabled, after.BGPDisabled)
 	add("return_route_disabled", before.ReturnRouteDisabled, after.ReturnRouteDisabled)
 	add("streaming_disabled", before.StreamingDisabled, after.StreamingDisabled)

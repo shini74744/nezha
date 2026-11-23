@@ -43,6 +43,7 @@ func NewServerClass() *ServerClass {
 	}
 	sc.sortList()
 
+	model.ServiceOverrideServerIDsLookup = sc.serviceOverrideServerIDs
 	model.OwnerServerIDsLookup = sc.ownerServerIDs
 	model.AllServerIDsLookup = sc.allServerIDs
 	model.OwnerIsAdminLookup = ownerIsAdmin
@@ -210,4 +211,22 @@ func (c *ServerClass) sortList() {
 			c.sortedListForGuest = append(c.sortedListForGuest, s)
 		}
 	}
+}
+
+// Only explicit server selections can widen the legacy service coverage.
+func (sc *ServerClass) serviceOverrideServerIDs(serviceID uint64) []uint64 {
+	ids := []uint64{}
+	for id, s := range sc.GetList() {
+		rows, err := s.ServicePreferences()
+		if err != nil {
+			continue
+		}
+		for _, row := range rows {
+			if row.ServiceID == serviceID {
+				ids = append(ids, id)
+				break
+			}
+		}
+	}
+	return ids
 }

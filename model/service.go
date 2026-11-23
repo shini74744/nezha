@@ -234,6 +234,7 @@ type Service struct {
 	Target              string `json:"target"`
 	SkipServersRaw      string `json:"-"`
 	Duration            uint64 `json:"duration"`
+	ChartColor          string `json:"chart_color" gorm:"default:''"`
 	DisplayIndex        int    `json:"display_index"` // 展示排序，越大越靠前
 	Notify              bool   `json:"notify,omitempty"`
 	NotificationGroupID uint64 `json:"notification_group_id"` // 当前服务监控所属的通知组 ID
@@ -288,6 +289,9 @@ func (m *Service) HasPermission(ctx *gin.Context) bool {
 	tok, _ := v.(APITokenAccessor)
 	if tok == nil {
 		return true
+	}
+	if !ServiceOverridesSafeForPAT(tok, m.ID) {
+		return false
 	}
 	switch m.Cover {
 	case ServiceCoverAll:

@@ -1,3 +1,4 @@
+import { ServerServicePicker } from "@/components/server-service-picker"
 import { getServerConfig, setServerConfig } from "@/api/server"
 import { HomeNetworkPicker } from "@/components/home-network-picker"
 import { NetworkInterfacePicker } from "@/components/network-interface-picker"
@@ -368,6 +369,7 @@ export const ServerConfigCard = ({ sid, menuItem = false, ...props }: ServerConf
                                         )}
                                     />
                                     <HomeNetworkPicker sid={sid} inventory={parseNetworkInventory(inventory)} />
+                                    <ServerServicePicker key={sid} sid={sid} />
                                     {openedNotice && (
                                         <NICChangeReminder sid={sid} eventID={openedNotice} />
                                     )}

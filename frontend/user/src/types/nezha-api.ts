@@ -126,6 +126,7 @@ export type ServerMonitorChart = {
 };
 
 export interface NezhaMonitor {
+ chart_color?: string;
 	monitor_id: number;
 	monitor_name: string;
 	display_index?: number;

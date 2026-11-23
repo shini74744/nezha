@@ -1,3 +1,5 @@
+import {networkSeriesColor} from "@/lib/network-series-color";
+import "./network-series-color.css";
 import {PaperClip} from "@/themes/paper/PaperStationery";
 import { useLoginUser } from "@/hooks/use-login-user";
 "use client";
@@ -65,7 +67,9 @@ const smoothingCache = new WeakMap<ResultItem[], WeakMap<ServerMonitorChart, Map
 function networkHistory(raw: NezhaMonitor[]) {
 	let cached = historyCache.get(raw);
 	if (!cached) {
-		const monitors = raw.filter(item => item.created_at?.length && item.avg_delay?.length);
+		const names = new Map<string,number>();
+        for(const item of raw) names.set(item.monitor_name,(names.get(item.monitor_name) || 0)+1);
+        const monitors = raw.filter(item => item.created_at?.length && item.avg_delay?.length).map(item => (names.get(item.monitor_name) || 0)>1 ? {...item,monitor_name:item.monitor_name+" #"+item.monitor_id} : item);
 		cached = { monitors, transformedData: transformData(monitors), formattedData: formatData(monitors) };
 		historyCache.set(raw, cached);
 	}
@@ -171,7 +175,7 @@ export function NetworkChart({
 		const monitorInfoByName = new Map(
 			monitors.map((item) => [
 				item.monitor_name,
-				{ id: item.monitor_id, displayIndex: item.display_index },
+				{ id: item.monitor_id, displayIndex: item.display_index, color: item.chart_color },
 			]),
 		);
 		const chartDataKey = Object.keys(transformedData).sort((a, b) => {
@@ -194,6 +198,7 @@ export function NetworkChart({
 			...chartDataKey.reduce((acc, key) => {
 				acc[key] = {
 					label: key,
+ color: /^#[0-9a-f]{6}$/i.test(monitorInfoByName.get(key)?.color ?? "") ? monitorInfoByName.get(key)!.color : networkSeriesColor(monitorInfoByName.get(key)?.id ?? key),
 				};
 				return acc;
 			}, {} as ChartConfig),
@@ -330,10 +335,9 @@ export const NetworkChartClient = React.memo(function NetworkChart({
 
 	const getColorByIndex = useCallback(
 		(chart: string) => {
-			const index = chartDataKey.indexOf(chart);
-			return `hsl(var(--chart-${(index % 10) + 1}))`;
+			return chartConfig[chart]?.color || networkSeriesColor(chart);
 		},
-		[chartDataKey],
+		[chartConfig],
 	);
 
 	const chartStats = useMemo(() => {
@@ -704,7 +708,7 @@ export const NetworkChartClient = React.memo(function NetworkChart({
 							</button>
 						)}
 						<ChartContainer deferMount
-							config={chartConfig}
+							config={activeCharts.length === 1 ? {...chartConfig, avg_delay: {label: chartConfig.avg_delay?.label, color: getColorByIndex(activeCharts[0])}} : chartConfig}
 							className={cn(
 								"aspect-auto h-105 sm:h-62.5 w-full transition-opacity",
 								showPeriodLoading && "opacity-60",

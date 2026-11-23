@@ -184,6 +184,8 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	auth.PATCH("/server/:id", restScopeMiddleware(model.ScopeServerWrite), commonHandler(updateServer))
 	auth.GET("/server/nic-change-reminders", restScopeMiddleware(model.ScopeInventoryRead), commonHandler(listNICSelectionNotices))
 	auth.POST("/server/:id/nic-change-read", restScopeMiddleware(model.ScopeServerWrite), commonHandler(acknowledgeNICSelectionNotice))
+	auth.GET("/server/:id/services", restScopeMiddleware(model.ScopeServerWrite), commonHandler(getServerServices))
+	auth.PUT("/server/:id/services", restScopeMiddleware(model.ScopeServerWrite), commonHandler(setServerServices))
 	auth.GET("/server/:id/home-network", restScopeMiddleware(model.ScopeServerWrite), commonHandler(getHomeNetwork))
 	auth.PUT("/server/:id/home-network", restScopeMiddleware(model.ScopeServerWrite), commonHandler(setHomeNetwork))
 	auth.GET("/server/config/:id", restScopeMiddleware(serverConfigSensitiveScope()), commonHandler(getServerConfig))

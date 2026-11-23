@@ -2,6 +2,7 @@ package model
 
 // ServiceInfos 服务监控信息（兼容旧API）
 type ServiceInfos struct {
+	ChartColor   string    `json:"chart_color"`
 	ServiceID    uint64    `json:"monitor_id"`
 	ServerID     uint64    `json:"server_id"`
 	ServiceName  string    `json:"monitor_name"`
