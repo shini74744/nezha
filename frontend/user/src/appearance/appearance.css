@@ -216,7 +216,7 @@
 /* Keep a small gap above the footer without adding bottom padding. */
 main:has(> [data-footer-network-slot]) {padding-bottom:0;margin-bottom:0;--nz-footer-gap:calc(var(--spacing,4px)*4)}
 [data-theme-variant="paper"] main:has(> [data-footer-network-slot]) {padding-bottom:0;margin-bottom:0;--nz-footer-gap:12px}
-main > .nz-footer-region[data-footer-network-slot] {margin-top:calc(6px - var(--nz-footer-gap,1rem));margin-bottom:0;position:relative;min-height:calc(var(--nz-footer-network-height,var(--nz-footer-card-height)) + env(safe-area-inset-bottom,0px))}
+main > .nz-footer-region[data-footer-network-slot] {margin-top:calc(12px - var(--nz-footer-gap,1rem));margin-bottom:0;position:relative;min-height:calc(var(--nz-footer-network-height,var(--nz-footer-card-height)) + env(safe-area-inset-bottom,0px))}
 
 @media(max-width:767px) {[data-theme-variant="paper"] main:has(> [data-footer-network-slot]) {--nz-footer-gap:10px}}
 

@@ -127,6 +127,7 @@ export function FooterNetworkCard({
 	onClose: () => void;
 }) {
 	const settings = useFeature("visitorIP");
+	const cardSurface = window.CustomBackgroundImage ? "bg-card/70" : "bg-card";
 	const sources: Source[] = (settings.ipApiUrls as string[]).map(
 		(url, index) => ({ id: `ip-${index}`, name: sourceName(url, index), url }),
 	);
@@ -254,7 +255,7 @@ export function FooterNetworkCard({
 		);
 	};
 	return (
-		<section className="nz-net-card" aria-label="网络信息">
+		<section className={`nz-net-card ${cardSurface}`} aria-label="网络信息">
 			<header className="nz-net-header">
 				<div className="nz-net-title">
 					<Globe2 size={17} />
@@ -275,7 +276,7 @@ export function FooterNetworkCard({
 							side="top"
 							align="center"
 							collisionPadding={12}
-							className="nz-net-details"
+							className={`nz-net-details ${cardSurface}`}
 							aria-label="全部检测来源"
 						>
 							<h3>公网 IP · 全部检测来源</h3>
