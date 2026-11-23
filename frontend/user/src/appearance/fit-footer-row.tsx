@@ -5,9 +5,13 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { useFeature } from "./context";
 import { footerPlacement } from "./footer-collision";
+import { isBuiltInFooterURL } from "./footer-network";
 
 export function FitFooterRow({ children }: { children: ReactNode }) {
+	const ip = useFeature("footerIP"),
+		native = ip.enabled && isBuiltInFooterURL(ip.url);
 	const container = useRef<HTMLDivElement>(null),
 		left = useRef<HTMLDivElement>(null),
 		right = useRef<HTMLDivElement>(null);
@@ -16,110 +20,87 @@ export function FitFooterRow({ children }: { children: ReactNode }) {
 		rightOffset: 0,
 		leftScale: 1,
 		rightScale: 1,
-		leftY: 0,
-		rightY: 0,
 		height: 24,
-		alignment: "normal",
 	});
 	useLayoutEffect(() => {
 		const outer = container.current,
 			a = left.current,
 			b = right.current;
 		if (!outer || !a || !b) return;
-		let panel: HTMLElement | null = null,
-			frame = 0;
+		const slot = outer.closest<HTMLElement>("[data-footer-network-slot]");
+		let frame = 0,
+			panel: HTMLElement | null = null;
 		const measure = () => {
-			const current = document.querySelector<HTMLElement>(
-				"[data-native-footer-ip]",
-			);
-			if (current !== panel) {
-				if (panel) observer.unobserve(panel);
-				panel = current;
-				if (panel) observer.observe(panel);
-			}
-			const nativeCard = panel?.classList.contains("nz-footer-network");
-			const rect =
-				panel && (nativeCard || panel.dataset.visible === "true")
-					? panel.getBoundingClientRect()
-					: undefined;
-			const header = panel?.querySelector<HTMLElement>(".nz-net-header");
-			// Reserve the final fixed position before the slide-in animation finishes.
-			const box =
-				rect && panel
-					? {
-							left: rect.left,
-							right: rect.right,
-							top: panel.offsetTop,
-							bottom: panel.offsetTop + panel.offsetHeight,
-						}
-					: undefined;
 			const row = outer.getBoundingClientRect(),
 				height = Math.max(a.offsetHeight, b.offsetHeight, 24);
-			const next = {
-				...footerPlacement(row, a.offsetWidth, b.offsetWidth, innerWidth, box),
-				leftY: 0,
-				rightY: 0,
-				height,
-				alignment: "normal",
-			};
-			if (box && rect && header) {
-				const gap = 8;
-				const leftEdge = Math.max(
-					4,
-					Math.min(row.left, box.left - gap - a.offsetWidth),
+			let placement = footerPlacement(
+				row,
+				a.offsetWidth,
+				b.offsetWidth,
+				innerWidth,
+			);
+			if (native && slot) {
+				// Keep both labels in their normal positions before, during and after reveal.
+				const bounds = slot.getBoundingClientRect(),
+					gap = 8;
+				const start =
+					row.left +
+					placement.leftOffset +
+					a.offsetWidth * placement.leftScale +
+					gap;
+				const end =
+					row.right +
+					placement.rightOffset -
+					b.offsetWidth * placement.rightScale -
+					gap;
+				const available = Math.max(0, end - start),
+					inline = available >= 360;
+				const width = Math.min(650, inline ? available : bounds.width);
+				const x = inline
+					? (start + end - width) / 2 - bounds.left
+					: (bounds.width - width) / 2;
+				const y = row.top - bounds.top + (inline ? 0 : height + 6);
+				const values = {
+					"--nz-network-left": `${Math.max(0, x)}px`,
+					"--nz-network-top": `${y}px`,
+					"--nz-network-width": `${width}px`,
+					"--nz-footer-network-height": `${y + Number(ip.height)}px`,
+				};
+				for (const [key, value] of Object.entries(values))
+					if (slot.style.getPropertyValue(key) !== value)
+						slot.style.setProperty(key, value);
+				slot.dataset.networkLayout = inline ? "inline" : "stacked";
+			} else {
+				const current = document.querySelector<HTMLElement>(
+					"[data-native-footer-ip]",
 				);
-				const rightEdge = Math.min(
-					innerWidth - 4,
-					Math.max(row.right, box.right + gap + b.offsetWidth),
-				);
-				const leftScale = Math.min(
-					1,
-					Math.max(0, box.left - leftEdge - gap) / Math.max(1, a.offsetWidth),
-				);
-				const rightScale = Math.min(
-					1,
-					Math.max(0, rightEdge - box.right - gap) / Math.max(1, b.offsetWidth),
-				);
-				let center: number;
-				if (Math.min(leftScale, rightScale) >= 0.7) {
-					const heading = header.getBoundingClientRect();
-					center = box.top + heading.top - rect.top + heading.height / 2;
-					Object.assign(next, {
-						leftOffset: leftEdge - row.left,
-						rightOffset: rightEdge - row.right,
-						leftScale,
-						rightScale,
-						alignment: "beside",
-					});
-				} else {
-					// Narrow screens keep readable footer text just above the card.
-					center = box.top - gap - height / 2;
-					Object.assign(
-						next,
-						footerPlacement(row, a.offsetWidth, b.offsetWidth, innerWidth),
-						{ alignment: "above" },
-					);
+				if (current !== panel) {
+					if (panel) observer.unobserve(panel);
+					panel = current;
+					if (panel) observer.observe(panel);
 				}
-				// Reserve the narrow footer text row even while hidden, so showing the
-				// card does not move the scroll boundary or cover the preceding content.
-				const slot = outer.closest<HTMLElement>("[data-footer-network-slot]");
-				const reserve = next.alignment === "above" ? height + gap : 0;
-				if (
-					slot &&
-					slot.style.getPropertyValue("--nz-footer-text-row") !== `${reserve}px`
-				)
-					slot.style.setProperty("--nz-footer-text-row", `${reserve}px`);
-				if (panel?.dataset.visible === "true") {
-					next.leftY = center - row.top - a.offsetHeight / 2;
-					next.rightY = center - row.top - b.offsetHeight / 2;
-				} else {
-					Object.assign(
-						next,
-						footerPlacement(row, a.offsetWidth, b.offsetWidth, innerWidth),
-						{ alignment: "normal" },
-					);
-				}
+				const rect =
+					panel?.dataset.visible === "true"
+						? panel.getBoundingClientRect()
+						: undefined;
+				const box =
+					rect && panel
+						? {
+								left: rect.left,
+								right: rect.right,
+								top: panel.offsetTop,
+								bottom: panel.offsetTop + panel.offsetHeight,
+							}
+						: undefined;
+				placement = footerPlacement(
+					row,
+					a.offsetWidth,
+					b.offsetWidth,
+					innerWidth,
+					box,
+				);
 			}
+			const next = { ...placement, height };
 			setLayout((old) =>
 				Object.keys(next).every(
 					(k) => old[k as keyof typeof old] === next[k as keyof typeof next],
@@ -136,25 +117,26 @@ export function FitFooterRow({ children }: { children: ReactNode }) {
 		observer.observe(outer);
 		observer.observe(a);
 		observer.observe(b);
+		if (slot) observer.observe(slot);
 		measure();
-		addEventListener("scroll", schedule, { passive: true });
 		addEventListener("resize", schedule);
-		addEventListener("nz-footer-ip-change", measure);
-		window.visualViewport?.addEventListener("resize", schedule);
+		// Only legacy overlays need scroll-driven collision calculations.
+		if (!native) {
+			addEventListener("scroll", schedule, { passive: true });
+			addEventListener("nz-footer-ip-change", schedule);
+		}
 		return () => {
 			observer.disconnect();
 			cancelAnimationFrame(frame);
-			removeEventListener("scroll", schedule);
 			removeEventListener("resize", schedule);
-			removeEventListener("nz-footer-ip-change", measure);
-			window.visualViewport?.removeEventListener("resize", schedule);
+			removeEventListener("scroll", schedule);
+			removeEventListener("nz-footer-ip-change", schedule);
 		};
-	}, []);
+	}, [native, ip.height]);
 	const items = Children.toArray(children);
 	return (
 		<div
 			className="nz-footer-fit"
-			data-network-alignment={layout.alignment}
 			ref={container}
 			style={{ height: layout.height }}
 		>
@@ -162,7 +144,7 @@ export function FitFooterRow({ children }: { children: ReactNode }) {
 				className="nz-footer-side nz-footer-left"
 				ref={left}
 				style={{
-					transform: `translate(${layout.leftOffset}px, ${layout.leftY}px) scale(${layout.leftScale})`,
+					transform: `translateX(${layout.leftOffset}px) scale(${layout.leftScale})`,
 				}}
 			>
 				{items[0]}
@@ -171,7 +153,7 @@ export function FitFooterRow({ children }: { children: ReactNode }) {
 				className="nz-footer-side nz-footer-right"
 				ref={right}
 				style={{
-					transform: `translate(${layout.rightOffset}px, ${layout.rightY}px) scale(${layout.rightScale})`,
+					transform: `translateX(${layout.rightOffset}px) scale(${layout.rightScale})`,
 				}}
 			>
 				{items[1]}

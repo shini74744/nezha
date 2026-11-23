@@ -58,3 +58,20 @@
  .nz-net-probes dl>div {padding:1px 4px}
 }
 @media(prefers-reduced-motion:reduce) {.nz-footer-ip.nz-footer-network {transition:none}}
+
+/* Mount the native card inside the footer's reserved space. Opacity never changes layout. */
+.nz-footer-ip.nz-footer-network.nz-footer-in-flow {position:absolute;top:var(--nz-network-top,0px);bottom:auto;left:var(--nz-network-left,0px);width:var(--nz-network-width,100%);max-width:100%;container-type:inline-size;transition:opacity .15s ease}
+@container(max-width:520px) {
+ .nz-net-updated {display:none}
+ .nz-net-header {padding-inline:6px}
+ .nz-net-columns {grid-template-columns:minmax(0,1fr)}
+ .nz-net-ip {padding:2px 8px;border-right:0}
+ .nz-net-ip>.nz-net-source {display:flex;gap:6px;align-items:center}
+ .nz-net-ip .nz-net-provider {display:none}
+ .nz-net-ip .nz-net-address {flex:1;min-width:0}
+ .nz-net-ip .nz-net-location {max-width:36%;font-size:10px}
+ .nz-net-address strong {font-size:12px}
+ .nz-net-probes {padding:2px 8px}
+ .nz-net-probes dl {gap:3px 8px}
+ .nz-net-probes dl>div {padding:1px 4px}
+}
