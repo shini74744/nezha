@@ -1,5 +1,5 @@
-/* Keep the configured overlay height. The footer anchors its top to the last content card. */
-.nz-footer-ip.nz-footer-network {width:90%;max-width:650px;overflow:visible;transition:opacity .2s ease,transform .2s ease}
+/* Keep the configured overlay height. Keep the native card flush with the viewport bottom, respecting mobile safe areas. */
+.nz-footer-ip.nz-footer-network {top:auto;bottom:env(safe-area-inset-bottom,0px);width:90%;max-width:650px;overflow:visible;transition:opacity .2s ease,transform .2s ease}
 .nz-net-card,.nz-net-details {--net-bg:#f8fafcf5;--net-panel:#edf2f7;--net-ink:#1e293b;--net-muted:#526277;--net-line:#ccd7e2;--net-accent:#087568;--net-failure:#9a4514;background:var(--net-bg);color:var(--net-ink);border:1px solid var(--net-line);font-family:inherit;font-size:12px;line-height:1.4;text-align:left}
 .dark .nz-net-card,.dark .nz-net-details {--net-bg:#161d28fa;--net-panel:#202b3b;--net-ink:#edf3fa;--net-muted:#acbcd0;--net-line:#3b4a60;--net-accent:#66d9c4;--net-failure:#ffba86}
 .nz-net-card {height:100%;box-sizing:border-box;border-radius:9px;box-shadow:0 4px 12px #0f172a20;overflow:hidden}
@@ -56,6 +56,5 @@
  .nz-net-probes {padding:2px 8px}
  .nz-net-probes dl {gap:3px 8px}
  .nz-net-probes dl>div {padding:1px 4px}
- .nz-net-probes .nz-net-hint {display:none}
 }
 @media(prefers-reduced-motion:reduce) {.nz-footer-ip.nz-footer-network {transition:none}}

@@ -44,6 +44,12 @@ async function open(config = baseline as any) {
     render(<ServerConfigCard sid={96} menuItem />)
     fireEvent.click(screen.getByRole("button", { name: "Config" }))
     await screen.findByRole("group", { name: "监控网卡" })
+    expandNIC()
+}
+function expandNIC() {
+    const panel = document.querySelector<HTMLDetailsElement>("[data-monitor-nic-picker]")!
+    expect(panel.open).toBe(false)
+    fireEvent.click(panel.querySelector("summary")!)
 }
 async function submit() {
     await act(async () => {
@@ -136,6 +142,8 @@ test("close discards changes and re-opening requests a fresh inventory", async (
     fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0])
     expect(mocks.set).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole("button", { name: "Config" }))
+    await screen.findByRole("group", { name: "监控网卡" })
+    expandNIC()
     await waitFor(() => expect(checkbox("enp2s0f0").getAttribute("aria-checked")).toBe("true"))
     expect(mocks.get).toHaveBeenCalledTimes(2)
 })
@@ -152,6 +160,8 @@ test("late config response after close cannot overwrite the next open", async ()
     fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0])
     mocks.get.mockResolvedValue(JSON.stringify({ ...baseline, nic_allowlist: { enp2s0f1: true } }))
     fireEvent.click(screen.getByRole("button", { name: "Config" }))
+    await screen.findByRole("group", { name: "监控网卡" })
+    expandNIC()
     await screen.findByRole("checkbox", { name: "统计 enp2s0f1" })
     await act(async () => {
         resolveOld(JSON.stringify({ ...baseline, nic_allowlist: { enp2s0f0: true } }))

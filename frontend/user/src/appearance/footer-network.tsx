@@ -348,7 +348,6 @@ export function FooterNetworkCard({
 							</div>
 						))}
 					</dl>
-					<p className="nz-net-hint">浏览器请求耗时，非服务器 Ping</p>
 				</div>
 			</div>
 		</section>

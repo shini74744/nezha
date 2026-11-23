@@ -1,14 +1,12 @@
 import { useEffect, useState } from "react";
 import { useWebSocketContext } from "@/hooks/use-websocket-context";
-import { useAppearanceLayout, useFeature } from "./context";
+import { useFeature } from "./context";
 import { FooterNetworkCard, isBuiltInFooterURL } from "./footer-network";
 export function NativeFooterIP() {
 	const f = useFeature("footerIP"),
 		[visible, setVisible] = useState(false),
 		[dismissed, setDismissed] = useState(false);
 	const { connected, lastData } = useWebSocketContext();
-	const layout = useAppearanceLayout();
-	const [anchorTop, setAnchorTop] = useState<number | null>(null);
 	const mobile = /Mobi|Android/i.test(navigator.userAgent),
 		native = isBuiltInFooterURL(f.url);
 	const ready = connected && lastData !== null,
@@ -24,9 +22,6 @@ export function NativeFooterIP() {
 			innerHeight + scrollY >= document.documentElement.scrollHeight - 2;
 		const update = () => {
 			clearTimeout(timer);
-			const previous = layout.footer.current?.previousElementSibling;
-			const edge = previous?.getBoundingClientRect();
-			setAnchorTop(native && edge && edge.height > 0 ? edge.bottom : null);
 			const down = window.scrollY >= last;
 			last = window.scrollY;
 			if (!atBottom()) setDismissed(false);
@@ -46,7 +41,7 @@ export function NativeFooterIP() {
 			removeEventListener("scroll", update);
 			removeEventListener("resize", update);
 		};
-	}, [f.enabled, allowed, ready, native, layout]);
+	}, [f.enabled, allowed, ready]);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: Notify the copyright placement when overlay visibility or height changes.
 	useEffect(() => {
 		const notify = () => dispatchEvent(new Event("nz-footer-ip-change"));
@@ -69,8 +64,6 @@ export function NativeFooterIP() {
 				opacity: shown ? 1 : 0,
 				pointerEvents: shown ? "auto" : "none",
 				height: f.height,
-				top: native && anchorTop !== null ? anchorTop : undefined,
-				bottom: native && anchorTop !== null ? "auto" : undefined,
 			}}
 		>
 			{native ? (
