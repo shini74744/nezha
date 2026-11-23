@@ -53,12 +53,12 @@ export function FitFooterRow({ children }: { children: ReactNode }) {
 					placement.rightOffset -
 					b.offsetWidth * placement.rightScale -
 					gap;
-				const available = Math.max(0, end - start),
+				// Reserve equal space on both sides so the card stays centered on the page.
+				const center = bounds.left + bounds.width / 2;
+				const available = Math.max(0, 2 * Math.min(center - start, end - center)),
 					inline = available >= 360;
 				const width = Math.min(650, inline ? available : bounds.width);
-				const x = inline
-					? (start + end - width) / 2 - bounds.left
-					: (bounds.width - width) / 2;
+				const x = (bounds.width - width) / 2;
 				const y = row.top - bounds.top + (inline ? 0 : height + 6);
 				const values = {
 					"--nz-network-left": `${Math.max(0, x)}px`,
