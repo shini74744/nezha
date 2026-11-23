@@ -23,7 +23,7 @@ const networkSlot=nativeFooter.enabled && footerIP.enabled && isBuiltInFooterURL
 		retry: false,
 	});
 
-	return <div ref={layout.footer} style={{"--nz-footer-card-height": `${footerIP.height}px`, minHeight:networkSlot ? undefined : footerIP.enabled && isBuiltInFooterURL(footerIP.url) ? footerIP.height : undefined} as React.CSSProperties} data-footer-network-slot={networkSlot ? "" : undefined} data-footer-region className={"nz-footer-region"+(sponsorFeature.enabled&&sponsorFeature.mobile?" nz-footer-with-sponsor":"")}>
+	return <div ref={layout.footer} style={{"--nz-footer-card-height": networkSlot ? "95px" : `${footerIP.height}px`, minHeight:networkSlot ? undefined : footerIP.enabled && isBuiltInFooterURL(footerIP.url) ? footerIP.height : undefined} as React.CSSProperties} data-footer-network-slot={networkSlot ? "" : undefined} data-footer-region className={"nz-footer-region"+(sponsorFeature.enabled&&sponsorFeature.mobile?" nz-footer-with-sponsor":"")}>
 		{nativeFooter.enabled ? <NativeFooter/> : (
 		<footer className="mx-auto w-full max-w-5xl px-4 lg:px-0 pb-4 server-footer">
 			<section className="flex flex-col">

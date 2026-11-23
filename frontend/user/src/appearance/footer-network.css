@@ -1,8 +1,8 @@
-/* Keep the configured overlay height. Keep the native card flush with the viewport bottom, respecting mobile safe areas. */
+/* Keep the native card compact and flush with the footer, respecting mobile safe areas. */
 .nz-footer-ip.nz-footer-network {top:auto;bottom:env(safe-area-inset-bottom,0px);width:90%;max-width:650px;overflow:visible;transition:opacity .2s ease,transform .2s ease}
-.nz-net-card,.nz-net-details {--net-bg:#f8fafcf5;--net-panel:#edf2f7;--net-ink:#1e293b;--net-muted:#526277;--net-line:#ccd7e2;--net-accent:#087568;--net-failure:#9a4514;background:var(--net-bg);color:var(--net-ink);border:1px solid var(--net-line);font-family:inherit;font-size:12px;line-height:1.4;text-align:left}
-.dark .nz-net-card,.dark .nz-net-details {--net-bg:#161d28fa;--net-panel:#202b3b;--net-ink:#edf3fa;--net-muted:#acbcd0;--net-line:#3b4a60;--net-accent:#66d9c4;--net-failure:#ffba86}
-.nz-net-card {height:100%;box-sizing:border-box;border-radius:9px;box-shadow:0 4px 12px #0f172a20;overflow:hidden}
+.nz-net-card,.nz-net-details {--net-bg:#dcebedbf;--net-panel:#f2fbfc66;--net-ink:#213746;--net-muted:#2d4350;--net-line:#688fa43b;--net-accent:#064940;--net-failure:#702a0d;--net-highlight:#ffffff99;--net-sheen:#ffffff45;--net-tint:#62b5bd1a;background:linear-gradient(135deg,var(--net-sheen),transparent 55%,var(--net-tint)),var(--net-bg);backdrop-filter:blur(12px) saturate(115%);-webkit-backdrop-filter:blur(12px) saturate(115%);color:var(--net-ink);border:1px solid var(--net-line);font-family:inherit;font-size:12px;line-height:1.4;text-align:left}
+.dark .nz-net-card,.dark .nz-net-details {--net-bg:#142733cc;--net-panel:#94bfcd1a;--net-ink:#edf6fa;--net-muted:#b6cad3;--net-line:#9dc4d238;--net-accent:#82e2d0;--net-failure:#ffba86;--net-highlight:#ffffff21;--net-sheen:#ffffff0d;--net-tint:#3cc1ae14}
+.nz-net-card {height:auto;box-sizing:border-box;border-radius:11px;box-shadow:inset 0 1px 0 var(--net-highlight),0 5px 18px #19374624;overflow:hidden}
 .nz-net-header {height:27px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 9px;border-bottom:1px solid var(--net-line)}
 .nz-net-title,.nz-net-actions {display:flex;align-items:center;gap:6px;min-width:0}
 .nz-net-title {color:var(--net-accent);flex-shrink:0}
@@ -15,7 +15,7 @@
 .nz-net-refresh,.nz-net-icon {display:inline-flex;align-items:center;justify-content:center;gap:4px;border:1px solid transparent;background:transparent;color:var(--net-ink);border-radius:4px;min-height:23px;padding:2px 5px;white-space:nowrap}
 .nz-net-icon {padding:3px;min-width:23px}
 :is(.nz-net-card,.nz-net-details) button:hover:not(:disabled) {background:var(--net-panel);border-color:var(--net-line);color:var(--net-accent)}
-.nz-net-columns {display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr)}
+.nz-net-columns {display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);grid-template-rows:minmax(66px,auto)}
 .nz-net-ip,.nz-net-probes {min-width:0;padding:5px 9px}
 .nz-net-ip {position:relative;border-right:1px solid var(--net-line)}
 .nz-net-card h3 {display:none}
@@ -26,7 +26,7 @@
 .nz-net-address .nz-net-icon {flex-shrink:0}
 .nz-net-location {margin:1px 0 0;color:var(--net-muted);font-size:11px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .nz-net-probes dl {display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;margin:0}
-.nz-net-probes dl>div {display:flex;justify-content:space-between;align-items:center;gap:5px;padding:2px 4px;border-radius:4px;background:var(--net-panel);min-width:0}
+.nz-net-probes dl>div {display:flex;justify-content:space-between;align-items:center;gap:5px;padding:2px 4px;border-radius:5px;background:var(--net-panel);min-width:0;min-height:21px}
 .nz-net-probes dt {font-size:11px;white-space:nowrap}
 .nz-net-probes dd {display:flex;align-items:baseline;gap:2px;flex-shrink:0;font-variant-numeric:tabular-nums;margin:0;font-size:10px}
 .nz-net-probes dd strong {font-size:12px;font-weight:600}
@@ -41,12 +41,12 @@
 .nz-net-details .nz-net-address {height:auto;min-height:26px}
 .nz-net-details .nz-net-address strong {white-space:normal;overflow-wrap:anywhere;font-size:14px}
 .nz-net-details .nz-net-location {white-space:normal;overflow-wrap:anywhere}
-[data-theme-variant="paper"] :is(.nz-net-card,.nz-net-details) {--net-bg:var(--paper-raised);--net-panel:var(--paper);--net-ink:var(--paper-ink);--net-muted:var(--paper-muted);--net-line:var(--paper-line);--net-accent:var(--paper-green);--net-failure:var(--paper-red);border-radius:3px;background-image:var(--paper-texture);box-shadow:1px 2px 0 var(--paper-line)}
+[data-theme-variant="paper"] :is(.nz-net-card,.nz-net-details) {--net-bg:var(--paper-raised);--net-panel:var(--paper);--net-ink:var(--paper-ink);--net-muted:var(--paper-muted);--net-line:var(--paper-line);--net-accent:var(--paper-green);--net-failure:var(--paper-red);border-radius:3px;background-image:var(--paper-texture);backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:1px 2px 0 var(--paper-line)}
 @media(max-width:600px) {
  .nz-footer-ip.nz-footer-network {width:calc(100% - 20px)}
  .nz-net-updated {display:none}
  .nz-net-header {padding-inline:6px}
- .nz-net-columns {grid-template-columns:minmax(0,1fr)}
+ .nz-net-columns {grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(28px,auto) minmax(49px,auto)}
  .nz-net-ip {padding:2px 8px;border-right:0}
  .nz-net-ip>.nz-net-source {display:flex;gap:6px;align-items:center}
  .nz-net-ip .nz-net-provider {display:none}
@@ -64,7 +64,7 @@
 @container(max-width:520px) {
  .nz-net-updated {display:none}
  .nz-net-header {padding-inline:6px}
- .nz-net-columns {grid-template-columns:minmax(0,1fr)}
+ .nz-net-columns {grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(28px,auto) minmax(49px,auto)}
  .nz-net-ip {padding:2px 8px;border-right:0}
  .nz-net-ip>.nz-net-source {display:flex;gap:6px;align-items:center}
  .nz-net-ip .nz-net-provider {display:none}
@@ -84,4 +84,10 @@
 @media(prefers-reduced-motion:reduce) {
  .nz-footer-ip.nz-footer-network.nz-footer-in-flow[data-visible],
  .nz-footer-ip.nz-footer-network.nz-footer-in-flow > .nz-net-card {transition:none;transform:none}
+}
+
+
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
+ html:not([data-theme-variant="paper"]) :is(.nz-net-card,.nz-net-details) {--net-bg:#e1edef}
+ html.dark:not([data-theme-variant="paper"]) :is(.nz-net-card,.nz-net-details) {--net-bg:#182b35}
 }

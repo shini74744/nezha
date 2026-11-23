@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useWebSocketContext } from "@/hooks/use-websocket-context";
 import { useAppearanceLayout, useFeature } from "./context";
@@ -16,6 +16,7 @@ export function NativeFooterIP() {
 	const layout = useAppearanceLayout();
 	const footer = useFeature("footer");
 	const [host, setHost] = useState<HTMLDivElement | null>(null);
+	const panelRef = useRef<HTMLDivElement>(null);
 	useLayoutEffect(() => {
 		const slot = layout.footer.current;
 		setHost(
@@ -27,6 +28,22 @@ export function NativeFooterIP() {
 				: null,
 		);
 	}, [native, footer.enabled, f.enabled, layout.footer]);
+	useLayoutEffect(() => {
+		const panel = panelRef.current;
+		if (!native || !host || !panel) return;
+		const measure = () => {
+			const height = panel.offsetHeight;
+			if (height > 0) host.style.setProperty("--nz-measured-network-height", `${height}px`);
+		};
+		const observer = new ResizeObserver(measure);
+		observer.observe(panel);
+		measure();
+		return () => {
+			observer.disconnect();
+			host.style.removeProperty("--nz-measured-network-height");
+		};
+	}, [native, host]);
+
 	useEffect(() => {
 		setVisible(false);
 		setDismissed(false);
@@ -68,6 +85,7 @@ export function NativeFooterIP() {
 	if (!f.enabled) return null;
 	const panel = (
 		<div
+			ref={panelRef}
 			data-native-footer-ip
 			data-visible={shown ? "true" : "false"}
 			className={`nz-footer-ip${native ? " nz-footer-network" : ""}${host ? " nz-footer-in-flow" : ""}`}
@@ -80,7 +98,7 @@ export function NativeFooterIP() {
 					: `translateX(-50%) translateY(${shown ? 0 : 20}px)`,
 				opacity: shown ? 1 : 0,
 				pointerEvents: shown ? "auto" : "none",
-				height: f.height,
+				height: native ? undefined : f.height,
 			}}
 		>
 			{native ? (

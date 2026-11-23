@@ -64,7 +64,7 @@ export function FitFooterRow({ children }: { children: ReactNode }) {
 					"--nz-network-left": `${Math.max(0, x)}px`,
 					"--nz-network-top": `${y}px`,
 					"--nz-network-width": `${width}px`,
-					"--nz-footer-network-height": `${y + Number(ip.height)}px`,
+					"--nz-footer-network-height": `calc(${y}px + var(--nz-measured-network-height, var(--nz-footer-card-height)))`,
 				};
 				for (const [key, value] of Object.entries(values))
 					if (slot.style.getPropertyValue(key) !== value)
