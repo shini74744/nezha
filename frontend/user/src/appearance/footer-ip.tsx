@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { useWebSocketContext } from "@/hooks/use-websocket-context";
-import { useFeature } from "./context";
+import { useAppearanceLayout, useFeature } from "./context";
 import { FooterNetworkCard, isBuiltInFooterURL } from "./footer-network";
 export function NativeFooterIP() {
 	const f = useFeature("footerIP"),
@@ -12,6 +12,44 @@ export function NativeFooterIP() {
 	const ready = connected && lastData !== null,
 		allowed = native || !mobile;
 	const shown = f.enabled && allowed && ready && visible && !dismissed;
+	const layout = useAppearanceLayout();
+	const footer = useFeature("footer");
+	const [anchorTop, setAnchorTop] = useState<number | null>(null);
+	useLayoutEffect(() => {
+		const slot = layout.footer.current;
+		if (
+			!native ||
+			!footer.enabled ||
+			!f.enabled ||
+			!slot?.hasAttribute("data-footer-network-slot")
+		) {
+			setAnchorTop(null);
+			return;
+		}
+		let frame = 0;
+		const measure = () => {
+			const textRow =
+				parseFloat(
+					getComputedStyle(slot).getPropertyValue("--nz-footer-text-row"),
+				) || 0;
+			setAnchorTop(slot.getBoundingClientRect().top + textRow);
+		};
+		const schedule = () => {
+			cancelAnimationFrame(frame);
+			frame = requestAnimationFrame(measure);
+		};
+		const observer = new ResizeObserver(schedule);
+		observer.observe(slot);
+		addEventListener("scroll", schedule, { passive: true });
+		addEventListener("resize", schedule);
+		measure();
+		return () => {
+			observer.disconnect();
+			cancelAnimationFrame(frame);
+			removeEventListener("scroll", schedule);
+			removeEventListener("resize", schedule);
+		};
+	}, [native, f.enabled, footer.enabled, layout.footer]);
 	useEffect(() => {
 		setVisible(false);
 		setDismissed(false);
@@ -49,7 +87,7 @@ export function NativeFooterIP() {
 		return () => {
 			requestAnimationFrame(notify);
 		};
-	}, [shown, f.height]);
+	}, [shown, f.height, anchorTop]);
 	if (!f.enabled) return null;
 	return (
 		<div
@@ -60,6 +98,8 @@ export function NativeFooterIP() {
 			aria-hidden={!shown}
 			style={{
 				display: !allowed ? "none" : undefined,
+				top: native && anchorTop !== null ? anchorTop : undefined,
+				bottom: native && anchorTop !== null ? "auto" : undefined,
 				transform: `translateX(-50%) translateY(${shown ? 0 : 20}px)`,
 				opacity: shown ? 1 : 0,
 				pointerEvents: shown ? "auto" : "none",

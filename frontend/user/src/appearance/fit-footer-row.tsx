@@ -37,8 +37,9 @@ export function FitFooterRow({ children }: { children: ReactNode }) {
 				panel = current;
 				if (panel) observer.observe(panel);
 			}
+			const nativeCard = panel?.classList.contains("nz-footer-network");
 			const rect =
-				panel?.dataset.visible === "true"
+				panel && (nativeCard || panel.dataset.visible === "true")
 					? panel.getBoundingClientRect()
 					: undefined;
 			const header = panel?.querySelector<HTMLElement>(".nz-net-header");
@@ -99,8 +100,25 @@ export function FitFooterRow({ children }: { children: ReactNode }) {
 						{ alignment: "above" },
 					);
 				}
-				next.leftY = center - row.top - a.offsetHeight / 2;
-				next.rightY = center - row.top - b.offsetHeight / 2;
+				// Reserve the narrow footer text row even while hidden, so showing the
+				// card does not move the scroll boundary or cover the preceding content.
+				const slot = outer.closest<HTMLElement>("[data-footer-network-slot]");
+				const reserve = next.alignment === "above" ? height + gap : 0;
+				if (
+					slot &&
+					slot.style.getPropertyValue("--nz-footer-text-row") !== `${reserve}px`
+				)
+					slot.style.setProperty("--nz-footer-text-row", `${reserve}px`);
+				if (panel?.dataset.visible === "true") {
+					next.leftY = center - row.top - a.offsetHeight / 2;
+					next.rightY = center - row.top - b.offsetHeight / 2;
+				} else {
+					Object.assign(
+						next,
+						footerPlacement(row, a.offsetWidth, b.offsetWidth, innerWidth),
+						{ alignment: "normal" },
+					);
+				}
 			}
 			setLayout((old) =>
 				Object.keys(next).every(
