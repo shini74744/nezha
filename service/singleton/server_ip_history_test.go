@@ -1,6 +1,7 @@
 package singleton
 
 import (
+	"context"
 	"fmt"
 	"github.com/nezhahq/nezha/model"
 	"github.com/stretchr/testify/require"
@@ -154,8 +155,16 @@ func TestIPHistoryRetriesRealSQLiteWriterContention(t *testing.T) {
 	require.NoError(t, DB.Create(s).Error)
 	_, _, _, err = RecordServerIPChange(s, model.IP{IPv4Addr: "192.0.2.1"}, time.Now())
 	require.NoError(t, err)
-	writer, err := sqlDB.Begin()
+	// Keep the history connection's zero busy timeout so it must retry.
+	// The independent writer waits for transient reader locks during commit.
+	writerConn, err := sqlDB.Conn(context.Background())
 	require.NoError(t, err)
+	defer writerConn.Close()
+	_, err = writerConn.ExecContext(context.Background(), "PRAGMA busy_timeout = 5000")
+	require.NoError(t, err)
+	writer, err := writerConn.BeginTx(context.Background(), nil)
+	require.NoError(t, err)
+	defer writer.Rollback()
 	_, err = writer.Exec("UPDATE servers SET name='busy' WHERE id=1")
 	require.NoError(t, err)
 	done := make(chan error, 1)

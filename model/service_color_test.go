@@ -10,6 +10,9 @@ import (
 func TestServiceColorAllocationBackfillAndPersistence(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open(t.TempDir()+"/colors.db"), &gorm.Config{})
 	require.NoError(t, err)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
 	require.NoError(t, db.AutoMigrate(&Service{}))
 	for i := 0; i < 128; i++ {
 		require.NoError(t, db.Create(&Service{Name: "legacy", Type: TaskTypeTCPPing}).Error)
