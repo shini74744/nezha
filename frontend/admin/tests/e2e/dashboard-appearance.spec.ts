@@ -12,7 +12,7 @@ const provided = {
     enabled: true,
     features: Object.fromEntries(manifest.map((d: any) => [d.key, { ...d.defaults }])),
 }
-async function setup(page: Page, enabled = false) {
+async function setup(page: Page, enabled = false, customized = false) {
     let state: any = {
         config: structuredClone(provided),
         custom_code: "",
@@ -20,6 +20,14 @@ async function setup(page: Page, enabled = false) {
         revision: "first",
     }
     state.config.enabled = enabled
+    if (customized) {
+        Object.assign(state.config.features.brand, { enabled: true, title: "示例监控" })
+        Object.assign(state.config.features.font, {
+            enabled: true,
+            cssUrl: "https://fonts.example.invalid/test.css",
+            family: "Fixture Font",
+        })
+    }
     const updates: any[] = [],
         errors: string[] = []
     let conflict = false
@@ -41,9 +49,9 @@ async function setup(page: Page, enabled = false) {
             data = {
                 count: 2,
                 value: [
-                    { ip: "1.2.3.4:443", user_id: 1, connected_at: "2026-09-25T14:06:52.049Z" },
+                    { ip: "192.0.2.10:443", user_id: 1, connected_at: "2026-09-25T14:06:52.049Z" },
                     {
-                        ip: "[2602:fa02:33:103::a]:443",
+                        ip: "[2001:db8::a]:443",
                         user_id: 1,
                         connected_at: "2026-09-25T14:06:52.049Z",
                     },
@@ -86,7 +94,7 @@ async function setup(page: Page, enabled = false) {
     }
 }
 test("independent settings save, native branding, disable cleanup and layout", async ({ page }) => {
-    const { updates, errors } = await setup(page)
+    const { updates, errors } = await setup(page, false, true)
     await expect(page.locator("section h2 button")).toHaveCount(7)
     const a = await page.getByRole("tab", { name: "美化设置", exact: true }).boundingBox(),
         b = await page.getByRole("tab", { name: "后台美化设置", exact: true }).boundingBox()
@@ -95,7 +103,7 @@ test("independent settings save, native branding, disable cleanup and layout", a
     await page.getByRole("button", { name: "保存后台美化设置", exact: true }).click()
     await expect.poll(() => updates.length).toBe(1)
     await expect(page.locator("html")).toHaveAttribute("data-nz-dashboard", "true")
-    await expect(page.locator("header")).toContainText("哪吒云监控")
+    await expect(page.locator("header")).toContainText("示例监控")
     await expect(page.locator('img[src*="animated-man"]')).toHaveCount(0)
     await expect(page.locator("[data-nz-dashboard-font]")).toHaveCount(1)
     await expect(page.locator("footer")).toBeHidden()
@@ -148,15 +156,15 @@ test("IP tools and timezone conversion survive navigation without duplicate link
     await expect(page.locator("time")).toHaveText(["2026-09-25 22:06:52", "2026-09-25 22:06:52"])
     await expect(page.getByRole("link", { name: "Tcpingv4", exact: true })).toHaveAttribute(
         "href",
-        "https://www.itdog.cn/tcping/1.2.3.4%3A443",
+        "https://www.itdog.cn/tcping/192.0.2.10%3A443",
     )
     await expect(page.getByRole("link", { name: "Tcpingv6", exact: true })).toHaveAttribute(
         "href",
-        "https://www.itdog.cn/tcping_ipv6/%5B2602%3Afa02%3A33%3A103%3A%3Aa%5D%3A443",
+        "https://www.itdog.cn/tcping_ipv6/%5B2001%3Adb8%3A%3Aa%5D%3A443",
     )
     await expect(page.getByRole("link", { name: "Ping0v6", exact: true })).toHaveAttribute(
         "href",
-        "https://ping0.cc/ip/2602%3Afa02%3A33%3A103%3A%3Aa",
+        "https://ping0.cc/ip/2001%3Adb8%3A%3Aa",
     )
     await page.getByRole("checkbox", { name: "Select all", exact: true }).click()
     await expect(page.locator("[data-dashboard-ping]")).toHaveCount(2)
@@ -213,7 +221,7 @@ for (const width of [390, 1366])
             await expect.poll(() => updates.length).toBe(1)
             expect(updates[0].config.features.font).toMatchObject({
                 family: "Test Font",
-                enabled: false,
+                enabled: !provided.features.font.enabled,
             })
             await page.getByRole("button", { name: "重新读取", exact: true }).click()
             await expect(page.getByLabel("字体名称", { exact: true })).toHaveValue("Test Font")
