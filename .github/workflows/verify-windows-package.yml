@@ -1,0 +1,83 @@
+name: Verify Windows release package
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Dashboard release containing the Windows amd64 ZIP
+        required: true
+        type: string
+      package_sha256:
+        description: Expected SHA-256 of dashboard-windows-amd64.zip
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Draft downloads require push access. The step only fetches the distributable ZIP.
+    permissions:
+      contents: write
+    steps:
+      - name: Download and verify package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          PACKAGE_SHA256: ${{ inputs.package_sha256 }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$PACKAGE_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern dashboard-windows-amd64.zip
+          printf '%s  dashboard-windows-amd64.zip\n' "$PACKAGE_SHA256" | sha256sum -c -
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows-package-to-verify
+          path: dashboard-windows-amd64.zip
+          retention-days: 1
+          if-no-files-found: error
+  test:
+    needs: fetch
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.26.8"
+          cache: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: windows-package-to-verify
+          path: package
+      - name: Test the exact packaged binary
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          PACKAGE_SHA256: ${{ inputs.package_sha256 }}
+          NEZHA_TEST_FRONTEND: "1"
+          CGO_ENABLED: "1"
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $zip = 'package/dashboard-windows-amd64.zip'
+          if ((Get-FileHash $zip).Hash.ToLowerInvariant() -ne $env:PACKAGE_SHA256) { throw 'Package checksum mismatch' }
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $archive = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $zip))
+          try {
+            $bins = @($archive.Entries | Where-Object FullName -ceq 'dashboard-windows-amd64.exe')
+            if ($bins.Count -ne 1) { throw 'Expected one Windows dashboard binary' }
+            $env:NEZHA_TEST_BINARY = Join-Path $PWD 'package/dashboard-windows-amd64.exe'
+            [System.IO.Compression.ZipFileExtensions]::ExtractToFile($bins[0], $env:NEZHA_TEST_BINARY)
+          } finally { $archive.Dispose() }
+          $version = & $env:NEZHA_TEST_BINARY -v
+          if ($LASTEXITCODE -ne 0 -or $version -ne $env:RELEASE_TAG) { throw 'Version mismatch' }
+          & $env:NEZHA_TEST_BINARY -check-geoip
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go test -mod=readonly -tags deploymenttest -count=1 -timeout=8m -v ./integration/deployment
+          exit $LASTEXITCODE
