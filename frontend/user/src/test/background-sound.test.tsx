@@ -1,9 +1,9 @@
 import {it,expect,vi,afterEach} from "vitest";
 import {render,screen,fireEvent,act,cleanup,waitFor} from "@testing-library/react";
-import {AppearanceProvider} from "@/appearance/context";
-import {defaults} from "@/appearance/config";
-import {NativeBackground} from "@/appearance/background";
-import {BackgroundSoundLogo,publishBackgroundSound} from "@/appearance/background-sound";
+import {AppearanceProvider} from "@appearance/site/context";
+import {defaults} from "@appearance/site/config";
+import {NativeBackground} from "@appearance/site/background";
+import {BackgroundSoundLogo,publishBackgroundSound} from "@appearance/site/background-sound";
 afterEach(()=>{cleanup();vi.restoreAllMocks()});
 function setup(){
  const c=defaults();c.enabled=true;

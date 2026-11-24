@@ -1,13 +1,13 @@
-import "@/appearance/overview-surfaces.css";
+import "@appearance/site/overview-surfaces.css";
 import { ViewportChartTooltip } from "./ViewportChartTooltip";
 import {networkSeriesColor} from "@/lib/network-series-color";
 import "./network-series-color.css";
-import {PaperClip} from "@/themes/paper/PaperStationery";
+import {PaperClip} from "@appearance/themes/paper/PaperStationery";
 import { useLoginUser } from "@/hooks/use-login-user";
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { usePeakCutDefault } from "@/appearance/peak-cut";
+import { usePeakCutDefault } from "@appearance/site/peak-cut";
 import * as React from "react";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";

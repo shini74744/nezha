@@ -2,7 +2,7 @@ import {useEffect,useState} from "react";
 import {Button} from "./ui/button";
 import {Input} from "./ui/input";
 import SettingHelp from "./SettingHelp";
-import CardLogoPreview from "./CardLogoPreview";
+import CardLogoPreview from "../../../../appearance/admin/components/CardLogoPreview";
 import {logoPlacement,defaultPlacement,type LogoLayout} from "../../../shared/logo-layout";
 import type {PublicNote} from "@/lib/public-note";
 export default function ProviderLayoutEditor({note,onChange,serverId,name}:{note:PublicNote;onChange:(note:PublicNote)=>void;serverId?:number;name?:string}){

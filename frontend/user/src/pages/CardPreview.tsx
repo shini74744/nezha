@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from "react";
-import ServerCard from "@/components/ServerCard";
+import ServerCard from "@appearance/cards/ServerCard";
 import {useWebSocketContext} from "@/hooks/use-websocket-context";
 import type {NezhaServer} from "@/types/nezha-api";
 type Draft={id?:number;name?:string;note:Record<string,unknown>;device:"desktop"|"mobile"};

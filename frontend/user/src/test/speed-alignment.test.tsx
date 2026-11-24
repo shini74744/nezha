@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
-import { defaults } from "@/appearance/config";
-import { AppearanceProvider } from "@/appearance/context";
-import { NativeSpeed } from "@/appearance/widgets";
+import { defaults } from "@appearance/site/config";
+import { AppearanceProvider } from "@appearance/site/context";
+import { NativeSpeed } from "@appearance/site/widgets";
 
 describe("overview speed alignment", () => {
   it.each([true, false])("shares icon/value layout with beautification %s", enabled => {

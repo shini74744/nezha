@@ -4,7 +4,7 @@ import fs from "node:fs"
 // Headless Chromium normally hides classic scrollbars, masking this regression.
 test.use({ launchOptions: { ignoreDefaultArgs: ["--hide-scrollbars"], args: ["--disable-features=OverlayScrollbar,OverlayScrollbars"] } })
 test.setTimeout(60000)
-const manifest = JSON.parse(fs.readFileSync(new URL("../../src/lib/dashboard-appearance-manifest.json", import.meta.url), "utf8"))
+const manifest = JSON.parse(fs.readFileSync(new URL("../../../../appearance/defaults/dashboard-manifest.json", import.meta.url), "utf8"))
 const blackPNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64")
 const routes = [
     "", "/service", "/cron", "/server-expiry", "/alert-rule", "/ddns", "/nat",

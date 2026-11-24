@@ -2,7 +2,7 @@ import {test,expect} from "@playwright/test";
 import fs from "node:fs";
 import {createServer} from "../../../user/src/test/fixtures";
 const origin="http://127.0.0.1:18476";
-const defs=JSON.parse(fs.readFileSync(new URL("../../../user/src/appearance/manifest.json",import.meta.url),"utf8"));
+const defs=JSON.parse(fs.readFileSync(new URL("../../../../appearance/defaults/manifest.json",import.meta.url),"utf8"));
 for(const inline of ["0","1"])test("offline notes retain legacy layout, view "+inline,async({page,baseURL})=>{
  expect(baseURL).toBe(origin);
  const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));

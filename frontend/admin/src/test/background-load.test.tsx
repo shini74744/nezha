@@ -1,9 +1,9 @@
 import {useState} from "react";
 import {afterEach,it,expect} from "vitest";
 import {cleanup,render,screen,fireEvent} from "@testing-library/react";
-import {BackgroundSettings} from "@/components/background-settings";
-import {defaults,normalize,validate} from "@/lib/appearance-config";
-import {backgroundLoadEffects,getBackgroundLoad} from "@/lib/background-load";
+import {BackgroundSettings} from "@appearance/admin/components/background-settings";
+import {defaults,normalize,validate} from "@appearance/admin/settings/appearance-config";
+import {backgroundLoadEffects,getBackgroundLoad} from "@appearance/admin/settings/background-load";
 afterEach(cleanup);
 function Harness(){const [c,setC]=useState(defaults);return <><BackgroundSettings value={c.features.background} sound={c.features.video} onChange={f=>setC({...c,features:{...c.features,background:f}})} onSoundChange={()=>{}}/><output data-testid="validation">{validate(c)}</output><output data-testid="json">{JSON.stringify(c)}</output></>}
 it("edits and roundtrips independent device effects and durations",()=>{

@@ -38,7 +38,7 @@ async function setup(page: Page, beauty = false, theme = "dark") {
         failList = false
     const manifest = JSON.parse(
         fs.readFileSync(
-            new URL("../../src/lib/dashboard-appearance-manifest.json", import.meta.url),
+            new URL("../../../../appearance/defaults/dashboard-manifest.json", import.meta.url),
             "utf8",
         ),
     )

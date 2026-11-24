@@ -1,6 +1,6 @@
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
-import { AppearanceProvider } from "@/appearance/context";
-import { defaults } from "@/appearance/config";
+import { AppearanceProvider } from "@appearance/site/context";
+import { defaults } from "@appearance/site/config";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";

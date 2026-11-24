@@ -3,7 +3,7 @@ package controller
 import (
 	"encoding/json"
 	"fmt"
-	appearance "github.com/nezhahq/nezha/resource/appearance"
+	appearance "github.com/nezhahq/nezha/appearance/defaults"
 	"math"
 	"net/url"
 	"regexp"
@@ -68,7 +68,7 @@ func validateAppearanceFields(features map[string]map[string]any) error {
 				return fmt.Errorf("runtime.startDate must include a valid timezone")
 			}
 		}
-		if value, ok := feature["measurementId"].(string); ok && !regexp.MustCompile("^G-[A-Z0-9]+$").MatchString(value) {
+		if value, ok := feature["measurementId"].(string); ok && (value != "" || feature["enabled"] == true) && !regexp.MustCompile("^G-[A-Z0-9]+$").MatchString(value) {
 			return fmt.Errorf("invalid analytics measurement ID")
 		}
 		if value, ok := feature["desktopTop"].(string); ok && !regexp.MustCompile("^-?[0-9]+(\\.[0-9]+)?(px|vh|rem|%)$").MatchString(value) {

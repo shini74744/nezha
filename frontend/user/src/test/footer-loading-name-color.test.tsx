@@ -1,11 +1,11 @@
 import {describe,it,expect,vi,beforeEach,afterEach} from "vitest";
 import {render,act,cleanup} from "@testing-library/react";
-import {AppearanceProvider} from "@/appearance/context";
-import {defaults} from "@/appearance/config";
-import {NativeFooterIP} from "@/appearance/footer-ip";
-import {NativeName} from "@/appearance/widgets";
+import {AppearanceProvider} from "@appearance/site/context";
+import {defaults} from "@appearance/site/config";
+import {NativeFooterIP} from "@appearance/site/footer-ip";
+import {NativeName} from "@appearance/site/widgets";
 import {WebSocketContext,type WebSocketContextType} from "@/context/websocket-context";
-import lightCSS from "@/appearance/light-readability.css?raw";
+import lightCSS from "@appearance/site/light-readability.css?raw";
 let pageHeight=600,resize=()=>{};
 const disconnect=vi.fn(),OriginalResizeObserver=globalThis.ResizeObserver;
 function fixture(connected=true,loaded=true,enabled=true){

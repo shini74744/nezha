@@ -11,7 +11,7 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
-	appearance "github.com/nezhahq/nezha/resource/appearance"
+	appearance "github.com/nezhahq/nezha/appearance/defaults"
 	"github.com/nezhahq/nezha/service/singleton"
 )
 

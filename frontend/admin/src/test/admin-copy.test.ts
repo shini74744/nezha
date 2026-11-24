@@ -12,8 +12,8 @@ describe("admin user-facing copy", () => {
         ["components/telegram-notification-editor.tsx", "去重保存在内存中"],
         ["components/telegram-notification-editor.tsx", "系统目前仅做 JSON / URL 转义"],
         ["components/notification-event-modules.tsx", "首次上报只建立基线"],
-        ["routes/dashboard-appearance.tsx", "只读取 NZ_DASHBOARD_CONFIG"],
-        ["lib/appearance-manifest.json", "不会加载 jm/xjs"],
+        ["../../../appearance/admin/pages/dashboard-appearance.tsx", "只读取 NZ_DASHBOARD_CONFIG"],
+        ["../../../appearance/defaults/manifest.json", "不会加载 jm/xjs"],
         ["components/terminal.tsx", "View console for details."],
     ])("omits implementation copy from %s", (file, text) => {
         expect(read(file)).not.toContain(text)

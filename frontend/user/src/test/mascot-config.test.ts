@@ -1,5 +1,5 @@
 import {it,expect} from "vitest";
-import {defaults,normalize,validate} from "@/appearance/config";
+import {defaults,normalize,validate} from "@appearance/site/config";
 const row={id:"custom-example",name:"自定义",imageUrl:"https://example.test/role.png"};
 it("accepts custom roles and upgrades old configs",()=>{
  const c=defaults();c.enabled=true;Object.assign(c.features.live2d,{provider:"sakana",customCharacters:[row],character:row.id});

@@ -12,8 +12,8 @@ import { useLoginUser } from "@/hooks/use-login-user";
 import { useQuery } from "@tanstack/react-query";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { NetworkRateContext } from "@/context/network-rate-context";
-import { useFeature } from "@/appearance/context";
-import { formatSpeed } from "@/appearance/widgets";
+import { useFeature } from "@appearance/site/context";
+import { formatSpeed } from "@appearance/site/widgets";
 import { useTranslation } from "react-i18next";
 import {
 	Area,

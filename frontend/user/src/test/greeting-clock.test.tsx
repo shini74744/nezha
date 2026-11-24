@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
-import { defaults, normalize, validate } from "@/appearance/config";
-import { greetingMessages, chooseGreeting, mixClockColor } from "@/appearance/greeting-clock";
-import { NativeGreeting } from "@/appearance/widgets";
-import { AppearanceProvider } from "@/appearance/context";
-import { FeatureScope } from "@/appearance/scope";
-import { clock } from "@/appearance/modules/clock";
-import originalGreetings from "@/appearance/greetings.json";
+import { defaults, normalize, validate } from "@appearance/site/config";
+import { greetingMessages, chooseGreeting, mixClockColor } from "@appearance/site/greeting-clock";
+import { NativeGreeting } from "@appearance/site/widgets";
+import { AppearanceProvider } from "@appearance/site/context";
+import { FeatureScope } from "@appearance/site/scope";
+import { clock } from "@appearance/site/modules/clock";
+import originalGreetings from "@appearance/site/greetings.json";
 afterEach(() => vi.useRealTimers());
 const at = (hour: number, minute = 0) => new Date(2026, 8, 26, hour, minute, 0);
 describe("custom greeting and clock", () => {

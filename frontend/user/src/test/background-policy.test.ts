@@ -1,6 +1,6 @@
 import {describe,it,expect} from "vitest";
-import {defaults,normalize,validate} from "@/appearance/config";
-import {parseMediaLines,inTimeRange,matchesRegion,selectBackground,validateBackground} from "@/appearance/background-config";
+import {defaults,normalize,validate} from "@appearance/site/config";
+import {parseMediaLines,inTimeRange,matchesRegion,selectBackground,validateBackground} from "@appearance/site/background-config";
 const image=(name:string)=>({type:"image" as const,src:"https://example.test/"+name+".png"});
 function fixture(){const f=defaults().features.background;f.desktopMedia=[image("desktop")];f.mobileMedia=[image("mobile")];f.chinaMedia=[image("region")];f.regionMobileMedia=[];f.scheduleRules=[{name:"night",enabled:true,start:"22:30",end:"06:15",desktopMedia:[image("night")],mobileMedia:[]}];return f}
 describe("background policy",()=>{

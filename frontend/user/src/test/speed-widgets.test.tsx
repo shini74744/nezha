@@ -1,9 +1,9 @@
 import {describe,it,expect} from "vitest";
 import {render,screen} from "@testing-library/react";
-import {defaults} from "@/appearance/config";
-import {AppearanceProvider} from "@/appearance/context";
-import {NativeSpeed} from "@/appearance/widgets";
-import lightStyles from "@/appearance/light-readability.css?raw";
+import {defaults} from "@appearance/site/config";
+import {AppearanceProvider} from "@appearance/site/context";
+import {NativeSpeed} from "@appearance/site/widgets";
+import lightStyles from "@appearance/site/light-readability.css?raw";
 function pair(overrides:Record<string,boolean>={},master=true){
  const c=defaults();c.enabled=master;Object.assign(c.features.speed,overrides);
  return render(<AppearanceProvider raw={JSON.stringify(c)}>

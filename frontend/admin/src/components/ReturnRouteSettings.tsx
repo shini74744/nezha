@@ -1,5 +1,5 @@
 import { FetcherMethod, fetcher } from "@/api/api"
-import { AppearanceSection } from "@/components/appearance-section"
+import { AppearanceSection } from "@appearance/admin/components/appearance-section"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"

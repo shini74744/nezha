@@ -1,5 +1,5 @@
-import {PaperClip} from "@/themes/paper/PaperStationery";
-import {PaperTool} from "@/themes/paper/PaperTools";
+import {PaperClip} from "@appearance/themes/paper/PaperStationery";
+import {PaperTool} from "@appearance/themes/paper/PaperTools";
 import { geoGraticule10, geoNaturalEarth1, geoPath } from "d3-geo";
 import { Globe2 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";

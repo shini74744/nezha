@@ -1,4 +1,4 @@
-import { useDashboardFeature } from "@/components/dashboard-appearance"
+import { useDashboardFeature } from "@appearance/admin/components/dashboard-appearance"
 import { ModeToggle } from "@/components/mode-toggle"
 import {
     Drawer,

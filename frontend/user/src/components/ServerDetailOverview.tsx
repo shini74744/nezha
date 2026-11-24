@@ -1,8 +1,8 @@
-import {PaperTool} from "@/themes/paper/PaperTools";
+import {PaperTool} from "@appearance/themes/paper/PaperTools";
 import { safeSessionStorage } from "@/lib/storage";
 import dayjs from "dayjs";
 import type { NezhaServer } from "@/types/nezha-api";
-import {NativeName} from "@/appearance/widgets";
+import {NativeName} from "@appearance/site/widgets";
 import countries from "i18n-iso-countries";
 import enLocale from "i18n-iso-countries/langs/en.json";
 import { useEffect, useState } from "react";

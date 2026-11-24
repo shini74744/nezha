@@ -33,7 +33,7 @@ The independently selectable `doraemon-dist` theme shares the default frontend's
 - Develop: `cd frontend/user && corepack pnpm run dev:doraemon`
 - Build: `bash script/build-doraemon.sh` (Node.js 24, Corepack and rsync; uses the pinned pnpm lockfile).
 - `script/fetch-frontends.sh` builds this local theme instead of downloading a Monitor archive. `script/build-custom.sh` includes it alongside the existing frontends.
-- Implementation, visual source and license: `frontend/user/src/themes/doraemon/README.md`.
+- Implementation, visual source and license: `appearance/themes/doraemon/README.md`.
 - Standalone frontend output is `frontend/user/dist-doraemon`; it and embedded `cmd/dashboard/doraemon-dist` are generated and ignored by Git.
 
 

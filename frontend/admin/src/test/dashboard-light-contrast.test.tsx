@@ -1,13 +1,14 @@
 import { cleanup, render } from "@testing-library/react"
 import { afterEach, expect, test } from "vitest"
-import { DashboardAppearanceProvider } from "../components/dashboard-appearance"
-import { dashboardDefaults } from "../lib/dashboard-appearance"
+import { DashboardAppearanceProvider } from "../../../../appearance/admin/components/dashboard-appearance"
+import { dashboardDefaults } from "../../../../appearance/admin/settings/dashboard-appearance"
 
 afterEach(cleanup)
 const light = "html[data-nz-dashboard]:not(.dark)"
 function config() {
     const c = dashboardDefaults()
     c.enabled = true
+    c.features.background.enabled = true
     c.features.font.enabled = false
     c.features.effects.enabled = false
     return c

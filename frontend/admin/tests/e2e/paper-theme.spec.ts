@@ -1,7 +1,7 @@
 import {test,expect,type Page,type WebSocketRoute} from "@playwright/test";
 import {createServer} from "../../../user/src/test/fixtures";
 import fs from "node:fs";
-const paper=JSON.parse(fs.readFileSync(new URL("../../../shared/paper-defaults.json",import.meta.url),"utf8"));
+const paper=JSON.parse(fs.readFileSync(new URL("../../../../appearance/defaults/paper-defaults.json",import.meta.url),"utf8"));
 test.use({ignoreHTTPSErrors:true});
 const origin=process.env.PAPER_URL || "https://127.0.0.1:18511";
 async function setup(page:Page,color="light",role:number|null=0,bits=false){

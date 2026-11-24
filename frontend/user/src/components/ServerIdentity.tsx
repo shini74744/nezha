@@ -1,4 +1,4 @@
-import {NativeName} from "@/appearance/widgets";
+import {NativeName} from "@appearance/site/widgets";
 import {cn,type PublicNoteData} from "@/lib/utils";
 import ServerFlag from "./ServerFlag";
 import ProviderLogo from "./ProviderLogo";

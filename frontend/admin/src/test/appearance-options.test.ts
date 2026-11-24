@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { defaults, normalize, validate } from "../lib/appearance-config";
-import { normalize as normalizeUser } from "../../../user/src/appearance/config";
-import { chooseFont, fontCSS } from "../../../shared/appearance-options";
-import fonts from "../../../shared/font-styles.json";
-import { normalizeThemeAppearance, appearanceEndpoint, appearancePayload } from "../lib/theme-appearance";
+import { defaults, normalize, validate } from "../../../../appearance/admin/settings/appearance-config";
+import { normalize as normalizeUser } from "../../../../appearance/site/config";
+import { chooseFont, fontCSS } from "../../../../appearance/shared/appearance-options";
+import fonts from "../../../../appearance/shared/font-styles.json";
+import { normalizeThemeAppearance, appearanceEndpoint, appearancePayload } from "../../../../appearance/admin/settings/theme-appearance";
 
 describe("font and effect configuration", () => {
  it.each([-1,0,1,2,3,4,5,6,7])("preserves old font selection %i", selection => {

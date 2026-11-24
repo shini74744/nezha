@@ -9,20 +9,17 @@ for(const [name,width,height] of [["wide",600,150],["tall",150,600]] as const)te
  await expect(image).toHaveCSS("background-size","contain");
  await expect(image).toHaveCSS("background-position","50% 100%");
  await expect(page.locator("#nz-sakana-widget")).toHaveAttribute("data-character","custom-fit");
- await image.screenshot({path:"/tmp/ddnezha-build/releases/sakana-fit-20260926.eYalR1sN/"+name+".png"});
 });
 test("uploaded plane complete image",async({page})=>{
- page.on("requestfailed",r=>console.log("image request failed",r.url(),r.failure()));
- // Keep the real uploaded artwork, while avoiding Chromium test-host referrer restrictions.
- await page.route("https://fixture.example.invalid/sample-1",async r=>{const res=await r.fetch({headers:{"Referer":"https://fixture.example.invalid/sample-3"}});await r.fulfill({response:res})});
+ // Serve synthetic artwork with a known aspect ratio.
+ await page.route("https://fixture.example.invalid/**", r => r.fulfill({contentType:"image/svg+xml",body:'<svg xmlns="http://www.w3.org/2000/svg" width="300" height="140"><rect width="300" height="140" fill="navy"/></svg>'}));
  await page.goto("https://127.0.0.1:18475/native-test.html");await page.waitForFunction(()=>!!(window as any).setNativeConfig);
  const dimensions=await page.evaluate(()=>new Promise<{w:number;h:number}>((resolve,reject)=>{const i=new Image();i.onload=()=>resolve({w:i.naturalWidth,h:i.naturalHeight});i.onerror=reject;i.src="https://fixture.example.invalid/sample-2.png"}));
  expect(dimensions.w).toBeGreaterThan(0);
  await page.evaluate(()=>(window as any).setNativeConfig(["live2d"],{live2d:{provider:"sakana",size:200,controls:false,autoMotion:false,character:"custom-plane",customCharacters:[{id:"custom-plane",name:"飞机",imageUrl:"https://fixture.example.invalid/sample-2.png"}]}}));
  await expect(page.getByRole("img",{name:"飞机",exact:true}).locator(".nz-sakana-artwork")).toHaveCSS("background-size","contain");
  await page.waitForTimeout(300);
- await page.locator("#nz-sakana-widget").screenshot({path:"/tmp/ddnezha-build/releases/sakana-fit-20260926.eYalR1sN/plane.png"});
- console.log("original image dimensions",dimensions);
+ expect(dimensions).toEqual({w:300,h:140});
 });
 
 test("manual image scaling preserves ratio and left edge",async({page})=>{

@@ -1,6 +1,6 @@
 import {expect,test,type Page} from "@playwright/test"
 import {createServer} from "../../../user/src/test/fixtures"
-import manifest from "../../../user/src/appearance/manifest.json" with {type:"json"}
+import manifest from "../../../../appearance/defaults/manifest.json" with {type:"json"}
 test.use({ignoreHTTPSErrors:true})
 async function setup(page:Page,theme:string,effects:boolean,combined=false,initialPath="/server/7",networkChunkDelay=0,rateBits?:boolean,secondaryDelay=0,connectivityDelay=0) {
  const origin="https://127.0.0.1:"+(theme==="default"?"18477":"18478"), now=Date.now()

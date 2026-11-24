@@ -1,6 +1,6 @@
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import ServerPlanTraffic, { ServerPlanTrafficCard, fetchServerPlanTraffic, validPlanTraffic, type ServerPlanTrafficStat } from "@/components/ServerPlanTraffic";
+import ServerPlanTraffic, { ServerPlanTrafficCard, fetchServerPlanTraffic, validPlanTraffic, type ServerPlanTrafficStat } from "@appearance/cards/ServerPlanTraffic";
 import { createServer } from "@/test/fixtures";
 import { renderWithProviders as renderWithQuery } from "@/test/utils";
 const stat: ServerPlanTrafficStat = {quota_type:"limited",max:1024,used:1200,in:500,out:700,direction:"2",reset_day:15,from:"2026-09-15T00:00:00+08:00",to:"2026-10-15T00:00:00+08:00"};

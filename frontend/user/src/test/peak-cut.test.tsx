@@ -1,8 +1,8 @@
 import {it,expect,vi,afterEach} from "vitest";
 import {render,screen,act} from "@testing-library/react";
-import {defaults,normalize} from "@/appearance/config";
-import {AppearanceProvider} from "@/appearance/context";
-import {usePeakCutDefault} from "@/appearance/peak-cut";
+import {defaults,normalize} from "@appearance/site/config";
+import {AppearanceProvider} from "@appearance/site/context";
+import {usePeakCutDefault} from "@appearance/site/peak-cut";
 function Probe(){return <output>{String(usePeakCutDefault())}</output>}
 afterEach(()=>vi.unstubAllGlobals());
 it("migrates old disabled background switch and respects explicit settings",()=>{

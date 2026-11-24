@@ -1,5 +1,5 @@
-import { AppearanceSection } from "@/components/appearance-section"
-import { defaults, normalize, validate } from "@/lib/appearance-config"
+import { AppearanceSection } from "@appearance/admin/components/appearance-section"
+import { defaults, normalize, validate } from "@appearance/admin/settings/appearance-config"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 

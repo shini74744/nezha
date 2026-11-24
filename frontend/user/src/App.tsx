@@ -1,8 +1,8 @@
 import { preloadableView } from "@/lib/preloadable-view";
 import { safeLocalStorage } from "@/lib/storage";
-import {AppearanceProvider} from "./appearance/context";
-import {NativeEffects} from "./appearance/effects";
-import {NativeQuote} from "./appearance/native-layout-widgets";
+import {AppearanceProvider} from "../../../appearance/site/context";
+import {NativeEffects} from "../../../appearance/site/effects";
+import {NativeQuote} from "../../../appearance/site/native-layout-widgets";
 import { useQuery } from "@tanstack/react-query";
 import type React from "react";
 import { Suspense, useEffect, useState } from "react";
@@ -22,9 +22,9 @@ import ErrorPage from "./pages/ErrorPage";
 import Server from "./pages/Server";
 import { RetainedServerList } from "./components/RetainedServerList";
 import CardPreview from "./pages/CardPreview";
-import {PaperChapter} from "./themes/paper/PaperChapter";
+import {PaperChapter} from "../../../appearance/themes/paper/PaperChapter";
 
-const { View: DoraemonApp } = preloadableView(() => import("./themes/doraemon/App"));
+const { View: DoraemonApp } = preloadableView(() => import("../../../appearance/themes/doraemon/App"));
 const { View: NotFound } = preloadableView(() => import("./pages/NotFound"));
 import ServerDetail from "./pages/ServerDetail";
 

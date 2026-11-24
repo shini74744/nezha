@@ -1,8 +1,8 @@
 import { afterEach, expect, it } from "vitest";
 import { cleanup, render } from "@testing-library/react";
-import { AppearanceProvider } from "@/appearance/context";
-import { defaults } from "@/appearance/config";
-import { NativeBackground } from "@/appearance/background";
+import { AppearanceProvider } from "@appearance/site/context";
+import { defaults } from "@appearance/site/config";
+import { NativeBackground } from "@appearance/site/background";
 
 afterEach(cleanup);
 function fixture() {

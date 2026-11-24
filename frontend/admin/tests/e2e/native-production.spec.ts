@@ -2,7 +2,7 @@ import {test,expect} from "@playwright/test";
 import fs from "node:fs";
 import {createServer} from "../../../user/src/test/fixtures";
 const origin="http://127.0.0.1:18476";
-const definitions=JSON.parse(fs.readFileSync(new URL("../../../user/src/appearance/manifest.json",import.meta.url),"utf8"));
+const definitions=JSON.parse(fs.readFileSync(new URL("../../../../appearance/defaults/manifest.json",import.meta.url),"utf8"));
 test("built frontend integrates native effects, server data and SPA navigation",async({page})=>{
  const errors:string[]=[],forbidden:string[]=[];page.on("pageerror",error=>errors.push(error.message));
  page.on("request",request=>{if(/shini74744\/(jm|xjs)/.test(request.url()))forbidden.push(request.url())});

@@ -1,6 +1,6 @@
 import {afterEach, describe, expect, it, vi} from "vitest";
-import {FeatureScope} from "@/appearance/scope";
-import {heart} from "@/appearance/modules/heart";
+import {FeatureScope} from "@appearance/site/scope";
+import {heart} from "@appearance/site/modules/heart";
 let scope: FeatureScope | undefined;
 afterEach(() => {scope?.dispose(); vi.useRealTimers();});
 describe("decorative heart pointer safety", () => {

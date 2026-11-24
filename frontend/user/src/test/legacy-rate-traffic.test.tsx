@@ -1,10 +1,10 @@
 import {describe,it,expect,vi,afterEach} from "vitest";
 import {render,act,cleanup} from "@testing-library/react";
 import {QueryClient,QueryClientProvider} from "@tanstack/react-query";
-import {AppearanceProvider} from "@/appearance/context";
-import {defaults} from "@/appearance/config";
-import {NativeTraffic,formatTraffic,trafficColor} from "@/appearance/traffic";
-import {NativeSpeed} from "@/appearance/widgets";
+import {AppearanceProvider} from "@appearance/site/context";
+import {defaults} from "@appearance/site/config";
+import {NativeTraffic,formatTraffic,trafficColor} from "@appearance/site/traffic";
+import {NativeSpeed} from "@appearance/site/widgets";
 afterEach(()=>{cleanup();vi.useRealTimers();vi.unstubAllGlobals();});
 function setup(enabled=true,id=7,direction="2"){
  const c=defaults();c.enabled=enabled;c.features.traffic.toggleInterval=5000;

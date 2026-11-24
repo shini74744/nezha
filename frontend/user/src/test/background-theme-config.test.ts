@@ -1,5 +1,5 @@
 import {describe,it,expect} from "vitest";
-import {defaults,normalize,validate} from "@/appearance/config";
+import {defaults,normalize,validate} from "@appearance/site/config";
 describe("per-theme card settings",()=>{
  it.each([0,0.65,1])("migrates legacy opacity %s without changing input",opacity=>{
   const raw={version:1 as const,enabled:true,features:{background:{enabled:true,opacity,blur:8}}};

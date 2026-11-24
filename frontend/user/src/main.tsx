@@ -13,7 +13,7 @@ import { TooltipProvider } from "./context/tooltip-provider";
 import { AuthenticatedWebSocketProvider as WebSocketProvider } from "./context/websocket-provider";
 import "./i18n";
 import "./index.css";
-import "./themes/paper/paper.css";
+import "../../../appearance/themes/paper/paper.css";
 document.documentElement.dataset.themeVariant = import.meta.env.VITE_THEME_VARIANT;
 
 const queryClient = new QueryClient();

@@ -1,0 +1,210 @@
+import { GlassShine, useGlassShine } from "./GlassShine";
+import { homeNetworkServer } from "@/lib/home-network";
+import {NativeSpeed,NativeTraffic} from "@appearance/site/widgets";
+import { memo, useCallback, useLayoutEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
+import ServerUsageBar from "@appearance/cards/ServerUsageBar";
+import { formatBytes } from "@/lib/format";
+import {
+	GetFontLogoClass,
+	GetOsName,
+	MageMicrosoftWindows,
+} from "@/lib/logo-class";
+import { saveMainPageScrollPosition } from "@/lib/navigation";
+import { cn, formatNezhaInfo, parsePublicNote } from "@/lib/utils";
+import type { NezhaServer } from "@/types/nezha-api";
+import ServerIdentity from "../../frontend/user/src/components/ServerIdentity";
+import PlanInfo from "../../frontend/user/src/components/PlanInfo";
+import { Card } from "../../frontend/user/src/components/ui/card";
+import { Separator } from "../../frontend/user/src/components/ui/separator";
+
+function ServerCardInline({
+	now,
+	serverInfo,
+	onOpen,
+}: {
+	onOpen: (id: number) => void;
+	now: number;
+	serverInfo: NezhaServer;
+}) {
+	const { t } = useTranslation();
+	const glassShine = useGlassShine();
+	const {
+		name,
+		country_code,
+		online,
+		cpu,
+		up,
+		down,
+		mem,
+		stg,
+		platform,
+		uptime,
+		net_in_transfer,
+		net_out_transfer,
+		public_note,
+	} = formatNezhaInfo(now, homeNetworkServer(serverInfo));
+
+	const cardClick = () => {
+		onOpen(serverInfo.id);
+	};
+
+
+	const customBackgroundImage =
+		(window.CustomBackgroundImage as string) !== ""
+			? window.CustomBackgroundImage
+			: undefined;
+
+	const parsedData = parsePublicNote(public_note);
+
+	return online ? (
+		<section>
+			<Card data-server-card {...glassShine}
+				className={cn(
+					"flex w-full min-w-[900px] cursor-pointer items-center justify-start gap-3 p-3 transition-all hover:shadow-sm hover:ring-stone-300 md:px-5 lg:flex-row dark:hover:ring-stone-700",
+					{
+						"bg-card/70": customBackgroundImage,
+					},
+				)}
+				onClick={cardClick}
+			>
+				<GlassShine />
+				<ServerIdentity online={online} name={name} country={country_code} parsedData={parsedData} inline />
+				<Separator orientation="vertical" className="h-8 mx-0 ml-2" />
+				<div className="flex flex-col gap-1">
+					<section className={cn("grid grid-cols-9 items-center gap-3 flex-1")}>
+						<div
+							className={"items-center flex flex-row gap-2 whitespace-nowrap"}
+						>
+							<div className="text-xs font-semibold">
+								{platform.includes("Windows") ? (
+									<MageMicrosoftWindows className="size-[10px]" />
+								) : (
+									<p className={`fl-${GetFontLogoClass(platform)}`} />
+								)}
+							</div>
+							<div className={"flex w-14 flex-col"}>
+								<p className="text-xs text-muted-foreground">
+									{t("serverCard.system")}
+								</p>
+								<div className="flex items-center text-[10.5px] font-semibold">
+									{platform.includes("Windows")
+										? "Windows"
+										: GetOsName(platform)}
+								</div>
+							</div>
+						</div>
+						<div className={"flex w-20 flex-col"}>
+							<p className="text-xs text-muted-foreground">
+								{t("serverCard.uptime")}
+							</p>
+							<div className="flex items-center text-xs font-semibold">
+								{uptime / 86400 >= 1
+									? `${(uptime / 86400).toFixed(0)} ${t("serverCard.days")}`
+									: `${(uptime / 3600).toFixed(0)} ${t("serverCard.hours")}`}
+							</div>
+						</div>
+						<div className={"flex w-14 flex-col"}>
+							<p data-metric-label="cpu" className="text-xs text-muted-foreground">{"CPU"}</p>
+							<div className="flex items-center text-xs font-semibold">
+								{cpu.toFixed(2)}%
+							</div>
+							<ServerUsageBar value={cpu} />
+						</div>
+						<div className={"flex w-14 flex-col"}>
+							<p data-metric-label="memory" className="text-xs text-muted-foreground">
+								{t("serverCard.mem")}
+							</p>
+							<div className="flex items-center text-xs font-semibold">
+								{mem.toFixed(2)}%
+							</div>
+							<ServerUsageBar value={mem} />
+						</div>
+						<div className={"flex w-14 flex-col"}>
+							<p className="text-xs text-muted-foreground">
+								{t("serverCard.stg")}
+							</p>
+							<div className="flex items-center text-xs font-semibold">
+								{stg.toFixed(2)}%
+							</div>
+							<ServerUsageBar value={stg} />
+						</div>
+						<div className={"flex w-16 flex-col"}>
+							<p className="text-xs text-muted-foreground">
+								{t("serverCard.upload")}
+							</p>
+							<div className="flex items-center text-xs font-semibold">
+								<NativeSpeed bytes={homeNetworkServer(serverInfo).state.net_out_speed} direction="up" fallback={!Number.isFinite(up) ? "—" : up >= 1024
+									? `${(up / 1024).toFixed(2)}G/s`
+									: up >= 1
+										? `${up.toFixed(2)}M/s`
+										: `${(up * 1024).toFixed(2)}K/s`}/>
+							</div>
+						</div>
+						<div className={"flex w-16 flex-col"}>
+							<p className="text-xs text-muted-foreground">
+								{t("serverCard.download")}
+							</p>
+							<div className="flex items-center text-xs font-semibold">
+								<NativeSpeed bytes={homeNetworkServer(serverInfo).state.net_in_speed} direction="down" fallback={!Number.isFinite(down) ? "—" : down >= 1024
+									? `${(down / 1024).toFixed(2)}G/s`
+									: down >= 1
+										? `${down.toFixed(2)}M/s`
+										: `${(down * 1024).toFixed(2)}K/s`}/>
+							</div>
+						</div>
+						<div className={"flex w-20 flex-col"}>
+							<p className="text-xs text-muted-foreground">
+								{t("serverCard.totalUpload")}
+							</p>
+							<div data-network-direction="up" className="flex items-center text-xs font-semibold">
+								{formatBytes(net_out_transfer)}
+							</div>
+						</div>
+						<div className={"flex w-20 flex-col"}>
+							<p className="text-xs text-muted-foreground">
+								{t("serverCard.totalDownload")}
+							</p>
+							<div data-network-direction="down" className="flex items-center text-xs font-semibold">
+								{formatBytes(net_in_transfer)}
+							</div>
+						</div>
+					</section>
+					<NativeTraffic scopeKey={serverInfo.home_network?.scope_key} serverId={serverInfo.id}/>
+{parsedData?.planDataMod && <PlanInfo parsedData={parsedData} />}
+				</div>
+			</Card>
+		</section>
+	) : (
+		<Card data-server-card {...glassShine}
+			className={cn(
+				"flex  min-h-[61px] min-w-[900px] items-center justify-start p-3 md:px-5 flex-row cursor-pointer hover:bg-accent/50 transition-colors",
+				{
+					"bg-card/70": customBackgroundImage,
+				},
+			)}
+			onClick={cardClick}
+		>
+			<GlassShine />
+			<ServerIdentity online={online} name={name} country={country_code} parsedData={parsedData} inline />
+			<Separator orientation="vertical" className="h-8 ml-3 lg:ml-1 mr-3" />
+			{/* Legacy traffic enhancement applies to online cards only. */}
+			{parsedData?.planDataMod && <PlanInfo parsedData={parsedData} />}
+		</Card>
+	);
+}
+
+const CardContent = memo(ServerCardInline);
+// Keep location subscriptions out of the expensive card contents. A route
+// change updates this tiny adapter, not every metric, icon and billing row.
+export default memo(function NavigableCard(props: { now: number; serverInfo: NezhaServer }) {
+ const navigate = useNavigate();
+ const navigateRef = useRef(navigate);
+ useLayoutEffect(() => { navigateRef.current = navigate; }, [navigate]);
+ const onOpen = useCallback((id: number) => {
+  saveMainPageScrollPosition();
+  navigateRef.current(`/server/${id}`);
+ }, []);
+ return <CardContent {...props} onOpen={onOpen} />;
+});

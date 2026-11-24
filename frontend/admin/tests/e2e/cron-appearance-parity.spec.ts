@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test"
 import fs from "node:fs"
 
-const manifest = JSON.parse(fs.readFileSync(new URL("../../src/lib/dashboard-appearance-manifest.json", import.meta.url), "utf8"))
+const manifest = JSON.parse(fs.readFileSync(new URL("../../../../appearance/defaults/dashboard-manifest.json", import.meta.url), "utf8"))
 for (const dark of [false, true]) for (const enabled of [false, true]) for (const width of [320, 1366]) {
     test("task UI follows dashboard " + [dark, enabled, width].join("-"), async ({ page }) => {
         await page.setViewportSize({ width, height: 850 })

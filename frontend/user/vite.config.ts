@@ -1,3 +1,4 @@
+import packageConfig from "./package.json" with { type: "json" };
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -44,13 +45,13 @@ export default defineConfig(({ mode }) => ({
 		{
 			name: "doraemon-html",
 			generateBundle() {
-                if (mode === "paper") this.emitFile({type:"asset",fileName:"paper-font-OFL.txt",source:fs.readFileSync(path.resolve(__dirname,"src/themes/paper/fonts/OFL.txt"),"utf8")});
+                if (mode === "paper") this.emitFile({type:"asset",fileName:"paper-font-OFL.txt",source:fs.readFileSync(path.resolve(__dirname,"../../appearance/themes/paper/fonts/OFL.txt"),"utf8")});
 				if (mode === "doraemon")
 					this.emitFile({
 						type: "asset",
 						fileName: "doraemon-LICENSE.txt",
 						source: fs.readFileSync(
-							path.resolve(__dirname, "src/themes/doraemon/LICENSE"),
+							path.resolve(__dirname, "../../appearance/themes/doraemon/LICENSE"),
 							"utf8",
 						),
 					});
@@ -82,11 +83,14 @@ export default defineConfig(({ mode }) => ({
 		},
 	],
 	resolve: {
+        dedupe: Object.keys(packageConfig.dependencies),
 		alias: {
+            "@appearance": path.resolve(__dirname, "../../appearance"),
 			"@": path.resolve(__dirname, "./src"),
 		},
 	},
 	server: {
+        fs: { allow: [__dirname, path.resolve(__dirname, "../shared"), path.resolve(__dirname, "../../appearance"), fs.realpathSync(path.resolve(__dirname, "node_modules"))] },
 		https:
 			fs.existsSync("./.cert/key.pem") && fs.existsSync("./.cert/cert.pem")
 				? {

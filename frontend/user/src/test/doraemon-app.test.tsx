@@ -2,11 +2,11 @@ import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import userEvent from "@testing-library/user-event";
-import { useAppearance } from "@/appearance/context";
+import { useAppearance } from "@appearance/site/context";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { fetchSetting } from "@/lib/nezha-api";
 import { renderWithProviders } from "@/test/utils";
-import DoraemonApp from "@/themes/doraemon/App";
+import DoraemonApp from "@appearance/themes/doraemon/App";
 
 const serverState = vi.hoisted(() => ({ready:true}));
 vi.mock("@/lib/nezha-api", () => ({ fetchSetting: vi.fn() }));

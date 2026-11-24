@@ -1,10 +1,10 @@
 import {afterEach,describe,it,expect,vi} from "vitest";
 import {cleanup,render,screen,fireEvent} from "@testing-library/react";
-import ProviderLogoEditor from "../components/ProviderLogoEditor";
+import ProviderLogoEditor from "../../../../appearance/admin/components/ProviderLogoEditor";
 vi.mock("../hooks/useLogoGroups",()=>({default:()=>({data:[]})}));
 vi.mock("../hooks/useLogoLibrary",()=>({default:()=>({data:[]})}));
-vi.mock("../components/LogoChoicePicker",()=>({default:({label}:{label:string})=><div>{label}</div>}));
-vi.mock("../components/LogoEditor",()=>({default:()=> <div>上传操作</div>}));
+vi.mock("../../../../appearance/admin/components/LogoChoicePicker",()=>({default:({label}:{label:string})=><div>{label}</div>}));
+vi.mock("../../../../appearance/admin/components/LogoEditor",()=>({default:()=> <div>上传操作</div>}));
 vi.mock("../components/ProviderLayoutEditor",()=>({default:()=> <div>调整内容</div>}));
 afterEach(cleanup);
 const note={planDataMod:{providerLogo:{logo:"/api/v1/logo/assets/"+"a".repeat(64)+".png",logoLayout:{mobile:{x:12,y:-5,scale:75}}}}};

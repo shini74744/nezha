@@ -1,10 +1,10 @@
 import {describe,it,expect,vi} from "vitest";
 import {screen} from "@testing-library/react";
-import ServerCard from "@/components/ServerCard";
-import ServerCardInline from "@/components/ServerCardInline";
+import ServerCard from "@appearance/cards/ServerCard";
+import ServerCardInline from "@appearance/cards/ServerCardInline";
 import {createServer} from "@/test/fixtures";
 import {renderWithProviders} from "@/test/utils";
-vi.mock("@/appearance/widgets",()=>({
+vi.mock("@appearance/site/widgets",()=>({
  NativeTraffic:()=> <div data-testid="traffic">traffic</div>,
  NativeName:({children}:any)=>children,NativeSpeed:()=>null,
 }));

@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { FeatureScope } from "../appearance/scope";
+import { FeatureScope } from "../../../../appearance/site/scope";
 import {
 	bindSakanaMotion,
 	springPose,
 	createSpring,
 	SPRING_STEP,
-} from "../appearance/modules/sakana-motion";
+} from "../../../../appearance/site/modules/sakana-motion";
 
 describe("Sakana frame-batched dragging", () => {
 	let scope: FeatureScope | undefined;

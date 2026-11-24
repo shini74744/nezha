@@ -2,7 +2,7 @@ package controller
 
 import (
 	"encoding/json"
-	appearance "github.com/nezhahq/nezha/resource/appearance"
+	appearance "github.com/nezhahq/nezha/appearance/defaults"
 	"github.com/stretchr/testify/require"
 	"testing"
 )

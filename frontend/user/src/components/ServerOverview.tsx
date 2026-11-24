@@ -1,8 +1,8 @@
-import { PaperIllustration } from "@/themes/paper/PaperChapter";
+import { PaperIllustration } from "@appearance/themes/paper/PaperChapter";
 import {useRef} from "react";
 import {createFiveTapGate} from "@/lib/five-tap";
-import {useFeature} from "@/appearance/context";
-import {NativeSpeed} from "@/appearance/widgets";
+import {useFeature} from "@appearance/site/context";
+import {NativeSpeed} from "@appearance/site/widgets";
 import {
 	ArrowDownCircleIcon,
 	ArrowUpCircleIcon,

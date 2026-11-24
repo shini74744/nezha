@@ -1,4 +1,6 @@
 # 原生美化功能（二开）
+
+[美化源码、主题与公开默认值目录](appearance/README.md)
 ## 范围
 - 默认主题的原生美化在 user-dist 运行，不套用到其他主题；哆啦 A 梦使用独立的美化配置，切换主题不会覆盖另一主题的设置。
 - 「美化设置 → 全站显示」是独立的全站布局设置，不受主题选择或“启用内置美化”总开关控制；作用范围见下方“全站显示设置”说明。
@@ -10,7 +12,7 @@ branding, dark, runtime, greeting, clock, background, video, sponsor, visitorIP,
 footerIP, quote, counter, font, traffic, speed, nameColor, links, hideControls,
 protection, footer, sideImage, network, snow, fragments, heart, sakura, stars,
 live2d, analytics。
-参数和默认值以 resource/appearance/manifest.json 为准，前后台使用同一份清单。
+参数和默认值以 appearance/defaults/manifest.json 为准，前后台使用同一份清单。
 原脚本的域名锁和域名跳转已移除；模型、图片、视频、字体、访客位置及统计接口仍依赖对应外部服务。
 ## 源码位置（build-host）
 - 后端：/tmp/ddnezha-build/repo
@@ -48,7 +50,7 @@ live-custom-code.snapshot.json、配置备份和 smoke 测试数据库不应提�
 - 运营商请求失败保留普通/分时背景；背景声音由独立按钮控制，默认静音。
 - 旧 night*、chinaMedia 配置按兼容规则迁移，其他 29 个前台功能参数保留。
 - 后台第二行“后台美化设置”独立保存：字体、背景、透明度/毛玻璃、动画小人、品牌、点击/返回顶部、Ping/TCPing/Ping0 与时区转换。
-- 后台配置清单 resource/appearance/dashboard-manifest.json；接口 GET/PATCH /api/v1/setting/dashboard-appearance。
+- 后台配置清单 appearance/defaults/dashboard-manifest.json；接口 GET/PATCH /api/v1/setting/dashboard-appearance。
 - 导入旧代码仅解析静态 NZ_DASHBOARD_CONFIG，不执行脚本；原代码存于私有 dashboard_appearance_legacy_code；修订冲突拒绝覆盖。
 - 根据用户提供的配置保留 MiSans、背景/Logo/头像 URL、各透明度、玻璃碎片20、点击文字、返回顶部及两个工具脚本功能；不再加载这两个外部脚本。
 - 前台 removeChild 错误已通过模拟翻译替换文本节点复现。前后台 React 根节点使用 translate=no，保留内置语言切换，避免外部翻译破坏节点身份。

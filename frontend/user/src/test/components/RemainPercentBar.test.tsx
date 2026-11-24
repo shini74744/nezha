@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import RemainPercentBar from "@/components/RemainPercentBar";
+import RemainPercentBar from "@appearance/cards/RemainPercentBar";
 
 function fill() {
 	return screen

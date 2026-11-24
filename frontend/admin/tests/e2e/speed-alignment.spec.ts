@@ -5,7 +5,7 @@ import { createServer } from "../../../user/src/test/fixtures"
 
 test.use({ baseURL: "https://127.0.0.1:18476", ignoreHTTPSErrors: true })
 const definitions = JSON.parse(
-    fs.readFileSync(new URL("../../../user/src/appearance/manifest.json", import.meta.url), "utf8"),
+    fs.readFileSync(new URL("../../../../appearance/defaults/manifest.json", import.meta.url), "utf8"),
 )
 const fontFile = process.env.E2E_SPEED_FONT_FILE
 for (const width of [320, 390, 1366, 1920]) {

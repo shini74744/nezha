@@ -1,9 +1,9 @@
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { BackgroundMedia } from "@/appearance/background-media";
-import { AppearanceProvider } from "@/appearance/context";
-import { defaults } from "@/appearance/config";
-import type { Media } from "@/appearance/background-config";
+import { BackgroundMedia } from "@appearance/site/background-media";
+import { AppearanceProvider } from "@appearance/site/context";
+import { defaults } from "@appearance/site/config";
+import type { Media } from "@appearance/site/background-config";
 const img = (name: string): Media => ({
 	type: "image",
 	src: "https://example.test/" + name + ".png",
@@ -11,7 +11,7 @@ const img = (name: string): Media => ({
 const movie: Media = { type: "video", src: "https://example.test/movie.mp4" };
 const phase = (element: Element) =>
 	element.parentElement!.getAttribute("data-background-phase");
-function ui(media?: Media, fail = vi.fn(), settings?: import("@/appearance/background-load").BackgroundLoad) {
+function ui(media?: Media, fail = vi.fn(), settings?: import("@appearance/site/background-load").BackgroundLoad) {
 	const config = defaults();
 	config.enabled = true;
 	return (

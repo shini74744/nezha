@@ -12,7 +12,7 @@ test.use({
     },
 })
 const defs = JSON.parse(
-    fs.readFileSync(new URL("../../../user/src/appearance/manifest.json", import.meta.url), "utf8"),
+    fs.readFileSync(new URL("../../../../appearance/defaults/manifest.json", import.meta.url), "utf8"),
 )
 async function mock(
     page: Page,

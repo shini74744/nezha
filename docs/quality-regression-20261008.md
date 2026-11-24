@@ -62,7 +62,7 @@ Agent 源码位置通过 `AGENT_SOURCE` 提供给工作流契约检查；启动�
 
 ## 第三方代码的静态检查范围
 
-Live2D Widget 0.9.1 的运行时提取到 `frontend/user/src/appearance/vendor/live2d-runtime.ts`，许可与实现保留；类型化适配层仍参与检查。原运行时主体与提取后主体 SHA-256 一致：
+Live2D Widget 0.9.1 的运行时提取到 `appearance/site/vendor/live2d-runtime.ts`，许可与实现保留；类型化适配层仍参与检查。原运行时主体与提取后主体 SHA-256 一致：
 
 `1b4d3f212c010aa5b919e8e94543c9c60abeb8367f0d59aa7025e38ec6f4bf20`
 

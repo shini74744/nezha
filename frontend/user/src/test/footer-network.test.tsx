@@ -6,16 +6,16 @@ import {
 	screen,
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { defaults } from "@/appearance/config";
+import { defaults } from "@appearance/site/config";
 import {
 	FooterNetworkCard,
 	footerRequest,
 	isBuiltInFooterURL,
 	parseFooterIP,
-} from "@/appearance/footer-network";
+} from "@appearance/site/footer-network";
 
 let settings = defaults().features.visitorIP;
-vi.mock("@/appearance/context", () => ({ useFeature: () => settings }));
+vi.mock("@appearance/site/context", () => ({ useFeature: () => settings }));
 const requests: string[] = [];
 beforeEach(() => {
 	requests.length = 0;
@@ -59,7 +59,7 @@ const settle = () =>
 	});
 it("recognizes only the legacy built-in pages and preserves custom URLs", () => {
 	for (const url of [
-		"https://network.example.invalid/sample-2",
+		"",
 		"https://ip.skk.moe/simple/",
 		"https://embed-legacy.ip.skk.moe/simple-dark/",
 	])

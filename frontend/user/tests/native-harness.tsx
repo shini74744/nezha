@@ -3,18 +3,18 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Link } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "../src/components/ThemeProvider";
-import { AppearanceProvider } from "../src/appearance/context";
-import { NativeEffects } from "../src/appearance/effects";
+import { AppearanceProvider } from "../../../appearance/site/context";
+import { NativeEffects } from "../../../appearance/site/effects";
 import {
 	NativeQuote,
 	NativeCounter,
 	NativeClockPart,
-} from "../src/appearance/native-layout-widgets";
+} from "../../../appearance/site/native-layout-widgets";
 import {
 	NativeDesktopSponsor,
 	NativeMobileSponsor,
-} from "../src/appearance/native-sponsor";
-import { BackgroundSoundLogo } from "../src/appearance/background-sound";
+} from "../../../appearance/site/native-sponsor";
+import { BackgroundSoundLogo } from "../../../appearance/site/background-sound";
 import {
 	NativeName,
 	NativeSpeed,
@@ -22,9 +22,9 @@ import {
 	NativeGreeting,
 	NativeTraffic,
 	NativeFooter,
-} from "../src/appearance/widgets";
-import { defaults } from "../src/appearance/config";
-import { usePeakCutDefault } from "../src/appearance/peak-cut";
+} from "../../../appearance/site/widgets";
+import { defaults } from "../../../appearance/site/config";
+import { usePeakCutDefault } from "../../../appearance/site/peak-cut";
 function PeakProbe() {
 	return <output data-testid="peak-cut">{String(usePeakCutDefault())}</output>;
 }

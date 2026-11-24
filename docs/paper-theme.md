@@ -34,7 +34,7 @@
 
 ## 构建与配置
 
-主题目录：`frontend/user/src/themes/paper`；构建命令：`npm run build:paper`，输出 `frontend/user/dist-paper`。
+主题目录：`appearance/themes/paper`；构建命令：`npm run build:paper`，输出 `frontend/user/dist-paper`。
 `script/build-paper.sh` 将产物放入 `cmd/dashboard/paper-dist`，随面板二进制嵌入。`script/fetch-frontends.sh` 对此主题调用本仓库的构建脚本。
 
 外观接口：`/api/v1/setting/appearance?theme=paper-dist`，沿用管理员权限、版本校验和保存失败回滚。配置存放于 `paper_appearance_config`。前台设置接口只提供当前主题的外观，后台保存入口按主题隔离。

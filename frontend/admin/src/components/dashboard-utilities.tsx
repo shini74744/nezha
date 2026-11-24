@@ -1,5 +1,5 @@
 import {useEffect,useState,type RefObject} from "react";
-import {useDashboardFeature} from "./dashboard-appearance";
+import {useDashboardFeature} from "../../../../appearance/admin/components/dashboard-appearance";
 export type ParsedIP={token:string;ip:string;v4:boolean;port:boolean};
 export function parseDashboardIPs(text:string):ParsedIP[]{
  const result:ParsedIP[]=[],seen=new Set<string>();

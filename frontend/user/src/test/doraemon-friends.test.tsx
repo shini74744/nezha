@@ -1,11 +1,11 @@
 import {fireEvent,render,screen} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {describe,it,expect,vi} from "vitest";
-import {normalizeDoraemon,doraemonDefaults,doraemonDefinitions,validateDoraemon} from "../../../shared/doraemon-appearance";
-import {DoraemonAppearanceProvider} from "@/themes/doraemon/Appearance";
-import {FriendsBanner,FriendsInteraction} from "@/themes/doraemon/Friends";
-import {CardGadget,GadgetBackToTop,PocketGadgets,gadgets,gadgetForServer} from "@/themes/doraemon/Gadgets";
-import {DoraemonLoading} from "@/themes/doraemon/Scene";
+import {normalizeDoraemon,doraemonDefaults,doraemonDefinitions,validateDoraemon} from "../../../../appearance/shared/doraemon-appearance";
+import {DoraemonAppearanceProvider} from "@appearance/themes/doraemon/Appearance";
+import {FriendsBanner,FriendsInteraction} from "@appearance/themes/doraemon/Friends";
+import {CardGadget,GadgetBackToTop,PocketGadgets,gadgets,gadgetForServer} from "@appearance/themes/doraemon/Gadgets";
+import {DoraemonLoading} from "@appearance/themes/doraemon/Scene";
 const widgets=<><FriendsBanner/><FriendsInteraction/><CardGadget serverId={7}/><PocketGadgets/><GadgetBackToTop/><DoraemonLoading/></>;
 const tree=(raw?:string,ready=true)=><DoraemonAppearanceProvider raw={raw} ready={ready}>{widgets}</DoraemonAppearanceProvider>;
 describe("Doraemon friends and gadgets",()=>{

@@ -4,7 +4,7 @@ import {createServer} from "../../../user/src/test/fixtures";
 const origin="https://127.0.0.1:18475";
 test.use({ignoreHTTPSErrors:true});
 async function open(page:any) {
- const manifest=JSON.parse(fs.readFileSync(new URL("../../src/lib/appearance-manifest.json",import.meta.url),"utf8"));
+ const manifest=JSON.parse(fs.readFileSync(new URL("../../../../appearance/defaults/manifest.json",import.meta.url),"utf8"));
  const config={version:1,enabled:true,features:Object.fromEntries(manifest.map((d:any)=>[d.key,{...d.defaults}]))};
  config.features.background.regionApi=origin+"/test-region";
  config.features.background.nightStart=0;config.features.background.nightEnd=24;

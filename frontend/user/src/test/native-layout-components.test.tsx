@@ -2,29 +2,29 @@ import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 import { render, act, fireEvent, cleanup } from "@testing-library/react";
 import { StrictMode } from "react";
 import { MemoryRouter } from "react-router-dom";
-import { AppearanceProvider } from "@/appearance/context";
-import { defaults } from "@/appearance/config";
+import { AppearanceProvider } from "@appearance/site/context";
+import { defaults } from "@appearance/site/config";
 import {
 	NativeDesktopSponsor,
 	NativeMobileSponsor,
-} from "@/appearance/native-sponsor";
+} from "@appearance/site/native-sponsor";
 import {
 	NativeClockPart,
 	NativeCounter,
 	NativeQuote,
 	NativeSideImage,
-} from "@/appearance/native-layout-widgets";
+} from "@appearance/site/native-layout-widgets";
 import {
 	NativeVisitorIP,
 	parseVisitorBase,
 	visitorText,
-} from "@/appearance/native-visitor-ip";
-import { NativeParticleEffects } from "@/appearance/native-particles";
+} from "@appearance/site/native-visitor-ip";
+import { NativeParticleEffects } from "@appearance/site/native-particles";
 import {
 	NativeProtection,
 	NativeFont,
 	NativeAnalytics,
-} from "@/appearance/native-environment";
+} from "@appearance/site/native-environment";
 const originalResizeObserver = globalThis.ResizeObserver;
 let width = 1366;
 function config(keys: string[]) {
@@ -411,10 +411,11 @@ describe("native visitor information", () => {
 		expect(v.container.querySelector("#ip-base")?.textContent).toBe(
 			"203.0.113.9 ｜ Japan · Tokyo ｜ AS64500 Example Net",
 		);
-		fireEvent.click(v.getByRole("button"));
+		const latency = v.getByRole("button", { name: "点击切换延迟检测点" });
+		fireEvent.click(latency);
 		await advance();
 		expect(requests[requests.length - 1]).toBe("https://two.test/ping");
-		expect(v.getByRole("button")).toHaveTextContent("Second");
+		expect(latency).toHaveTextContent("Second");
 	});
 	it("fills missing metadata through configured fallback", async () => {
 		vi.stubGlobal(

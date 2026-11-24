@@ -1,4 +1,4 @@
-import {PaperControlGlyph} from "@/themes/paper/PaperControlGlyph";
+import {PaperControlGlyph} from "@appearance/themes/paper/PaperControlGlyph";
 import { ChartBarSquareIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";

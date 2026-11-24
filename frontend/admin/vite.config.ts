@@ -1,3 +1,5 @@
+import fs from "node:fs"
+import packageConfig from "./package.json" with { type: "json" };
 import react from "@vitejs/plugin-react"
 import path from "path"
 import { defineConfig } from "vite"
@@ -6,6 +8,7 @@ export default defineConfig({
     base: "/dashboard",
     plugins: [react()],
     server: {
+        fs: { allow: [__dirname, path.resolve(__dirname, "../shared"), path.resolve(__dirname, "../../appearance"), fs.realpathSync(path.resolve(__dirname, "node_modules"))] },
         // Bind the dev server to loopback so an in-browser CSRF or LAN
         // scan cannot reach a developer's dashboard token. Override with
         // `bun run dev -- --host 0.0.0.0` for Docker / remote dev only.
@@ -27,7 +30,9 @@ export default defineConfig({
         },
     },
     resolve: {
+        dedupe: Object.keys(packageConfig.dependencies),
         alias: {
+            "@appearance": path.resolve(__dirname, "../../appearance"),
             "@": path.resolve(__dirname, "./src"),
         },
     },

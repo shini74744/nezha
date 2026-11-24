@@ -1,8 +1,8 @@
-import { isBuiltInFooterURL } from "@/appearance/footer-network";
-import { isTouchDevice } from "@/appearance/native-hooks";
-import {useFeature,useAppearanceLayout} from "@/appearance/context";
-import {NativeFooter} from "@/appearance/widgets";
-import {NativeMobileSponsor} from "@/appearance/native-sponsor";
+import { isBuiltInFooterURL } from "@appearance/site/footer-network";
+import { isTouchDevice } from "@appearance/site/native-hooks";
+import {useFeature,useAppearanceLayout} from "@appearance/site/context";
+import {NativeFooter} from "@appearance/site/widgets";
+import {NativeMobileSponsor} from "@appearance/site/native-sponsor";
 import { useQuery } from "@tanstack/react-query";
 import type React from "react";
 import { useTranslation } from "react-i18next";

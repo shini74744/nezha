@@ -4,7 +4,7 @@ import {
 	type NetworkContext,
 	type NetworkPoint,
 	type NetworkPointer,
-} from "../appearance/modules/network-scene";
+} from "../../../../appearance/site/modules/network-scene";
 function seeded() {
 	let n = 15221;
 	return () => {

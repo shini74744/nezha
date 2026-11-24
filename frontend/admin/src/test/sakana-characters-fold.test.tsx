@@ -1,8 +1,8 @@
 import {useState} from "react";
 import {afterEach,it,expect} from "vitest";
 import {cleanup,render,screen,fireEvent} from "@testing-library/react";
-import {SakanaCharacters} from "@/components/sakana-characters";
-import {defaults,type Feature} from "@/lib/appearance-config";
+import {SakanaCharacters} from "@appearance/admin/components/sakana-characters";
+import {defaults,type Feature} from "@appearance/admin/settings/appearance-config";
 afterEach(cleanup);
 function Harness(){const [f,setF]=useState<Feature>(()=>({...defaults().features.live2d,character:"custom-plane",customCharacters:[{id:"custom-plane",name:"飞机",imageUrl:"https://example.test/plane.png",scale:125},{id:"custom-cat",name:"猫",imageUrl:"https://example.test/cat.png",scale:80}]}));return <><SakanaCharacters value={f} onChange={setF}/><output data-testid="state">{JSON.stringify(f)}</output></>}
 it("starts collapsed and retains edits when collapsing or switching characters",()=>{

@@ -3,7 +3,7 @@ import fs from "node:fs"
 
 const manifest = JSON.parse(
     fs.readFileSync(
-        new URL("../../src/lib/dashboard-appearance-manifest.json", import.meta.url),
+        new URL("../../../../appearance/defaults/dashboard-manifest.json", import.meta.url),
         "utf8",
     ),
 )

@@ -1,17 +1,17 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, waitFor, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { defaults, normalize, validate } from "@/appearance/config";
-import { AppearanceProvider } from "@/appearance/context";
+import { defaults, normalize, validate } from "@appearance/site/config";
+import { AppearanceProvider } from "@appearance/site/context";
 import {
 	NativeTraffic,
 	NativeName,
 	NativeGreeting,
 	formatSpeed,
-} from "@/appearance/widgets";
-import { FeatureScope } from "@/appearance/scope";
-import { snow } from "@/appearance/modules/snow";
-import { sponsor } from "@/appearance/modules/sponsor";
+} from "@appearance/site/widgets";
+import { FeatureScope } from "@appearance/site/scope";
+import { snow } from "@appearance/site/modules/snow";
+import { sponsor } from "@appearance/site/modules/sponsor";
 const scopes: FeatureScope[] = [];
 afterEach(() => {
 	for (const scope of scopes) scope.dispose();
@@ -114,7 +114,7 @@ describe("feature resource ownership", () => {
 			const a = newScope("snow"),
 				b = newScope("sponsor");
 			snow(a, defaults().features.snow);
-			sponsor(b, defaults().features.sponsor);
+			sponsor(b, { ...defaults().features.sponsor, enabled: true });
 			expect(document.querySelectorAll("#bmWrap")).toHaveLength(1);
 			a.dispose();
 			b.dispose();

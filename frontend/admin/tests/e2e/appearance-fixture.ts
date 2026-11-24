@@ -1,6 +1,6 @@
 import fs from "node:fs"
 const manifest = JSON.parse(fs.readFileSync(
-    new URL("../../src/lib/appearance-manifest.json", import.meta.url), "utf8",
+    new URL("../../../../appearance/defaults/manifest.json", import.meta.url), "utf8",
 )) as { key: string; defaults: Record<string, any> }[]
 export function defaults() {
     return {

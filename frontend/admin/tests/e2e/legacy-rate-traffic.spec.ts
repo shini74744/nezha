@@ -3,7 +3,7 @@ import fs from "node:fs";
 import {createServer} from "../../../user/src/test/fixtures";
 const origin="https://127.0.0.1:18476";
 test.use({baseURL:origin,ignoreHTTPSErrors:true});
-const defs=JSON.parse(fs.readFileSync(new URL("../../../user/src/appearance/manifest.json",import.meta.url),"utf8"));
+const defs=JSON.parse(fs.readFileSync(new URL("../../../../appearance/defaults/manifest.json",import.meta.url),"utf8"));
 for(const width of [1366,1920,390])test("legacy speed and traffic parity "+width,async({page,baseURL})=>{
  expect(baseURL).toBe(origin);test.setTimeout(45000);
  const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));

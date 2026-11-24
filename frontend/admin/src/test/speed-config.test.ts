@@ -1,5 +1,5 @@
 import {describe,it,expect} from "vitest";
-import {defaults,normalize,validate} from "@/lib/appearance-config";
+import {defaults,normalize,validate} from "@appearance/admin/settings/appearance-config";
 describe("independent speed configuration",()=>{
  it.each([true,false])("inherits legacy shared settings (%s) without enabling a disabled group",flag=>{
   const c=normalize(JSON.stringify({version:1,enabled:true,features:{speed:{enabled:false,bits:flag,color:flag,animation:flag}}}));

@@ -2,16 +2,16 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createServer } from "@/test/fixtures";
 import { renderWithProviders } from "@/test/utils";
-import { DoraemonCard, DoraemonInlineCard } from "@/themes/doraemon/Card";
+import { DoraemonCard, DoraemonInlineCard } from "@appearance/themes/doraemon/Card";
 import {
 	DoraemonTraffic,
 	DoraemonTrafficProvider,
 	DoraemonTrafficRow,
 	doraemonTrafficKey,
 	type DoraemonTrafficStat,
-} from "@/themes/doraemon/Traffic";
+} from "@appearance/themes/doraemon/Traffic";
 
-import { TrafficRow, trafficColor } from "@/appearance/traffic";
+import { TrafficRow, trafficColor } from "@appearance/site/traffic";
 
 const GiB = 1024 ** 3;
 const base: DoraemonTrafficStat = {

@@ -1,6 +1,6 @@
 import { act, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { useDoraMotion } from "@/themes/doraemon/use-motion";
+import { useDoraMotion } from "@appearance/themes/doraemon/use-motion";
 function Probe() {
 	const motion = useDoraMotion<HTMLDivElement>();
 	return <div data-testid="motion" {...motion} />;

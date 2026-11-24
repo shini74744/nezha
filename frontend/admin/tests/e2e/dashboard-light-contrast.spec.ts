@@ -1,7 +1,7 @@
 import { test, expect, Page, Locator } from "@playwright/test"
 import fs from "node:fs"
 
-const manifest = JSON.parse(fs.readFileSync(new URL("../../src/lib/dashboard-appearance-manifest.json", import.meta.url), "utf8"))
+const manifest = JSON.parse(fs.readFileSync(new URL("../../../../appearance/defaults/dashboard-manifest.json", import.meta.url), "utf8"))
 const imageURL = "https://fixture.invalid/dashboard-background.jpg"
 // Opaque black is the worst case for the white safety surface. A real wallpaper may
 // be supplied for screenshots; neither case contacts production or external APIs.

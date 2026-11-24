@@ -242,8 +242,8 @@ test("tracks the visual viewport and full screen, and removes listeners on unmou
 })
 
 test("dashboard font styling excludes terminal text and measuring elements but keeps page headings", async () => {
-    const { DashboardAppearanceProvider } = await import("../components/dashboard-appearance")
-    const { dashboardDefaults } = await import("../lib/dashboard-appearance")
+    const { DashboardAppearanceProvider } = await import("../../../../appearance/admin/components/dashboard-appearance")
+    const { dashboardDefaults } = await import("../../../../appearance/admin/settings/dashboard-appearance")
     const config = dashboardDefaults()
     config.enabled = true
     for (const feature of Object.values(config.features)) feature.enabled = false

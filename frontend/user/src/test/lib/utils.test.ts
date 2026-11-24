@@ -152,6 +152,8 @@ describe("public note helpers", () => {
 		).toEqual({
 			billingDataMod: {
 				startDate: "",
+				showPrice: "1",
+				showExpiry: "1",
 				endDate: "2025-12-31",
 				autoRenewal: "",
 				cycle: "year",
@@ -190,6 +192,8 @@ describe("public note helpers", () => {
 		).toEqual({
 			billingDataMod: {
 				startDate: "",
+				showPrice: "1",
+				showExpiry: "1",
 				endDate: "2025-12-31",
 				autoRenewal: "",
 				cycle: "",

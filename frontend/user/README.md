@@ -10,4 +10,4 @@
 - 浏览器存储被禁用或容量不足时页面仍可使用，但偏好不保证在刷新后保留。
 - 保留原有预加载、标签颜色与图文居中、剩余价值悬停和连通性／延迟切换。
 
-构建、测试命令与覆盖边界见 [前端说明](../README.md#recovery-and-preload-regressions)；主题使用和许可见 [哆啦 A 梦说明](src/themes/doraemon/README.md)。源码功能与正式安装包可能不同步，请以 [更新记录](../../CHANGELOG.md) 和组件发布版本为准。
+构建、测试命令与覆盖边界见 [前端说明](../README.md#recovery-and-preload-regressions)；主题使用和许可见 [哆啦 A 梦说明](../../appearance/themes/doraemon/README.md)。源码功能与正式安装包可能不同步，请以 [更新记录](../../CHANGELOG.md) 和组件发布版本为准。

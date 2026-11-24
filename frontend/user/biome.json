@@ -11,7 +11,7 @@
 	"overrides": [
 		{
 			"includes": [
-				"src/appearance/vendor/live2d-runtime.ts",
+				"../../appearance/site/vendor/live2d-runtime.ts",
 				"public/appearance/fontawesome/css/fontawesome.min.css"
 			],
 			"linter": { "enabled": false },

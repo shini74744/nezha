@@ -1,7 +1,7 @@
 import {act,screen} from "@testing-library/react";
 import {describe,it,expect,vi} from "vitest";
-import {DoraemonTrafficProvider,DoraemonTraffic,doraemonTrafficKey} from "@/themes/doraemon/Traffic";
-import {doraemonAppearance} from "@/themes/doraemon/appearance";
+import {DoraemonTrafficProvider,DoraemonTraffic,doraemonTrafficKey} from "@appearance/themes/doraemon/Traffic";
+import {doraemonAppearance} from "@appearance/themes/doraemon/appearance";
 import {renderWithProviders} from "@/test/utils";
 const config=(enabled=true,traffic=true)=>JSON.stringify({version:1,enabled,features:{traffic:{enabled:traffic,toggleInterval:5000}}});
 const stat={max:100,used:20,from:"2026-10-01T00:00:00+08:00",to:"2026-11-01T00:00:00+08:00",direction:"3"};

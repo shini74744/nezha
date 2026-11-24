@@ -2,7 +2,7 @@ import { Page, expect, test } from "@playwright/test"
 import fs from "node:fs"
 
 const manifest = JSON.parse(
-    fs.readFileSync(new URL("../../src/lib/appearance-manifest.json", import.meta.url), "utf8"),
+    fs.readFileSync(new URL("../../../../appearance/defaults/manifest.json", import.meta.url), "utf8"),
 ) as any[]
 const baseConfig = () => ({
     version: 1,
@@ -461,7 +461,7 @@ for (const width of [390, 1366])
         await page.getByLabel("检测节点地址 3", { exact: true }).fill("https://custom.test/ping")
         await page.getByRole("button", { name: "上移检测节点 3", exact: true }).click()
         await page.getByRole("button", { name: "删除检测节点 3", exact: true }).click()
-        for (const name of ["显示地区", "显示 ASN", "显示运营商", "显示浏览器估算带宽"])
+        for (const name of ["显示地区", "显示 ASN", "显示运营商", "显示下载测速按钮"])
             await page.getByRole("switch", { name, exact: true }).click()
         await page.getByRole("button", { name: "保存美化设置", exact: true }).click()
         await expect.poll(() => updates.length).toBe(1)

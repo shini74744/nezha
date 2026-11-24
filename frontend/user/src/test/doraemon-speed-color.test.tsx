@@ -1,16 +1,16 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { speedColor } from "@/appearance/speed-color";
-import { defaults } from "@/appearance/config";
-import { AppearanceProvider } from "@/appearance/context";
-import { NativeSpeed } from "@/appearance/widgets";
+import { speedColor } from "@appearance/site/speed-color";
+import { defaults } from "@appearance/site/config";
+import { AppearanceProvider } from "@appearance/site/context";
+import { NativeSpeed } from "@appearance/site/widgets";
 import { StatusProvider } from "@/context/status-provider";
 import { createServer } from "@/test/fixtures";
 import { renderWithProviders } from "@/test/utils";
-import { DoraemonCard } from "@/themes/doraemon/Card";
-import { DoraemonOverview } from "@/themes/doraemon/Overview";
-import { DoraemonAppearanceProvider } from "@/themes/doraemon/Appearance";
-import { doraemonDefaults } from "../../../shared/doraemon-appearance";
+import { DoraemonCard } from "@appearance/themes/doraemon/Card";
+import { DoraemonOverview } from "@appearance/themes/doraemon/Overview";
+import { DoraemonAppearanceProvider } from "@appearance/themes/doraemon/Appearance";
+import { doraemonDefaults } from "../../../../appearance/shared/doraemon-appearance";
 
 describe("shared network rate colors", () => {
  it.each([0,125_000,1_000_000,10_485_760,31_457_280,104_857_600,237_500_000])("preserves existing rate curves for %s bytes/s",bytes=>{

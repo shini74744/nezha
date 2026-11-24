@@ -2,7 +2,7 @@ import {Page} from "@playwright/test";
 import fs from "node:fs";
 import {createServer} from "../../../user/src/test/fixtures";
 export const origin="https://127.0.0.1:18477";
-const defs=JSON.parse(fs.readFileSync(new URL("../../../user/src/appearance/manifest.json",import.meta.url),"utf8"));
+const defs=JSON.parse(fs.readFileSync(new URL("../../../../appearance/defaults/manifest.json",import.meta.url),"utf8"));
 export async function setupNativeLayout(page:Page, options:Record<string,any>={}, keys=["sponsor","footer"]) {
  const config={version:1,enabled:true,features:Object.fromEntries(defs.map((d:any)=>[d.key,{...d.defaults,enabled:keys.includes(d.key)}]))};
  Object.assign(config.features.sponsor,{shrinkDuration:800,stayDuration:60000,fadeDuration:500},{desktopTop:"9999px",sponsors:[{name:"Test sponsor",url:"https://example.com",logo:origin+"/sponsor-fixture.svg"}]});

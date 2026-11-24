@@ -1,11 +1,11 @@
 import {beforeEach,describe,it,expect,vi} from "vitest";
 import {render} from "@testing-library/react";
 import {QueryClient,QueryClientProvider} from "@tanstack/react-query";
-import {AppearanceProvider,useFeature} from "@/appearance/context";
-import {defaults} from "@/appearance/config";
-import {NativeName,NativeSpeed} from "@/appearance/widgets";
-import {NativeBackground} from "@/appearance/background";
-import {NativeFooterIP} from "@/appearance/footer-ip";
+import {AppearanceProvider,useFeature} from "@appearance/site/context";
+import {defaults} from "@appearance/site/config";
+import {NativeName,NativeSpeed} from "@appearance/site/widgets";
+import {NativeBackground} from "@appearance/site/background";
+import {NativeFooterIP} from "@appearance/site/footer-ip";
 import Footer from "@/components/Footer";
 import {WebSocketContext} from "@/context/websocket-context";
 vi.mock("@/lib/nezha-api",()=>({fetchSetting:vi.fn(async()=>({data:{config:{},version:"test"}}))}));
@@ -13,7 +13,7 @@ const keys=Object.keys(defaults().features);
 function State({name}:{name:string}){return <output data-feature={name}>{String(useFeature(name).enabled)}</output>}
 describe("independent appearance switches",()=>{
  it.each(keys)("disabling %s does not change the other feature switches",name=>{
-  const config=defaults();config.enabled=true;Object.values(config.features).forEach(f=>{f.enabled=true;});
+  const config=defaults();config.enabled=true;config.features.analytics.measurementId="G-EXAMPLE0001";Object.values(config.features).forEach(f=>{f.enabled=true;});
   const tree=()=> <AppearanceProvider raw={JSON.stringify(config)}>{keys.map(key=><State key={key} name={key}/>)}</AppearanceProvider>;
   const view=render(tree());config.features[name].enabled=false;view.rerender(tree());
   for(const node of view.container.querySelectorAll("output"))expect(node.textContent).toBe(node.getAttribute("data-feature")===name?"false":"true");

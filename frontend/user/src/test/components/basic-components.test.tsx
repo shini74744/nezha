@@ -8,7 +8,7 @@ import { Loader, LoadingSpinner } from "@/components/loading/Loader";
 import NetworkChartLoading from "@/components/NetworkChartLoading";
 import { SearchButton } from "@/components/SearchButton";
 import ServerOverview from "@/components/ServerOverview";
-import ServerUsageBar from "@/components/ServerUsageBar";
+import ServerUsageBar from "@appearance/cards/ServerUsageBar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";

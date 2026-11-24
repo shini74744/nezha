@@ -146,7 +146,7 @@ for (const [width, beautify] of [
         async ({ page }) => {
             await page.setViewportSize({ width, height: 844 })
             const manifest = (
-                await import("../../src/lib/dashboard-appearance-manifest.json", {
+                await import("../../../../appearance/defaults/dashboard-manifest.json", {
                     with: { type: "json" },
                 })
             ).default

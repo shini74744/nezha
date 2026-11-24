@@ -1,9 +1,9 @@
 import { it, expect, vi, afterEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
-import { AppearanceProvider } from "@/appearance/context";
-import { defaults } from "@/appearance/config";
-import { NativeBackground } from "@/appearance/background";
-import { useBackgroundPeakCut } from "@/appearance/background-state";
+import { AppearanceProvider } from "@appearance/site/context";
+import { defaults } from "@appearance/site/config";
+import { NativeBackground } from "@appearance/site/background";
+import { useBackgroundPeakCut } from "@appearance/site/background-state";
 function Peak() {
 	return <output>{String(useBackgroundPeakCut())}</output>;
 }
@@ -57,6 +57,7 @@ for (const scenario of [
 		const c = defaults();
 		c.enabled = true;
 		const f = c.features.background;
+		f.enabled = true;
 		f.desktopMedia = [
 			{ type: "image", src: "https://example.test/desktop.png" },
 		];

@@ -1,7 +1,7 @@
 import {beforeEach,afterEach,it,expect,vi} from "vitest";
-import {FeatureScope} from "@/appearance/scope";
-import {visitorIP} from "@/appearance/modules/visitorIP";
-import {defaults,normalize,validate} from "@/appearance/config";
+import {FeatureScope} from "@appearance/site/scope";
+import {visitorIP} from "@appearance/site/modules/visitorIP";
+import {defaults,normalize,validate} from "@appearance/site/config";
 let scope:FeatureScope,c:any,requests:string[];
 const full={ip:"203.0.113.9",country:"Japan",city:"Tokyo",asn:"AS64500",org:"AS64500 Example Net"};
 beforeEach(()=>{

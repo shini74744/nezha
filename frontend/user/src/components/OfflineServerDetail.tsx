@@ -1,5 +1,5 @@
-import {useFeature} from "@/appearance/context";
-import {formatSpeed} from "@/appearance/widgets";
+import {useFeature} from "@appearance/site/context";
+import {formatSpeed} from "@appearance/site/widgets";
 import NetworkInterfaceSelect from "./NetworkInterfaceSelect";
 import {networkInterfaceMetric} from "@/lib/network-interface-rates";
 import OnlineHistoryPanel from "./OnlineHistoryPanel";

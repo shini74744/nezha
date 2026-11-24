@@ -1,9 +1,9 @@
 import {cleanup,fireEvent,render,screen,waitFor} from "@testing-library/react";
 import {afterEach,describe,expect,it,vi} from "vitest";
 import {MemoryRouter} from "react-router-dom";
-import AppearancePage from "@/routes/appearance";
+import AppearancePage from "@appearance/admin/pages/appearance";
 import {fetcher,FetcherMethod} from "@/api/api";
-import {defaults,normalize,validate} from "@/lib/appearance-config";
+import {defaults,normalize,validate} from "@appearance/admin/settings/appearance-config";
 vi.mock("@/hooks/useAuth",()=>({useAuth:()=>({profile:{role:0},loading:false})}));
 vi.mock("@/components/settings-tab",()=>({SettingsTab:()=>null}));
 vi.mock("@/api/api",()=>({fetcher:vi.fn(),FetcherMethod:{GET:"GET",PATCH:"PATCH"}}));

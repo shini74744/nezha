@@ -1,7 +1,7 @@
 import {test,expect,type Page} from "@playwright/test";
 import fs from "node:fs";
-const defs=JSON.parse(fs.readFileSync(new URL("../../src/lib/appearance-manifest.json",import.meta.url),"utf8"));
-const paper=JSON.parse(fs.readFileSync(new URL("../../../shared/paper-defaults.json",import.meta.url),"utf8"));
+const defs=JSON.parse(fs.readFileSync(new URL("../../../../appearance/defaults/manifest.json",import.meta.url),"utf8"));
+const paper=JSON.parse(fs.readFileSync(new URL("../../../../appearance/defaults/paper-defaults.json",import.meta.url),"utf8"));
 const base=()=>({version:1,enabled:true,features:Object.fromEntries(defs.map((d:any)=>[d.key,structuredClone(d.defaults)]))});
 async function setup(page:Page){
  await page.route("**/*",route=>{const host=new URL(route.request().url()).hostname;return host==="localhost"||host==="127.0.0.1"?route.continue():route.abort()});

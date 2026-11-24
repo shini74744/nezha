@@ -1,8 +1,8 @@
 import {beforeEach,describe,it,expect,vi,afterEach} from "vitest";
 import {render,act,cleanup} from "@testing-library/react";
-import {AppearanceProvider} from "@/appearance/context";
-import {defaults} from "@/appearance/config";
-import {NativeName,NativeFooterIP} from "@/appearance/widgets";
+import {AppearanceProvider} from "@appearance/site/context";
+import {defaults} from "@appearance/site/config";
+import {NativeName,NativeFooterIP} from "@appearance/site/widgets";
 import {WebSocketContext} from "@/context/websocket-context";
 const loadedSocket={connected:true,lastData:{now:1,servers:[]},messageHistory:[],reconnect:()=>{},needReconnect:false,setNeedReconnect:()=>{}};
 afterEach(()=>{cleanup();vi.useRealTimers();vi.restoreAllMocks();vi.unstubAllGlobals();});
@@ -37,11 +37,11 @@ describe("other legacy appearance parity",()=>{
   vi.stubGlobal("scrollY",0);act(()=>window.dispatchEvent(new Event("scroll")));
   expect(node.dataset.visible).toBe("false");
  });
- it("enables responsive native content on mobile while remaining hidden until ready",()=>{
+ it("keeps the network footer unmounted on phones",()=>{
   vi.spyOn(navigator,"userAgent","get").mockReturnValue("iPhone Mobile");
   const view=render(<WebSocketContext.Provider value={loadedSocket}><AppearanceProvider raw={JSON.stringify(config())}><NativeFooterIP/></AppearanceProvider></WebSocketContext.Provider>);
   const node=view.container.querySelector<HTMLElement>("[data-native-footer-ip]")!;
-  expect(node.style.display).not.toBe("none");expect(node.dataset.visible).toBe("false");
+  expect(node).toBeNull();
  });
 });
 

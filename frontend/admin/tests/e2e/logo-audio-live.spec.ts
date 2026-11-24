@@ -1,6 +1,6 @@
 import {test,expect} from "@playwright/test";
 import fs from "node:fs";
-const defs=JSON.parse(fs.readFileSync(new URL("../../../user/src/appearance/manifest.json",import.meta.url),"utf8"));
+const defs=JSON.parse(fs.readFileSync(new URL("../../../../appearance/defaults/manifest.json",import.meta.url),"utf8"));
 for(const width of [390,1920])test("logo sound toggle at width "+width,async({page,baseURL})=>{
  expect(baseURL).toBe("http://127.0.0.1:18476");
  const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));

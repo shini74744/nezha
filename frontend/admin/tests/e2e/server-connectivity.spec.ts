@@ -1,7 +1,7 @@
 import {type Page,expect,test} from "@playwright/test";
 import {createServer} from "../../../user/src/test/fixtures";
 import {readFileSync} from "node:fs";
-const manifest = JSON.parse(readFileSync(new URL("../../../user/src/appearance/manifest.json", import.meta.url), "utf8")) as {key:string}[];
+const manifest = JSON.parse(readFileSync(new URL("../../../../appearance/defaults/manifest.json", import.meta.url), "utf8")) as {key:string}[];
 test.use({ignoreHTTPSErrors:true});
 const catalog = JSON.parse(readFileSync(new URL("../../../../service/connectivity/catalog.json", import.meta.url), "utf8")) as {id:string; name:string; group:string; host:string}[];
 async function setup(page:Page,theme:string,light=false,offline=false,owner=true,language="zh-CN",wallpaper=false,countryCode="us",disabled=false,clickTab=true,localOnly=false) {

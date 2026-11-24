@@ -1,5 +1,5 @@
 import {expect,it} from "vitest";
-import {footerPlacement} from "@/appearance/footer-collision";
+import {footerPlacement} from "@appearance/site/footer-collision";
 it("keeps full-size copyright when there is no overlapping panel",()=>{
  expect(footerPlacement({left:100,right:1100,top:700,bottom:724},230,150,1200)).toEqual({leftOffset:0,rightOffset:0,leftScale:1,rightScale:1});
  expect(footerPlacement({left:100,right:1100,top:700,bottom:724},230,150,1200,{left:300,right:900,top:400,bottom:600}).leftScale).toBe(1);

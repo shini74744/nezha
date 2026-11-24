@@ -2,7 +2,7 @@ import { FetcherMethod, fetcher } from "@/api/api"
 import useLogoGroups from "@/hooks/useLogoGroups"
 import { useState } from "react"
 
-import Picker from "./LogoChoicePicker"
+import Picker from "../../../../appearance/admin/components/LogoChoicePicker"
 import UnsavedChanges, { DiscardChangesDialog } from "./UnsavedChanges"
 import { Button } from "./ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog"

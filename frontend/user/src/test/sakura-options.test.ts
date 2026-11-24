@@ -1,7 +1,7 @@
 import {afterEach,expect,it,vi} from "vitest";
-import {sakura} from "@/appearance/modules/sakura";
-import {FeatureScope} from "@/appearance/scope";
-import {defaults} from "@/appearance/config";
+import {sakura} from "@appearance/site/modules/sakura";
+import {FeatureScope} from "@appearance/site/scope";
+import {defaults} from "@appearance/site/config";
 
 afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals()});
 it("applies mobile and desktop counts, motion parameters, and cancels frames on disposal",()=>{

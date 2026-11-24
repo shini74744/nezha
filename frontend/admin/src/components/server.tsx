@@ -56,7 +56,7 @@ import {
 import { chineseNote, patchRoutes, readRoutes, routeFields } from "@/lib/public-note-compat"
 import OtherRoutesEditor from "./OtherRoutesEditor"
 import CarrierColorPicker from "./CarrierColorPicker"
-import ProviderLogoEditor from "./ProviderLogoEditor"
+import ProviderLogoEditor from "../../../../appearance/admin/components/ProviderLogoEditor"
 import SettingHelp from "./SettingHelp"
 import LinkTagsEditor from "./LinkTagsEditor"
 import ExtraNotesEditor from "./ExtraNotesEditor"

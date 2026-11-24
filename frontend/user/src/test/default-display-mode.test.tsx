@@ -1,9 +1,9 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
-import { AppearanceProvider } from "@/appearance/context";
-import { defaults, normalize, validate } from "@/appearance/config";
-import { NativeEffects } from "@/appearance/effects";
+import { AppearanceProvider } from "@appearance/site/context";
+import { defaults, normalize, validate } from "@appearance/site/config";
+import { NativeEffects } from "@appearance/site/effects";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { useTheme } from "@/hooks/use-theme";
 

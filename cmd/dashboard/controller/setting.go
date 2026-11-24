@@ -10,7 +10,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/nezhahq/nezha/model"
-	appearance "github.com/nezhahq/nezha/resource/appearance"
+	appearance "github.com/nezhahq/nezha/appearance/defaults"
 	"github.com/nezhahq/nezha/service/rpc"
 	"github.com/nezhahq/nezha/service/singleton"
 )

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/nezhahq/nezha/model"
-	appearance "github.com/nezhahq/nezha/resource/appearance"
+	appearance "github.com/nezhahq/nezha/appearance/defaults"
 	"github.com/stretchr/testify/require"
 	"testing"
 )

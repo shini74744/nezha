@@ -1,8 +1,8 @@
 import { fireEvent, screen } from "@testing-library/react";
 import { useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import ServerCard from "@/components/ServerCard";
-import ServerCardInline from "@/components/ServerCardInline";
+import ServerCard from "@appearance/cards/ServerCard";
+import ServerCardInline from "@appearance/cards/ServerCardInline";
 import { createServer } from "@/test/fixtures";
 import { renderWithProviders } from "@/test/utils";
 

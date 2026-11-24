@@ -1,5 +1,7 @@
 # 哪吒监控 · 非官方二次开发版
 
+[美化源码与设置目录](appearance/README.md)
+
 > [!IMPORTANT]
 > **非官方版本声明**
 >

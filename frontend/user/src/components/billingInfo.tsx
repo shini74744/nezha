@@ -7,7 +7,7 @@ import {
 	type PublicNoteData,
 } from "@/lib/utils";
 
-import RemainPercentBar from "./RemainPercentBar";
+import RemainPercentBar from "../../../../appearance/cards/RemainPercentBar";
 
 export default function BillingInfo({
 	parsedData,

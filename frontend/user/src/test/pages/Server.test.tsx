@@ -63,13 +63,13 @@ vi.mock("@/components/ServerOverview", () => ({
 	),
 }));
 
-vi.mock("@/components/ServerCard", () => ({
+vi.mock("@appearance/cards/ServerCard", () => ({
 	default: ({ serverInfo }: { serverInfo: NezhaServer }) => (
 		<article data-testid="server-card">{serverInfo.name}</article>
 	),
 }));
 
-vi.mock("@/components/ServerCardInline", () => ({
+vi.mock("@appearance/cards/ServerCardInline", () => ({
 	default: ({ serverInfo }: { serverInfo: NezhaServer }) => (
 		<article data-testid="server-card-inline">{serverInfo.name}</article>
 	),

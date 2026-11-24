@@ -1,11 +1,11 @@
 import type { CSSProperties } from "react";
 import { safeSessionStorage } from "@/lib/storage";
 import { useLoginUser } from "@/hooks/use-login-user";
-import {useFeature} from "@/appearance/context";
-import {NativeCounter,NativeClockPart} from "@/appearance/native-layout-widgets";
-import {NativeDesktopSponsor} from "@/appearance/native-sponsor";
-import {BackgroundSoundLogo} from "@/appearance/background-sound";
-import {NativeDescription,NativeGreeting} from "@/appearance/widgets";
+import {useFeature} from "@appearance/site/context";
+import {NativeCounter,NativeClockPart} from "@appearance/site/native-layout-widgets";
+import {NativeDesktopSponsor} from "@appearance/site/native-sponsor";
+import {BackgroundSoundLogo} from "@appearance/site/background-sound";
+import {NativeDescription,NativeGreeting} from "@appearance/site/widgets";
 import { useQuery } from "@tanstack/react-query";
 import { ImageMinus } from "lucide-react";
 import { DateTime } from "luxon";

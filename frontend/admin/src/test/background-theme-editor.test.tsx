@@ -1,8 +1,8 @@
 import {useState} from "react";
 import {afterEach,it,expect} from "vitest";
 import {cleanup,render,screen,fireEvent} from "@testing-library/react";
-import {BackgroundSettings} from "@/components/background-settings";
-import {defaults,validate} from "@/lib/appearance-config";
+import {BackgroundSettings} from "@appearance/admin/components/background-settings";
+import {defaults,validate} from "@appearance/admin/settings/appearance-config";
 afterEach(cleanup);
 function Harness(){const [c,setC]=useState(defaults);return <><BackgroundSettings value={c.features.background} sound={c.features.video} onChange={f=>setC({...c,features:{...c.features,background:f}})} onSoundChange={()=>{}}/><output data-testid="validation">{validate(c)}</output></>}
 it("edits the two themes independently and validates empty and out-of-range input",()=>{

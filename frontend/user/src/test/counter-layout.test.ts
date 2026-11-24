@@ -1,5 +1,5 @@
 import {it,expect} from "vitest";
-import {fitCounter,type Obstacle} from "@/appearance/counter-layout";
+import {fitCounter,type Obstacle} from "@appearance/site/counter-layout";
 const rect=(left:number,right:number,top=20,bottom=60):Obstacle=>({left,right,top,bottom,width:right-left,height:bottom-top});
 it("desktop grows with free space but maintains a 12px content gap",()=>{
  for(const viewport of [768,1366,1920,2560,3840]){

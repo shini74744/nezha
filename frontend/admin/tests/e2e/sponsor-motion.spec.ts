@@ -3,7 +3,7 @@ import {test,expect,Page} from "@playwright/test";
 import fs from "node:fs";
 import {createServer} from "../../../user/src/test/fixtures";
 test.use({ignoreHTTPSErrors:true});
-const defs=JSON.parse(fs.readFileSync(new URL("../../../user/src/appearance/manifest.json",import.meta.url),"utf8"));
+const defs=JSON.parse(fs.readFileSync(new URL("../../../../appearance/defaults/manifest.json",import.meta.url),"utf8"));
 async function setup(page:Page,theme:string,timing:Record<string,number>={}){
  const origin=theme==="doraemon"?"https://127.0.0.1:18478":"https://127.0.0.1:18477";
  const config={version:1,enabled:true,features:Object.fromEntries(defs.map((d:any)=>[d.key,{...d.defaults,enabled:d.key==="sponsor"}]))};

@@ -1,6 +1,6 @@
 import {it,expect} from "vitest";
-import {defaults,normalize,validate} from "@/appearance/config";
-import {getBackgroundLoad,backgroundLoadEffects,validateBackgroundLoad} from "@/appearance/background-load";
+import {defaults,normalize,validate} from "@appearance/site/config";
+import {getBackgroundLoad,backgroundLoadEffects,validateBackgroundLoad} from "@appearance/site/background-load";
 it("uses independent device defaults and all effect values",()=>{
  const c=defaults();c.features.background.desktopLoadEffect="left";c.features.background.desktopLoadDuration=3.5;
  c.features.background.mobileLoadEffect="zoom";c.features.background.mobileLoadDuration=0;

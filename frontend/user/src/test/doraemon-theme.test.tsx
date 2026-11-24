@@ -2,21 +2,21 @@ import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useLocation } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
-import { AppearanceProvider } from "@/appearance/context";
+import { AppearanceProvider } from "@appearance/site/context";
 import { StatusProvider } from "@/context/status-provider";
 import { useStatus } from "@/hooks/use-status";
 import { createServer } from "@/test/fixtures";
 import { renderWithProviders } from "@/test/utils";
-import { DoraemonCard, DoraemonInlineCard, percent, positive } from "@/themes/doraemon/Card";
-import { DoraemonMap, DoraemonOverview } from "@/themes/doraemon/Overview";
-import { beijingSky } from "@/themes/doraemon/sky";
+import { DoraemonCard, DoraemonInlineCard, percent, positive } from "@appearance/themes/doraemon/Card";
+import { DoraemonMap, DoraemonOverview } from "@appearance/themes/doraemon/Overview";
+import { beijingSky } from "@appearance/themes/doraemon/sky";
 import {
 	formatMbps,
 	networkRateParts,
 	formatNetworkRate,
-} from "@/themes/doraemon/format";
-import { nearbyRegions } from "@/themes/doraemon/Map";
-import { makeNetworkLinks } from "@/themes/doraemon/Network";
+} from "@appearance/themes/doraemon/format";
+import { nearbyRegions } from "@appearance/themes/doraemon/Map";
+import { makeNetworkLinks } from "@appearance/themes/doraemon/Network";
 
 vi.mock("@/components/ServerFlag", () => ({ default: () => null }));
 const now = Date.parse("2025-01-01T00:00:20.000Z");

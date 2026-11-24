@@ -2,7 +2,7 @@ import {test,expect,Page} from "@playwright/test";
 import fs from "node:fs";
 import {createServer} from "../../../user/src/test/fixtures";
 test.use({ignoreHTTPSErrors:true});
-const defs=JSON.parse(fs.readFileSync(new URL("../../../user/src/appearance/manifest.json",import.meta.url),"utf8"));
+const defs=JSON.parse(fs.readFileSync(new URL("../../../../appearance/defaults/manifest.json",import.meta.url),"utf8"));
 async function setup(page:Page,theme:string,dark:boolean,many=false,empty=false){
  const origin=theme==="doraemon"?"https://127.0.0.1:18478":"https://127.0.0.1:18477";
  const now=Date.now(),servers=[createServer({id:1,name:"分组节点一",last_active:new Date(now).toISOString()}),createServer({id:2,name:"分组节点二",last_active:new Date(now).toISOString()})];

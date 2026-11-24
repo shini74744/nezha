@@ -1,16 +1,16 @@
 import { act } from "@testing-library/react";
 import { describe,it,expect,vi } from "vitest";
-import { speedEffect } from "@/appearance/speed-effect";
-import { AppearanceProvider } from "@/appearance/context";
-import { defaults } from "@/appearance/config";
+import { speedEffect } from "@appearance/site/speed-effect";
+import { AppearanceProvider } from "@appearance/site/context";
+import { defaults } from "@appearance/site/config";
 import { StatusProvider } from "@/context/status-provider";
 import { createServer } from "@/test/fixtures";
 import { renderWithProviders } from "@/test/utils";
-import { DoraemonCard } from "@/themes/doraemon/Card";
-import { DoraemonOverview } from "@/themes/doraemon/Overview";
-import { DoraemonAppearanceProvider } from "@/themes/doraemon/Appearance";
-import { doraemonDefaults } from "../../../shared/doraemon-appearance";
-import effectCSS from "@/themes/doraemon/rate-effects.css?raw";
+import { DoraemonCard } from "@appearance/themes/doraemon/Card";
+import { DoraemonOverview } from "@appearance/themes/doraemon/Overview";
+import { DoraemonAppearanceProvider } from "@appearance/themes/doraemon/Appearance";
+import { doraemonDefaults } from "../../../../appearance/shared/doraemon-appearance";
+import effectCSS from "@appearance/themes/doraemon/rate-effects.css?raw";
 
 describe("shared speed effect levels",()=>{
  it.each([

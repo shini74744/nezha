@@ -1,7 +1,7 @@
 import {afterEach,beforeEach,describe,expect,it,vi} from "vitest";
-import {counter} from "@/appearance/modules/counter";
-import {FeatureScope} from "@/appearance/scope";
-import {defaults} from "@/appearance/config";
+import {counter} from "@appearance/site/modules/counter";
+import {FeatureScope} from "@appearance/site/scope";
+import {defaults} from "@appearance/site/config";
 let scope:FeatureScope,anchor:HTMLDivElement;
 const box=(right=1000,width=240,height=60)=>({left:right-width,right,top:80,bottom:80+height,width,height,x:right-width,y:80,toJSON:()=>({})});
 beforeEach(()=>{

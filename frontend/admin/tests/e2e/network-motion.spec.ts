@@ -196,7 +196,7 @@ test("optimized canvas is pixel-identical to the legacy renderer at normal and h
 	await page.goto(base + "/native-test.html");
 	const result = await page.evaluate(async () => {
 		const { NetworkScene } = await import(
-			"/src/appearance/modules/network-scene.ts"
+			"/tests/network-scene.ts"
 		);
 		const results = [];
 		for (const dpr of [1, 2]) {

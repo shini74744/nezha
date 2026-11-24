@@ -1,5 +1,5 @@
 import {useState} from "react";
-import LogoEditor from "./LogoEditor";
+import LogoEditor from "../../../../appearance/admin/components/LogoEditor";
 import CarrierColorPicker from "./CarrierColorPicker";
 import {carrierColorStyle,defaultCarrierColors,safeCarrierColor} from "../../../shared/carrier-colors";
 import {Button} from "@/components/ui/button";
@@ -10,7 +10,7 @@ import {safeLogoSource} from "../../../shared/other-routes";
 import {type PublicNote} from "@/lib/public-note";
 import {patchOtherRoutes,readOtherRoutes,type OtherRoute} from "@/lib/public-note-compat";
 
-import Picker,{type Choice} from "./LogoChoicePicker";
+import Picker,{type Choice} from "../../../../appearance/admin/components/LogoChoicePicker";
 import useLogoLibrary from "@/hooks/useLogoLibrary";
 import {libraryLogo} from "../../../shared/logo-library";
 export default function OtherRoutesEditor({note,onChange}:{note:PublicNote;onChange:(note:PublicNote)=>void}){
