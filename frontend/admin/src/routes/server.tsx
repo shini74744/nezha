@@ -29,7 +29,7 @@ import { IconButton } from "@/components/xui/icon-button"
 import { useAuth } from "@/hooks/useAuth"
 import { useServer } from "@/hooks/useServer"
 import { selectableTableFeatures } from "@/lib/table"
-import { cn, joinIP } from "@/lib/utils"
+import { cn, copyToClipboard } from "@/lib/utils"
 import { ModelServerTaskResponse, ModelServer as Server } from "@/types"
 import { ColumnDef, flexRender, useTable } from "@tanstack/react-table"
 import { useEffect, useMemo } from "react"
@@ -38,6 +38,36 @@ import { toast } from "sonner"
 import useSWR from "swr"
 
 import "./server-layout.css"
+
+function CopyableIP({ address }: { address: string }) {
+    const { t } = useTranslation()
+    const copy = async () => {
+        try {
+            if ((await copyToClipboard(address)) === false) throw new Error("Clipboard unavailable")
+            toast.success(t("Copied"))
+        } catch {
+            toast.error(t("ClipboardCopyFailed"))
+        }
+    }
+
+    return (
+        <span
+            role="button"
+            tabIndex={0}
+            aria-label={`${t("Copy")} ${address}`}
+            className="cursor-pointer"
+            onClick={copy}
+            onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault()
+                    if (!event.repeat) void copy()
+                }
+            }}
+        >
+            {address}
+        </span>
+    )
+}
 
 export default function ServerPage() {
     const { t } = useTranslation()
@@ -141,10 +171,12 @@ export default function ServerPage() {
             id: "ip",
             header: "IP",
             cell: ({ row }) => {
-                const s = row.original
+                const ip = row.original.geoip?.ip
                 return (
                     <div className="server-text whitespace-normal break-words">
-                        {joinIP(s.geoip?.ip)}
+                        {ip?.ipv4_addr && <CopyableIP address={ip.ipv4_addr} />}
+                        {ip?.ipv4_addr && ip.ipv6_addr && "/"}
+                        {ip?.ipv6_addr && <CopyableIP address={ip.ipv6_addr} />}
                     </div>
                 )
             },

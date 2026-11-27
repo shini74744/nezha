@@ -269,6 +269,7 @@
     "Revoke": "撤銷",
     "Copy": "複製",
     "Copied": "已複製到剪貼簿",
+    "ClipboardCopyFailed": "複製失敗，請選取位址後手動複製。",
     "Scopes": "範圍",
     "InvalidUsernameOrPassword": "使用者名稱或密碼無效",
     "NetworkError": "網路錯誤",

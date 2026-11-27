@@ -356,6 +356,7 @@
     "NameRequired": "Name is required.",
     "Revoke": "Revoke",
     "Copied": "Copied to clipboard",
+    "ClipboardCopyFailed": "Copy failed. Select the address and copy it manually.",
     "Scopes": "Scopes",
     "ServiceManualList": "Manual service order",
     "ServiceMoveDown": "Move {{name}} down",

@@ -361,6 +361,7 @@
     "NameRequired": "名称必填。",
     "Revoke": "吊销",
     "Copied": "已复制到剪贴板",
+    "ClipboardCopyFailed": "复制失败，请选中地址后手动复制。",
     "Scopes": "权限",
     "ServiceManualList": "手动排序列表",
     "ServiceMoveDown": "下移 {{name}}",
