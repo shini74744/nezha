@@ -8,8 +8,8 @@ import (
 	"testing/fstest"
 
 	"github.com/gin-gonic/gin"
-	"github.com/nezhahq/nezha/model"
 	appearance "github.com/nezhahq/nezha/appearance/defaults"
+	"github.com/nezhahq/nezha/model"
 	"github.com/nezhahq/nezha/service/singleton"
 	"github.com/stretchr/testify/require"
 )

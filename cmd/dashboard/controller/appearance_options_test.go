@@ -3,8 +3,8 @@ package controller
 import (
 	"encoding/json"
 	"errors"
-	"github.com/nezhahq/nezha/model"
 	appearance "github.com/nezhahq/nezha/appearance/defaults"
+	"github.com/nezhahq/nezha/model"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
