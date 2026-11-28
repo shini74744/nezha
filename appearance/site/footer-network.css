@@ -59,8 +59,8 @@
 }
 @media(prefers-reduced-motion:reduce) {.nz-footer-ip.nz-footer-network {transition:none}}
 
-/* Mount the native card inside the footer's reserved space. Keep the animated surface inside its reserved slot so reveal never changes page size. */
-.nz-footer-ip.nz-footer-network.nz-footer-in-flow {position:absolute;top:var(--nz-network-top,0px);bottom:auto;left:var(--nz-network-left,0px);width:var(--nz-network-width,100%);max-width:100%;container-type:inline-size;transition:opacity .18s ease-in}
+/* The footer fills spare space on short lists. Dock the card to its bottom edge. */
+.nz-footer-ip.nz-footer-network.nz-footer-in-flow {position:absolute;top:auto;bottom:env(safe-area-inset-bottom,0px);left:var(--nz-network-left,0px);width:var(--nz-network-width,100%);max-width:100%;container-type:inline-size;transition:opacity .18s ease-in}
 @container(max-width:520px) {
  .nz-net-updated {display:none}
  .nz-net-header {padding-inline:6px}
@@ -77,11 +77,14 @@
 }
 
 
-/* Animate only the card surface; its reserved slot and both footer labels stay still. */
-.nz-footer-in-flow > .nz-net-card {transform-origin:center top;transform:translate3d(0,4%,0) scale(.96);transition:transform .18s ease-in}
-.nz-footer-ip.nz-footer-network.nz-footer-in-flow[data-visible="true"] {transition:opacity .36s cubic-bezier(.16,1,.3,1)}
-.nz-footer-in-flow[data-visible="true"] > .nz-net-card {transform:translate3d(0,0,0) scale(1);transition:transform .36s cubic-bezier(.16,1,.3,1)}
+/* Keep the entrance inside the reserved footer so it cannot extend the scroll range. */
+[data-footer-network-slot] {overflow-y:clip}
+.nz-footer-ip.nz-footer-network[data-visible] {transition:opacity 110ms ease-out}
+.nz-footer-network > .nz-net-card {transform:translateY(6px);transition:transform 110ms ease-out}
+.nz-footer-ip.nz-footer-network[data-visible="true"] {transition:opacity 210ms ease-out}
+.nz-footer-network[data-visible="true"] > .nz-net-card {transform:none;transition:transform 240ms cubic-bezier(.22,1,.36,1)}
 @media(prefers-reduced-motion:reduce) {
- .nz-footer-ip.nz-footer-network.nz-footer-in-flow[data-visible],
- .nz-footer-ip.nz-footer-network.nz-footer-in-flow > .nz-net-card {transition:none;transform:none}
+ .nz-footer-ip.nz-footer-network[data-visible],
+ .nz-footer-network[data-visible] > .nz-net-card {transition:none}
+ .nz-footer-network[data-visible] > .nz-net-card {transform:none}
 }

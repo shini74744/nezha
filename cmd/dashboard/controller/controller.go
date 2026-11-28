@@ -70,6 +70,7 @@ func routers(r *gin.Engine, frontendDist fs.FS) {
 	r.GET("/mcp/download/:token", mcpOriginGuard(), transferDownloadHandler)
 	r.POST("/mcp/upload/:token", mcpOriginGuard(), transferUploadHandler)
 	registerAgentcompatRoutes(r)
+	registerAccessSky(r)
 	registerTelegramTerminalRoutes(r, frontendDist)
 
 	api := r.Group("api/v1", ddnezhaRequestBodyLimitMiddleware())

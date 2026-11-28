@@ -63,7 +63,6 @@ export function FitFooterRow({ children }: { children: ReactNode }) {
 				const y = row.top - bounds.top + (inline ? 0 : height + 6);
 				const values = {
 					"--nz-network-left": `${Math.max(0, x)}px`,
-					"--nz-network-top": `${y}px`,
 					"--nz-network-width": `${width}px`,
 					"--nz-footer-network-height": `calc(${y}px + var(--nz-measured-network-height, var(--nz-footer-card-height)))`,
 				};

@@ -50,18 +50,24 @@ export function NativeFooterIP() {
 		setVisible(false);
 		setDismissed(false);
 		if (!f.enabled || !allowed || !ready) return;
-		let timer = 0,
-			last = window.scrollY;
+		let timer = 0;
+		let previouslyAtBottom: boolean | undefined;
 		const atBottom = () =>
 			innerHeight + scrollY >= document.documentElement.scrollHeight - 2;
 		const update = () => {
+			const bottom = atBottom();
+			if (bottom === previouslyAtBottom) return;
+			previouslyAtBottom = bottom;
 			clearTimeout(timer);
-			const down = window.scrollY >= last;
-			last = window.scrollY;
-			if (!atBottom()) setDismissed(false);
-			if (down && atBottom())
-				timer = window.setTimeout(() => setVisible(atBottom()), 300);
-			else setVisible(false);
+			if (bottom) {
+				timer = window.setTimeout(() => {
+					previouslyAtBottom = atBottom();
+					setVisible(previouslyAtBottom);
+				}, native ? 120 : 300);
+			} else {
+				setVisible(false);
+				setDismissed(false);
+			}
 		};
 		const observer = new ResizeObserver(update);
 		observer.observe(document.documentElement);
@@ -75,7 +81,7 @@ export function NativeFooterIP() {
 			removeEventListener("scroll", update);
 			removeEventListener("resize", update);
 		};
-	}, [f.enabled, allowed, ready]);
+	}, [f.enabled, allowed, ready, native]);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: Notify the copyright placement when overlay visibility or height changes.
 	useEffect(() => {
 		const notify = () => dispatchEvent(new Event("nz-footer-ip-change"));
@@ -97,7 +103,7 @@ export function NativeFooterIP() {
 				display: !allowed ? "none" : undefined,
 				transform: host
 					? "none"
-					: `translateX(-50%) translateY(${shown ? 0 : 20}px)`,
+					: native ? "translateX(-50%)" : `translateX(-50%) translateY(${shown ? 0 : 20}px)`,
 				opacity: shown ? 1 : 0,
 				pointerEvents: shown ? "auto" : "none",
 				height: native ? undefined : f.height,

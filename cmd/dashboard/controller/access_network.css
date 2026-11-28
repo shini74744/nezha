@@ -1,0 +1,200 @@
+body.backend {
+  --ocean: #dcecf4;
+  --bloom: #f5faff;
+  --grid: #b7d0dc;
+  --land: #f3f6f1;
+  --boundary: #bdcdce;
+  --place: #687e88;
+  --spark: #fff;
+  --link: #087da0;
+  --violet: #7c52b5;
+  --signal: #2368ad;
+  --signal-violet: #7748a7;
+  --ink: #182944;
+  --muted: #435875;
+  --rim: rgba(117, 147, 192, .58);
+  --glass: rgba(249, 252, 255, .74);
+  --solid: #f6f9ff;
+  --field: rgba(245, 250, 255, .78);
+  --accent: #2a5bb5;
+  --focus: #4378df;
+  --button: #2259ce;
+  isolation: isolate;
+  background: var(--ocean);
+  color: var(--ink);
+}
+.gate-backdrop {
+  position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 45%, #e4f1f7, #cbdfea 78%, #bfd6e4);
+}
+.gate-globe { display: block; width: 100%; height: 100%; transform: translateZ(0); }
+.globe-base { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.gate-sky, .sky-credit { display: none; }
+@media (min-width: 1000px) and (min-height: 450px) and (min-aspect-ratio: 3/2) and (forced-colors: none) {
+  .gate-sky {
+    display: block; position: absolute; inset: 0; overflow: hidden; pointer-events: none; isolation: isolate;
+    background: linear-gradient(165deg, #263949, #40596c 63%, #566e80);
+  }
+  .sky-dust {
+    position: absolute; inset: -16px; background: var(--sky-photo) center / cover no-repeat;
+    mix-blend-mode: screen; opacity: .84;
+  }
+  .sky-stars { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .sky-plane { position: absolute; inset: -48px; width: calc(100% + 96px); height: calc(100% + 96px); }
+  .gate-sky[data-stellar-interactive] :is(.sky-dust,.sky-plane) {
+    transition: transform 700ms cubic-bezier(.22,.61,.36,1);
+  }
+  .gate-sky[data-stellar-motion] :is(.sky-dust,.sky-plane) {
+    animation: stellar-orbit 26s ease-in-out -8s infinite alternate;
+    will-change: transform;
+  }
+  .gate-sky[data-stellar-paused] :is(.sky-dust,.sky-plane) { animation-play-state: paused; }
+  @keyframes stellar-orbit {
+    from { translate: calc(-1 * var(--orbit-x)) var(--orbit-y); scale: 1; }
+    to { translate: var(--orbit-x) calc(-1 * var(--orbit-y)); scale: var(--orbit-scale); }
+  }
+  .gate-globe { position: relative; }
+  .sky-credit {
+    display: block; position: absolute; right: max(16px, env(safe-area-inset-right));
+    bottom: max(12px, env(safe-area-inset-bottom)); color: #e1e8ed; background: #102033b0;
+    font: 11px/1.6 system-ui,sans-serif; padding: 3px 7px; border-radius: 4px; text-decoration: none;
+  }
+  .sky-credit:is(:hover,:focus-visible) { text-decoration: underline; }
+}
+@media (prefers-color-scheme: dark) {
+  .gate-sky { background: radial-gradient(ellipse at 48% 53%, #101e31, #050d19 77%); }
+  .sky-dust { opacity: .98; }
+}
+.gate-globe[tabindex] { pointer-events: auto; touch-action: pinch-zoom; cursor: grab; }
+.gate-globe[data-dragging] { cursor: grabbing; }
+.gate-globe:focus-visible { outline: 2px solid var(--focus); outline-offset: -3px; }
+.route-note {
+  position: fixed; top: max(7px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+  width: max-content; max-width: min(36rem, calc(100% - 24px)); padding: 5px 12px;
+  color: var(--ink); background: var(--solid); border: 1px solid var(--rim); border-radius: 8px;
+  font-size: 12px; line-height: 1.45; text-align: center; pointer-events: none;
+}
+.route-note small { display: block; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.map-legend select {
+  max-width: 78px; min-width: 0; border: 0; color: var(--accent); background: transparent;
+  font: inherit; cursor: pointer; min-height: 32px;
+}
+@media (max-width: 640px), (pointer: coarse) {
+  .map-legend:has(select) { gap: 6px; }
+  .map-legend select { max-width: 58px; min-height: 44px; }
+}
+@media (max-height: 600px) {
+  .gate-globe[tabindex] { touch-action: pan-y pinch-zoom; }
+}
+body.backend {
+  position: relative; display: flex; flex-direction: column; align-items: center;
+  padding-block: max(48px, env(safe-area-inset-top)) max(48px, env(safe-area-inset-bottom));
+}
+.backend .card { position: relative; flex: none; margin-block: auto; transform: translateZ(0); }
+@media (prefers-reduced-motion: no-preference) and (forced-colors: none) {
+  .backend .card.edge-lit::after {
+    content: ""; position: absolute; left: 6%; top: -1px; width: 28%; height: 2px;
+    border-radius: 100%; pointer-events: none; opacity: 0;
+    background: linear-gradient(90deg, transparent, var(--focus), transparent);
+    animation: gate-edge-sweep 720ms ease-out 1;
+  }
+  @keyframes gate-edge-sweep {
+    0% { transform: translateX(0); opacity: 0; }
+    25% { opacity: .88; }
+    100% { transform: translateX(215%); opacity: 0; }
+  }
+}
+.backend .card {
+  background: var(--solid); border-color: var(--rim);
+  box-shadow: inset 0 1px rgba(255,255,255,.32), 0 24px 72px -24px rgba(4,19,50,.34);
+}
+@supports ((backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px))) {
+  .backend .card {
+    background: linear-gradient(135deg, rgba(145,177,237,.09), transparent 55%), var(--glass);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+}
+.backend .brand-mark { color: var(--accent); background: var(--field); border-color: var(--rim); }
+.backend .card.globe-glass {
+  overflow: hidden; isolation: isolate; background: var(--solid);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.glass-sample {
+  position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; opacity: .32;
+  pointer-events: none; filter: blur(5px); transform: scale(1.04);
+}
+.backend :is(.description,.context,.next-note,.input-icon) { color: var(--muted); }
+.backend input[type=password] { color: var(--ink); background: var(--field); border-color: var(--rim); }
+.backend input::placeholder { color: var(--muted); }
+.backend input:focus-visible { border-color: var(--focus); box-shadow: 0 0 0 3px rgba(84,141,241,.24); }
+.backend input[aria-invalid=true] { border-color: #c34b45; }
+.backend .primary {
+  color: white; background: var(--button);
+  border-color: rgba(154,193,255,.35);
+  box-shadow: inset 0 1px rgba(255,255,255,.13), 0 4px 16px rgba(25,63,153,.2);
+}
+.backend .primary:hover { background: #204fb9; }
+.backend .primary:active { background: #1f459d; }
+.backend :is(button,a):focus-visible { outline-color: var(--focus); }
+.backend .card-footer { border-color: var(--rim); }
+.backend .back-link { color: var(--accent); }
+.backend .back-link:hover { background: var(--field); }
+.map-legend {
+  --edge-left: max(12px, env(safe-area-inset-left));
+  --edge-right: max(12px, env(safe-area-inset-right));
+  position: absolute; z-index: 1; left: var(--edge-left); bottom: max(8px, env(safe-area-inset-bottom));
+  display: flex; align-items: center; gap: 14px; font-size: 12px; color: var(--muted);
+  max-width: calc(100% - var(--edge-left) - var(--edge-right)); background: var(--glass);
+  border: 1px solid var(--rim); border-radius: 10px; padding-inline: 10px 4px;
+}
+.map-legend > span { display: inline-flex; align-items: center; gap: 5px; }
+.map-legend i { width: 16px; border-top: 2px solid var(--link); }
+.map-legend .land-key { border-color: var(--violet); }
+.map-legend summary {
+  cursor: pointer; color: var(--accent); display: flex; align-items: center; gap: 7px;
+  min-height: 32px; padding: 0 8px; border-radius: 6px; list-style: none;
+}
+.map-legend summary::-webkit-details-marker { display: none; }
+.map-legend summary::before { content: ""; width: 6px; height: 6px; border: solid currentColor; border-width: 1.5px 1.5px 0 0; transform: rotate(-45deg); }
+.map-legend details[open] summary::before { transform: rotate(135deg); }
+.map-credit {
+  position: absolute; bottom: calc(100% + 6px); left: -1px;
+  width: min(340px, calc(100vw - var(--edge-left) - var(--edge-right)));
+  max-height: calc(100vh - 84px); max-height: calc(100dvh - 84px - env(safe-area-inset-bottom) - env(safe-area-inset-top));
+  overflow-y: auto; overscroll-behavior: contain; overflow-wrap: anywhere;
+  padding: 14px 16px; color: var(--ink); background: var(--solid); border: 1px solid var(--rim);
+  border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,.16); line-height: 1.5;
+}
+.map-credit h2 { margin: 0; font-size: 12px; font-weight: 650; color: var(--muted); }
+.map-credit a { color: var(--accent); text-underline-offset: 3px; }
+.map-credit .credit-origin { display: grid; margin: 5px 0 12px; padding: 9px 12px; gap: 2px; background: var(--field); border: 1px solid var(--rim); border-radius: 8px; text-decoration: none; }
+.credit-origin strong { display: flex; justify-content: space-between; font-size: 15px; }
+.credit-origin small, .map-credit > small, .map-credit p { color: var(--muted); }
+.map-credit ul { margin: 3px 0 0; padding: 0; list-style: none; }
+.map-credit li a { display: flex; align-items: center; min-height: 32px; }
+.map-credit p { border-top: 1px solid var(--rim); margin: 6px 0 3px; padding-top: 8px; }
+.map-credit > small { display: block; font-size: 11px; }
+.map-legend :is(summary,a):focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+@media (max-width: 640px), (pointer: coarse) {
+  body.backend { padding-block: max(60px, env(safe-area-inset-top)) max(60px, env(safe-area-inset-bottom)); }
+  .map-credit { font-size: 14px; }
+  .map-legend summary, .map-credit li a { min-height: 44px; }
+  .map-credit p a { display: flex; align-items: center; min-height: 44px; }
+}
+@media (prefers-color-scheme: dark) {
+  .gate-backdrop { background: radial-gradient(ellipse at 50% 46%, #10263a, #050e1c 70%, #030913); }
+  body.backend {
+    --ocean: #071625; --bloom: #0d2b42; --grid: #264052; --land: #193548;
+    --boundary: #2b4d61; --place: #9abbca; --spark: #e7fdff;
+    --link: #32cada; --violet: #bba2f4; --signal: #80d4ff; --signal-violet: #e0c6ff;
+    --ink: #f0f5ff; --muted: #bacbe4; --accent: #a6cdff; --focus: #83b3ff;
+    --glass: rgba(20,36,61,.67); --solid: #172842; --field: rgba(10,23,44,.70);
+    --rim: rgba(141,174,226,.43); --button: #315dce;
+  }
+  .backend input[aria-invalid=true] { border-color: #ee9b94; }
+}
+@media (forced-colors: active) {
+  .gate-backdrop { display: none; }
+  .backend .card { background: Canvas; }
+}

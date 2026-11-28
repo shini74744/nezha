@@ -311,6 +311,7 @@ func TestAccessBrowserFixture(t *testing.T) {
 	router.Use(func(c *gin.Context) { c.Set(model.CtxKeyRealIPStr, "127.0.0.1"); c.Next() })
 	router.POST("/api/v1/backend-auth", backendPasswordLogin)
 	router.POST("/api/v1/frontend-auth", frontendPasswordLogin)
+	registerAccessSky(router)
 	router.GET("/", func(c *gin.Context) {
 		if validFrontendPasswordCookie(c) {
 			c.Data(200, "text/html; charset=utf-8", []byte("<h1>监控前台</h1>"))

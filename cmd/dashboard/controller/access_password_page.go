@@ -1,13 +1,67 @@
 package controller
 
 import (
+	"bytes"
+	"crypto/sha256"
+	_ "embed"
+	"encoding/base64"
 	"html"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-// Both entry gates use this exact template so responsive, error, and dark states stay aligned.
+//go:embed mapdata/globe.json
+var accessGlobeData string
+
+//go:embed mapdata/access_globe.js
+var accessGlobeRenderer string
+
+//go:embed mapdata/stellar_field.js
+var accessSkyRenderer string
+
+var accessGlobeScript = accessGlobeRenderer + "\n;" + accessSkyRenderer
+
+var accessGlobeCSP = func() string {
+	// HTML parsers normalise CRLF before validating the inline script hash.
+	digest := sha256.Sum256([]byte(strings.ReplaceAll(accessGlobeScript, "\r\n", "\n")))
+	return "; script-src 'sha256-" + base64.StdEncoding.EncodeToString(digest[:]) + "'"
+}()
+
+//go:embed access_network.css
+var accessNetworkCSS string
+
+//go:embed mapdata/galactic-sky.webp
+var accessSkyPhoto []byte
+
+//go:embed mapdata/galactic-dust.webp
+var accessSkyDust []byte
+
+//go:embed mapdata/sky-stars.bin
+var accessSkyStars []byte
+
+var accessSkyCatalog = base64.StdEncoding.EncodeToString(accessSkyStars)
+
+// The image is public art and may be cached independently of password-gated pages.
+const accessSkyPath = "/access-media/galactic-sky-f1af01d7283e.webp"
+const accessDustPath = "/access-media/galactic-dust-8d65591e13d4.webp"
+
+func registerAccessSky(r *gin.Engine) {
+	register := func(path string, image []byte) {
+		serve := func(c *gin.Context) {
+			c.Header("Cache-Control", "public, max-age=31536000, immutable")
+			c.Header("Content-Type", "image/webp")
+			http.ServeContent(c.Writer, c.Request, path, time.Time{}, bytes.NewReader(image))
+		}
+		r.GET(path, serve)
+		r.HEAD(path, serve)
+	}
+	register(accessSkyPath, accessSkyPhoto)
+	register(accessDustPath, accessSkyDust)
+}
+
 type accessPasswordPage struct {
 	Backend                   bool
 	Paper                     bool
@@ -21,11 +75,34 @@ func serveAccessPasswordPage(c *gin.Context, page accessPasswordPage, status int
 	context, placeholder := "监控访问", "请输入前台访问密码"
 	nextNote, backLink := "", ""
 	pageClass := ""
+	backdrop := ""
+	globeScript := ""
+	csp := "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+	mapLegend := ""
+	backendStyle := ""
 	if page.Paper && !page.Backend {
 		pageClass = "paper"
 		context = "纸间 · 监控访问"
 	}
 	if page.Backend {
+		pageClass = "backend"
+		backdrop = `<div class="gate-backdrop"><div class="gate-sky" aria-hidden="true"><div class="sky-dust"></div><div class="sky-stars" data-stars="` + accessSkyCatalog + `"></div></div><canvas class="gate-globe" aria-label="光缆地球，可拖动或用方向键旋转"></canvas></div>` +
+			`<template id="globe-data">` + accessGlobeData + `</template>`
+		globeScript = "<script>" + accessGlobeScript + "</script>"
+		csp += "; img-src 'self'" + accessGlobeCSP
+		mapLegend = `<aside class="map-legend" aria-label="光缆地图图例">
+<span><i class="sea-key"></i>海底光缆</span><span><i class="land-key"></i>陆地光缆</span>
+<details><summary>地图来源</summary><section class="map-credit" aria-label="地图来源说明">
+<h2>视觉参考原站</h2>
+<a class="credit-origin" href="https://365-tools.cn/submarine_cable/" target="_blank" rel="noopener noreferrer"><strong>匠大 · 365 Tools <span aria-hidden="true">↗</span></strong><span>全球海底光缆可视化地图</span><small>365-tools.cn</small></a>
+<h2>线路数据</h2>
+<ul><li><a href="https://services1.arcgis.com/cc7nIINtrZ67dyVJ/ArcGIS/rest/services/Communication_Media_Use/FeatureServer/7" target="_blank" rel="noopener noreferrer">Greg Mahlknecht · 2015 年全球光缆图层</a></li>
+<li><a href="https://www.apps.geomatics.gov.nt.ca/arcgis/rest/services/GNWT/UtilitiesCommunication_LCC/MapServer/18" target="_blank" rel="noopener noreferrer">加拿大西北地区政府 · 陆地光纤图层</a></li></ul>
+<p>线路按公开走向绘制，光点为传输动画。</p>
+<p>银河与星点取自 ESO/S. Brunier 的全景摄影，已裁切并分层。星点位置和色调来自影像，远近和视点运动为视觉模拟。<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a></p>
+<small lang="en">Contains information licensed under the Open Government Licence – Northwest Territories.</small>
+</section></details></aside><a class="sky-credit" href="https://www.eso.org/public/images/eso0932a/" target="_blank" rel="noopener noreferrer">星空影像 · ESO/S. Brunier</a>`
+		backendStyle = "<style>.gate-sky{--sky-photo:url('" + accessDustPath + "')}\n" + accessNetworkCSS + "</style>"
 		title, description, action, button = "后台访问验证", "请输入管理员设置的后台访问密码。", "/api/v1/backend-auth", "验证并继续"
 		context, placeholder = "后台管理", "请输入后台访问密码"
 		nextNote = `<p class="next-note">尚未登录账号时，验证后将进入账号登录页。</p>`
@@ -64,7 +141,7 @@ func serveAccessPasswordPage(c *gin.Context, page accessPasswordPage, status int
 	c.Header("Vary", "Cookie")
 	c.Header("X-Frame-Options", "DENY")
 	c.Header("Referrer-Policy", "same-origin")
-	c.Header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'")
+	c.Header("Content-Security-Policy", csp)
 	c.Status(status)
 	_, _ = c.Writer.WriteString(`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark">
@@ -111,6 +188,6 @@ input[aria-invalid=true]{border-color:#dd8b7f}.primary{background:#7edec1;color:
 @media(max-width:480px){body{padding:20px 16px}.card{padding:26px 22px;border-radius:20px}.brand{margin-bottom:24px}h1{font-size:24px}}
 @media(max-height:640px){body{align-items:start;padding-top:24px;padding-bottom:24px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
-` + paperAccessCSS + `</style></head><body class="` + pageClass + `"><main class="card" aria-labelledby="access-title"><div class="brand"><span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 20 6v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8.5 11.5 2.5 2.5 4.5-5"/></svg></span><div class="brand-copy"><p class="site">` + escape(site) + `</p><p class="context">` + context + `</p></div></div><h1 id="access-title">` + title + `</h1>
-<p id="access-description" class="description">` + escape(description) + `</p>` + message + form + nextNote + backLink + `</main></body></html>`)
+` + paperAccessCSS + `</style>` + backendStyle + `</head><body class="` + pageClass + `">` + backdrop + `<main class="card" aria-labelledby="access-title"><div class="brand"><span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 20 6v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8.5 11.5 2.5 2.5 4.5-5"/></svg></span><div class="brand-copy"><p class="site">` + escape(site) + `</p><p class="context">` + context + `</p></div></div><h1 id="access-title">` + title + `</h1>
+<p id="access-description" class="description">` + escape(description) + `</p>` + message + form + nextNote + backLink + `</main>` + mapLegend + globeScript + `</body></html>`)
 }

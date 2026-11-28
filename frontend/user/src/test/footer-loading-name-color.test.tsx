@@ -51,7 +51,7 @@ describe("footer IP loading and geometry gate",()=>{
   pageHeight=2000;view.rerender(fixture());act(()=>resize());tick();
   expect(visible(view)).toBe("false");
   vi.stubGlobal("scrollY",1400);act(()=>window.dispatchEvent(new Event("scroll")));
-  tick(299);expect(visible(view)).toBe("false");tick(1);expect(visible(view)).toBe("true");
+  tick(119);expect(visible(view)).toBe("false");tick(1);expect(visible(view)).toBe("true");
  });
  it("accepts a genuinely loaded short or empty list",()=>{
   const view=render(fixture());tick(300);expect(visible(view)).toBe("true");
@@ -62,7 +62,7 @@ describe("footer IP loading and geometry gate",()=>{
   pageHeight=600;act(()=>resize());tick(300);expect(visible(view)).toBe("true");
  });
  it("rechecks geometry when the pending show timer fires",()=>{
-  const view=render(fixture());tick(200);pageHeight=2000;tick(100);
+  const view=render(fixture());tick(100);pageHeight=2000;tick(20);
   expect(visible(view)).toBe("false");
  });
  it("hides immediately when scrolling up, disconnecting or disabling",()=>{
