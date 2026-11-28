@@ -154,6 +154,14 @@ func (g *banGuard) cutover(ctx context.Context, m *migrationSnapshot, apply func
 	if m == nil {
 		return nil
 	}
+	// A completed migration only checks for conflicts. Native protection must
+	// keep reconciling after the old Fail2ban package and jail.d are removed.
+	if m.Complete {
+		if g.legacySSHRunning(ctx) {
+			return fmt.Errorf("原 SSH 防护被重新启用，请检查本机规则冲突")
+		}
+		return nil
+	}
 	lockPath := filepath.Join(g.Root, "jail.d", ".ddnezha-ssh.lock")
 	fd, lockErr := unix.Open(lockPath, unix.O_CREAT|unix.O_RDWR|unix.O_NOFOLLOW, 0600)
 	if lockErr != nil {
@@ -165,12 +173,6 @@ func (g *banGuard) cutover(ctx context.Context, m *migrationSnapshot, apply func
 	}
 	defer unix.Flock(fd, unix.LOCK_UN)
 
-	if m.Complete {
-		if _, e := g.Exec(ctx, "fail2ban-client", "status", "sshd"); e == nil {
-			return fmt.Errorf("原 SSH 防护被重新启用，请检查本机规则冲突")
-		}
-		return nil
-	}
 	overlay := g.migrationOverlay()
 	old, e := os.ReadFile(overlay)
 	if e == nil {
@@ -181,8 +183,11 @@ func (g *banGuard) cutover(ctx context.Context, m *migrationSnapshot, apply func
 	} else if !os.IsNotExist(e) {
 		return e
 	}
-	_, runningErr := g.Exec(ctx, "fail2ban-client", "status", "sshd")
-	if runningErr != nil {
+	running, err := g.legacySSHListed(ctx)
+	if err != nil {
+		return fmt.Errorf("原 SSH 防护状态无法确认，尚未接管: %w", err)
+	}
+	if !running {
 		// Recover a crash after stopping the old jail but before writing the receipt.
 		if e == nil && strings.HasPrefix(string(old), g.migrationHeader()) {
 			if err := apply(m); err != nil {
@@ -264,8 +269,12 @@ func (g *banGuard) recoverPause(ctx context.Context, m *migrationSnapshot) error
 	if m == nil || !m.Paused {
 		return nil
 	}
-	if _, e := g.Exec(ctx, "fail2ban-client", "status", "sshd"); e == nil {
-		if _, e = g.Exec(ctx, "fail2ban-client", "set", "sshd", "idle", "off"); e != nil {
+	running, err := g.legacySSHListed(ctx)
+	if err != nil {
+		return fmt.Errorf("无法确认原 SSH 防护的恢复状态: %w", err)
+	}
+	if running {
+		if _, e := g.Exec(ctx, "fail2ban-client", "set", "sshd", "idle", "off"); e != nil {
 			return fmt.Errorf("原 SSH 防护恢复检测失败")
 		}
 	}

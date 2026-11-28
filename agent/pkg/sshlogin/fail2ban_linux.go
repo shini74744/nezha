@@ -7,16 +7,18 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const ownedHeader = "# Managed by DDnezha SSH protection.\n"
 
 type banGuard struct {
-	Name, Dir, Root string
-	fb5Cache        *fb5BanCache
-	Ready           bool
-	Reused          bool
-	Exec            func(context.Context, string, ...string) ([]byte, error)
+	Name, Dir, Root   string
+	fb5Cache          *fb5BanCache
+	legacyAbsentUntil time.Time
+	Ready             bool
+	Reused            bool
+	Exec              func(context.Context, string, ...string) ([]byte, error)
 }
 
 func writeOwned(path string, body []byte) error {

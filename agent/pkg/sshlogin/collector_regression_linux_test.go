@@ -93,6 +93,9 @@ func TestSSHMigrationPauseRecoveryAndAllowlistEditing(t *testing.T) {
 	calls := []string{}
 	g := banGuard{Name: "ddnezha-ssh-0123456789abcdef", Root: root, Dir: dir, Exec: func(_ context.Context, _ string, args ...string) ([]byte, error) {
 		calls = append(calls, strings.Join(args, " "))
+		if strings.Join(args, " ") == "status" {
+			return []byte("`- Jail list: sshd\n"), nil
+		}
 		return []byte("ok"), nil
 	}}
 	m := &migrationSnapshot{Paused: true, PolicyRevision: 7, Files: map[string]string{}, Info: ExistingSSH{Allowlist: []string{"192.0.2.10"}}}
@@ -103,7 +106,7 @@ func TestSSHMigrationPauseRecoveryAndAllowlistEditing(t *testing.T) {
 	if e != nil || recovered.Paused {
 		t.Fatal(e, recovered)
 	}
-	if strings.Join(calls, ";") != "status sshd;set sshd idle off" {
+	if strings.Join(calls, ";") != "status;set sshd idle off" {
 		t.Fatal(calls)
 	}
 	p := initialPolicy()
@@ -140,6 +143,9 @@ func TestSSHMigrationApplyFailureKeepsOldProtection(t *testing.T) {
 	g := banGuard{Name: "ddnezha-ssh-0123456789abcdef", Root: root, Dir: dir, Exec: func(_ context.Context, _ string, args ...string) ([]byte, error) {
 		s := strings.Join(args, " ")
 		calls = append(calls, s)
+		if s == "status" {
+			return []byte("`- Jail list: sshd\n"), nil
+		}
 		if s == "get sshd idle" {
 			return []byte("False\n"), nil
 		}
@@ -163,5 +169,59 @@ func TestSSHMigrationApplyFailureKeepsOldProtection(t *testing.T) {
 	}
 	if _, e = os.Stat(g.migrationOverlay()); !os.IsNotExist(e) {
 		t.Fatal("failed handover left disabled old jail")
+	}
+}
+
+func TestLegacySSHDiscoveryAfterNativeMigration(t *testing.T) {
+	ctx := context.Background()
+	list := "sshd-other, 3xui-login"
+	queries := 0
+	g := banGuard{Root: t.TempDir(), Exec: func(_ context.Context, command string, args ...string) ([]byte, error) {
+		if command != "fail2ban-client" || strings.Join(args, " ") != "status" {
+			t.Fatalf("unexpected jail query: %s %v", command, args)
+		}
+		queries++
+		return []byte("Status\n|- Number of jail: 2\n`- Jail list:\t" + list + "\n"), nil
+	}}
+	apply := func(*migrationSnapshot) error { t.Fatal("reapplied completed migration"); return nil }
+	if g.existing(ctx) != nil || g.existing(ctx) != nil {
+		t.Fatal("other SSH jail mistaken for legacy sshd")
+	}
+	if err := g.cutover(ctx, &migrationSnapshot{Complete: true}, apply); err != nil || queries != 1 {
+		t.Fatalf("completed migration: %v, queries=%d", err, queries)
+	}
+	list = ""
+	g.legacyAbsentUntil = time.Time{}
+	if g.existing(ctx) != nil {
+		t.Fatal("empty jail list should be inactive")
+	}
+	list = "sshd-other, sshd"
+	g.legacyAbsentUntil = time.Time{}
+	if err := g.cutover(ctx, &migrationSnapshot{Complete: true}, apply); err == nil {
+		t.Fatal("externally re-enabled sshd was not detected")
+	}
+}
+
+func TestCompletedNativeMigrationWithoutFail2ban(t *testing.T) {
+	g := banGuard{Root: filepath.Join(t.TempDir(), "removed"), Exec: func(context.Context, string, ...string) ([]byte, error) {
+		return nil, os.ErrNotExist
+	}}
+	err := g.cutover(context.Background(), &migrationSnapshot{Complete: true}, func(*migrationSnapshot) error {
+		t.Fatal("attempted to migrate a removed jail")
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(g.Root); !os.IsNotExist(err) {
+		t.Fatalf("recreated Fail2ban directory: %v", err)
+	}
+}
+
+func TestLegacySSHAmbiguousRecoveryKeepsReceipt(t *testing.T) {
+	g := banGuard{Exec: func(context.Context, string, ...string) ([]byte, error) { return []byte("unexpected output"), nil }}
+	m := &migrationSnapshot{Paused: true}
+	if err := g.recoverPause(context.Background(), m); err == nil || !m.Paused || !g.legacyAbsentUntil.IsZero() {
+		t.Fatalf("unconfirmed recovery: %v, paused=%t", err, m.Paused)
 	}
 }
